@@ -37,7 +37,7 @@ export class SocketCommand implements ICommand {
 		if (sub === 'equip') {
 			const gearId = interaction.options.getString('gear_id', true);
 			const slotNum = interaction.options.getInteger('slot_num', true);
-			const result = this.socket.equip(interaction.user.id, runeUid, gearId, slotNum);
+			const result = await this.socket.equip(interaction.user.id, runeUid, gearId, slotNum);
 
 			switch (result.status) {
 				case 'rune-not-owned':
@@ -62,7 +62,7 @@ export class SocketCommand implements ICommand {
 					return;
 			}
 		} else {
-			const result = this.socket.unequip(interaction.user.id, runeUid);
+			const result = await this.socket.unequip(interaction.user.id, runeUid);
 			switch (result.status) {
 				case 'rune-not-owned':
 					await interaction.editReply({ content: 'Bạn không sở hữu rune này.' });

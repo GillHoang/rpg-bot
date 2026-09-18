@@ -9,7 +9,7 @@ export class DailyCommand implements ICommand {
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
-		const result = this.daily.claim(interaction.user.id);
+		const result = await this.daily.claim(interaction.user.id);
 
 		if (result.status === 'not-registered') {
 			await interaction.editReply({ content: 'Bạn chưa đăng ký. Dùng `/register` trước đã.' });

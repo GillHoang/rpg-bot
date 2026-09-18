@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import type { Executor } from '../db/client.js';
 import { userPresets } from '../db/schema.js';
 
@@ -7,22 +8,28 @@ import { userPresets } from '../db/schema.js';
  * empty "Preset 2".
  */
 export class PresetRepository {
-	createDefaultPresets(
+	async createDefaultPresets(
 		executor: Executor,
 		discordId: string,
 		starterGear: { weaponId: string; armorId: string },
-	): void {
-		executor
-			.insert(userPresets)
-			.values({
-				discordId,
-				slot: 1,
-				name: 'Main',
-				equippedWeaponId: starterGear.weaponId,
-				equippedArmorId: starterGear.armorId,
-			})
-			.run();
+	): Promise<void> {
+		// user_presets.id is a plain PK in the pg schema (not identity, per the
+		// schema's own note), so an explicit id is required; allocate two
+		// adjacent ids up front (called inside a transaction).
+		const [seq] = await executor
+			.select({ nextId: sql<number>`COALESCE(MAX(${userPresets.id}), 0) + 1` })
+			.from(userPresets);
+		const nextId = Number(seq.nextId);
 
-		executor.insert(userPresets).values({ discordId, slot: 2, name: 'Preset 2' }).run();
+		await executor.insert(userPresets).values({
+			id: nextId,
+			discordId,
+			slot: 1,
+			name: 'Main',
+			equippedWeaponId: starterGear.weaponId,
+			equippedArmorId: starterGear.armorId,
+		});
+
+		await executor.insert(userPresets).values({ id: nextId + 1, discordId, slot: 2, name: 'Preset 2' });
 	}
 }

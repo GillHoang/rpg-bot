@@ -13,7 +13,7 @@ export class EnhanceCommand implements ICommand {
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
 		const gearId = interaction.options.getString('gear_id', true);
-		const result = this.enhancement.attempt(interaction.user.id, gearId);
+		const result = await this.enhancement.attempt(interaction.user.id, gearId);
 
 		switch (result.status) {
 			case 'not-found':

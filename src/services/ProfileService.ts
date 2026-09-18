@@ -18,9 +18,9 @@ export class ProfileService {
 	async get(discordId: string): Promise<ProfileResult> {
 		const account = await this.accounts.findById(discordId);
 		if (!account) return { status: 'not-registered' };
-		if (!this.characters.hasCharacter(db, discordId)) return { status: 'no-character' };
+		if (!(await this.characters.hasCharacter(db, discordId))) return { status: 'no-character' };
 
-		const assembled = this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
+		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
 
 		return {
 			status: 'ok',

@@ -19,18 +19,18 @@ export type EnhanceResult =
 export class EnhancementService {
 	constructor(private readonly repo = new EnhancementRepository()) {}
 
-	attempt(discordId: string, gearId: string): EnhanceResult {
-		return db.transaction((tx): EnhanceResult => {
-			const gear = this.repo.findGear(tx, discordId, gearId);
+	async attempt(discordId: string, gearId: string): Promise<EnhanceResult> {
+		return db.transaction(async (tx): Promise<EnhanceResult> => {
+			const gear = await this.repo.findGear(tx, discordId, gearId);
 			if (!gear) return { status: 'not-found' };
 
 			const attempt = nextAttempt(gear.tier, gear.enhancement);
 			if (!attempt) return { status: 'maxed-or-not-enhanceable' };
 
-			const credux = this.repo.getCredux(tx, discordId);
+			const credux = await this.repo.getCredux(tx, discordId);
 			if (credux < attempt.cost) return { status: 'insufficient-credux', needed: attempt.cost, have: credux };
 
-			this.repo.spendCredux(tx, discordId, attempt.cost);
+			await this.repo.spendCredux(tx, discordId, attempt.cost);
 
 			const rng = createRng(createSecureSeed());
 			const succeeded = rng() < attempt.successRate;
@@ -39,10 +39,10 @@ export class EnhancementService {
 				const newLevel = gear.enhancement + 1;
 				if (gear.kind === 'weapon') {
 					const newAtk = computeWeaponCurrAtk(gear.baseAtk!, gear.tier, newLevel);
-					this.repo.applyWeaponSuccess(tx, discordId, gearId, newLevel, newAtk);
+					await this.repo.applyWeaponSuccess(tx, discordId, gearId, newLevel, newAtk);
 				} else {
 					const { hp, def } = computeArmorCurrStats(gear.baseHp!, gear.baseDef!, newLevel, gear.tier);
-					this.repo.applyArmorSuccess(tx, discordId, gearId, newLevel, hp, def);
+					await this.repo.applyArmorSuccess(tx, discordId, gearId, newLevel, hp, def);
 				}
 			return { status: 'success', newLevel, cost: attempt.cost };
 		});

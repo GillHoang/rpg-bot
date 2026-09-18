@@ -10,7 +10,7 @@
  * lại bao nhiêu lần cũng không nhân bản row; row người chơi tạo sau đó
  * (users, user_deities...) KHÔNG BAO GIỜ bị xoá.
  */
-import { db } from '../db/client.js';
+import { db, pool } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import {
 	deityRoster,
@@ -28,43 +28,47 @@ import { ARMOR_SEED } from './data/armors.js';
 import { RUNE_SEED } from './data/runes.js';
 import { SOCKET_UNLOCK_COST_SEED, ESSENCE_BAG_DEF_SEED } from './data/runeEconomy.js';
 
-const counts = db.transaction((tx) => {
+const counts = await db.transaction(async (tx) => {
 	for (const row of DEITY_SEED) {
-		tx.insert(deityRoster).values(row).onConflictDoUpdate({ target: deityRoster.deityId, set: row }).run();
+		await tx.insert(deityRoster).values(row).onConflictDoUpdate({ target: deityRoster.deityId, set: row });
 	}
 
 	for (const row of MOB_SEED) {
-		tx.insert(mobRoster)
-			.values({ ...row, immunityTags: row.immunityTags, specialFlags: row.specialFlags })
+		// mobId is GENERATED ALWAYS AS IDENTITY in Postgres — strip it from
+		// both the insert and the upsert payload (rows are matched by the
+		// business keys below; identity values must come from the server).
+		const { mobId: _mobId, ...rest } = row;
+		await tx
+			.insert(mobRoster)
+			.values({ ...rest, immunityTags: row.immunityTags, specialFlags: row.specialFlags })
 			.onConflictDoUpdate({
-				target: mobRoster.mobId,
-				set: { ...row, immunityTags: row.immunityTags, specialFlags: row.specialFlags },
-			})
-			.run();
+				target: [mobRoster.name, mobRoster.mythology, mobRoster.mobType],
+				set: { ...rest, immunityTags: row.immunityTags, specialFlags: row.specialFlags },
+			});
 	}
 
 	for (const row of WEAPON_SEED) {
-		tx.insert(weaponRoster).values(row).onConflictDoUpdate({ target: weaponRoster.weaponRosterId, set: row }).run();
+		await tx.insert(weaponRoster).values(row).onConflictDoUpdate({ target: weaponRoster.weaponRosterId, set: row });
 	}
 
 	for (const row of ARMOR_SEED) {
-		tx.insert(armorRoster).values(row).onConflictDoUpdate({ target: armorRoster.armorRosterId, set: row }).run();
+		await tx.insert(armorRoster).values(row).onConflictDoUpdate({ target: armorRoster.armorRosterId, set: row });
 	}
 
-	RUNE_SEED.forEach((row, i) => {
+	for (const [i, row] of RUNE_SEED.entries()) {
 		const full = { ...row, runeId: i + 1 };
-		tx.insert(runeRoster).values(full).onConflictDoUpdate({ target: runeRoster.runeId, set: full }).run();
-	});
+		await tx.insert(runeRoster).values(full).onConflictDoUpdate({ target: runeRoster.runeId, set: full });
+	}
 
 	for (const row of SOCKET_UNLOCK_COST_SEED) {
-		tx.insert(socketUnlockCost)
+		await tx
+			.insert(socketUnlockCost)
 			.values(row)
-			.onConflictDoUpdate({ target: [socketUnlockCost.tier, socketUnlockCost.slotIndex], set: row })
-			.run();
+			.onConflictDoUpdate({ target: [socketUnlockCost.tier, socketUnlockCost.slotIndex], set: row });
 	}
 
 	for (const row of ESSENCE_BAG_DEF_SEED) {
-		tx.insert(essenceBagDef).values(row).onConflictDoUpdate({ target: essenceBagDef.bagKey, set: row }).run();
+		await tx.insert(essenceBagDef).values(row).onConflictDoUpdate({ target: essenceBagDef.bagKey, set: row });
 	}
 
 	return {
@@ -89,3 +93,5 @@ logger.info(
 	counts.socketUnlockCosts,
 	counts.essenceBags,
 );
+
+await pool.end();

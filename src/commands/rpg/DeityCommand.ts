@@ -36,7 +36,7 @@ export class DeityCommand implements ICommand {
 		const discordId = interaction.user.id;
 
 		if (sub === 'sigil') {
-			const result = this.ascension.addSigil(discordId, userDeityId);
+			const result = await this.ascension.addSigil(discordId, userDeityId);
 			switch (result.status) {
 				case 'not-owned':
 					await interaction.editReply({ content: 'Bạn không sở hữu deity này.' });
@@ -54,7 +54,7 @@ export class DeityCommand implements ICommand {
 					return;
 			}
 		} else {
-			const result = this.ascension.ascend(discordId, userDeityId);
+			const result = await this.ascension.ascend(discordId, userDeityId);
 			switch (result.status) {
 				case 'not-owned':
 					await interaction.editReply({ content: 'Bạn không sở hữu deity này.' });

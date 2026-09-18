@@ -41,7 +41,7 @@ export class CasinoCommand implements ICommand {
 		const bet = interaction.options.getInteger('bet', true);
 		const choice = interaction.options.getString('choice') ?? undefined;
 
-		const result = this.casino.play(interaction.user.id, game, bet, choice);
+		const result = await this.casino.play(interaction.user.id, game, bet, choice);
 
 		if (result.status === 'not-registered') {
 			await interaction.reply({ content: 'Bạn chưa đăng ký. Dùng `/register` trước đã!', ephemeral: true });

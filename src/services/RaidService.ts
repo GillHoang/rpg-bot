@@ -51,12 +51,12 @@ export class RaidService {
 	async run(discordId: string): Promise<RaidResult> {
 		const account = await this.accounts.findById(discordId);
 		if (!account) return { status: 'not-registered' };
-		if (!this.characters.hasCharacter(db, discordId)) return { status: 'no-character' };
+		if (!(await this.characters.hasCharacter(db, discordId))) return { status: 'no-character' };
 
-		const monsterStats = this.monsters.pickRandomRegularForLevel(db, account.combatLevel);
+		const monsterStats = await this.monsters.pickRandomRegularForLevel(db, account.combatLevel);
 		if (!monsterStats) return { status: 'no-monsters-seeded' };
 
-		const assembled = this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
+		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
 		const player = createCombatant({
 			name: account.username,
 			combatClass: account.combatClass,
@@ -97,7 +97,7 @@ export class RaidService {
 		}
 		const expGained = scaleExpForMobLevel(baseExp, account.combatLevel);
 
-		const progress = db.transaction((tx) =>
+		const progress = await db.transaction((tx) =>
 			this.rewards.grant(tx, discordId, { expGain: expGained, credux, shards, grantChest: gotChest }),
 		);
 

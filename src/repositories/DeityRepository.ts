@@ -28,23 +28,21 @@ export interface OwnedDeityProgress {
 
 export class DeityRepository {
 	/** Uniform-random pick among available deities of one tier (matches the original's equal-weight pickRandomRow). */
-	pickRandomAvailableForTier(executor: Executor, tier: DeityTier): DeityRosterRow | null {
-		const row = executor
+	async pickRandomAvailableForTier(executor: Executor, tier: DeityTier): Promise<DeityRosterRow | null> {
+		const [row] = await executor
 			.select()
 			.from(deityRoster)
 			.where(and(eq(deityRoster.tier, tier), eq(deityRoster.isAvailable, true)))
 			.orderBy(sql`RANDOM()`)
-			.limit(1)
-			.get();
+			.limit(1);
 		return row ?? null;
 	}
 
-	ownedDeityIds(executor: Executor, discordId: string): Set<number> {
-		const rows = executor
+	async ownedDeityIds(executor: Executor, discordId: string): Promise<Set<number>> {
+		const rows = await executor
 			.select({ deityId: userDeities.deityId })
 			.from(userDeities)
-			.where(eq(userDeities.discordId, discordId))
-			.all();
+			.where(eq(userDeities.discordId, discordId));
 		return new Set(rows.map((r: { deityId: number }) => r.deityId));
 	}
 
@@ -54,11 +52,11 @@ export class DeityRepository {
 	 * the legacy stored curr_atk/curr_hp/curr_def columns (those predate
 	 * the Sigil/Ascension system and are no longer the source of truth).
 	 */
-	findUserDeityCurrStats(
+	async findUserDeityCurrStats(
 		executor: Executor,
 		userDeityId: number,
-	): { currAtk: number; currHp: number; currDef: number } | null {
-		const row = executor
+	): Promise<{ currAtk: number; currHp: number; currDef: number } | null> {
+		const [row] = await executor
 			.select({
 				sigils: userDeities.sigils,
 				baseAtk: deityRoster.baseAtk,
@@ -68,14 +66,14 @@ export class DeityRepository {
 			.from(userDeities)
 			.innerJoin(deityRoster, eq(userDeities.deityId, deityRoster.deityId))
 			.where(eq(userDeities.userDeityId, userDeityId))
-			.get();
+			.limit(1);
 		if (!row) return null;
 		const eff = computeSigilStats({ atk: row.baseAtk, hp: row.baseHp, def: row.baseDef }, row.sigils);
 		return { currAtk: eff.atk, currHp: eff.hp, currDef: eff.def };
 	}
 
-	findOwnedProgress(executor: Executor, discordId: string, userDeityId: number): OwnedDeityProgress | null {
-		const row = executor
+	async findOwnedProgress(executor: Executor, discordId: string, userDeityId: number): Promise<OwnedDeityProgress | null> {
+		const [row] = await executor
 			.select({
 				userDeityId: userDeities.userDeityId,
 				deityId: userDeities.deityId,
@@ -90,22 +88,22 @@ export class DeityRepository {
 			.from(userDeities)
 			.innerJoin(deityRoster, eq(userDeities.deityId, deityRoster.deityId))
 			.where(and(eq(userDeities.discordId, discordId), eq(userDeities.userDeityId, userDeityId)))
-			.get();
+			.limit(1);
 		if (!row) return null;
 		return { ...row, tier: row.tier as DeityTier };
 	}
 
-	setSigils(executor: Executor, userDeityId: number, sigils: number): void {
-		executor.update(userDeities).set({ sigils }).where(eq(userDeities.userDeityId, userDeityId)).run();
+	async setSigils(executor: Executor, userDeityId: number, sigils: number): Promise<void> {
+		await executor.update(userDeities).set({ sigils }).where(eq(userDeities.userDeityId, userDeityId));
 	}
 
-	setAscended(executor: Executor, userDeityId: number): void {
-		executor.update(userDeities).set({ ascended: true }).where(eq(userDeities.userDeityId, userDeityId)).run();
+	async setAscended(executor: Executor, userDeityId: number): Promise<void> {
+		await executor.update(userDeities).set({ ascended: true }).where(eq(userDeities.userDeityId, userDeityId));
 	}
 
 	/** New deity acquisition: curr_enhancement are legacy pre-Ascension columns, written once but never read again (see findUserDeityCurrStats). */
-	insertNew(executor: Executor, discordId: string, deity: DeityRosterRow, todayKey: string): number {
-		const result = executor
+	async insertNew(executor: Executor, discordId: string, deity: DeityRosterRow, todayKey: string): Promise<number> {
+		const [row] = await executor
 			.insert(userDeities)
 			.values({
 				discordId,
@@ -118,7 +116,7 @@ export class DeityRepository {
 				ascended: false,
 				lastPullDate: todayKey,
 			})
-			.run();
-		return Number(result.lastInsertRowid);
+			.returning({ userDeityId: userDeities.userDeityId });
+		return row.userDeityId;
 	}
 }

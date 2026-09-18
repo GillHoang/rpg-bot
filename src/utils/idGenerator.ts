@@ -18,27 +18,31 @@ function randomId(): string {
  * never resolve an ambiguous id). Ported 1:1 from utils/weaponId.js's
  * generateUniqueGearId.
  *
- * Deliberately synchronous: better-sqlite3 is a sync driver, and this is
- * always called from inside a `db.transaction()` callback, which itself
- * must stay synchronous for the transaction to actually wrap every insert.
+ * Async for the node-postgres driver: this is always called from inside a
+ * `db.transaction(async tx => ...)` callback, so every query here is
+ * awaited while still running within the caller's transaction.
  */
 export class GearIdGenerator {
 	constructor(private readonly executor: Executor) {}
 
-	generateUniqueGearId(): string {
+	async generateUniqueGearId(): Promise<string> {
 		for (let attempt = 0; attempt < 10; attempt++) {
 			const id = randomId();
-			if (this.isFree(id)) return id;
+			if (await this.isFree(id)) return id;
 		}
 		throw new Error('Failed to generate a unique gear id after 10 attempts');
 	}
 
-	private isFree(id: string): boolean {
-		const weaponHit = this.executor.select().from(userWeapons).where(eq(userWeapons.weaponId, id)).get();
+	private async isFree(id: string): Promise<boolean> {
+		const [weaponHit] = await this.executor
+			.select()
+			.from(userWeapons)
+			.where(eq(userWeapons.weaponId, id))
+			.limit(1);
 		if (weaponHit) return false;
-		const armorHit = this.executor.select().from(userArmors).where(eq(userArmors.armorId, id)).get();
+		const [armorHit] = await this.executor.select().from(userArmors).where(eq(userArmors.armorId, id)).limit(1);
 		if (armorHit) return false;
-		const ticketHit = this.executor.select().from(tickets).where(eq(tickets.ticketId, id)).get();
+		const [ticketHit] = await this.executor.select().from(tickets).where(eq(tickets.ticketId, id)).limit(1);
 		return !ticketHit;
 	}
 }

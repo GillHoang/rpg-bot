@@ -23,11 +23,16 @@ export interface RaidRewardResult {
  * are a separate subsystem, deferred to a later milestone.
  */
 export class RaidRewardRepository {
-	grant(executor: Executor, discordId: string, grant: RaidRewardGrant): RaidRewardResult {
-		const character = executor.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).get()!;
+	async grant(executor: Executor, discordId: string, grant: RaidRewardGrant): Promise<RaidRewardResult> {
+		const [character] = await executor
+			.select()
+			.from(userCharacter)
+			.where(eq(userCharacter.discordId, discordId))
+			.limit(1);
+		if (!character) throw new Error(`grant: no user_character row for ${discordId}`);
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
 
-		executor
+		await executor
 			.update(userCharacter)
 			.set({
 				combatLevel: next.level,
@@ -36,16 +41,16 @@ export class RaidRewardRepository {
 				raidsWon: grant.credux > 0 ? character.raidsWon + 1 : character.raidsWon,
 				raidsLost: grant.credux > 0 ? character.raidsLost : character.raidsLost + 1,
 			})
-			.where(eq(userCharacter.discordId, discordId))
-			.run();
+			.where(eq(userCharacter.discordId, discordId));
 
 		if (grant.credux > 0 || grant.shards > 0 || grant.grantChest) {
-			const bag = executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).get()!;
+			const [bag] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			if (!bag) throw new Error(`grant: no users_bag row for ${discordId}`);
 			const creduxAfter = bag.credux + grant.credux;
 			const shardsAfter = bag.beliefShards + grant.shards;
 			const chestAfter = grant.grantChest ? bag.silverChest + 1 : bag.silverChest;
 
-			executor
+			await executor
 				.update(usersBag)
 				.set({
 					credux: creduxAfter,
@@ -53,26 +58,21 @@ export class RaidRewardRepository {
 					lifetimeCreduxEarned: bag.lifetimeCreduxEarned + grant.credux,
 					silverChest: chestAfter,
 				})
-				.where(eq(usersBag.discordId, discordId))
-				.run();
+				.where(eq(usersBag.discordId, discordId));
 
 			if (grant.credux > 0) {
-				executor
+				await executor
 					.insert(gameLogs)
-					.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creduxAfter })
-					.run();
+					.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creduxAfter });
 			}
 			if (grant.grantChest) {
-				executor
-					.insert(gameLogs)
-					.values({
-						discordId,
-						action: 'Raid',
-						itemType: 'silver_chest',
-						previousChestCount: bag.silverChest,
-						updatedChestCount: chestAfter,
-					})
-					.run();
+				await executor.insert(gameLogs).values({
+					discordId,
+					action: 'Raid',
+					itemType: 'silver_chest',
+					previousChestCount: bag.silverChest,
+					updatedChestCount: chestAfter,
+				});
 			}
 		}
 

@@ -22,7 +22,7 @@ export class SummonCommand implements ICommand {
 		// Multi-pull transactions can exceed the 3s reply window — acknowledge first.
 		await interaction.deferReply();
 		const count = interaction.options.getInteger('count', true);
-		const result = this.summon.run(interaction.user.id, count);
+		const result = await this.summon.run(interaction.user.id, count);
 
 		switch (result.status) {
 			case 'invalid-count':

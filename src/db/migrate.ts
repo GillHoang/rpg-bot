@@ -1,6 +1,7 @@
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { db } from './client.js';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import { db, pool } from './client.js';
 import { logger } from '../utils/logger.js';
 
-migrate(db, { migrationsFolder: './src/db/migrations' });
+await migrate(db, { migrationsFolder: './src/db/migrations' });
 logger.info('Migrations applied.');
+await pool.end();

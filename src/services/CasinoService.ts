@@ -20,18 +20,18 @@ export type PlayResult =
 export class CasinoService {
 	constructor(private readonly repo = new CasinoRepository()) {}
 
-	play(discordId: string, game: StatelessCasinoGameKey, bet: number, choice?: string): PlayResult {
+	async play(discordId: string, game: StatelessCasinoGameKey, bet: number, choice?: string): Promise<PlayResult> {
 		if (!Number.isInteger(bet) || bet <= 0 || bet > MAX_BET) return { status: 'invalid-bet' };
 
-		return db.transaction((tx): PlayResult => {
-			const credux = this.repo.getCredux(tx, discordId);
+		return db.transaction(async (tx): Promise<PlayResult> => {
+			const credux = await this.repo.getCredux(tx, discordId);
 			if (credux == null) return { status: 'not-registered' };
 			if (credux < bet) return { status: 'insufficient-credux', have: credux };
 
 			const rng = createRng(createSecureSeed());
 			const outcome = CasinoGameRegistry.get(game).play(bet, rng, choice);
 
-			const balanceAfter = this.repo.settle(tx, discordId, {
+			const balanceAfter = await this.repo.settle(tx, discordId, {
 				game,
 				bet,
 				payout: outcome.payout,

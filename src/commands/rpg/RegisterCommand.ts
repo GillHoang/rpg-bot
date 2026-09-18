@@ -15,7 +15,7 @@ export class RegisterCommand implements ICommand {
 	constructor(private readonly registration = new RegistrationService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-		const result = this.registration.register(interaction.user.id, interaction.user.username);
+		const result = await this.registration.register(interaction.user.id, interaction.user.username);
 
 		if (result.status === 'already-registered') {
 			await interaction.reply({

@@ -39,17 +39,17 @@ export class CharacterCreationService {
 		private readonly presets = new PresetRepository(),
 	) {}
 
-	createCharacter(discordId: string, combatClass: CombatClass): CreateCharacterResult {
-		return db.transaction((tx): CreateCharacterResult => {
-			if (!this.users.isRegistered(tx, discordId)) {
+	async createCharacter(discordId: string, combatClass: CombatClass): Promise<CreateCharacterResult> {
+		return db.transaction(async (tx): Promise<CreateCharacterResult> => {
+			if (!(await this.users.isRegistered(tx, discordId))) {
 				return { status: 'not-registered' };
 			}
-			if (this.characters.hasCharacter(tx, discordId)) {
+			if (await this.characters.hasCharacter(tx, discordId)) {
 				return { status: 'already-has-character' };
 			}
 
-			const weaponRosterId = this.gear.findWeaponRosterIdByName(tx, STARTER_WEAPON_NAME);
-			const armorRosterId = this.gear.findArmorRosterIdByName(tx, STARTER_ARMOR_NAME);
+			const weaponRosterId = await this.gear.findWeaponRosterIdByName(tx, STARTER_WEAPON_NAME);
+			const armorRosterId = await this.gear.findArmorRosterIdByName(tx, STARTER_ARMOR_NAME);
 			if (weaponRosterId == null || armorRosterId == null) {
 				// Mirrors create.js: a missing seeded roster row means the DB was
 				// never seeded, not a player-facing error to explain in detail.
@@ -58,8 +58,8 @@ export class CharacterCreationService {
 
 			const idGen = new GearIdGenerator(tx);
 
-			const weaponId = idGen.generateUniqueGearId();
-			this.gear.grantWeapon(tx, {
+			const weaponId = await idGen.generateUniqueGearId();
+			await this.gear.grantWeapon(tx, {
 				discordId,
 				weaponId,
 				weaponRosterId,
@@ -67,8 +67,8 @@ export class CharacterCreationService {
 				crit: STARTER_WEAPON.crit,
 			});
 
-			const armorId = idGen.generateUniqueGearId();
-			this.gear.grantArmor(tx, {
+			const armorId = await idGen.generateUniqueGearId();
+			await this.gear.grantArmor(tx, {
 				discordId,
 				armorId,
 				armorRosterId,
@@ -76,17 +76,18 @@ export class CharacterCreationService {
 				def: STARTER_ARMOR.def,
 			});
 
-			this.characters.insert(tx, discordId, combatClass);
-			this.presets.createDefaultPresets(tx, discordId, { weaponId, armorId });
+			await this.characters.insert(tx, discordId, combatClass);
+			await this.presets.createDefaultPresets(tx, discordId, { weaponId, armorId });
 
-			const bag = tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).get()!;
-			tx.update(usersBag)
+			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			if (!bag) throw new Error(`createCharacter: no users_bag row for ${discordId}`);
+			await tx
+				.update(usersBag)
 				.set({
 					beliefShards: bag.beliefShards + GRANT_BELIEF_SHARDS,
 					silverChest: bag.silverChest + GRANT_SILVER_CHESTS,
 				})
-				.where(eq(usersBag.discordId, discordId))
-				.run();
+				.where(eq(usersBag.discordId, discordId));
 
 			return { status: 'ok', weaponId, armorId };
 		});

@@ -14,13 +14,13 @@ export interface EnhanceableGear {
 
 export class EnhancementRepository {
 	/** Looks up a gear id in either table (ids are unique across both — see GearIdGenerator). */
-	findGear(executor: Executor, discordId: string, gearId: string): EnhanceableGear | null {
-		const weapon = executor
+	async findGear(executor: Executor, discordId: string, gearId: string): Promise<EnhanceableGear | null> {
+		const [weapon] = await executor
 			.select({ tier: weaponRoster.tier, enhancement: userWeapons.enhancement, baseAtk: userWeapons.baseAtk })
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
 			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, gearId)))
-			.get();
+			.limit(1);
 		if (weapon) {
 			return {
 				kind: 'weapon',
@@ -32,7 +32,7 @@ export class EnhancementRepository {
 			};
 		}
 
-		const armor = executor
+		const [armor] = await executor
 			.select({
 				tier: armorRoster.tier,
 				enhancement: userArmors.enhancement,
@@ -42,7 +42,7 @@ export class EnhancementRepository {
 			.from(userArmors)
 			.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
 			.where(and(eq(userArmors.discordId, discordId), eq(userArmors.armorId, gearId)))
-			.get();
+			.limit(1);
 		if (armor) {
 			return {
 				kind: 'armor',
@@ -56,50 +56,48 @@ export class EnhancementRepository {
 		return null;
 	}
 
-	getCredux(executor: Executor, discordId: string): number {
-		return executor
+	async getCredux(executor: Executor, discordId: string): Promise<number> {
+		const [row] = await executor
 			.select({ credux: usersBag.credux })
 			.from(usersBag)
 			.where(eq(usersBag.discordId, discordId))
-			.get()!.credux;
+			.limit(1);
+		return row.credux;
 	}
 
-	spendCredux(executor: Executor, discordId: string, amount: number): void {
-		const before = this.getCredux(executor, discordId);
+	async spendCredux(executor: Executor, discordId: string, amount: number): Promise<void> {
+		const before = await this.getCredux(executor, discordId);
 		const after = before - amount;
-		executor.update(usersBag).set({ credux: after }).where(eq(usersBag.discordId, discordId)).run();
-		executor
+		await executor.update(usersBag).set({ credux: after }).where(eq(usersBag.discordId, discordId));
+		await executor
 			.insert(gameLogs)
-			.values({ discordId, action: 'Enhance', previousCredux: before, updatedCredux: after })
-			.run();
+			.values({ discordId, action: 'Enhance', previousCredux: before, updatedCredux: after });
 	}
 
-	applyWeaponSuccess(
+	async applyWeaponSuccess(
 		executor: Executor,
 		discordId: string,
 		gearId: string,
 		newEnhancement: number,
 		newAtk: number,
-	): void {
-		executor
+	): Promise<void> {
+		await executor
 			.update(userWeapons)
 			.set({ enhancement: newEnhancement, currAtk: newAtk })
-			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, gearId)))
-			.run();
+			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, gearId)));
 	}
 
-	applyArmorSuccess(
+	async applyArmorSuccess(
 		executor: Executor,
 		discordId: string,
 		gearId: string,
 		newEnhancement: number,
 		newHp: number,
 		newDef: number,
-	): void {
-		executor
+	): Promise<void> {
+		await executor
 			.update(userArmors)
 			.set({ enhancement: newEnhancement, currHp: newHp, currDef: newDef })
-			.where(and(eq(userArmors.discordId, discordId), eq(userArmors.armorId, gearId)))
-			.run();
+			.where(and(eq(userArmors.discordId, discordId), eq(userArmors.armorId, gearId)));
 	}
 }

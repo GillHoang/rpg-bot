@@ -27,7 +27,7 @@ export class CreateCharacterCommand implements ICommand {
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		const combatClass = interaction.options.getString('class', true) as CombatClass;
-		const result = this.creation.createCharacter(interaction.user.id, combatClass);
+		const result = await this.creation.createCharacter(interaction.user.id, combatClass);
 
 		switch (result.status) {
 			case 'not-registered':

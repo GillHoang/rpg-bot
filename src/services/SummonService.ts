@@ -49,37 +49,46 @@ export class SummonService {
 		private readonly deities = new DeityRepository(),
 	) {}
 
-	run(discordId: string, count: number): SummonResult {
+	async run(discordId: string, count: number): Promise<SummonResult> {
 		if (!Number.isInteger(count) || count < 1 || count > MAX_PULLS) {
 			return { status: 'invalid-count' };
 		}
 
-		return db.transaction((tx): SummonResult => {
-			if (!this.characters.hasCharacter(tx, discordId)) {
+		return db.transaction(async (tx): Promise<SummonResult> => {
+			if (!(await this.characters.hasCharacter(tx, discordId))) {
 				// hasCharacter also covers "not registered" here, since a character
 				// can't exist without a user row (FK), so one check suffices.
 				return { status: 'no-character' };
 			}
 
-			const bag = tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).get()!;
+			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
 			const cost = SHARDS_PER_PULL * count;
 			if (bag.beliefShards < cost) {
 				return { status: 'insufficient-shards', needed: cost, have: bag.beliefShards };
 			}
 
-			let pity = (
-				tx.select().from(pityCounters).where(eq(pityCounters.discordId, discordId)).get() ?? { pityCount: 0 }
-			).pityCount;
-			const owned = this.deities.ownedDeityIds(tx, discordId);
+			const [pityRow] = await tx
+				.select()
+				.from(pityCounters)
+				.where(eq(pityCounters.discordId, discordId))
+				.limit(1);
+			let pity = pityRow?.pityCount ?? 0;
+			const owned = await this.deities.ownedDeityIds(tx, discordId);
 			const rng = createRng(createSecureSeed());
 			const todayKey = DailyCycle.keyAt();
 
-			const character = tx.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).get()!;
-			const activePreset = tx
+			const [character] = await tx
+				.select()
+				.from(userCharacter)
+				.where(eq(userCharacter.discordId, discordId))
+				.limit(1);
+			if (!character) throw new Error(`run: no user_character row for ${discordId}`);
+			const [activePreset] = await tx
 				.select()
 				.from(userPresets)
 				.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, character.activePresetSlot)))
-				.get();
+				.limit(1);
 			let pendingActiveDeityId: number | null = null;
 
 			const essenceDelta: Record<DeityTier, number> = { Epic: 0, Mythic: 0, Legendary: 0, Supreme: 0 };
@@ -88,16 +97,13 @@ export class SummonService {
 			// Debit shards up front: an early return below must not leave a
 			// committed state where the player got a deity without paying.
 			const beliefShardsAfter = bag.beliefShards - cost;
-			tx.update(usersBag)
-				.set({ beliefShards: beliefShardsAfter })
-				.where(eq(usersBag.discordId, discordId))
-				.run();
+			await tx.update(usersBag).set({ beliefShards: beliefShardsAfter }).where(eq(usersBag.discordId, discordId));
 
 			for (let i = 0; i < count; i++) {
 				const roll = resolveRoll(pity, rng);
 				pity = roll.newPity;
 
-				const deity: DeityRosterRow | null = this.deities.pickRandomAvailableForTier(tx, roll.tier);
+				const deity: DeityRosterRow | null = await this.deities.pickRandomAvailableForTier(tx, roll.tier);
 				if (!deity) return { status: 'no-deities-seeded', tier: roll.tier };
 
 				const isDupe = owned.has(deity.deityId);
@@ -113,7 +119,7 @@ export class SummonService {
 						essenceGained: gained,
 					});
 				} else {
-					const userDeityId = this.deities.insertNew(tx, discordId, deity, todayKey);
+					const userDeityId = await this.deities.insertNew(tx, discordId, deity, todayKey);
 					owned.add(deity.deityId);
 					if (activePreset && activePreset.equippedDeity1Id == null && pendingActiveDeityId == null) {
 						pendingActiveDeityId = userDeityId;
@@ -137,41 +143,37 @@ export class SummonService {
 				const before = bag[field];
 				const after = before + essenceDelta[tier];
 				patch[field] = after;
-				tx.insert(gameLogs)
-					.values({
-						discordId,
-						action: 'Deity Pull',
-						itemType: field,
-						previousEssenceCount: before,
-						updatedEssenceCount: after,
-					})
-					.run();
-			}
-			if (Object.keys(patch).length > 0) {
-				tx.update(usersBag)
-					.set(patch as Partial<typeof usersBag.$inferInsert>)
-					.where(eq(usersBag.discordId, discordId))
-					.run();
-			}
-			tx.insert(gameLogs)
-				.values({
+				await tx.insert(gameLogs).values({
 					discordId,
 					action: 'Deity Pull',
-					previousBeliefShards: bag.beliefShards,
-					updatedBeliefShards: beliefShardsAfter,
-				})
-				.run();
+					itemType: field,
+					previousEssenceCount: before,
+					updatedEssenceCount: after,
+				});
+			}
+			if (Object.keys(patch).length > 0) {
+				await tx
+					.update(usersBag)
+					.set(patch as Partial<typeof usersBag.$inferInsert>)
+					.where(eq(usersBag.discordId, discordId));
+			}
+			await tx.insert(gameLogs).values({
+				discordId,
+				action: 'Deity Pull',
+				previousBeliefShards: bag.beliefShards,
+				updatedBeliefShards: beliefShardsAfter,
+			});
 
-			tx.insert(pityCounters)
+			await tx
+				.insert(pityCounters)
 				.values({ discordId, pityCount: pity })
-				.onConflictDoUpdate({ target: pityCounters.discordId, set: { pityCount: pity } })
-				.run();
+				.onConflictDoUpdate({ target: pityCounters.discordId, set: { pityCount: pity } });
 
 			if (pendingActiveDeityId != null && activePreset) {
-				tx.update(userPresets)
+				await tx
+					.update(userPresets)
 					.set({ equippedDeity1Id: pendingActiveDeityId })
-					.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, activePreset.slot)))
-					.run();
+					.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, activePreset.slot)));
 			}
 
 			return { status: 'ok', pulls, finalPity: pity, shardsSpent: cost };

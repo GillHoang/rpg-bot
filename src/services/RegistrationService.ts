@@ -12,12 +12,12 @@ export type RegistrationResult = { status: 'ok' } | { status: 'already-registere
 export class RegistrationService {
 	constructor(private readonly users = new UserRepository()) {}
 
-	register(discordId: string, username: string): RegistrationResult {
-		return db.transaction((tx): RegistrationResult => {
-			if (this.users.isRegistered(tx, discordId)) {
+	async register(discordId: string, username: string): Promise<RegistrationResult> {
+		return db.transaction(async (tx): Promise<RegistrationResult> => {
+			if (await this.users.isRegistered(tx, discordId)) {
 				return { status: 'already-registered' };
 			}
-			this.users.registerNew(tx, discordId, username);
+			await this.users.registerNew(tx, discordId, username);
 			return { status: 'ok' };
 		});
 	}

@@ -26,11 +26,11 @@ export type ClaimDailyResult =
 export class DailyService {
 	constructor(private readonly repo = new DailyRepository()) {}
 
-	claim(discordId: string, now: Date = new Date()): ClaimDailyResult {
-		return db.transaction((tx): ClaimDailyResult => {
-			if (!this.repo.hasBag(tx, discordId)) return { status: 'not-registered' };
+	async claim(discordId: string, now: Date = new Date()): Promise<ClaimDailyResult> {
+		return db.transaction(async (tx): Promise<ClaimDailyResult> => {
+			if (!(await this.repo.hasBag(tx, discordId))) return { status: 'not-registered' };
 
-			const state = this.repo.getDailyState(tx, discordId);
+			const state = await this.repo.getDailyState(tx, discordId);
 			if (!state) return { status: 'not-registered' };
 
 			const todayKey = DailyCycle.keyAt(now);
@@ -47,16 +47,16 @@ export class DailyService {
 			const reward = DailyRewardTable.rewardForDay(monthly);
 			const milestone = DailyRewardTable.milestoneForStreak(overall);
 
-			const before = this.repo.applyReward(tx, discordId, {
+			const before = await this.repo.applyReward(tx, discordId, {
 				credux: reward.credux,
 				shards: reward.shards,
 				chestColumn: reward.chestColumn,
 				milestoneColumn: milestone?.chestColumn ?? null,
 			});
 
-			this.repo.updateStreak(tx, discordId, { monthly, overall, todayKey });
+			await this.repo.updateStreak(tx, discordId, { monthly, overall, todayKey });
 
-			this.repo.logCurrencyChange(
+			await this.repo.logCurrencyChange(
 				tx,
 				discordId,
 				'Daily',
@@ -64,7 +64,7 @@ export class DailyService {
 				before.creduxAfter - reward.credux,
 				before.creduxAfter,
 			);
-			this.repo.logCurrencyChange(
+			await this.repo.logCurrencyChange(
 				tx,
 				discordId,
 				'Daily',
@@ -72,7 +72,7 @@ export class DailyService {
 				before.beliefShardsAfter - reward.shards,
 				before.beliefShardsAfter,
 			);
-			this.repo.logChestChange(
+			await this.repo.logChestChange(
 				tx,
 				discordId,
 				'Daily',
@@ -81,7 +81,7 @@ export class DailyService {
 				before.chestCountAfter,
 			);
 			if (milestone && before.milestoneChestCountAfter != null) {
-				this.repo.logChestChange(
+				await this.repo.logChestChange(
 					tx,
 					discordId,
 					'Daily',

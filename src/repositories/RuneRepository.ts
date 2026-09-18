@@ -23,8 +23,8 @@ export interface OwnedRune {
  * and not locked. Unlocking sockets (socket_unlock_cost) is not ported.
  */
 export class RuneRepository {
-	findOwned(executor: Executor, discordId: string, runeUid: string): OwnedRune | null {
-		const row = executor
+	async findOwned(executor: Executor, discordId: string, runeUid: string): Promise<OwnedRune | null> {
+		const [row] = await executor
 			.select({
 				runeUid: userRunes.runeUid,
 				effectKey: runeRoster.effectKey,
@@ -36,7 +36,7 @@ export class RuneRepository {
 			.from(userRunes)
 			.innerJoin(runeRoster, eq(userRunes.runeId, runeRoster.runeId))
 			.where(and(eq(userRunes.discordId, discordId), eq(userRunes.runeUid, runeUid)))
-			.get();
+			.limit(1);
 		if (!row) return null;
 		return {
 			runeUid: row.runeUid,
@@ -48,8 +48,8 @@ export class RuneRepository {
 	}
 
 	/** ALL runes currently socketed into one gear id — caller splits by STAT_EFFECT_KEYS vs COMBAT_EFFECT_KEYS. */
-	findSocketedEffects(executor: Executor, gearId: string): SocketedRuneEffect[] {
-		const rows = executor
+	async findSocketedEffects(executor: Executor, gearId: string): Promise<SocketedRuneEffect[]> {
+		const rows = await executor
 			.select({
 				effectKey: runeRoster.effectKey,
 				rolledValue: userRunes.rolledValue,
@@ -57,19 +57,18 @@ export class RuneRepository {
 			})
 			.from(userRunes)
 			.innerJoin(runeRoster, eq(userRunes.runeId, runeRoster.runeId))
-			.where(eq(userRunes.socketedInto, gearId))
-			.all();
+			.where(eq(userRunes.socketedInto, gearId));
 		return rows.map((r: { effectKey: string; rolledValue: number | null; rosterValue: number }) => ({
 			effectKey: r.effectKey as RuneEffectKey,
 			value: r.rolledValue ?? r.rosterValue,
 		}));
 	}
 
-	equip(executor: Executor, runeUid: string, gearId: string): void {
-		executor.update(userRunes).set({ socketedInto: gearId }).where(eq(userRunes.runeUid, runeUid)).run();
+	async equip(executor: Executor, runeUid: string, gearId: string): Promise<void> {
+		await executor.update(userRunes).set({ socketedInto: gearId }).where(eq(userRunes.runeUid, runeUid));
 	}
 
-	unequip(executor: Executor, runeUid: string): void {
-		executor.update(userRunes).set({ socketedInto: null }).where(eq(userRunes.runeUid, runeUid)).run();
+	async unequip(executor: Executor, runeUid: string): Promise<void> {
+		await executor.update(userRunes).set({ socketedInto: null }).where(eq(userRunes.runeUid, runeUid));
 	}
 }

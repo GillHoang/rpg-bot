@@ -1,545 +1,571 @@
 {
-  "version": "6",
-  "dialect": "sqlite",
-  "id": "1d38f06f-a7ab-4303-940b-67c845e4fec1",
+  "id": "ac07ebcd-812a-491c-a69a-08143ce04752",
   "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
   "tables": {
-    "active_battles": {
+    "public.active_battles": {
       "name": "active_battles",
+      "schema": "",
       "columns": {
         "battle_id": {
           "name": "battle_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "active_battles_battle_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "channel_id": {
           "name": "channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "message_id": {
           "name": "message_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "battle_type": {
           "name": "battle_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mob_id": {
           "name": "mob_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enemy_level": {
           "name": "enemy_level",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "player_hp": {
           "name": "player_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "player_max_hp": {
           "name": "player_max_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enemy_hp": {
           "name": "enemy_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enemy_max_hp": {
           "name": "enemy_max_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "current_turn": {
           "name": "current_turn",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "player_goes_first": {
           "name": "player_goes_first",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "active_debuffs": {
           "name": "active_debuffs",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "battle_log": {
           "name": "battle_log",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "overcharge_pct": {
           "name": "overcharge_pct",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "bleed_stacks": {
           "name": "bleed_stacks",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "started_at": {
           "name": "started_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
-      "indexes": {
-        "active_battles_unique_0": {
-          "name": "active_battles_unique_0",
-          "columns": [
+      "indexes": {},
+      "foreignKeys": {
+        "active_battles_discord_id_users_discord_id_fk": {
+          "name": "active_battles_discord_id_users_discord_id_fk",
+          "tableFrom": "active_battles",
+          "tableTo": "users",
+          "columnsFrom": [
             "discord_id"
           ],
-          "isUnique": true
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "active_battles_mob_id_mob_roster_mob_id_fk": {
+          "name": "active_battles_mob_id_mob_roster_mob_id_fk",
+          "tableFrom": "active_battles",
+          "tableTo": "mob_roster",
+          "columnsFrom": [
+            "mob_id"
+          ],
+          "columnsTo": [
+            "mob_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
-      "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "uniqueConstraints": {
+        "active_battles_unique_0": {
+          "name": "active_battles_unique_0",
+          "nullsNotDistinct": false,
+          "columns": [
+            "discord_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "active_casino_sessions": {
+    "public.active_casino_sessions": {
       "name": "active_casino_sessions",
+      "schema": "",
       "columns": {
         "session_id": {
           "name": "session_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "game": {
           "name": "game",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "bet_amount": {
           "name": "bet_amount",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "balance_before": {
           "name": "balance_before",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "balance_after_debit": {
           "name": "balance_after_debit",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "payout": {
           "name": "payout",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "balance_after": {
           "name": "balance_after",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "channel_id": {
           "name": "channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "message_id": {
           "name": "message_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "state_json": {
           "name": "state_json",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "metadata": {
           "name": "metadata",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "active_casino_sessions_discord_id_users_discord_id_fk": {
+          "name": "active_casino_sessions_discord_id_users_discord_id_fk",
+          "tableFrom": "active_casino_sessions",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "active_duel_participants": {
+    "public.active_duel_participants": {
       "name": "active_duel_participants",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "duel_id": {
           "name": "duel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lock_token": {
           "name": "lock_token",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "role": {
           "name": "role",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "active_duel_participants_duel_id_active_duels_duel_id_fk": {
+          "name": "active_duel_participants_duel_id_active_duels_duel_id_fk",
+          "tableFrom": "active_duel_participants",
+          "tableTo": "active_duels",
+          "columnsFrom": [
+            "duel_id"
+          ],
+          "columnsTo": [
+            "duel_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "active_duels": {
+    "public.active_duels": {
       "name": "active_duels",
+      "schema": "",
       "columns": {
         "duel_id": {
           "name": "duel_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lock_token": {
           "name": "lock_token",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "challenger_id": {
           "name": "challenger_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opponent_id": {
           "name": "opponent_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "duel_type": {
           "name": "duel_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "stake": {
           "name": "stake",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "channel_id": {
           "name": "channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "message_id": {
           "name": "message_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "accepted_at": {
           "name": "accepted_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "active_ranked_fights": {
+    "public.active_ranked_fights": {
       "name": "active_ranked_fights",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lock_token": {
           "name": "lock_token",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "started_at": {
           "name": "started_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "armor_roster": {
+    "public.armor_roster": {
       "name": "armor_roster",
+      "schema": "",
       "columns": {
         "armor_roster_id": {
           "name": "armor_roster_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "armor_roster_armor_roster_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mythology": {
           "name": "mythology",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_key": {
           "name": "passive_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_name": {
           "name": "passive_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_description": {
           "name": "passive_description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lore": {
           "name": "lore",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "image_filename": {
           "name": "image_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_available": {
           "name": "is_available",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         }
       },
@@ -547,1166 +573,1258 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "auto_raids": {
+    "public.auto_raids": {
       "name": "auto_raids",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "started_at": {
           "name": "started_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "ends_at": {
           "name": "ends_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "combat_level": {
           "name": "combat_level",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "boss_attack_log": {
+    "public.boss_attack_log": {
       "name": "boss_attack_log",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "boss_attack_log_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "boss_spawn_id": {
           "name": "boss_spawn_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mob_id": {
           "name": "mob_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "total_damage": {
           "name": "total_damage",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "attacked_at": {
           "name": "attacked_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "last_daily_reset": {
           "name": "last_daily_reset",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "boss_attack_log_discord_id_users_discord_id_fk": {
+          "name": "boss_attack_log_discord_id_users_discord_id_fk",
+          "tableFrom": "boss_attack_log",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "boss_attack_log_unique_0": {
           "name": "boss_attack_log_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "boss_spawn_id",
             "discord_id"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "boss_spawn_queue": {
+    "public.boss_spawn_queue": {
       "name": "boss_spawn_queue",
+      "schema": "",
       "columns": {
         "queue_id": {
           "name": "queue_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "boss_spawn_queue_queue_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "boss_name": {
           "name": "boss_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "requested_by": {
           "name": "requested_by",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "claim_started_at": {
           "name": "claim_started_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "spawned_at": {
           "name": "spawned_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "cancelled_at": {
           "name": "cancelled_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "cancelled_by": {
           "name": "cancelled_by",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "spawn_id": {
           "name": "spawn_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "boss_state": {
+    "public.boss_state": {
       "name": "boss_state",
+      "schema": "",
       "columns": {
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "spawn_id": {
           "name": "spawn_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mob_id": {
           "name": "mob_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "boss_level": {
           "name": "boss_level",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "max_hp": {
           "name": "max_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "current_hp": {
           "name": "current_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "scaled_atk": {
           "name": "scaled_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "scaled_def": {
           "name": "scaled_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "spawn_at": {
           "name": "spawn_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "spawn_source": {
           "name": "spawn_source",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "last_attack_at": {
           "name": "last_attack_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "passive_state": {
           "name": "passive_state",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "boss_state_mob_id_mob_roster_mob_id_fk": {
+          "name": "boss_state_mob_id_mob_roster_mob_id_fk",
+          "tableFrom": "boss_state",
+          "tableTo": "mob_roster",
+          "columnsFrom": [
+            "mob_id"
+          ],
+          "columnsTo": [
+            "mob_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "casino_logs": {
+    "public.casino_logs": {
       "name": "casino_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "casino_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "game": {
           "name": "game",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "bet_amount": {
           "name": "bet_amount",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "result": {
           "name": "result",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "payout": {
           "name": "payout",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "balance_before": {
           "name": "balance_before",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "balance_after": {
           "name": "balance_after",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "metadata": {
           "name": "metadata",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "cosmetic_catalog": {
+    "public.cosmetic_catalog": {
       "name": "cosmetic_catalog",
+      "schema": "",
       "columns": {
         "cosmetic_id": {
           "name": "cosmetic_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "cosmetic_catalog_cosmetic_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "cosmetic_key": {
           "name": "cosmetic_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "category": {
           "name": "category",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "display_name": {
           "name": "display_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "token_cost": {
           "name": "token_cost",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "is_base": {
           "name": "is_base",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "has_top_label": {
           "name": "has_top_label",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "display_filename": {
           "name": "display_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "render_filename": {
           "name": "render_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "victory_filename": {
           "name": "victory_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "defeated_filename": {
           "name": "defeated_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_active": {
           "name": "is_active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "skin_code": {
           "name": "skin_code",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
-      "indexes": {
-        "cosmetic_catalog_unique_0": {
-          "name": "cosmetic_catalog_unique_0",
-          "columns": [
-            "cosmetic_key"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "uniqueConstraints": {
+        "cosmetic_catalog_unique_0": {
+          "name": "cosmetic_catalog_unique_0",
+          "nullsNotDistinct": false,
+          "columns": [
+            "cosmetic_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "daily_quest_completion_rewards": {
+    "public.daily_quest_completion_rewards": {
       "name": "daily_quest_completion_rewards",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "quest_date": {
           "name": "quest_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "sacred_relics": {
           "name": "sacred_relics",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "claimed_at": {
           "name": "claimed_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "daily_quest_completion_rewards_discord_id_users_discord_id_fk": {
+          "name": "daily_quest_completion_rewards_discord_id_users_discord_id_fk",
+          "tableFrom": "daily_quest_completion_rewards",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "daily_quest_completion_rewards_discord_id_quest_date_pk": {
+          "name": "daily_quest_completion_rewards_discord_id_quest_date_pk",
           "columns": [
             "discord_id",
             "quest_date"
-          ],
-          "name": "daily_quest_completion_rewards_discord_id_quest_date_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "daily_quests": {
+    "public.daily_quests": {
       "name": "daily_quests",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "daily_quests_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "quest_type": {
           "name": "quest_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "target_count": {
           "name": "target_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "current_count": {
           "name": "current_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "reward_credux": {
           "name": "reward_credux",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reward_belief_shards": {
           "name": "reward_belief_shards",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "completed": {
           "name": "completed",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "quest_date": {
           "name": "quest_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "daily_quests_discord_id_users_discord_id_fk": {
+          "name": "daily_quests_discord_id_users_discord_id_fk",
+          "tableFrom": "daily_quests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "daily_quests_unique_0": {
           "name": "daily_quests_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "discord_id",
             "quest_type",
             "quest_date"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "deity_roster": {
+    "public.deity_roster": {
       "name": "deity_roster",
+      "schema": "",
       "columns": {
         "deity_id": {
           "name": "deity_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "deity_roster_deity_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mythology": {
           "name": "mythology",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_hp": {
           "name": "base_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_atk": {
           "name": "base_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_def": {
           "name": "base_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "blessing_key": {
           "name": "blessing_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "blessing_name": {
           "name": "blessing_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "blessing_description": {
           "name": "blessing_description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lore": {
           "name": "lore",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "image_filename": {
           "name": "image_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_available": {
           "name": "is_available",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "blessing_scaling": {
           "name": "blessing_scaling",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
-      "indexes": {
-        "deity_roster_unique_0": {
-          "name": "deity_roster_unique_0",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "uniqueConstraints": {
+        "deity_roster_unique_0": {
+          "name": "deity_roster_unique_0",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "dev_logs": {
+    "public.dev_logs": {
       "name": "dev_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "dev_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "dev_id": {
           "name": "dev_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "action_type": {
           "name": "action_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "target_discord_id": {
           "name": "target_discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount_or_detail": {
           "name": "amount_or_detail",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "pre_reset_snapshot": {
           "name": "pre_reset_snapshot",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "equipped_skins": {
+    "public.equipped_skins": {
       "name": "equipped_skins",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "category": {
           "name": "category",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "cosmetic_id": {
           "name": "cosmetic_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "override_path": {
           "name": "override_path",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "equipped_skins_discord_id_users_discord_id_fk": {
+          "name": "equipped_skins_discord_id_users_discord_id_fk",
+          "tableFrom": "equipped_skins",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "equipped_skins_cosmetic_id_cosmetic_catalog_cosmetic_id_fk": {
+          "name": "equipped_skins_cosmetic_id_cosmetic_catalog_cosmetic_id_fk",
+          "tableFrom": "equipped_skins",
+          "tableTo": "cosmetic_catalog",
+          "columnsFrom": [
+            "cosmetic_id"
+          ],
+          "columnsTo": [
+            "cosmetic_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "equipped_skins_discord_id_category_pk": {
+          "name": "equipped_skins_discord_id_category_pk",
           "columns": [
             "discord_id",
             "category"
-          ],
-          "name": "equipped_skins_discord_id_category_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "essence_bag_def": {
+    "public.essence_bag_def": {
       "name": "essence_bag_def",
+      "schema": "",
       "columns": {
         "bag_key": {
           "name": "bag_key",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "open_command": {
           "name": "open_command",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "essence_tier": {
           "name": "essence_tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "essence_cost": {
           "name": "essence_cost",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "credux_cost": {
           "name": "credux_cost",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "rune_pool": {
           "name": "rune_pool",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "essence_exchange_submissions": {
+    "public.essence_exchange_submissions": {
       "name": "essence_exchange_submissions",
+      "schema": "",
       "columns": {
         "submission_id": {
           "name": "submission_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "game_logs": {
+    "public.game_logs": {
       "name": "game_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "game_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "action": {
           "name": "action",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "item_type": {
           "name": "item_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "previous_credux": {
           "name": "previous_credux",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_credux": {
           "name": "updated_credux",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "previous_belief_shards": {
           "name": "previous_belief_shards",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_belief_shards": {
           "name": "updated_belief_shards",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "previous_chest_count": {
           "name": "previous_chest_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_chest_count": {
           "name": "updated_chest_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "previous_relic_count": {
           "name": "previous_relic_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_relic_count": {
           "name": "updated_relic_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "previous_essence_count": {
           "name": "previous_essence_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_essence_count": {
           "name": "updated_essence_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "mob_roster": {
+    "public.mob_roster": {
       "name": "mob_roster",
+      "schema": "",
       "columns": {
         "mob_id": {
           "name": "mob_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "mob_roster_mob_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mythology": {
           "name": "mythology",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mob_type": {
           "name": "mob_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_hp": {
           "name": "base_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_atk": {
           "name": "base_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_def": {
           "name": "base_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_crit": {
           "name": "base_crit",
           "type": "real",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "hp_per_level": {
           "name": "hp_per_level",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "atk_per_level": {
@@ -1714,7 +1832,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "def_per_level": {
@@ -1722,326 +1839,364 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "skill_key": {
           "name": "skill_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "skill_name": {
           "name": "skill_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "skill_description": {
           "name": "skill_description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "immunity_tags": {
           "name": "immunity_tags",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "special_flags": {
           "name": "special_flags",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "uniqueConstraints": {
+        "mob_roster_business_key": {
+          "name": "mob_roster_business_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "name",
+            "mythology",
+            "mob_type"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "pity_counters": {
+    "public.pity_counters": {
       "name": "pity_counters",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "pity_count": {
           "name": "pity_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "pity_counters_discord_id_users_discord_id_fk": {
+          "name": "pity_counters_discord_id_users_discord_id_fk",
+          "tableFrom": "pity_counters",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "pvp_logs": {
+    "public.pvp_logs": {
       "name": "pvp_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "pvp_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "duel_id": {
           "name": "duel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "challenger_id": {
           "name": "challenger_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opponent_id": {
           "name": "opponent_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "winner_id": {
           "name": "winner_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "challenger_damage": {
           "name": "challenger_damage",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opponent_damage": {
           "name": "opponent_damage",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "pvp_shop_purchases": {
+    "public.pvp_shop_purchases": {
       "name": "pvp_shop_purchases",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "season_id": {
           "name": "season_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "item_key": {
           "name": "item_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "qty": {
           "name": "qty",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "pvp_shop_purchases_discord_id_users_discord_id_fk": {
+          "name": "pvp_shop_purchases_discord_id_users_discord_id_fk",
+          "tableFrom": "pvp_shop_purchases",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "pvp_shop_purchases_discord_id_season_id_item_key_pk": {
+          "name": "pvp_shop_purchases_discord_id_season_id_item_key_pk",
           "columns": [
             "discord_id",
             "season_id",
             "item_key"
-          ],
-          "name": "pvp_shop_purchases_discord_id_season_id_item_key_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "raid_logs": {
+    "public.raid_logs": {
       "name": "raid_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "raid_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "battle_type": {
           "name": "battle_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enemy_name": {
           "name": "enemy_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enemy_tier": {
           "name": "enemy_tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "result": {
           "name": "result",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "exp_earned": {
           "name": "exp_earned",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "updated_exp": {
           "name": "updated_exp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "belief_shards_dropped": {
           "name": "belief_shards_dropped",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "updated_belief_shards": {
           "name": "updated_belief_shards",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "credux_earned": {
           "name": "credux_earned",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "updated_credux": {
           "name": "updated_credux",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "chest_dropped": {
           "name": "chest_dropped",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "raid_reward_daily_totals": {
+    "public.raid_reward_daily_totals": {
       "name": "raid_reward_daily_totals",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reward_date": {
           "name": "reward_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "silver_chests": {
           "name": "silver_chests",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "gold_chests": {
@@ -2049,7 +2204,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "belief_shards": {
@@ -2057,161 +2211,206 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "raid_reward_daily_totals_discord_id_users_discord_id_fk": {
+          "name": "raid_reward_daily_totals_discord_id_users_discord_id_fk",
+          "tableFrom": "raid_reward_daily_totals",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "raid_reward_daily_totals_discord_id_reward_date_pk": {
+          "name": "raid_reward_daily_totals_discord_id_reward_date_pk",
           "columns": [
             "discord_id",
             "reward_date"
-          ],
-          "name": "raid_reward_daily_totals_discord_id_reward_date_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "raid_reward_grants": {
+    "public.raid_reward_grants": {
       "name": "raid_reward_grants",
+      "schema": "",
       "columns": {
         "reward_key": {
           "name": "reward_key",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reward": {
           "name": "reward",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "raid_reward_grants_discord_id_users_discord_id_fk": {
+          "name": "raid_reward_grants_discord_id_users_discord_id_fk",
+          "tableFrom": "raid_reward_grants",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "ranked_logs": {
+    "public.ranked_logs": {
       "name": "ranked_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "ranked_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "player_id": {
           "name": "player_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opponent_id": {
           "name": "opponent_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "result": {
           "name": "result",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "rating_before": {
           "name": "rating_before",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "rating_after": {
           "name": "rating_after",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "ranked_logs_player_id_users_discord_id_fk": {
+          "name": "ranked_logs_player_id_users_discord_id_fk",
+          "tableFrom": "ranked_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "ranked_reward": {
+    "public.ranked_reward": {
       "name": "ranked_reward",
+      "schema": "",
       "columns": {
         "bracket": {
           "name": "bracket",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "weekly_credux": {
           "name": "weekly_credux",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "weekly_payload": {
           "name": "weekly_payload",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "season_end_payload": {
           "name": "season_end_payload",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "weekly_valor": {
           "name": "weekly_valor",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "season_valor": {
@@ -2219,7 +2418,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
@@ -2227,66 +2425,72 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "rune_roster": {
+    "public.rune_roster": {
       "name": "rune_roster",
+      "schema": "",
       "columns": {
         "rune_id": {
           "name": "rune_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "rune_roster_rune_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lane": {
           "name": "lane",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "effect_key": {
           "name": "effect_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "value": {
           "name": "value",
           "type": "real",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "description": {
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "is_available": {
           "name": "is_available",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         }
       },
@@ -2294,488 +2498,562 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "seasons": {
+    "public.seasons": {
       "name": "seasons",
+      "schema": "",
       "columns": {
         "season_id": {
           "name": "season_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "seasons_season_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "theme": {
           "name": "theme",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "starts_at": {
           "name": "starts_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "ends_at": {
           "name": "ends_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "featured_deity_id": {
           "name": "featured_deity_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_active": {
           "name": "is_active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "seasons_featured_deity_id_deity_roster_deity_id_fk": {
+          "name": "seasons_featured_deity_id_deity_roster_deity_id_fk",
+          "tableFrom": "seasons",
+          "tableTo": "deity_roster",
+          "columnsFrom": [
+            "featured_deity_id"
+          ],
+          "columnsTo": [
+            "deity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "server_config": {
+    "public.server_config": {
       "name": "server_config",
+      "schema": "",
       "columns": {
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "prefix": {
           "name": "prefix",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "announcement_channel_id": {
           "name": "announcement_channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "boss_announcement_channel_id": {
           "name": "boss_announcement_channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "bot_channel_id": {
           "name": "bot_channel_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "configured_at": {
           "name": "configured_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "socket_unlock_cost": {
+    "public.socket_unlock_cost": {
       "name": "socket_unlock_cost",
+      "schema": "",
       "columns": {
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "slot_index": {
           "name": "slot_index",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "essence_tier": {
           "name": "essence_tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "essence_cost": {
           "name": "essence_cost",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "credux_cost": {
           "name": "credux_cost",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
         "socket_unlock_cost_tier_slot_index_pk": {
+          "name": "socket_unlock_cost_tier_slot_index_pk",
           "columns": [
             "tier",
             "slot_index"
-          ],
-          "name": "socket_unlock_cost_tier_slot_index_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "stripe_events": {
+    "public.stripe_events": {
       "name": "stripe_events",
+      "schema": "",
       "columns": {
         "event_id": {
           "name": "event_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "processed_at": {
           "name": "processed_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "summon_reward_grants": {
+    "public.summon_reward_grants": {
       "name": "summon_reward_grants",
+      "schema": "",
       "columns": {
         "reward_key": {
           "name": "reward_key",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "source": {
           "name": "source",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "summon_reward_grants_discord_id_users_discord_id_fk": {
+          "name": "summon_reward_grants_discord_id_users_discord_id_fk",
+          "tableFrom": "summon_reward_grants",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "supporter_grants": {
+    "public.supporter_grants": {
       "name": "supporter_grants",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "supporter_grants_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "action": {
           "name": "action",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "months": {
           "name": "months",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "paypal_ref": {
           "name": "paypal_ref",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "granted_by": {
           "name": "granted_by",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "supporter_item_grants": {
+    "public.supporter_item_grants": {
       "name": "supporter_item_grants",
+      "schema": "",
       "columns": {
         "grant_id": {
           "name": "grant_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "supporter_item_grants_grant_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "item_key": {
           "name": "item_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "quantity": {
           "name": "quantity",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "grant_reason": {
           "name": "grant_reason",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "grant_ref": {
           "name": "grant_ref",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "supporter_item_grants_discord_id_users_discord_id_fk": {
+          "name": "supporter_item_grants_discord_id_users_discord_id_fk",
+          "tableFrom": "supporter_item_grants",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "supporter_item_grants_unique_0": {
           "name": "supporter_item_grants_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "discord_id",
             "item_key",
             "grant_reason",
             "grant_ref"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "supporter_token_ledger": {
+    "public.supporter_token_ledger": {
       "name": "supporter_token_ledger",
+      "schema": "",
       "columns": {
         "entry_id": {
           "name": "entry_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "supporter_token_ledger_entry_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "delta": {
           "name": "delta",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reason": {
           "name": "reason",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "ref": {
           "name": "ref",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "supporter_token_ledger_discord_id_users_discord_id_fk": {
+          "name": "supporter_token_ledger_discord_id_users_discord_id_fk",
+          "tableFrom": "supporter_token_ledger",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "supporters": {
+    "public.supporters": {
       "name": "supporters",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "current_period_end": {
           "name": "current_period_end",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "founder_number": {
           "name": "founder_number",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "founder_purchased_at": {
           "name": "founder_purchased_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "cancel_at_period_end": {
           "name": "cancel_at_period_end",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "token_balance": {
@@ -2783,458 +3061,485 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "active": {
           "name": "active",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "founding_supporter": {
           "name": "founding_supporter",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "granted_by": {
           "name": "granted_by",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "subscribed_at": {
           "name": "subscribed_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "supporters_discord_id_users_discord_id_fk": {
+          "name": "supporters_discord_id_users_discord_id_fk",
+          "tableFrom": "supporters",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "supporters_unique_0": {
           "name": "supporters_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "founder_number"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "tickets": {
+    "public.tickets": {
       "name": "tickets",
+      "schema": "",
       "columns": {
         "ticket_id": {
           "name": "ticket_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "user_id": {
           "name": "user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "completed_at": {
           "name": "completed_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "completed_by": {
           "name": "completed_by",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "notes": {
           "name": "notes",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "tickets_user_id_users_discord_id_fk": {
+          "name": "tickets_user_id_users_discord_id_fk",
+          "tableFrom": "tickets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "title_catalog": {
+    "public.title_catalog": {
       "name": "title_catalog",
+      "schema": "",
       "columns": {
         "title_id": {
           "name": "title_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "title_catalog_title_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "code": {
           "name": "code",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "display": {
           "name": "display",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "source": {
           "name": "source",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "is_repeatable": {
           "name": "is_repeatable",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "how_to": {
           "name": "how_to",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "image_filename": {
           "name": "image_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
-      "indexes": {
-        "title_catalog_unique_0": {
-          "name": "title_catalog_unique_0",
-          "columns": [
-            "code"
-          ],
-          "isUnique": true
-        }
-      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "uniqueConstraints": {
+        "title_catalog_unique_0": {
+          "name": "title_catalog_unique_0",
+          "nullsNotDistinct": false,
+          "columns": [
+            "code"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "topgg_vote_events": {
+    "public.topgg_vote_events": {
       "name": "topgg_vote_events",
+      "schema": "",
       "columns": {
         "topgg_vote_id": {
           "name": "topgg_vote_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "event_type": {
           "name": "event_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "topgg_user_id": {
           "name": "topgg_user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "voted_at": {
           "name": "voted_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "weight": {
           "name": "weight",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "daily_cycle": {
           "name": "daily_cycle",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "delivery_trace": {
           "name": "delivery_trace",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "outcome": {
           "name": "outcome",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "streak_number": {
           "name": "streak_number",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "random_reward": {
           "name": "random_reward",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "milestone_reward": {
           "name": "milestone_reward",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "rewarded_at": {
           "name": "rewarded_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_armors": {
+    "public.user_armors": {
       "name": "user_armors",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "armor_id": {
           "name": "armor_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "armor_roster_id": {
           "name": "armor_roster_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_hp": {
           "name": "curr_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_def": {
           "name": "curr_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enhancement": {
           "name": "enhancement",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "base_hp": {
           "name": "base_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "base_def": {
           "name": "base_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "native_sockets": {
           "name": "native_sockets",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opposite_sockets": {
           "name": "opposite_sockets",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "is_locked": {
           "name": "is_locked",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "obtained_at": {
           "name": "obtained_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_armors_discord_id_users_discord_id_fk": {
+          "name": "user_armors_discord_id_users_discord_id_fk",
+          "tableFrom": "user_armors",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_armors_armor_roster_id_armor_roster_armor_roster_id_fk": {
+          "name": "user_armors_armor_roster_id_armor_roster_armor_roster_id_fk",
+          "tableFrom": "user_armors",
+          "tableTo": "armor_roster",
+          "columnsFrom": [
+            "armor_roster_id"
+          ],
+          "columnsTo": [
+            "armor_roster_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_character": {
+    "public.user_character": {
       "name": "user_character",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "class": {
           "name": "class",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "combat_level": {
           "name": "combat_level",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "combat_exp": {
@@ -3242,7 +3547,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "active_preset_slot": {
@@ -3250,7 +3554,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "highest_raid_streak": {
@@ -3258,7 +3561,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "highest_rank_streak": {
@@ -3266,29 +3568,25 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "equipped_weapon_id": {
           "name": "equipped_weapon_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active_deity_id": {
           "name": "active_deity_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "raids_won": {
           "name": "raids_won",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "raids_lost": {
@@ -3296,7 +3594,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "pvp_wins": {
@@ -3304,7 +3601,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "pvp_losses": {
@@ -3312,7 +3608,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "believer_level": {
@@ -3320,7 +3615,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "believer_exp": {
@@ -3328,7 +3622,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "reputation_exp_today": {
@@ -3336,51 +3629,44 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "reputation_exp_reset_date": {
           "name": "reputation_exp_reset_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "equipped_armor_id": {
           "name": "equipped_armor_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active_deity_id_2": {
           "name": "active_deity_id_2",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active_deity_id_3": {
           "name": "active_deity_id_3",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "pvp_rating": {
           "name": "pvp_rating",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1000
         },
         "boss_kills": {
@@ -3388,44 +3674,38 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "equipped_title_id": {
           "name": "equipped_title_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "active_echo_deity_id": {
           "name": "active_echo_deity_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "pvp_peak": {
           "name": "pvp_peak",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1000
         },
         "last_weekly_claim_week": {
           "name": "last_weekly_claim_week",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "pvp_demotion_shield": {
           "name": "pvp_demotion_shield",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         },
         "boss_top_damage": {
@@ -3433,7 +3713,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "lifetime_exp": {
@@ -3441,521 +3720,847 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_character_discord_id_users_discord_id_fk": {
+          "name": "user_character_discord_id_users_discord_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_character_equipped_weapon_id_user_weapons_weapon_id_fk": {
+          "name": "user_character_equipped_weapon_id_user_weapons_weapon_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_weapons",
+          "columnsFrom": [
+            "equipped_weapon_id"
+          ],
+          "columnsTo": [
+            "weapon_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_active_deity_id_user_deities_user_deity_id_fk": {
+          "name": "user_character_active_deity_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "active_deity_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_equipped_armor_id_user_armors_armor_id_fk": {
+          "name": "user_character_equipped_armor_id_user_armors_armor_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_armors",
+          "columnsFrom": [
+            "equipped_armor_id"
+          ],
+          "columnsTo": [
+            "armor_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_active_deity_id_2_user_deities_user_deity_id_fk": {
+          "name": "user_character_active_deity_id_2_user_deities_user_deity_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "active_deity_id_2"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_active_deity_id_3_user_deities_user_deity_id_fk": {
+          "name": "user_character_active_deity_id_3_user_deities_user_deity_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "active_deity_id_3"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_equipped_title_id_title_catalog_title_id_fk": {
+          "name": "user_character_equipped_title_id_title_catalog_title_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "title_catalog",
+          "columnsFrom": [
+            "equipped_title_id"
+          ],
+          "columnsTo": [
+            "title_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_character_active_echo_deity_id_user_deities_user_deity_id_fk": {
+          "name": "user_character_active_echo_deity_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_character",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "active_echo_deity_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_cosmetics": {
+    "public.user_cosmetics": {
       "name": "user_cosmetics",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "cosmetic_id": {
           "name": "cosmetic_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "source": {
           "name": "source",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "acquired_at": {
           "name": "acquired_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_cosmetics_discord_id_users_discord_id_fk": {
+          "name": "user_cosmetics_discord_id_users_discord_id_fk",
+          "tableFrom": "user_cosmetics",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_cosmetics_cosmetic_id_cosmetic_catalog_cosmetic_id_fk": {
+          "name": "user_cosmetics_cosmetic_id_cosmetic_catalog_cosmetic_id_fk",
+          "tableFrom": "user_cosmetics",
+          "tableTo": "cosmetic_catalog",
+          "columnsFrom": [
+            "cosmetic_id"
+          ],
+          "columnsTo": [
+            "cosmetic_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "user_cosmetics_discord_id_cosmetic_id_pk": {
+          "name": "user_cosmetics_discord_id_cosmetic_id_pk",
           "columns": [
             "discord_id",
             "cosmetic_id"
-          ],
-          "name": "user_cosmetics_discord_id_cosmetic_id_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_deities": {
+    "public.user_deities": {
       "name": "user_deities",
+      "schema": "",
       "columns": {
         "user_deity_id": {
           "name": "user_deity_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "user_deities_user_deity_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "deity_id": {
           "name": "deity_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_atk": {
           "name": "curr_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_hp": {
           "name": "curr_hp",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_def": {
           "name": "curr_def",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enhancement": {
           "name": "enhancement",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "obtained_at": {
           "name": "obtained_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "last_pull_date": {
           "name": "last_pull_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "sigils": {
           "name": "sigils",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "ascended": {
           "name": "ascended",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "user_deities_discord_id_users_discord_id_fk": {
+          "name": "user_deities_discord_id_users_discord_id_fk",
+          "tableFrom": "user_deities",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_deities_deity_id_deity_roster_deity_id_fk": {
+          "name": "user_deities_deity_id_deity_roster_deity_id_fk",
+          "tableFrom": "user_deities",
+          "tableTo": "deity_roster",
+          "columnsFrom": [
+            "deity_id"
+          ],
+          "columnsTo": [
+            "deity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "user_deities_unique_0": {
           "name": "user_deities_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "discord_id",
             "deity_id"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_guild_activity": {
+    "public.user_guild_activity": {
       "name": "user_guild_activity",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "guild_id": {
           "name": "guild_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "last_active": {
           "name": "last_active",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_guild_activity_discord_id_users_discord_id_fk": {
+          "name": "user_guild_activity_discord_id_users_discord_id_fk",
+          "tableFrom": "user_guild_activity",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "user_guild_activity_discord_id_guild_id_pk": {
+          "name": "user_guild_activity_discord_id_guild_id_pk",
           "columns": [
             "discord_id",
             "guild_id"
-          ],
-          "name": "user_guild_activity_discord_id_guild_id_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_presets": {
+    "public.user_presets": {
       "name": "user_presets",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "slot": {
           "name": "slot",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_deity_1_id": {
           "name": "equipped_deity_1_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_deity_2_id": {
           "name": "equipped_deity_2_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_deity_3_id": {
           "name": "equipped_deity_3_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_echo_deity_id": {
           "name": "equipped_echo_deity_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_armor_id": {
           "name": "equipped_armor_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "equipped_weapon_id": {
           "name": "equipped_weapon_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "user_presets_discord_id_users_discord_id_fk": {
+          "name": "user_presets_discord_id_users_discord_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_deity_1_id_user_deities_user_deity_id_fk": {
+          "name": "user_presets_equipped_deity_1_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "equipped_deity_1_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_deity_2_id_user_deities_user_deity_id_fk": {
+          "name": "user_presets_equipped_deity_2_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "equipped_deity_2_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_deity_3_id_user_deities_user_deity_id_fk": {
+          "name": "user_presets_equipped_deity_3_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "equipped_deity_3_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_echo_deity_id_user_deities_user_deity_id_fk": {
+          "name": "user_presets_equipped_echo_deity_id_user_deities_user_deity_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_deities",
+          "columnsFrom": [
+            "equipped_echo_deity_id"
+          ],
+          "columnsTo": [
+            "user_deity_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_armor_id_user_armors_armor_id_fk": {
+          "name": "user_presets_equipped_armor_id_user_armors_armor_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_armors",
+          "columnsFrom": [
+            "equipped_armor_id"
+          ],
+          "columnsTo": [
+            "armor_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "user_presets_equipped_weapon_id_user_weapons_weapon_id_fk": {
+          "name": "user_presets_equipped_weapon_id_user_weapons_weapon_id_fk",
+          "tableFrom": "user_presets",
+          "tableTo": "user_weapons",
+          "columnsFrom": [
+            "equipped_weapon_id"
+          ],
+          "columnsTo": [
+            "weapon_id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "user_presets_unique_0": {
           "name": "user_presets_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "discord_id",
             "slot"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_runes": {
+    "public.user_runes": {
       "name": "user_runes",
+      "schema": "",
       "columns": {
         "rune_uid": {
           "name": "rune_uid",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "rune_id": {
           "name": "rune_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "socketed_into": {
           "name": "socketed_into",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_locked": {
           "name": "is_locked",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "obtained_at": {
           "name": "obtained_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "rolled_value": {
           "name": "rolled_value",
           "type": "real",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_runes_discord_id_users_discord_id_fk": {
+          "name": "user_runes_discord_id_users_discord_id_fk",
+          "tableFrom": "user_runes",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_runes_rune_id_rune_roster_rune_id_fk": {
+          "name": "user_runes_rune_id_rune_roster_rune_id_fk",
+          "tableFrom": "user_runes",
+          "tableTo": "rune_roster",
+          "columnsFrom": [
+            "rune_id"
+          ],
+          "columnsTo": [
+            "rune_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_titles": {
+    "public.user_titles": {
       "name": "user_titles",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "title_id": {
           "name": "title_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "earned_at": {
           "name": "earned_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_titles_discord_id_users_discord_id_fk": {
+          "name": "user_titles_discord_id_users_discord_id_fk",
+          "tableFrom": "user_titles",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_titles_title_id_title_catalog_title_id_fk": {
+          "name": "user_titles_title_id_title_catalog_title_id_fk",
+          "tableFrom": "user_titles",
+          "tableTo": "title_catalog",
+          "columnsFrom": [
+            "title_id"
+          ],
+          "columnsTo": [
+            "title_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "user_titles_discord_id_title_id_pk": {
+          "name": "user_titles_discord_id_title_id_pk",
           "columns": [
             "discord_id",
             "title_id"
-          ],
-          "name": "user_titles_discord_id_title_id_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "user_weapons": {
+    "public.user_weapons": {
       "name": "user_weapons",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "weapon_id": {
           "name": "weapon_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "weapon_roster_id": {
           "name": "weapon_roster_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "curr_atk": {
           "name": "curr_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "enhancement": {
           "name": "enhancement",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 1
         },
         "base_atk": {
           "name": "base_atk",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "crit": {
           "name": "crit",
           "type": "real",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "bonus_dmg_pct": {
           "name": "bonus_dmg_pct",
           "type": "real",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_locked": {
           "name": "is_locked",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "obtained_at": {
           "name": "obtained_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "native_sockets": {
           "name": "native_sockets",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opposite_sockets": {
           "name": "opposite_sockets",
-          "type": "text",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "user_weapons_discord_id_users_discord_id_fk": {
+          "name": "user_weapons_discord_id_users_discord_id_fk",
+          "tableFrom": "user_weapons",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "user_weapons_weapon_roster_id_weapon_roster_weapon_roster_id_fk": {
+          "name": "user_weapons_weapon_roster_id_weapon_roster_weapon_roster_id_fk",
+          "tableFrom": "user_weapons",
+          "tableTo": "weapon_roster",
+          "columnsFrom": [
+            "weapon_roster_id"
+          ],
+          "columnsTo": [
+            "weapon_roster_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "users": {
+    "public.users": {
       "name": "users",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "username": {
           "name": "username",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "monthly_streak": {
           "name": "monthly_streak",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "overall_streak": {
@@ -3963,92 +4568,84 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "last_daily_claim_date": {
           "name": "last_daily_claim_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "last_bestow_received": {
           "name": "last_bestow_received",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "bestow_received_today": {
           "name": "bestow_received_today",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "last_boss_attack_date": {
           "name": "last_boss_attack_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_banned": {
           "name": "is_banned",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "registered_at": {
           "name": "registered_at",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         },
         "quest_refreshes_today": {
           "name": "quest_refreshes_today",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "last_quest_refresh_date": {
           "name": "last_quest_refresh_date",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "users_bag": {
+    "public.users_bag": {
       "name": "users_bag",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "credux": {
           "name": "credux",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "belief_shards": {
@@ -4056,7 +4653,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "sacred_relics": {
@@ -4064,7 +4660,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "supreme_relics": {
@@ -4072,7 +4667,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "silver_chest": {
@@ -4080,7 +4674,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "gold_chest": {
@@ -4088,7 +4681,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "boss_treasure_chest": {
@@ -4096,7 +4688,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "boss_golden_chest": {
@@ -4104,7 +4695,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "supreme_chest": {
@@ -4112,7 +4702,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "epic_essence": {
@@ -4120,7 +4709,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "mythic_essence": {
@@ -4128,7 +4716,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "legendary_essence": {
@@ -4136,7 +4723,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "supreme_essence": {
@@ -4144,7 +4730,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "lifetime_credux_earned": {
@@ -4152,7 +4737,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "lesser_rune_bag": {
@@ -4160,7 +4744,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "greater_rune_bag": {
@@ -4168,7 +4751,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "divine_rune_bag": {
@@ -4176,7 +4758,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "valor_medals": {
@@ -4184,7 +4765,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "custom_avatar_token": {
@@ -4192,7 +4772,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "custom_deity_token": {
@@ -4200,7 +4779,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "change_class": {
@@ -4208,7 +4786,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "diamond_chest": {
@@ -4216,7 +4793,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "genesis_chest": {
@@ -4224,148 +4800,172 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "users_bag_discord_id_users_discord_id_fk": {
+          "name": "users_bag_discord_id_users_discord_id_fk",
+          "tableFrom": "users_bag",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "wager_logs": {
+    "public.wager_logs": {
       "name": "wager_logs",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "wager_logs_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "challenger_id": {
           "name": "challenger_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "opponent_id": {
           "name": "opponent_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "winner_id": {
           "name": "winner_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "amount": {
           "name": "amount",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "timestamp": {
           "name": "timestamp",
-          "type": "integer",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
-          "default": "(unixepoch())"
+          "default": "now()"
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "weapon_roster": {
+    "public.weapon_roster": {
       "name": "weapon_roster",
+      "schema": "",
       "columns": {
         "weapon_roster_id": {
           "name": "weapon_roster_id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "weapon_roster_weapon_roster_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "name": {
           "name": "name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "type": {
           "name": "type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "tier": {
           "name": "tier",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "mythology": {
           "name": "mythology",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_key": {
           "name": "passive_key",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_name": {
           "name": "passive_name",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "passive_description": {
           "name": "passive_description",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "lore": {
           "name": "lore",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "image_filename": {
           "name": "image_filename",
           "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": false
         },
         "is_available": {
           "name": "is_available",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": true
         }
       },
@@ -4373,142 +4973,178 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "weekly_grand": {
+    "public.weekly_grand": {
       "name": "weekly_grand",
+      "schema": "",
       "columns": {
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "quest_week": {
           "name": "quest_week",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "claimed": {
           "name": "claimed",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "weekly_grand_discord_id_users_discord_id_fk": {
+          "name": "weekly_grand_discord_id_users_discord_id_fk",
+          "tableFrom": "weekly_grand",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {
         "weekly_grand_discord_id_quest_week_pk": {
+          "name": "weekly_grand_discord_id_quest_week_pk",
           "columns": [
             "discord_id",
             "quest_week"
-          ],
-          "name": "weekly_grand_discord_id_quest_week_pk"
+          ]
         }
       },
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     },
-    "weekly_quests": {
+    "public.weekly_quests": {
       "name": "weekly_quests",
+      "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "identity": {
+            "type": "byDefault",
+            "name": "weekly_quests_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "2147483647",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "discord_id": {
           "name": "discord_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "quest_type": {
           "name": "quest_type",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "target_count": {
           "name": "target_count",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "current_count": {
           "name": "current_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": 0
         },
         "reward_credux": {
           "name": "reward_credux",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "reward_valor": {
           "name": "reward_valor",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         },
         "completed": {
           "name": "completed",
-          "type": "integer",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "autoincrement": false,
           "default": false
         },
         "quest_week": {
           "name": "quest_week",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+          "notNull": true
         }
       },
-      "indexes": {
+      "indexes": {},
+      "foreignKeys": {
+        "weekly_quests_discord_id_users_discord_id_fk": {
+          "name": "weekly_quests_discord_id_users_discord_id_fk",
+          "tableFrom": "weekly_quests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "discord_id"
+          ],
+          "columnsTo": [
+            "discord_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
         "weekly_quests_unique_0": {
           "name": "weekly_quests_unique_0",
+          "nullsNotDistinct": false,
           "columns": [
             "discord_id",
             "quest_type",
             "quest_week"
-          ],
-          "isUnique": true
+          ]
         }
       },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
-  "views": {},
   "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
   "_meta": {
+    "columns": {},
     "schemas": {},
-    "tables": {},
-    "columns": {}
-  },
-  "internal": {
-    "indexes": {}
+    "tables": {}
   }
 }

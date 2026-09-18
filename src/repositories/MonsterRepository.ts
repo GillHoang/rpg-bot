@@ -17,14 +17,13 @@ export class MonsterRepository {
 	 * base + per_level * level (NOT level - 1 — mobs scale differently
 	 * from player classes, which do use level - 1 steps).
 	 */
-	pickRandomRegularForLevel(executor: Executor, level: number): MonsterStats | null {
-		const row = executor
+	async pickRandomRegularForLevel(executor: Executor, level: number): Promise<MonsterStats | null> {
+		const [row] = await executor
 			.select()
 			.from(mobRoster)
 			.where(eq(mobRoster.mobType, 'regular'))
 			.orderBy(sql`RANDOM()`)
-			.limit(1)
-			.get();
+			.limit(1);
 		if (!row) return null;
 
 		const lv = Math.max(1, level);

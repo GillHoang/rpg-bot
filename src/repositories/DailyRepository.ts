@@ -17,12 +17,13 @@ const CHEST_COLUMN_MAP = {
 } as const satisfies Record<ChestColumn, keyof typeof usersBag.$inferSelect>;
 
 export class DailyRepository {
-	hasBag(executor: Executor, discordId: string): boolean {
-		return !!executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).get();
+	async hasBag(executor: Executor, discordId: string): Promise<boolean> {
+		const [row] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+		return !!row;
 	}
 
-	getDailyState(executor: Executor, discordId: string): DailyState | null {
-		const row = executor.select().from(users).where(eq(users.discordId, discordId)).get();
+	async getDailyState(executor: Executor, discordId: string): Promise<DailyState | null> {
+		const [row] = await executor.select().from(users).where(eq(users.discordId, discordId)).limit(1);
 		if (!row) return null;
 		return {
 			monthlyStreak: row.monthlyStreak,
@@ -32,17 +33,18 @@ export class DailyRepository {
 	}
 
 	/** Applies the reward + optional milestone chest to users_bag; returns the new chest counts. */
-	applyReward(
+	async applyReward(
 		executor: Executor,
 		discordId: string,
 		params: { credux: number; shards: number; chestColumn: ChestColumn; milestoneColumn: ChestColumn | null },
-	): {
+	): Promise<{
 		creduxAfter: number;
 		beliefShardsAfter: number;
 		chestCountAfter: number;
 		milestoneChestCountAfter: number | null;
-	} {
-		const bag = executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).get()!;
+	}> {
+		const [bag] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+		if (!bag) throw new Error(`applyReward: no users_bag row for ${discordId}`);
 		const chestField = CHEST_COLUMN_MAP[params.chestColumn];
 		const milestoneField = params.milestoneColumn ? CHEST_COLUMN_MAP[params.milestoneColumn] : null;
 
@@ -62,56 +64,52 @@ export class DailyRepository {
 		};
 		if (milestoneField) patch[milestoneField] = milestoneChestCountAfter as number;
 
-		executor
+		await executor
 			.update(usersBag)
 			.set(patch as Partial<typeof usersBag.$inferInsert>)
-			.where(eq(usersBag.discordId, discordId))
-			.run();
+			.where(eq(usersBag.discordId, discordId));
 
 		return { creduxAfter, beliefShardsAfter, chestCountAfter, milestoneChestCountAfter };
 	}
 
-	updateStreak(
+	async updateStreak(
 		executor: Executor,
 		discordId: string,
 		params: { monthly: number; overall: number; todayKey: string },
-	): void {
-		executor
+	): Promise<void> {
+		await executor
 			.update(users)
 			.set({ monthlyStreak: params.monthly, overallStreak: params.overall, lastDailyClaimDate: params.todayKey })
-			.where(eq(users.discordId, discordId))
-			.run();
+			.where(eq(users.discordId, discordId));
 	}
 
-	logCurrencyChange(
+	async logCurrencyChange(
 		executor: Executor,
 		discordId: string,
 		action: string,
 		field: 'credux' | 'belief_shards',
 		before: number,
 		after: number,
-	): void {
+	): Promise<void> {
 		if (field === 'credux') {
-			executor.insert(gameLogs).values({ discordId, action, previousCredux: before, updatedCredux: after }).run();
+			await executor.insert(gameLogs).values({ discordId, action, previousCredux: before, updatedCredux: after });
 		} else {
-			executor
+			await executor
 				.insert(gameLogs)
-				.values({ discordId, action, previousBeliefShards: before, updatedBeliefShards: after })
-				.run();
+				.values({ discordId, action, previousBeliefShards: before, updatedBeliefShards: after });
 		}
 	}
 
-	logChestChange(
+	async logChestChange(
 		executor: Executor,
 		discordId: string,
 		action: string,
 		itemType: string,
 		before: number,
 		after: number,
-	): void {
-		executor
+	): Promise<void> {
+		await executor
 			.insert(gameLogs)
-			.values({ discordId, action, itemType, previousChestCount: before, updatedChestCount: after })
-			.run();
+			.values({ discordId, action, itemType, previousChestCount: before, updatedChestCount: after });
 	}
 }

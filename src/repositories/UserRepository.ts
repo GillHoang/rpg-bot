@@ -8,8 +8,9 @@ import { users, usersBag, pityCounters } from '../db/schema.js';
  * from commands/rpg/register.js's handleConfirm.
  */
 export class UserRepository {
-	isRegistered(executor: Executor, discordId: string): boolean {
-		return !!executor.select().from(users).where(eq(users.discordId, discordId)).get();
+	async isRegistered(executor: Executor, discordId: string): Promise<boolean> {
+		const [row] = await executor.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+		return !!row;
 	}
 
 	/**
@@ -18,9 +19,9 @@ export class UserRepository {
 	 * BEGIN/COMMIT flow. users_bag starts at all-zero defaults; the starter
 	 * grant happens at character creation, not here.
 	 */
-	registerNew(executor: Executor, discordId: string, username: string): void {
-		executor.insert(users).values({ discordId, username }).run();
-		executor.insert(usersBag).values({ discordId }).run();
-		executor.insert(pityCounters).values({ discordId }).run();
+	async registerNew(executor: Executor, discordId: string, username: string): Promise<void> {
+		await executor.insert(users).values({ discordId, username });
+		await executor.insert(usersBag).values({ discordId });
+		await executor.insert(pityCounters).values({ discordId });
 	}
 }

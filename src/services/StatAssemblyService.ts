@@ -51,30 +51,34 @@ export class StatAssemblyService {
 		private readonly runes = new RuneRepository(),
 	) {}
 
-	assemble(discordId: string, combatClass: CombatClass, level: number): AssembledPlayer {
+	async assemble(discordId: string, combatClass: CombatClass, level: number): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
 
-		const character = db.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).get();
-		const preset = character
-			? db
+		const [character] = await db
+			.select()
+			.from(userCharacter)
+			.where(eq(userCharacter.discordId, discordId))
+			.limit(1);
+		const [preset] = character
+			? await db
 					.select()
 					.from(userPresets)
 					.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, character.activePresetSlot)))
-					.get()
-			: undefined;
+					.limit(1)
+			: [];
 
 		const weapon = preset?.equippedWeaponId
-			? this.gear.findWeaponCurrStats(db, discordId, preset.equippedWeaponId)
+			? await this.gear.findWeaponCurrStats(db, discordId, preset.equippedWeaponId)
 			: null;
 		const armor = preset?.equippedArmorId
-			? this.gear.findArmorCurrStats(db, discordId, preset.equippedArmorId)
+			? await this.gear.findArmorCurrStats(db, discordId, preset.equippedArmorId)
 			: null;
 		const deity =
-			preset?.equippedDeity1Id != null ? this.deities.findUserDeityCurrStats(db, preset.equippedDeity1Id) : null;
+			preset?.equippedDeity1Id != null ? await this.deities.findUserDeityCurrStats(db, preset.equippedDeity1Id) : null;
 
 		const allEffects: SocketedRuneEffect[] = [
-			...(preset?.equippedWeaponId ? this.runes.findSocketedEffects(db, preset.equippedWeaponId) : []),
-			...(preset?.equippedArmorId ? this.runes.findSocketedEffects(db, preset.equippedArmorId) : []),
+			...(preset?.equippedWeaponId ? await this.runes.findSocketedEffects(db, preset.equippedWeaponId) : []),
+			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(db, preset.equippedArmorId) : []),
 		];
 
 		const statMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0 };

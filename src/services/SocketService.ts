@@ -29,12 +29,12 @@ export class SocketService {
 		private readonly gear = new GearRepository(),
 	) {}
 
-	equip(discordId: string, runeUid: string, gearId: string, slotNum: number): SocketResult {
-		return db.transaction((tx): SocketResult => {
-			const rune = this.runes.findOwned(tx, discordId, runeUid);
+	async equip(discordId: string, runeUid: string, gearId: string, slotNum: number): Promise<SocketResult> {
+		return db.transaction(async (tx): Promise<SocketResult> => {
+			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 
-			const info = this.gear.findSocketInfo(tx, discordId, gearId);
+			const info = await this.gear.findSocketInfo(tx, discordId, gearId);
 			if (!info) return { status: 'gear-not-owned' };
 
 			const index = slotNum - 1;
@@ -50,26 +50,26 @@ export class SocketService {
 
 			// Auto-unsocket from wherever it currently sits — another piece of gear, or ANOTHER SLOT ON THIS SAME GEAR (else the uid would end up listed in two slots).
 			if (rune.socketedInto) {
-				this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
+				await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
 			}
 
 			const next = info.nativeSockets.map((uid) => (uid === runeUid ? null : uid));
 			next[index] = runeUid;
-			this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, next);
-			this.runes.equip(tx, runeUid, gearId);
+			await this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, next);
+			await this.runes.equip(tx, runeUid, gearId);
 
 			return { status: 'ok' };
 		});
 	}
 
-	unequip(discordId: string, runeUid: string): UnsocketResult {
-		return db.transaction((tx): UnsocketResult => {
-			const rune = this.runes.findOwned(tx, discordId, runeUid);
+	async unequip(discordId: string, runeUid: string): Promise<UnsocketResult> {
+		return db.transaction(async (tx): Promise<UnsocketResult> => {
+			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 			if (!rune.socketedInto) return { status: 'not-socketed' };
 
-			this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
-			this.runes.unequip(tx, runeUid);
+			await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
+			await this.runes.unequip(tx, runeUid);
 			return { status: 'ok' };
 		});
 	}
