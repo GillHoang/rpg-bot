@@ -1,0 +1,267 @@
+import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { eq } from 'drizzle-orm';
+
+// Real PostgreSQL SQL/transactions in an isolated in-memory database. No .env,
+// Discord token, network connection or production database is read by this suite.
+vi.mock('../src/db/client.js', async () => {
+	const { PGlite } = await import('@electric-sql/pglite');
+	const { drizzle } = await import('drizzle-orm/pglite');
+	const schema = await import('../src/db/schema.js');
+	const client = new PGlite();
+	return { db: drizzle(client, { schema }), pool: { end: () => client.close() }, testClient: client };
+});
+import { db, pool } from '../src/db/client.js';
+import * as s from '../src/db/schema.js';
+import { RegistrationService } from '../src/services/RegistrationService.js';
+import { CharacterCreationService } from '../src/services/CharacterCreationService.js';
+import { LootService } from '../src/services/LootService.js';
+import { LoadoutService } from '../src/services/LoadoutService.js';
+import { SocketService } from '../src/services/SocketService.js';
+import { CasinoSessionService } from '../src/services/CasinoSessionService.js';
+import { DailyService } from '../src/services/DailyService.js';
+import { RaidService } from '../src/services/RaidService.js';
+import { SummonService } from '../src/services/SummonService.js';
+import { AscensionService } from '../src/services/AscensionService.js';
+import { EnhancementService } from '../src/services/EnhancementService.js';
+import { StatAssemblyService } from '../src/services/StatAssemblyService.js';
+import { InventoryRepository } from '../src/repositories/InventoryRepository.js';
+import { LootRepository } from '../src/repositories/LootRepository.js';
+import { MonsterRepository } from '../src/repositories/MonsterRepository.js';
+import { WEAPON_SEED } from '../src/seed/data/weapons.js';
+import { ARMOR_SEED } from '../src/seed/data/armors.js';
+import { RUNE_SEED } from '../src/seed/data/runes.js';
+import { DEITY_SEED } from '../src/seed/data/deities.js';
+import { MOB_SEED } from '../src/seed/data/mobs.js';
+import { ESSENCE_BAG_DEF_SEED, SOCKET_UNLOCK_COST_SEED } from '../src/seed/data/runeEconomy.js';
+import * as rngModule from '../src/domain/combat/Rng.js';
+
+let id: string;
+let sequence = 0;
+let starter: { weaponId: string; armorId: string };
+const bag = async () => (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, id)))[0];
+
+beforeAll(async () => {
+	const { testClient } = await import('../src/db/client.js') as unknown as { testClient: { exec(sql: string): Promise<unknown> } };
+	await testClient.exec(await readFile(new URL('../src/db/migrations/0000_nasty_molecule_man.sql', import.meta.url), 'utf8'));
+	await db.insert(s.weaponRoster).values(WEAPON_SEED);
+	await db.insert(s.armorRoster).values(ARMOR_SEED);
+	await db.insert(s.runeRoster).values(RUNE_SEED.map((r, i) => ({ ...r, runeId: i + 1 })));
+	await db.insert(s.deityRoster).values(DEITY_SEED);
+	await db.insert(s.mobRoster).values(MOB_SEED);
+	await db.insert(s.essenceBagDef).values(ESSENCE_BAG_DEF_SEED);
+	await db.insert(s.socketUnlockCost).values(SOCKET_UNLOCK_COST_SEED);
+}, 30000);
+afterAll(async () => { await pool.end(); });
+beforeEach(async () => {
+	vi.restoreAllMocks();
+	id = `test-${++sequence}`;
+	await new RegistrationService().register(id, id);
+	const c = await new CharacterCreationService().createCharacter(id, 'Knight');
+	if (c.status !== 'ok') throw new Error(c.status);
+	starter = c;
+});
+
+describe('closed gameplay economy', () => {
+	it('creates starter resources, two presets and usable sockets exactly once', async () => {
+		expect((await bag()).silverChest).toBe(10);
+		expect((await bag()).beliefShards).toBe(1000);
+		expect(await new CharacterCreationService().createCharacter(id, 'Mage')).toEqual({ status: 'already-has-character' });
+		const weapons = await new InventoryRepository().list(id, 'weapons', 1);
+		expect(weapons[0]).toContain(starter.weaponId);
+		expect(await new InventoryRepository().list(id, 'weapons', 2)).toEqual([]);
+	});
+	it('opens a chest atomically, grants items and rejects excessive or invalid counts', async () => {
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		const result = await new LootService().open(id, 'silver', 1);
+		expect(result).toContain((10000).toLocaleString());
+		expect((await bag()).silverChest).toBe(9);
+		expect((await bag()).beliefShards).toBe(1020);
+		expect((await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id)))).toHaveLength(1);
+		expect((await db.select().from(s.userWeapons).where(eq(s.userWeapons.discordId, id)))).toHaveLength(2);
+		expect(await new LootService().open(id, 'silver', 10)).toContain('Không đủ');
+		expect(await new LootService().open(id, 'silver', -1)).toContain('1–10');
+		expect(await new LootService().open(id, '__proto__' as never, 1)).toContain('hợp lệ');
+	});
+	it('rolls back currency, chest and earlier items if a later reward cannot be granted', async () => {
+		const before = await bag();
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		vi.spyOn(LootRepository.prototype, 'gear').mockRejectedValue(new Error('missing roster'));
+		await expect(new LootService().open(id, 'silver', 1)).rejects.toThrow('missing roster');
+		expect(await bag()).toEqual(before);
+		expect(await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).toHaveLength(0);
+	});
+	it('does not double-spend the last chest under simultaneous opens', async () => {
+		await db.update(s.usersBag).set({ silverChest: 1 }).where(eq(s.usersBag.discordId, id));
+		const results = await Promise.all([new LootService().open(id, 'silver', 1), new LootService().open(id, 'silver', 1)]);
+		expect(results.filter(r => r.includes('Không đủ'))).toHaveLength(1);
+		expect((await bag()).silverChest).toBe(0);
+	});
+	it('buys one rune from the seeded pool and charges both resources once', async () => {
+		await db.update(s.usersBag).set({ credux: 20000, legendaryEssence: 15 }).where(eq(s.usersBag.discordId, id));
+		const shop = new LootService();
+		expect(await shop.shop(id)).toContain('lb');
+		expect(await shop.shop(id, 'lb')).toContain('Nhận');
+		expect((await bag()).credux).toBe(0);
+		expect((await bag()).legendaryEssence).toBe(0);
+		expect(await shop.shop(id, 'lb')).toContain('Cần');
+		expect(await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).toHaveLength(1);
+	});
+	it('rejects foreign gear and lets preset 2 affect combat stats', async () => {
+		const loadout = new LoadoutService();
+		expect(await loadout.equip(id, 'weapon', 'foreign')).toContain('không sở hữu');
+		const before = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		await loadout.switch(id, 2);
+		const empty = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect(empty.stats.atk).toBeLessThan(before.stats.atk);
+		await loadout.equip(id, 'weapon', starter.weaponId);
+		await loadout.equip(id, 'armor', starter.armorId);
+		expect((await new StatAssemblyService().assemble(id, 'Knight', 1)).stats).toEqual(before.stats);
+		expect(await loadout.switch(id, 3)).toContain('1 hoặc 2');
+	});
+	it('supports both rune lanes, atomic moves, removal and 5% stats from fractional seed', async () => {
+		await db.insert(s.userRunes).values([{ discordId: id, runeUid: `${id}-sharp`, runeId: 1 }, { discordId: id, runeUid: `${id}-aegis`, runeId: 11 }]);
+		const socket = new SocketService();
+		const before = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect((await socket.equip(id, `${id}-aegis`, starter.weaponId, 1)).status).toBe('lane-mismatch');
+		expect((await socket.equip(id, `${id}-aegis`, starter.weaponId, 1, 'opposite')).status).toBe('ok');
+		expect((await socket.equip(id, `${id}-sharp`, starter.weaponId, 1)).status).toBe('ok');
+		expect((await new StatAssemblyService().assemble(id, 'Knight', 1)).stats.atk).toBe(Math.floor(before.stats.atk * 1.05));
+		await socket.equip(id, `${id}-aegis`, starter.armorId, 1, 'opposite');
+		const [weapon] = await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, starter.weaponId));
+		expect(weapon.oppositeSockets).toEqual([null]);
+		await socket.unequip(id, `${id}-aegis`);
+		const [armor] = await db.select().from(s.userArmors).where(eq(s.userArmors.armorId, starter.armorId));
+		expect(armor.oppositeSockets).toEqual([null]);
+	});
+	it('opens paid native sockets using the tier-specific seeded price', async () => {
+		await db.update(s.userWeapons).set({ weaponRosterId: 101 }).where(eq(s.userWeapons.weaponId, starter.weaponId));
+		await db.update(s.usersBag).set({ credux: 5000, epicEssence: 5 }).where(eq(s.usersBag.discordId, id));
+		expect(await new SocketService().unlock(id, starter.weaponId)).toContain('socket 2');
+		expect((await bag()).credux).toBe(0);
+		expect((await bag()).epicEssence).toBe(0);
+		expect((await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, starter.weaponId)))[0].nativeSockets).toEqual([null, null]);
+	});
+	it('serializes simultaneous daily claims', async () => {
+		const results = await Promise.all([new DailyService().claim(id), new DailyService().claim(id)]);
+		expect(results.map(r => r.status).sort()).toEqual(['already-claimed', 'ok']);
+	});
+	it('keeps summon resources unchanged when seed is missing', async () => {
+		const { DeityRepository } = await import('../src/repositories/DeityRepository.js');
+		const first = await new DeityRepository().pickRandomAvailableForTier(db, 'Epic', () => 0);
+		vi.spyOn(DeityRepository.prototype, 'pickRandomAvailableForTier').mockResolvedValueOnce(first).mockResolvedValue(null);
+		const before = await bag();
+		expect((await new SummonService().run(id, 2)).status).toBe('no-deities-seeded');
+		expect(await bag()).toEqual(before);
+		expect(await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, id))).toHaveLength(0);
+	});
+	it('summons, auto-equips, earns duplicate essence and progresses through Sigil/Ascension', async () => {
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		const before = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect((await new SummonService().run(id, 2)).status).toBe('ok');
+		expect((await bag()).beliefShards).toBe(800);
+		expect((await bag()).epicEssence).toBe(1);
+		const [owned] = await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, id));
+		expect((await new InventoryRepository().list(id, 'deities', 1))[0]).toContain(`ID: \`${owned.userDeityId}\``);
+		const summoned = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect(summoned.stats.atk).toBeGreaterThan(before.stats.atk);
+		await db.update(s.usersBag).set({ credux: 100000, epicEssence: 200 }).where(eq(s.usersBag.discordId, id));
+		const service = new AscensionService();
+		for (let n = 1; n <= 10; n++) expect(await service.addSigil(id, owned.userDeityId)).toEqual({ status: 'ok', newSigils: n });
+		const maxed = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect(maxed.stats.atk).toBeGreaterThan(summoned.stats.atk);
+		expect(await service.ascend(id, owned.userDeityId)).toEqual({ status: 'ok' });
+		expect((await new StatAssemblyService().assemble(id, 'Knight', 1)).stats).toEqual(maxed.stats);
+		expect((await bag()).credux).toBe(0);
+		expect((await service.ascend(id, owned.userDeityId)).status).toBe('already-ascended');
+	});
+	it('enhances looted gear and uses its improved stats in the active preset', async () => {
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		await new LootService().open(id, 'silver', 1);
+		const weapon = (await db.select().from(s.userWeapons).where(eq(s.userWeapons.discordId, id))).find(w => w.weaponId !== starter.weaponId)!;
+		await new LoadoutService().equip(id, 'weapon', weapon.weaponId);
+		await db.update(s.usersBag).set({ credux: 1000000 }).where(eq(s.usersBag.discordId, id));
+		const before = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		expect((await new EnhancementService().attempt(id, weapon.weaponId)).status).toBe('success');
+		expect((await new StatAssemblyService().assemble(id, 'Knight', 1)).stats.atk).toBeGreaterThan(before.stats.atk);
+		expect((await bag()).credux).toBeLessThan(1000000);
+	});
+	it('selects regular/elite with seeded RNG and grants elite Gold Chest', async () => {
+		const repo = new MonsterRepository();
+		expect((await repo.pickForLevel(db, 1, () => 0))?.mobType).toBe('regular');
+		expect((await repo.pickForLevel(db, 1, () => 0.9))?.mobType).toBe('elite');
+		vi.spyOn(MonsterRepository.prototype, 'pickForLevel').mockResolvedValue({ name: 'Elite', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'elite', skillKey: 'none', immunityTags: [] });
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		const result = await new RaidService().run(id);
+		expect(result.status).toBe('ok');
+		if (result.status === 'ok') expect(result.chestName).toBe('Gold Chest');
+		expect((await bag()).goldChest).toBe(1);
+	});
+	it('enforces boss level, fee and daily limit; rewards a victory atomically', async () => {
+		const raid = new RaidService();
+		expect((await raid.run(id, true)).status).toBe('boss-locked');
+		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
+		expect((await raid.run(id, true)).status).toBe('boss-locked');
+		await db.update(s.usersBag).set({ credux: 10000 }).where(eq(s.usersBag.discordId, id));
+		vi.spyOn(MonsterRepository.prototype, 'pickForLevel').mockResolvedValue({ name: 'Boss', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'boss', skillKey: 'moon_threshold', immunityTags: ['stun'] });
+		const first = await raid.run(id, true);
+		expect(first.status).toBe('ok');
+		expect((await bag()).bossTreasureChest).toBe(1);
+		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
+		expect(character.bossKills).toBe(1);
+		expect(character.raidsWon).toBe(0);
+		expect(character.raidsLost).toBe(0);
+		const after = await bag();
+		expect((await raid.run(id, true)).status).toBe('boss-locked');
+		expect(await bag()).toEqual(after);
+	});
+});
+
+describe('persistent casino sessions', () => {
+	it('settles Blackjack with the saved replay payout and no second debit', async () => {
+		await db.update(s.usersBag).set({ credux: 1000 }).where(eq(s.usersBag.discordId, id));
+		const service = new CasinoSessionService();
+		const start = await service.start(id, 'blackjack', 100);
+		if (start.status !== 'ok') throw new Error(start.text);
+		await service.act(id, start.sessionId, 'stand');
+		const [session] = await db.select().from(s.activeCasinoSessions).where(eq(s.activeCasinoSessions.sessionId, start.sessionId));
+		expect(session.status).toBe('settled');
+		expect([0, 100, 200]).toContain(session.payout);
+		expect((await bag()).credux).toBe(900 + session.payout!);
+		await service.act(id, start.sessionId, 'hit');
+		expect(await db.select().from(s.casinoLogs).where(eq(s.casinoLogs.discordId, id))).toHaveLength(1);
+	});
+	it('ignores a second click on the same displayed revision', async () => {
+		await db.update(s.usersBag).set({ credux: 1000 }).where(eq(s.usersBag.discordId, id));
+		vi.spyOn(rngModule, 'createSecureSeed').mockReturnValue(1);
+		const service = new CasinoSessionService();
+		const start = await service.start(id, 'crash', 100);
+		if (start.status !== 'ok') throw new Error(start.text);
+		await service.act(id, start.sessionId, 'push', 0);
+		await service.act(id, start.sessionId, 'push', 0);
+		const [session] = await db.select().from(s.activeCasinoSessions).where(eq(s.activeCasinoSessions.sessionId, start.sessionId));
+		expect((session.stateJson as { actions: string[] }).actions).toEqual(['push']);
+	});
+	it('debits up front, rejects second sessions, and credits exactly once', async () => {
+		await db.update(s.usersBag).set({ credux: 1000 }).where(eq(s.usersBag.discordId, id));
+		const service = new CasinoSessionService();
+		const start = await service.start(id, 'crash', 100);
+		if (start.status !== 'ok') throw new Error(start.text);
+		expect((await bag()).credux).toBe(900);
+		expect((await service.start(id, 'crash', 100)).status).toBe('error');
+		expect((await service.act('other-player', start.sessionId, 'cash')).status).toBe('error');
+		await Promise.all([service.act(id, start.sessionId, 'cash'), service.act(id, start.sessionId, 'cash')]);
+		expect((await bag()).credux).toBe(1000);
+		expect(await db.select().from(s.casinoLogs).where(eq(s.casinoLogs.discordId, id))).toHaveLength(1);
+	});
+	it('recovers expired sessions after restart and ignores late pushes', async () => {
+		await db.update(s.usersBag).set({ credux: 1000 }).where(eq(s.usersBag.discordId, id));
+		const start = await new CasinoSessionService().start(id, 'crash', 100);
+		if (start.status !== 'ok') throw new Error(start.text);
+		await db.update(s.activeCasinoSessions).set({ expiresAt: new Date(0) }).where(eq(s.activeCasinoSessions.sessionId, start.sessionId));
+		await new CasinoSessionService().recoverExpired();
+		await new CasinoSessionService().act(id, start.sessionId, 'push');
+		expect((await bag()).credux).toBe(1000);
+		expect(await db.select().from(s.casinoLogs).where(eq(s.casinoLogs.discordId, id))).toHaveLength(1);
+	});
+});

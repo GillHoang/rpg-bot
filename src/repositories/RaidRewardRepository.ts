@@ -8,6 +8,8 @@ export interface RaidRewardGrant {
 	credux: number;
 	shards: number;
 	grantChest: boolean;
+	chestField?: 'silverChest' | 'goldChest' | 'bossTreasureChest';
+	boss?: boolean;
 }
 
 export interface RaidRewardResult {
@@ -24,11 +26,17 @@ export interface RaidRewardResult {
  */
 export class RaidRewardRepository {
 	async grant(executor: Executor, discordId: string, grant: RaidRewardGrant): Promise<RaidRewardResult> {
+		const [lockedBag] = await executor
+			.select()
+			.from(usersBag)
+			.where(eq(usersBag.discordId, discordId))
+			.for('update');
 		const [character] = await executor
 			.select()
 			.from(userCharacter)
 			.where(eq(userCharacter.discordId, discordId))
-			.limit(1);
+			.limit(1)
+			.for('update');
 		if (!character) throw new Error(`grant: no user_character row for ${discordId}`);
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
 
@@ -38,17 +46,19 @@ export class RaidRewardRepository {
 				combatLevel: next.level,
 				combatExp: next.exp,
 				lifetimeExp: character.lifetimeExp + Math.max(0, grant.expGain),
-				raidsWon: grant.credux > 0 ? character.raidsWon + 1 : character.raidsWon,
-				raidsLost: grant.credux > 0 ? character.raidsLost : character.raidsLost + 1,
+				bossKills: character.bossKills + (grant.boss && grant.credux > 0 ? 1 : 0),
+				raidsWon: !grant.boss && grant.credux > 0 ? character.raidsWon + 1 : character.raidsWon,
+				raidsLost: !grant.boss && grant.credux === 0 ? character.raidsLost + 1 : character.raidsLost,
 			})
 			.where(eq(userCharacter.discordId, discordId));
 
 		if (grant.credux > 0 || grant.shards > 0 || grant.grantChest) {
-			const [bag] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			const bag = lockedBag;
 			if (!bag) throw new Error(`grant: no users_bag row for ${discordId}`);
 			const creduxAfter = bag.credux + grant.credux;
 			const shardsAfter = bag.beliefShards + grant.shards;
-			const chestAfter = grant.grantChest ? bag.silverChest + 1 : bag.silverChest;
+			const chestField = grant.chestField ?? 'silverChest';
+			const chestAfter = bag[chestField] + (grant.grantChest ? 1 : 0);
 
 			await executor
 				.update(usersBag)
@@ -56,7 +66,7 @@ export class RaidRewardRepository {
 					credux: creduxAfter,
 					beliefShards: shardsAfter,
 					lifetimeCreduxEarned: bag.lifetimeCreduxEarned + grant.credux,
-					silverChest: chestAfter,
+					[chestField]: chestAfter,
 				})
 				.where(eq(usersBag.discordId, discordId));
 
@@ -69,8 +79,8 @@ export class RaidRewardRepository {
 				await executor.insert(gameLogs).values({
 					discordId,
 					action: 'Raid',
-					itemType: 'silver_chest',
-					previousChestCount: bag.silverChest,
+					itemType: chestField,
+					previousChestCount: bag[chestField],
 					updatedChestCount: chestAfter,
 				});
 			}

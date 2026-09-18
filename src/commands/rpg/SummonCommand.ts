@@ -1,16 +1,28 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SummonService } from '../../services/SummonService.js';
-import { TIER_ALIAS, MAX_PULLS } from '../../config/gachaRates.js';
+import { MAX_PULLS } from '../../config/gachaRates.js';
+import {
+	SUMMON_COUNT_OPTION_DESC,
+	SUMMON_DESCRIPTION,
+	SUMMON_DUPE_SUFFIX,
+	SUMMON_INSUFFICIENT_SHARDS,
+	SUMMON_INVALID_COUNT,
+	SUMMON_NEW_SUFFIX,
+	SUMMON_NO_CHARACTER,
+	SUMMON_NO_DEITIES_SEEDED,
+	SUMMON_SUCCESS,
+	TIER_ALIAS,
+} from '../../text/summon.js';
 
 export class SummonCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('summon')
-		.setDescription('Triệu hồi vị thần bằng Belief Shards')
+		.setDescription(SUMMON_DESCRIPTION)
 		.addIntegerOption((opt) =>
 			opt
 				.setName('count')
-				.setDescription(`Số lượt triệu hồi (1-${MAX_PULLS})`)
+				.setDescription(SUMMON_COUNT_OPTION_DESC(MAX_PULLS))
 				.setMinValue(1)
 				.setMaxValue(MAX_PULLS)
 				.setRequired(true),
@@ -26,31 +38,32 @@ export class SummonCommand implements ICommand {
 
 		switch (result.status) {
 			case 'invalid-count':
-				await interaction.editReply({ content: `Số lượt phải trong khoảng 1-${MAX_PULLS}.` });
+				await interaction.editReply({ content: SUMMON_INVALID_COUNT(MAX_PULLS) });
 				return;
 			case 'no-character':
-				await interaction.editReply({ content: 'Bạn chưa tạo nhân vật. Dùng `/create` trước đã.' });
+				await interaction.editReply({ content: SUMMON_NO_CHARACTER });
 				return;
 			case 'insufficient-shards':
 				await interaction.editReply({
-					content: `Không đủ Belief Shards. Cần ${result.needed.toLocaleString()}, hiện có ${result.have.toLocaleString()}.`,
+					content: SUMMON_INSUFFICIENT_SHARDS(result.needed.toLocaleString(), result.have.toLocaleString()),
 				});
 				return;
 			case 'no-deities-seeded':
-				await interaction.editReply({
-					content: `Chưa có deity nào seed cho tier ${result.tier} (deity_roster trống). Báo admin.`,
-				});
+				await interaction.editReply({ content: SUMMON_NO_DEITIES_SEEDED(result.tier) });
 				return;
 			case 'ok': {
 				const lines = result.pulls.map((p) => {
 					const alias = TIER_ALIAS[p.tier];
-					const suffix = p.isDupe ? ` (trùng — +${p.essenceGained} ${p.tier} Essence)` : ' ✨ MỚI';
+					const suffix = p.isDupe ? SUMMON_DUPE_SUFFIX(p.essenceGained, p.tier) : SUMMON_NEW_SUFFIX;
 					return `**[${p.tier} · ${alias}]** ${p.name} (${p.mythology})${suffix}`;
 				});
 				await interaction.editReply(
-					`🔮 **Triệu hồi x${result.pulls.length}** — đã dùng ${result.shardsSpent.toLocaleString()} Belief Shards\n\n` +
-						`${lines.join('\n')}\n\n` +
-						`_Pity hiện tại: ${result.finalPity}/500_`,
+					SUMMON_SUCCESS(
+						result.pulls.length,
+						result.shardsSpent.toLocaleString(),
+						lines.join('\n'),
+						result.finalPity,
+					),
 				);
 			}
 		}

@@ -1,4 +1,5 @@
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { choose } from '../config/chestLoot.js';
 import type { Executor } from '../db/client.js';
 import { deityRoster, userDeities } from '../db/schema.js';
 import type { DeityTier } from '../config/gachaRates.js';
@@ -28,14 +29,17 @@ export interface OwnedDeityProgress {
 
 export class DeityRepository {
 	/** Uniform-random pick among available deities of one tier (matches the original's equal-weight pickRandomRow). */
-	async pickRandomAvailableForTier(executor: Executor, tier: DeityTier): Promise<DeityRosterRow | null> {
-		const [row] = await executor
+	async pickRandomAvailableForTier(
+		executor: Executor,
+		tier: DeityTier,
+		rng: () => number,
+	): Promise<DeityRosterRow | null> {
+		const rows = await executor
 			.select()
 			.from(deityRoster)
 			.where(and(eq(deityRoster.tier, tier), eq(deityRoster.isAvailable, true)))
-			.orderBy(sql`RANDOM()`)
-			.limit(1);
-		return row ?? null;
+			.orderBy(deityRoster.deityId);
+		return rows.length ? choose(rows, rng) : null;
 	}
 
 	async ownedDeityIds(executor: Executor, discordId: string): Promise<Set<number>> {
@@ -72,7 +76,11 @@ export class DeityRepository {
 		return { currAtk: eff.atk, currHp: eff.hp, currDef: eff.def };
 	}
 
-	async findOwnedProgress(executor: Executor, discordId: string, userDeityId: number): Promise<OwnedDeityProgress | null> {
+	async findOwnedProgress(
+		executor: Executor,
+		discordId: string,
+		userDeityId: number,
+	): Promise<OwnedDeityProgress | null> {
 		const [row] = await executor
 			.select({
 				userDeityId: userDeities.userDeityId,

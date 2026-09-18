@@ -1,3 +1,4 @@
+import { rollChance, choose } from '../../../utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
 import { findDebuff } from '../CombatantState.js';
@@ -7,6 +8,7 @@ import {
 	MAGE_OVERCHARGE_HIGH_CHANCE,
 	MAGE_OVERCHARGE_EVERY,
 } from '../DamageCalculator.js';
+import { COMBAT_MAGE_OVERCHARGE } from '../../../text/combat.js';
 
 type OverchargeDebuff = 'paralyze' | 'burn' | 'def_down' | 'atk_down';
 const OVERCHARGE_DEBUFFS: OverchargeDebuff[] = ['paralyze', 'burn', 'def_down', 'atk_down'];
@@ -24,8 +26,9 @@ export class MageStrategy extends NullClassStrategy {
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		if (ctx.round % MAGE_OVERCHARGE_EVERY !== 0) return;
 		hit.suppressCrit = true;
-		hit.forcedMultiplier =
-			ctx.rng() < MAGE_OVERCHARGE_HIGH_CHANCE ? MAGE_OVERCHARGE_HIGH_MULT : MAGE_OVERCHARGE_MULT;
+		hit.forcedMultiplier = rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
+			? MAGE_OVERCHARGE_HIGH_MULT
+			: MAGE_OVERCHARGE_MULT;
 		ctx.self.flags.mage_overcharge_this_hit = true;
 	}
 
@@ -34,8 +37,8 @@ export class MageStrategy extends NullClassStrategy {
 		ctx.self.flags.mage_overcharge_this_hit = false;
 		if (resolved.damageDealt <= 0) return;
 
-		const pick = OVERCHARGE_DEBUFFS[Math.floor(ctx.rng() * OVERCHARGE_DEBUFFS.length)]!;
-		ctx.log(`🔮 Mage Passive: Overcharge — nuke landed, applying ${pick}.`);
+		const pick = choose(OVERCHARGE_DEBUFFS, ctx.rng);
+		ctx.log(COMBAT_MAGE_OVERCHARGE(pick));
 
 		if (pick === 'paralyze') {
 			ctx.enemy.debuffs.push({ tag: 'paralyze', turnsLeft: 1, value: 0 });

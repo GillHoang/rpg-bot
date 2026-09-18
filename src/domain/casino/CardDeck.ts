@@ -1,3 +1,4 @@
+import { RandomPicker } from '../../utils/weightedRandom.js';
 export type Suit = 'pegasus' | 'trident' | 'laurel' | 'hammer';
 export type Rank = 'a' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'j' | 'q' | 'k';
 export interface Card {
@@ -21,14 +22,20 @@ export interface Deck {
 export function newDeck(rng: () => number): Deck {
 	const cards: Card[] = [];
 	for (const suit of SUITS) for (const rank of RANKS) cards.push({ suit, rank });
+	const picker = new RandomPicker(
+		cards.map((original) => ({ original, weight: 1 })),
+		{ next: rng, removeOnPick: true },
+	);
+	let remaining = cards.length;
 	return {
 		draw(): Card {
-			if (cards.length === 0) throw new Error('cardDeck: deck exhausted');
-			const index = Math.floor(rng() * cards.length);
-			return cards.splice(index, 1)[0]!;
+			if (remaining === 0) throw new Error('cardDeck: deck exhausted');
+			const card = picker.pick();
+			remaining--;
+			return card;
 		},
 		remaining(): number {
-			return cards.length;
+			return remaining;
 		},
 	};
 }

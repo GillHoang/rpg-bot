@@ -17,10 +17,9 @@ export interface OwnedRune {
 }
 
 /**
- * NOTE (documented simplification, see README M5 section): socket
- * slot-count and lane (native vs opposite) validation from the original
- * socket.js is not enforced here — equip only checks the rune is owned
- * and not locked. Unlocking sockets (socket_unlock_cost) is not ported.
+ * Rune ownership and effect lookup. SocketService validates lanes/slots and
+ * serializes socket moves under the owner's bag lock, keeping gear arrays
+ * and user_runes.socketedInto consistent within one transaction.
  */
 export class RuneRepository {
 	async findOwned(executor: Executor, discordId: string, runeUid: string): Promise<OwnedRune | null> {

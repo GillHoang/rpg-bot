@@ -2,28 +2,40 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 import type { ICommand } from '../../core/ICommand.js';
 import { AscensionService } from '../../services/AscensionService.js';
 import { MAX_SIGILS } from '../../config/ascension.js';
+import {
+	DEITY_ALREADY_ASCENDED,
+	DEITY_ASCEND_SUB_DESC,
+	DEITY_ASCEND_SUCCESS,
+	DEITY_DESCRIPTION,
+	DEITY_INSUFFICIENT_ESSENCE,
+	DEITY_INSUFFICIENT_RESOURCES,
+	DEITY_NOT_ENOUGH_SIGILS,
+	DEITY_NOT_OWNED,
+	DEITY_SIGIL_MAXED,
+	DEITY_SIGIL_SUB_DESC,
+	DEITY_SIGIL_SUCCESS,
+	DEITY_USER_DEITY_OPTION_DESC,
+	DEITY_USER_DEITY_OPTION_DESC_SHORT,
+} from '../../text/deity.js';
 
 export class DeityCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('deity')
-		.setDescription('Quản lý Sigil và Ascension của deity')
+		.setDescription(DEITY_DESCRIPTION)
 		.addSubcommand((sub) =>
 			sub
 				.setName('sigil')
-				.setDescription('Dùng essence để +1 Sigil cho deity')
+				.setDescription(DEITY_SIGIL_SUB_DESC)
 				.addIntegerOption((opt) =>
-					opt
-						.setName('user_deity_id')
-						.setDescription('ID deity sở hữu (xem trong /summon)')
-						.setRequired(true),
+					opt.setName('user_deity_id').setDescription(DEITY_USER_DEITY_OPTION_DESC).setRequired(true),
 				),
 		)
 		.addSubcommand((sub) =>
 			sub
 				.setName('ascend')
-				.setDescription('Ascend deity đã đủ 10/10 Sigil')
+				.setDescription(DEITY_ASCEND_SUB_DESC)
 				.addIntegerOption((opt) =>
-					opt.setName('user_deity_id').setDescription('ID deity sở hữu').setRequired(true),
+					opt.setName('user_deity_id').setDescription(DEITY_USER_DEITY_OPTION_DESC_SHORT).setRequired(true),
 				),
 		);
 
@@ -39,43 +51,44 @@ export class DeityCommand implements ICommand {
 			const result = await this.ascension.addSigil(discordId, userDeityId);
 			switch (result.status) {
 				case 'not-owned':
-					await interaction.editReply({ content: 'Bạn không sở hữu deity này.' });
+					await interaction.editReply({ content: DEITY_NOT_OWNED });
 					return;
 				case 'maxed':
-					await interaction.editReply({ content: `Deity đã đạt tối đa ${MAX_SIGILS}/${MAX_SIGILS} Sigil.` });
+					await interaction.editReply({ content: DEITY_SIGIL_MAXED(MAX_SIGILS) });
 					return;
 				case 'insufficient-essence':
 					await interaction.editReply({
-						content: `Không đủ essence. Cần ${result.needed}, hiện có ${result.have}.`,
+						content: DEITY_INSUFFICIENT_ESSENCE(result.needed, result.have),
 					});
 					return;
 				case 'ok':
-					await interaction.editReply(`✨ Đã +1 Sigil. Hiện tại: ${result.newSigils}/${MAX_SIGILS}.`);
+					await interaction.editReply(DEITY_SIGIL_SUCCESS(result.newSigils, MAX_SIGILS));
 					return;
 			}
 		} else {
 			const result = await this.ascension.ascend(discordId, userDeityId);
 			switch (result.status) {
 				case 'not-owned':
-					await interaction.editReply({ content: 'Bạn không sở hữu deity này.' });
+					await interaction.editReply({ content: DEITY_NOT_OWNED });
 					return;
 				case 'already-ascended':
-					await interaction.editReply({ content: 'Deity này đã Ascend rồi.' });
+					await interaction.editReply({ content: DEITY_ALREADY_ASCENDED });
 					return;
 				case 'not-enough-sigils':
 					await interaction.editReply({
-						content: `Cần đủ ${MAX_SIGILS}/${MAX_SIGILS} Sigil trước (hiện có ${result.have}).`,
+						content: DEITY_NOT_ENOUGH_SIGILS(MAX_SIGILS, result.have),
 					});
 					return;
 				case 'insufficient-resources':
 					await interaction.editReply({
-						content: `Không đủ tài nguyên. Cần ${result.neededEssence} essence + ${result.neededCredux.toLocaleString()} Credux.`,
+						content: DEITY_INSUFFICIENT_RESOURCES(
+							result.neededEssence,
+							result.neededCredux.toLocaleString(),
+						),
 					});
 					return;
 				case 'ok':
-					await interaction.editReply(
-						'🌟 **Ascension thành công!** Deity đạt 100% base stats, blessing được kích hoạt.',
-					);
+					await interaction.editReply(DEITY_ASCEND_SUCCESS);
 					return;
 			}
 		}

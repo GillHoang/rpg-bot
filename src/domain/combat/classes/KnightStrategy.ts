@@ -1,6 +1,7 @@
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, IncomingHit } from '../IClassStrategy.js';
 import { findDebuff } from '../CombatantState.js';
+import { COMBAT_KNIGHT_REGEN } from '../../../text/combat.js';
 
 const DAMAGE_REDUCTION = 0.25;
 const OUTGOING_BONUS_PCT = 30;
@@ -32,6 +33,6 @@ export class KnightStrategy extends NullClassStrategy {
 		);
 		if (restored <= 0) return;
 		ctx.self.hp += restored;
-		ctx.log(`🛡️ Knight Passive: Restored ${restored.toLocaleString()} HP.`);
+		ctx.log(COMBAT_KNIGHT_REGEN(restored.toLocaleString()));
 	}
 }

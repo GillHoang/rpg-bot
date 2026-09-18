@@ -30,7 +30,11 @@ export class GearRepository {
 	}
 
 	/** Read the equipped weapon's current ATK/CRIT (post-enhancement), for stat assembly. */
-	async findWeaponCurrStats(executor: Executor, discordId: string, weaponId: string): Promise<WeaponCurrStats | null> {
+	async findWeaponCurrStats(
+		executor: Executor,
+		discordId: string,
+		weaponId: string,
+	): Promise<WeaponCurrStats | null> {
 		const [row] = await executor
 			.select({ currAtk: userWeapons.currAtk, crit: userWeapons.crit })
 			.from(userWeapons)
@@ -98,6 +102,25 @@ export class GearRepository {
 		}
 	}
 
+	async writeOppositeSockets(
+		executor: Executor,
+		discordId: string,
+		gearId: string,
+		kind: 'weapon' | 'armor',
+		sockets: Array<string | null>,
+	): Promise<void> {
+		if (kind === 'weapon')
+			await executor
+				.update(userWeapons)
+				.set({ oppositeSockets: sockets })
+				.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, gearId)));
+		else
+			await executor
+				.update(userArmors)
+				.set({ oppositeSockets: sockets })
+				.where(and(eq(userArmors.discordId, discordId), eq(userArmors.armorId, gearId)));
+	}
+
 	/** Clears `runeUid` from whichever gear+array it currently occupies (native or opposite), if any. Used to auto-unsocket before re-socketing elsewhere. */
 	async clearRuneFromAnyGear(executor: Executor, discordId: string, gearId: string, runeUid: string): Promise<void> {
 		const info = await this.findSocketInfo(executor, discordId, gearId);
@@ -108,6 +131,14 @@ export class GearRepository {
 			next[nativeIdx] = null;
 			await this.writeNativeSockets(executor, discordId, gearId, info.kind, next);
 		}
+		if (info.oppositeSockets.includes(runeUid))
+			await this.writeOppositeSockets(
+				executor,
+				discordId,
+				gearId,
+				info.kind,
+				info.oppositeSockets.map((uid) => (uid === runeUid ? null : uid)),
+			);
 	}
 
 	/** Weapons are ATK + CRIT only (v5 stat split). */
@@ -124,8 +155,8 @@ export class GearRepository {
 			crit: params.crit,
 			enhancement: 1,
 			isLocked: false,
-			nativeSockets: [],
-			oppositeSockets: [],
+			nativeSockets: [null],
+			oppositeSockets: [null],
 		});
 	}
 
@@ -144,8 +175,8 @@ export class GearRepository {
 			baseDef: params.def,
 			enhancement: 1,
 			isLocked: false,
-			nativeSockets: [],
-			oppositeSockets: [],
+			nativeSockets: [null],
+			oppositeSockets: [null],
 		});
 	}
 }

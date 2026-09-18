@@ -1,6 +1,9 @@
 import { db } from '../db/client.js';
 import { RuneRepository } from '../repositories/RuneRepository.js';
 import { GearRepository } from '../repositories/GearRepository.js';
+import { and, eq } from 'drizzle-orm';
+import { usersBag, userWeapons, userArmors, weaponRoster, armorRoster, socketUnlockCost } from '../db/schema.js';
+import { ESSENCE_FIELDS } from './LootService.js';
 
 export type SocketResult =
 	| { status: 'rune-not-owned' }
@@ -12,16 +15,13 @@ export type SocketResult =
 
 export type UnsocketResult = { status: 'rune-not-owned' } | { status: 'not-socketed' } | { status: 'ok' };
 
-/** Native slots take native-lane runes. Opposite-lane (cross) socketing is disabled — matches the original's "Phase 2 opposite slots off for now". The seed vocabulary is 'native' | 'opposite' (see src/seed/data/runes.ts). */
-const NATIVE_LANE = 'native' as const;
-
 /**
- * Facade for `/socket equip|unequip`. Ported from commands/rpg/socket.js's
+ * Facade for `/socket equip|unequip|unlock`. Ported from commands/rpg/socket.js's
  * locateSlot/writeSockets: the gear row's own `native_sockets` JSON array
  * is the real source of truth for which rune sits in which slot (not just
  * user_runes.socketedInto, which is kept as a denormalized convenience
- * field for RuneRepository.findSocketedEffects). Opposite-lane sockets
- * are not offered here, matching the original being disabled "for now".
+ * field for RuneRepository.findSocketedEffects). Both lanes have one free
+ * slot; additional native slots use the seeded unlock costs.
  */
 export class SocketService {
 	constructor(
@@ -29,22 +29,32 @@ export class SocketService {
 		private readonly gear = new GearRepository(),
 	) {}
 
-	async equip(discordId: string, runeUid: string, gearId: string, slotNum: number): Promise<SocketResult> {
+	async equip(
+		discordId: string,
+		runeUid: string,
+		gearId: string,
+		slotNum: number,
+		lane: 'native' | 'opposite' = 'native',
+	): Promise<SocketResult> {
 		return db.transaction(async (tx): Promise<SocketResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 
 			const info = await this.gear.findSocketInfo(tx, discordId, gearId);
 			if (!info) return { status: 'gear-not-owned' };
 
+			const sockets = lane === 'native' ? info.nativeSockets : info.oppositeSockets;
+			// Existing starter items had []: the first slot is free, materialized on use.
+			if (sockets.length === 0) sockets.push(null);
 			const index = slotNum - 1;
-			if (index < 0 || index >= info.nativeSockets.length) return { status: 'invalid-slot' };
+			if (!Number.isInteger(slotNum) || index < 0 || index >= sockets.length) return { status: 'invalid-slot' };
 
-			const expectedLane = NATIVE_LANE;
+			const expectedLane = lane;
 			if (rune.lane !== expectedLane)
 				return { status: 'lane-mismatch', expected: expectedLane, actual: rune.lane };
 
-			if (info.nativeSockets[index] != null && info.nativeSockets[index] !== runeUid) {
+			if (sockets[index] != null && sockets[index] !== runeUid) {
 				return { status: 'slot-occupied' };
 			}
 
@@ -53,9 +63,10 @@ export class SocketService {
 				await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
 			}
 
-			const next = info.nativeSockets.map((uid) => (uid === runeUid ? null : uid));
+			const next = sockets.map((uid) => (uid === runeUid ? null : uid));
 			next[index] = runeUid;
-			await this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, next);
+			if (lane === 'native') await this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, next);
+			else await this.gear.writeOppositeSockets(tx, discordId, gearId, info.kind, next);
 			await this.runes.equip(tx, runeUid, gearId);
 
 			return { status: 'ok' };
@@ -64,6 +75,7 @@ export class SocketService {
 
 	async unequip(discordId: string, runeUid: string): Promise<UnsocketResult> {
 		return db.transaction(async (tx): Promise<UnsocketResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 			if (!rune.socketedInto) return { status: 'not-socketed' };
@@ -71,6 +83,47 @@ export class SocketService {
 			await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
 			await this.runes.unequip(tx, runeUid);
 			return { status: 'ok' };
+		});
+	}
+
+	async unlock(discordId: string, gearId: string): Promise<string> {
+		return db.transaction(async (tx) => {
+			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+			if (!bag) return 'Dùng /register trước.';
+			const info = await this.gear.findSocketInfo(tx, discordId, gearId);
+			if (!info) return 'Bạn không sở hữu gear này.';
+			const rows =
+				info.kind === 'weapon'
+					? await tx
+							.select({ tier: weaponRoster.tier })
+							.from(userWeapons)
+							.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
+							.where(eq(userWeapons.weaponId, gearId))
+					: await tx
+							.select({ tier: armorRoster.tier })
+							.from(userArmors)
+							.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
+							.where(eq(userArmors.armorId, gearId));
+			const next = Math.max(1, info.nativeSockets.length) + 1;
+			const [cost] = await tx
+				.select()
+				.from(socketUnlockCost)
+				.where(and(eq(socketUnlockCost.tier, rows[0].tier), eq(socketUnlockCost.slotIndex, next)));
+			if (!cost)
+				return 'Gear đã đạt giới hạn socket hoặc chưa có giá mở slot. Slot 1 native/opposite luôn miễn phí.';
+			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier)) throw new Error('Invalid socket essence tier');
+			const field = ESSENCE_FIELDS[cost.essenceTier as keyof typeof ESSENCE_FIELDS];
+			if (bag.credux < cost.creduxCost || bag[field] < cost.essenceCost)
+				return `Cần ${cost.creduxCost} Credux + ${cost.essenceCost} ${cost.essenceTier} essence.`;
+			await tx
+				.update(usersBag)
+				.set({ credux: bag.credux - cost.creduxCost, [field]: bag[field] - cost.essenceCost })
+				.where(eq(usersBag.discordId, discordId));
+			await this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, [
+				...(info.nativeSockets.length ? info.nativeSockets : [null]),
+				null,
+			]);
+			return `Đã mở native socket ${next}.`;
 		});
 	}
 }

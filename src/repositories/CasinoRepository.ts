@@ -8,7 +8,8 @@ export class CasinoRepository {
 			.select({ credux: usersBag.credux })
 			.from(usersBag)
 			.where(eq(usersBag.discordId, discordId))
-			.limit(1);
+			.limit(1)
+			.for('update');
 		return row?.credux ?? null;
 	}
 

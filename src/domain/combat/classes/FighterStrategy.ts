@@ -1,6 +1,8 @@
+import { rollChance } from '../../../utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
 import { findDebuff } from '../CombatantState.js';
+import { COMBAT_FIGHTER_BASH } from '../../../text/combat.js';
 
 const DAMAGE_BONUS_PCT = 50;
 const STUN_CHANCE = 0.3;
@@ -23,7 +25,7 @@ export class FighterStrategy extends NullClassStrategy {
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		hit.damagePctBonus += DAMAGE_BONUS_PCT;
 
-		const willBash = ctx.rng() < STUN_CHANCE && !findDebuff(ctx.enemy, 'stun');
+		const willBash = rollChance(STUN_CHANCE, ctx.rng) && !findDebuff(ctx.enemy, 'stun');
 		ctx.self.flags.fighter_bash_this_hit = willBash;
 		if (willBash) hit.damagePctBonus += BASH_DAMAGE_BONUS_PCT;
 	}
@@ -34,6 +36,6 @@ export class FighterStrategy extends NullClassStrategy {
 
 		ctx.enemy.debuffs.push({ tag: 'stun', turnsLeft: STUN_TURNS, value: 0 });
 		ctx.enemy.debuffs.push({ tag: 'dizzy', turnsLeft: 1, value: DIZZY_MISS_CHANCE });
-		ctx.log(`👊 Fighter Passive — Bash! Stunned for ${STUN_TURNS} turn and left Dizzy.`);
+		ctx.log(COMBAT_FIGHTER_BASH(STUN_TURNS));
 	}
 }

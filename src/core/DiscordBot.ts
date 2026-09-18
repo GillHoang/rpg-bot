@@ -2,6 +2,7 @@ import { Client, Events, GatewayIntentBits, type Interaction } from 'discord.js'
 import { CommandRegistry } from './CommandRegistry.js';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
+import { CasinoSessionService } from '../services/CasinoSessionService.js';
 
 /**
  * Thin wrapper around discord.js Client. Owns only wiring/lifecycle;
@@ -21,6 +22,21 @@ export class DiscordBot {
 	private registerEventHandlers(): void {
 		this.client.once(Events.ClientReady, (c) => {
 			logger.info(`Logged in as ${c.user.tag}`);
+			const sessions = new CasinoSessionService();
+			let recovering = false;
+			const recover = async () => {
+				if (recovering) return;
+				recovering = true;
+				try {
+					await sessions.recoverExpired();
+				} catch (error) {
+					logger.error({ error }, 'Casino expiry recovery failed');
+				} finally {
+					recovering = false;
+				}
+			};
+			void recover();
+			setInterval(() => void recover(), 15000).unref();
 		});
 
 		this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {

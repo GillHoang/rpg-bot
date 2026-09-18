@@ -41,6 +41,7 @@ export class CharacterCreationService {
 
 	async createCharacter(discordId: string, combatClass: CombatClass): Promise<CreateCharacterResult> {
 		return db.transaction(async (tx): Promise<CreateCharacterResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			if (!(await this.users.isRegistered(tx, discordId))) {
 				return { status: 'not-registered' };
 			}

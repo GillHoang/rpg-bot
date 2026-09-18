@@ -10,11 +10,15 @@ export const activeBattles = pgTable(
 	'active_battles',
 	{
 		battleId: integer('battle_id').primaryKey().generatedByDefaultAsIdentity(),
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		channelId: text('channel_id').notNull(),
 		messageId: text('message_id').notNull(),
 		battleType: text('battle_type').notNull(),
-		mobId: integer('mob_id').notNull().references(() => mobRoster.mobId),
+		mobId: integer('mob_id')
+			.notNull()
+			.references(() => mobRoster.mobId),
 		enemyLevel: integer('enemy_level'),
 		playerHp: integer('player_hp').notNull(),
 		playerMaxHp: integer('player_max_hp').notNull(),
@@ -42,7 +46,9 @@ export const activeBattles = pgTable(
 export const activeCasinoSessions = pgTable('active_casino_sessions', {
 	sessionId: text('session_id') /* TODO pg type: uuid */
 		.primaryKey(),
-	discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	game: text('game').notNull(),
 	status: text('status').notNull(),
 	betAmount: integer('bet_amount').notNull(),
@@ -68,7 +74,8 @@ export const activeCasinoSessions = pgTable('active_casino_sessions', {
 export const activeDuelParticipants = pgTable('active_duel_participants', {
 	discordId: text('discord_id').primaryKey(),
 	duelId: text('duel_id') /* TODO pg type: uuid */
-		.notNull().references(() => activeDuels.duelId, { onDelete: 'cascade' }),
+		.notNull()
+		.references(() => activeDuels.duelId, { onDelete: 'cascade' }),
 	lockToken: text('lock_token') /* TODO pg type: uuid */
 		.notNull(),
 	role: text('role').notNull(),
@@ -140,7 +147,9 @@ export const bossAttackLog = pgTable(
 		bossSpawnId: text('boss_spawn_id') /* TODO pg type: uuid */
 			.notNull(),
 		guildId: text('guild_id').notNull(),
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		mobId: integer('mob_id').notNull(),
 		totalDamage: integer('total_damage').notNull().default(0),
 		attackedAt: timestamp('attacked_at', { mode: 'date', withTimezone: false })
@@ -180,7 +189,9 @@ export const bossState = pgTable('boss_state', {
 	guildId: text('guild_id').primaryKey(),
 	spawnId: text('spawn_id') /* TODO pg type: uuid */
 		.notNull(),
-	mobId: integer('mob_id').notNull().references(() => mobRoster.mobId),
+	mobId: integer('mob_id')
+		.notNull()
+		.references(() => mobRoster.mobId),
 	bossLevel: integer('boss_level'),
 	maxHp: integer('max_hp').notNull(),
 	currentHp: integer('current_hp').notNull(),
@@ -246,7 +257,9 @@ export const cosmeticCatalog = pgTable(
 export const dailyQuestCompletionRewards = pgTable(
 	'daily_quest_completion_rewards',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		questDate: text('quest_date').notNull(),
 		sacredRelics: integer('sacred_relics').notNull().default(1),
 		claimedAt: timestamp('claimed_at', { mode: 'date', withTimezone: false })
@@ -262,7 +275,9 @@ export const dailyQuests = pgTable(
 	'daily_quests',
 	{
 		id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		questType: text('quest_type').notNull(),
 		targetCount: integer('target_count').notNull(),
 		currentCount: integer('current_count').notNull().default(0),
@@ -319,7 +334,9 @@ export const devLogs = pgTable('dev_logs', {
 export const equippedSkins = pgTable(
 	'equipped_skins',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		category: text('category').notNull(),
 		cosmeticId: integer('cosmetic_id').references(() => cosmeticCatalog.cosmeticId, { onDelete: 'set null' }),
 		overridePath: text('override_path'),
@@ -371,30 +388,36 @@ export const gameLogs = pgTable('game_logs', {
 
 // mob_roster — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((mob_type)::text = ANY ((ARRAY['regular'::character varying, 'elite'::character varying, 'boss'::character varying])::text[])))
-export const mobRoster = pgTable('mob_roster', {
-	mobId: integer('mob_id').primaryKey().generatedByDefaultAsIdentity(),
-	name: text('name').notNull(),
-	mythology: text('mythology').notNull(),
-	mobType: text('mob_type').notNull(),
-	baseHp: integer('base_hp').notNull(),
-	baseAtk: integer('base_atk').notNull(),
-	baseDef: integer('base_def').notNull(),
-	baseCrit: real('base_crit').notNull(),
-	hpPerLevel: integer('hp_per_level').notNull().default(0),
-	atkPerLevel: integer('atk_per_level').notNull().default(0),
-	defPerLevel: integer('def_per_level').notNull().default(0),
-	skillKey: text('skill_key').notNull(),
-	skillName: text('skill_name').notNull(),
-	skillDescription: text('skill_description').notNull(),
-	immunityTags: jsonb('immunity_tags').notNull(),
-	specialFlags: jsonb('special_flags').notNull(),
-}, (table) => [
-	// Business-key upsert target for the seed runner (identity PK can't be used).
-	unique('mob_roster_business_key').on(table.name, table.mythology, table.mobType),
-]);
+export const mobRoster = pgTable(
+	'mob_roster',
+	{
+		mobId: integer('mob_id').primaryKey().generatedByDefaultAsIdentity(),
+		name: text('name').notNull(),
+		mythology: text('mythology').notNull(),
+		mobType: text('mob_type').notNull(),
+		baseHp: integer('base_hp').notNull(),
+		baseAtk: integer('base_atk').notNull(),
+		baseDef: integer('base_def').notNull(),
+		baseCrit: real('base_crit').notNull(),
+		hpPerLevel: integer('hp_per_level').notNull().default(0),
+		atkPerLevel: integer('atk_per_level').notNull().default(0),
+		defPerLevel: integer('def_per_level').notNull().default(0),
+		skillKey: text('skill_key').notNull(),
+		skillName: text('skill_name').notNull(),
+		skillDescription: text('skill_description').notNull(),
+		immunityTags: jsonb('immunity_tags').notNull(),
+		specialFlags: jsonb('special_flags').notNull(),
+	},
+	(table) => [
+		// Business-key upsert target for the seed runner (identity PK can't be used).
+		unique('mob_roster_business_key').on(table.name, table.mythology, table.mobType),
+	],
+);
 
 export const pityCounters = pgTable('pity_counters', {
-	discordId: text('discord_id').primaryKey().references(() => users.discordId),
+	discordId: text('discord_id')
+		.primaryKey()
+		.references(() => users.discordId),
 	pityCount: integer('pity_count').notNull().default(0),
 });
 
@@ -414,7 +437,9 @@ export const pvpLogs = pgTable('pvp_logs', {
 export const pvpShopPurchases = pgTable(
 	'pvp_shop_purchases',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		seasonId: integer('season_id').notNull(),
 		itemKey: text('item_key').notNull(),
 		qty: integer('qty').notNull().default(0),
@@ -453,7 +478,9 @@ export const raidLogs = pgTable('raid_logs', {
 export const raidRewardDailyTotals = pgTable(
 	'raid_reward_daily_totals',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		rewardDate: text('reward_date').notNull(),
 		silverChests: integer('silver_chests').notNull().default(0),
 		goldChests: integer('gold_chests').notNull().default(0),
@@ -466,7 +493,9 @@ export const raidRewardDailyTotals = pgTable(
 
 export const raidRewardGrants = pgTable('raid_reward_grants', {
 	rewardKey: text('reward_key').primaryKey(),
-	discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	reward: jsonb('reward').notNull(),
 	createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
 		.notNull()
@@ -477,7 +506,9 @@ export const raidRewardGrants = pgTable('raid_reward_grants', {
 //   CHECK (((result)::text = ANY ((ARRAY['win'::character varying, 'loss'::character varying])::text[])))
 export const rankedLogs = pgTable('ranked_logs', {
 	id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-	playerId: text('player_id').notNull().references(() => users.discordId),
+	playerId: text('player_id')
+		.notNull()
+		.references(() => users.discordId),
 	opponentId: text('opponent_id').notNull(),
 	result: text('result').notNull(),
 	ratingBefore: integer('rating_before').notNull(),
@@ -561,7 +592,9 @@ export const stripeEvents = pgTable('stripe_events', {
 //   CHECK (((source)::text = ANY ((ARRAY['belief_shards'::character varying, 'sacred_relic'::character varying, 'supreme_relic'::character varying])::text[])))
 export const summonRewardGrants = pgTable('summon_reward_grants', {
 	rewardKey: text('reward_key').primaryKey(),
-	discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	source: text('source').notNull(),
 	createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
 		.notNull()
@@ -590,7 +623,9 @@ export const supporterItemGrants = pgTable(
 	'supporter_item_grants',
 	{
 		grantId: integer('grant_id').primaryKey().generatedByDefaultAsIdentity(),
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		itemKey: text('item_key').notNull(),
 		quantity: integer('quantity').notNull().default(1),
 		grantReason: text('grant_reason').notNull(),
@@ -611,7 +646,9 @@ export const supporterItemGrants = pgTable(
 
 export const supporterTokenLedger = pgTable('supporter_token_ledger', {
 	entryId: integer('entry_id').primaryKey().generatedByDefaultAsIdentity(),
-	discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	delta: integer('delta').notNull(),
 	reason: text('reason').notNull(),
 	ref: text('ref'),
@@ -628,7 +665,9 @@ export const supporterTokenLedger = pgTable('supporter_token_ledger', {
 export const supporters = pgTable(
 	'supporters',
 	{
-		discordId: text('discord_id').primaryKey().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.primaryKey()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		tier: text('tier').notNull(),
 		status: text('status').notNull(),
 		currentPeriodEnd: timestamp('current_period_end', { mode: 'date', withTimezone: false }),
@@ -661,7 +700,9 @@ export const supporters = pgTable(
 export const tickets = pgTable('tickets', {
 	ticketId: text('ticket_id').primaryKey(),
 	type: text('type').notNull(),
-	userId: text('user_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+	userId: text('user_id')
+		.notNull()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	status: text('status').notNull(),
 	createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
 		.notNull()
@@ -717,9 +758,13 @@ export const topggVoteEvents = pgTable('topgg_vote_events', {
 // user_armors — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((enhancement >= 1) AND (enhancement <= 11)))
 export const userArmors = pgTable('user_armors', {
-	discordId: text('discord_id').notNull().references(() => users.discordId),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId),
 	armorId: text('armor_id').primaryKey(),
-	armorRosterId: integer('armor_roster_id').notNull().references(() => armorRoster.armorRosterId),
+	armorRosterId: integer('armor_roster_id')
+		.notNull()
+		.references(() => armorRoster.armorRosterId),
 	currHp: integer('curr_hp').notNull(),
 	currDef: integer('curr_def').notNull(),
 	enhancement: integer('enhancement').notNull().default(1),
@@ -740,7 +785,9 @@ export const userArmors = pgTable('user_armors', {
 //   CHECK (highest_raid_streak >= 0)
 //   CHECK (highest_rank_streak >= 0)
 export const userCharacter = pgTable('user_character', {
-	discordId: text('discord_id').primaryKey().references(() => users.discordId, { onDelete: 'cascade' }),
+	discordId: text('discord_id')
+		.primaryKey()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
 	class: text('class').notNull(),
 	combatLevel: integer('combat_level').notNull().default(1),
 	combatExp: integer('combat_exp').notNull().default(0),
@@ -766,7 +813,9 @@ export const userCharacter = pgTable('user_character', {
 	pvpRating: integer('pvp_rating').notNull().default(1000),
 	bossKills: integer('boss_kills').notNull().default(0),
 	equippedTitleId: integer('equipped_title_id').references(() => titleCatalog.titleId, { onDelete: 'set null' }),
-	activeEchoDeityId: integer('active_echo_deity_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
+	activeEchoDeityId: integer('active_echo_deity_id').references(() => userDeities.userDeityId, {
+		onDelete: 'set null',
+	}),
 	pvpPeak: integer('pvp_peak').notNull().default(1000),
 	lastWeeklyClaimWeek: integer('last_weekly_claim_week'),
 	pvpDemotionShield: boolean('pvp_demotion_shield').notNull().default(true),
@@ -779,8 +828,12 @@ export const userCharacter = pgTable('user_character', {
 export const userCosmetics = pgTable(
 	'user_cosmetics',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
-		cosmeticId: integer('cosmetic_id').notNull().references(() => cosmeticCatalog.cosmeticId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
+		cosmeticId: integer('cosmetic_id')
+			.notNull()
+			.references(() => cosmeticCatalog.cosmeticId, { onDelete: 'cascade' }),
 		source: text('source').notNull(),
 		acquiredAt: timestamp('acquired_at', { mode: 'date', withTimezone: false })
 			.notNull()
@@ -797,8 +850,12 @@ export const userDeities = pgTable(
 	'user_deities',
 	{
 		userDeityId: integer('user_deity_id').primaryKey().generatedByDefaultAsIdentity(),
-		discordId: text('discord_id').notNull().references(() => users.discordId),
-		deityId: integer('deity_id').notNull().references(() => deityRoster.deityId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
+		deityId: integer('deity_id')
+			.notNull()
+			.references(() => deityRoster.deityId),
 		currAtk: integer('curr_atk').notNull(),
 		currHp: integer('curr_hp').notNull(),
 		currDef: integer('curr_def').notNull(),
@@ -818,7 +875,9 @@ export const userDeities = pgTable(
 export const userGuildActivity = pgTable(
 	'user_guild_activity',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		guildId: text('guild_id').notNull(),
 		lastActive: timestamp('last_active', { mode: 'date', withTimezone: false })
 			.notNull()
@@ -838,14 +897,23 @@ export const userPresets = pgTable(
 		id: integer(
 			'id',
 		).primaryKey() /* was GENERATED BY DEFAULT AS IDENTITY -> use autoIncrement via {autoIncrement:true} if needed */,
-		discordId: text('discord_id').notNull().references(() => users.discordId, { onDelete: 'cascade' }),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
 		slot: integer('slot').notNull(),
 		name: text('name'),
-		equippedDeity1Id: integer('equipped_deity_1_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-		equippedDeity2Id: integer('equipped_deity_2_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-		equippedDeity3Id: integer('equipped_deity_3_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-		equippedEchoDeityId:
-			integer('equipped_echo_deity_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
+		equippedDeity1Id: integer('equipped_deity_1_id').references(() => userDeities.userDeityId, {
+			onDelete: 'set null',
+		}),
+		equippedDeity2Id: integer('equipped_deity_2_id').references(() => userDeities.userDeityId, {
+			onDelete: 'set null',
+		}),
+		equippedDeity3Id: integer('equipped_deity_3_id').references(() => userDeities.userDeityId, {
+			onDelete: 'set null',
+		}),
+		equippedEchoDeityId: integer('equipped_echo_deity_id').references(() => userDeities.userDeityId, {
+			onDelete: 'set null',
+		}),
 		equippedArmorId: text('equipped_armor_id').references(() => userArmors.armorId, { onDelete: 'set null' }),
 		equippedWeaponId: text('equipped_weapon_id').references(() => userWeapons.weaponId, { onDelete: 'set null' }),
 		updatedAt: timestamp('updated_at', { mode: 'date', withTimezone: false })
@@ -859,8 +927,12 @@ export const userPresets = pgTable(
 
 export const userRunes = pgTable('user_runes', {
 	runeUid: text('rune_uid').primaryKey(),
-	discordId: text('discord_id').notNull().references(() => users.discordId),
-	runeId: integer('rune_id').notNull().references(() => runeRoster.runeId),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId),
+	runeId: integer('rune_id')
+		.notNull()
+		.references(() => runeRoster.runeId),
 	socketedInto: text('socketed_into'),
 	isLocked: boolean('is_locked').notNull().default(false),
 	obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })
@@ -872,8 +944,12 @@ export const userRunes = pgTable('user_runes', {
 export const userTitles = pgTable(
 	'user_titles',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId),
-		titleId: integer('title_id').notNull().references(() => titleCatalog.titleId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
+		titleId: integer('title_id')
+			.notNull()
+			.references(() => titleCatalog.titleId),
 		earnedAt: timestamp('earned_at', { mode: 'date', withTimezone: false })
 			.notNull()
 			.default(sql`now()`),
@@ -886,9 +962,13 @@ export const userTitles = pgTable(
 // user_weapons — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((enhancement >= 1) AND (enhancement <= 11)))
 export const userWeapons = pgTable('user_weapons', {
-	discordId: text('discord_id').notNull().references(() => users.discordId),
+	discordId: text('discord_id')
+		.notNull()
+		.references(() => users.discordId),
 	weaponId: text('weapon_id').primaryKey(),
-	weaponRosterId: integer('weapon_roster_id').notNull().references(() => weaponRoster.weaponRosterId),
+	weaponRosterId: integer('weapon_roster_id')
+		.notNull()
+		.references(() => weaponRoster.weaponRosterId),
 	currAtk: integer('curr_atk').notNull(),
 	enhancement: integer('enhancement').notNull().default(1),
 	baseAtk: integer('base_atk').notNull(),
@@ -923,7 +1003,9 @@ export const users = pgTable('users', {
 //   CHECK (custom_avatar_token >= 0)
 //   CHECK (custom_deity_token >= 0)
 export const usersBag = pgTable('users_bag', {
-	discordId: text('discord_id').primaryKey().references(() => users.discordId),
+	discordId: text('discord_id')
+		.primaryKey()
+		.references(() => users.discordId),
 	credux: integer('credux').notNull().default(0),
 	beliefShards: integer('belief_shards').notNull().default(0),
 	sacredRelics: integer('sacred_relics').notNull().default(0),
@@ -980,7 +1062,9 @@ export const weaponRoster = pgTable('weapon_roster', {
 export const weeklyGrand = pgTable(
 	'weekly_grand',
 	{
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		questWeek: integer('quest_week').notNull(),
 		claimed: boolean('claimed').notNull().default(false),
 	},
@@ -993,7 +1077,9 @@ export const weeklyQuests = pgTable(
 	'weekly_quests',
 	{
 		id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
-		discordId: text('discord_id').notNull().references(() => users.discordId),
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
 		questType: text('quest_type').notNull(),
 		targetCount: integer('target_count').notNull(),
 		currentCount: integer('current_count').notNull().default(0),

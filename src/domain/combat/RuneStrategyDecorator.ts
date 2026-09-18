@@ -1,6 +1,7 @@
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import type { RuneEffectKey } from '../../config/runes.js';
 import { findDebuff } from './CombatantState.js';
+import { COMBAT_RUNE_THORNS, COMBAT_RUNE_VAMPIRIC, COMBAT_RUNE_VENOM } from '../../text/combat.js';
 
 /**
  * Decorator pattern: wraps any IClassStrategy (a real class passive, or
@@ -21,14 +22,14 @@ export class RuneStrategyDecorator implements IClassStrategy {
 	constructor(
 		private readonly inner: IClassStrategy,
 		private readonly effectKey: RuneEffectKey,
-		private readonly value: number, // percent, e.g. 15 means 15%
+		private readonly value: number, // fraction from rune_roster, e.g. 0.15 means 15%
 	) {
 		this.key = inner.key;
 	}
 
 	onRoundStart(ctx: StrategyContext): void {
 		if (this.effectKey === 'warding') {
-			ctx.self.flags.warding_pct = this.value / 100;
+			ctx.self.flags.warding_pct = this.value;
 		}
 		this.inner.onRoundStart(ctx);
 	}
@@ -36,14 +37,16 @@ export class RuneStrategyDecorator implements IClassStrategy {
 	prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		this.inner.prepareOutgoingHit(ctx, hit);
 		if (this.effectKey === 'piercing') {
-			hit.armorPierceFraction = Math.max(hit.armorPierceFraction, this.value / 100);
+			hit.armorPierceFraction = Math.max(hit.armorPierceFraction, this.value);
 		}
 	}
 
 	prepareIncomingHit(ctx: StrategyContext, hit: IncomingHit): void {
 		this.inner.prepareIncomingHit(ctx, hit);
-		if (this.effectKey === 'aegis_rune') {
-			hit.reductionFraction = Math.max(hit.reductionFraction, this.value / 100);
+		if (this.effectKey === 'warding') hit.reductionFraction = Math.max(hit.reductionFraction, this.value);
+		if (this.effectKey === 'aegis_rune' && !ctx.self.flags.aegis_used) {
+			hit.reductionFraction = 1;
+			ctx.self.flags.aegis_used = true;
 		}
 	}
 
@@ -52,35 +55,37 @@ export class RuneStrategyDecorator implements IClassStrategy {
 		if (resolved.damageDealt <= 0) return;
 
 		if (this.effectKey === 'vampiric') {
-			const healed = Math.floor(resolved.damageDealt * (this.value / 100));
+			const healed = Math.floor(resolved.damageDealt * this.value);
 			if (healed > 0) {
 				ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + healed);
-				ctx.log(`🩸 Vampiric Rune — lifesteal ${healed.toLocaleString()} HP.`);
+				ctx.log(COMBAT_RUNE_VAMPIRIC(healed.toLocaleString()));
 			}
 		} else if (this.effectKey === 'venom') {
-			const value = Math.floor(ctx.self.atk * (this.value / 100));
+			const value = Math.floor(ctx.enemy.maxHp * this.value);
 			const existing = findDebuff(ctx.enemy, 'venom');
 			if (existing) {
 				existing.turnsLeft = 2;
-				existing.value = Math.max(existing.value, value);
+				existing.value += value;
 			} else {
 				ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
 			}
-			ctx.log(`☠️ Venom Rune — applied Poison (${value.toLocaleString()}/turn).`);
+			ctx.log(COMBAT_RUNE_VENOM(value.toLocaleString()));
 		} else if (this.effectKey === 'blight') {
 			const existing = findDebuff(ctx.enemy, 'blight');
-			if (existing) existing.value = Math.max(existing.value, this.value / 100);
-			else ctx.enemy.debuffs.push({ tag: 'blight', turnsLeft: 3, value: this.value / 100 });
+			if (existing) {
+				existing.value = Math.max(existing.value, this.value);
+				existing.turnsLeft = 1;
+			} else ctx.enemy.debuffs.push({ tag: 'blight', turnsLeft: 1, value: this.value });
 		}
 	}
 
 	onDamageTaken(ctx: StrategyContext, resolved: ResolvedHit): void {
 		this.inner.onDamageTaken(ctx, resolved);
 		if (this.effectKey === 'thorns' && resolved.damageDealt > 0) {
-			const reflected = Math.floor(resolved.damageDealt * (this.value / 100));
+			const reflected = Math.floor(resolved.damageDealt * this.value);
 			if (reflected > 0) {
 				ctx.enemy.hp = Math.max(0, ctx.enemy.hp - reflected);
-				ctx.log(`🌵 Thorns Rune — reflected ${reflected.toLocaleString()} damage back.`);
+				ctx.log(COMBAT_RUNE_THORNS(reflected.toLocaleString()));
 			}
 		}
 	}

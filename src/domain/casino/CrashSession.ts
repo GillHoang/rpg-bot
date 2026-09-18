@@ -1,3 +1,4 @@
+import { rollChance } from '../../utils/weightedRandom.js';
 import { crashChance, crashMultiplier, CRASH_MAX_PUSHES } from '../../config/casinoPayouts.js';
 
 export interface CrashSessionState {
@@ -37,7 +38,7 @@ export class CrashSession {
 
 		const n = s.push + 1;
 		const chance = crashChance(n);
-		if (rng() * 100 < chance) {
+		if (rollChance(chance / 100, rng)) {
 			s.state = 'crashed';
 			s.push = n;
 			s.crashPoint = crashMultiplier(n);

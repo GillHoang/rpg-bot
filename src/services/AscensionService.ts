@@ -29,6 +29,7 @@ export class AscensionService {
 
 	async addSigil(discordId: string, userDeityId: number): Promise<SigilResult> {
 		return db.transaction(async (tx): Promise<SigilResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const progress = await this.deities.findOwnedProgress(tx, discordId, userDeityId);
 			if (!progress || progress.userDeityId == null) return { status: 'not-owned' };
 
@@ -61,6 +62,7 @@ export class AscensionService {
 
 	async ascend(discordId: string, userDeityId: number): Promise<AscendResult> {
 		return db.transaction(async (tx): Promise<AscendResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const progress = await this.deities.findOwnedProgress(tx, discordId, userDeityId);
 			if (!progress) return { status: 'not-owned' };
 			if (progress.ascended) return { status: 'already-ascended' };

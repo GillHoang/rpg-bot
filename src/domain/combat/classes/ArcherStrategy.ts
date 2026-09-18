@@ -1,5 +1,7 @@
+import { rollChance } from '../../../utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
+import { COMBAT_ARCHER_DOUBLE_ATTACK } from '../../../text/combat.js';
 
 const DEFENSE_IGNORE = 0.25;
 const DOUBLE_ATTACK_CHANCE = 0.35;
@@ -20,9 +22,9 @@ export class ArcherStrategy extends NullClassStrategy {
 
 	override onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
 		if (resolved.damageDealt <= 0) return;
-		if (ctx.rng() < DOUBLE_ATTACK_CHANCE) {
+		if (rollChance(DOUBLE_ATTACK_CHANCE, ctx.rng)) {
 			resolved.triggerExtraAttack = true;
-			ctx.log('🏹 Archer Passive — Double Attack!');
+			ctx.log(COMBAT_ARCHER_DOUBLE_ATTACK);
 		}
 	}
 }

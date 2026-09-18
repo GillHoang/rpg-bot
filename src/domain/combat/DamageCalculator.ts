@@ -1,3 +1,4 @@
+import { rollChance } from '../../utils/weightedRandom.js';
 /**
  * Pure damage-formula constants + functions, ported 1:1 from
  * config/combat.js. No battle state here — safe to unit test in
@@ -37,5 +38,5 @@ export function hitMultiplier(crit: boolean, damagePct: number): number {
 
 /** `critChance` is a percentage (e.g. 5 means 5%), matching how it's stored throughout the schema. */
 export function rollCrit(rng: () => number, critChance: number): boolean {
-	return rng() * 100 < critChance;
+	return rollChance(critChance / 100, rng);
 }

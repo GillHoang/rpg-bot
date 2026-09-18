@@ -1,5 +1,7 @@
 export type ChestColumn = 'silver_chest' | 'gold_chest' | 'boss_treasure_chest' | 'boss_golden_chest';
 
+import { CHEST_LABELS } from '../../text/daily.js';
+
 export interface DailyReward {
 	credux: number;
 	shards: number;
@@ -41,17 +43,17 @@ export class DailyRewardTable {
 			credux,
 			shards,
 			chestColumn: gold ? 'gold_chest' : 'silver_chest',
-			chestLabel: gold ? 'Gold Chest' : 'Silver Chest',
+			chestLabel: gold ? CHEST_LABELS.gold_chest : CHEST_LABELS.silver_chest,
 		};
 	}
 
 	/** Bonus chest earned by the newly reached consecutive streak, if any. */
 	static milestoneForStreak(streak: number): StreakMilestone | null {
 		if (streak === 15) {
-			return { chestColumn: 'boss_treasure_chest', chestLabel: 'Boss Treasure Chest' };
+			return { chestColumn: 'boss_treasure_chest', chestLabel: CHEST_LABELS.boss_treasure_chest };
 		}
 		if (streak >= 30 && streak % 15 === 0) {
-			return { chestColumn: 'boss_golden_chest', chestLabel: 'Boss Golden Chest' };
+			return { chestColumn: 'boss_golden_chest', chestLabel: CHEST_LABELS.boss_golden_chest };
 		}
 		return null;
 	}

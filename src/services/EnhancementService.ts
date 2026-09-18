@@ -1,7 +1,10 @@
+import { rollChance } from '../utils/weightedRandom.js';
 import { db } from '../db/client.js';
 import { EnhancementRepository } from '../repositories/EnhancementRepository.js';
 import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../config/enhancement.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
+import { eq } from 'drizzle-orm';
+import { usersBag } from '../db/schema.js';
 
 export type EnhanceResult =
 	| { status: 'not-found' }
@@ -21,6 +24,7 @@ export class EnhancementService {
 
 	async attempt(discordId: string, gearId: string): Promise<EnhanceResult> {
 		return db.transaction(async (tx): Promise<EnhanceResult> => {
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const gear = await this.repo.findGear(tx, discordId, gearId);
 			if (!gear) return { status: 'not-found' };
 
@@ -33,17 +37,17 @@ export class EnhancementService {
 			await this.repo.spendCredux(tx, discordId, attempt.cost);
 
 			const rng = createRng(createSecureSeed());
-			const succeeded = rng() < attempt.successRate;
+			const succeeded = rollChance(attempt.successRate, rng);
 			if (!succeeded) return { status: 'failure', cost: attempt.cost };
 
-				const newLevel = gear.enhancement + 1;
-				if (gear.kind === 'weapon') {
-					const newAtk = computeWeaponCurrAtk(gear.baseAtk!, gear.tier, newLevel);
-					await this.repo.applyWeaponSuccess(tx, discordId, gearId, newLevel, newAtk);
-				} else {
-					const { hp, def } = computeArmorCurrStats(gear.baseHp!, gear.baseDef!, newLevel, gear.tier);
-					await this.repo.applyArmorSuccess(tx, discordId, gearId, newLevel, hp, def);
-				}
+			const newLevel = gear.enhancement + 1;
+			if (gear.kind === 'weapon') {
+				const newAtk = computeWeaponCurrAtk(gear.baseAtk!, gear.tier, newLevel);
+				await this.repo.applyWeaponSuccess(tx, discordId, gearId, newLevel, newAtk);
+			} else {
+				const { hp, def } = computeArmorCurrStats(gear.baseHp!, gear.baseDef!, newLevel, gear.tier);
+				await this.repo.applyArmorSuccess(tx, discordId, gearId, newLevel, hp, def);
+			}
 			return { status: 'success', newLevel, cost: attempt.cost };
 		});
 	}

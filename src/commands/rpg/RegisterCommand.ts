@@ -1,16 +1,10 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { RegistrationService } from '../../services/RegistrationService.js';
-
-const LORE =
-	'Welcome to Credd. Gods once kept the darkness at bay, fed by mortal belief — until the prayers ' +
-	'stopped and the world fell. You are the Last Believer, and remembering a god is enough to pull it back.\n\n' +
-	'Next: `/create` to choose your class.';
+import { REGISTER_ALREADY, REGISTER_DESCRIPTION, REGISTER_LORE } from '../../text/register.js';
 
 export class RegisterCommand implements ICommand {
-	readonly data = new SlashCommandBuilder()
-		.setName('register')
-		.setDescription('Bắt đầu hành trình của bạn tại Credd');
+	readonly data = new SlashCommandBuilder().setName('register').setDescription(REGISTER_DESCRIPTION);
 
 	constructor(private readonly registration = new RegistrationService()) {}
 
@@ -18,13 +12,10 @@ export class RegisterCommand implements ICommand {
 		const result = await this.registration.register(interaction.user.id, interaction.user.username);
 
 		if (result.status === 'already-registered') {
-			await interaction.reply({
-				content: 'Bạn đã đăng ký rồi. Dùng `/create` để bắt đầu hành trình.',
-				ephemeral: true,
-			});
+			await interaction.reply({ content: REGISTER_ALREADY, ephemeral: true });
 			return;
 		}
 
-		await interaction.reply(LORE);
+		await interaction.reply(REGISTER_LORE);
 	}
 }

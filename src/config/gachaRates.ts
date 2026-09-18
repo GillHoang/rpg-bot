@@ -1,3 +1,4 @@
+import { pick } from '../utils/weightedRandom.js';
 export type DeityTier = 'Epic' | 'Mythic' | 'Legendary' | 'Supreme';
 
 /** Epic 64.5% · Mythic 34% · Legendary 1% · Supreme 0.5% — must sum to 1.0. */
@@ -32,12 +33,10 @@ export const TIER_ESSENCE_FIELD: Record<
 	Supreme: 'supremeEssence',
 };
 
-export const TIER_ALIAS: Record<DeityTier, string> = {
-	Epic: 'Remnant',
-	Mythic: 'Awakened',
-	Legendary: 'Undying',
-	Supreme: 'Primordial',
-};
+/**
+ * Display-only alias for each tier; actual strings live in text/summon.ts
+ * (TIER_ALIAS) so wording stays editable in one place.
+ */
 
 export interface RollOutcome {
 	tier: DeityTier;
@@ -65,11 +64,8 @@ export function resolveRoll(pity: number, rng: () => number): RollOutcome {
 }
 
 function rollTier(rng: () => number): DeityTier {
-	const roll = rng();
-	let cumulative = 0;
-	for (const [tier, weight] of TIER_WEIGHTS) {
-		cumulative += weight;
-		if (roll < cumulative) return tier;
-	}
-	return TIER_WEIGHTS[TIER_WEIGHTS.length - 1]![0];
+	return pick(
+		TIER_WEIGHTS.map(([original, weight]) => ({ original, weight })),
+		{ next: rng },
+	);
 }

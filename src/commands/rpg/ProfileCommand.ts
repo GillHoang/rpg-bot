@@ -2,9 +2,11 @@ import { SlashCommandBuilder, AttachmentBuilder, type ChatInputCommandInteractio
 import type { ICommand } from '../../core/ICommand.js';
 import { ProfileService } from '../../services/ProfileService.js';
 import { renderProfileCard } from '../../render/ProfileCardRenderer.js';
+import { PROFILE_DESCRIPTION } from '../../text/profile.js';
+import { NOT_REGISTERED, NO_CHARACTER } from '../../text/common.js';
 
 export class ProfileCommand implements ICommand {
-	readonly data = new SlashCommandBuilder().setName('profile').setDescription('Xem thẻ nhân vật của bạn');
+	readonly data = new SlashCommandBuilder().setName('profile').setDescription(PROFILE_DESCRIPTION);
 
 	constructor(private readonly profile = new ProfileService()) {}
 
@@ -13,11 +15,11 @@ export class ProfileCommand implements ICommand {
 		await interaction.deferReply();
 		const result = await this.profile.get(interaction.user.id);
 		if (result.status === 'not-registered') {
-			await interaction.editReply({ content: 'Bạn chưa đăng ký. Dùng `/register` trước đã.' });
+			await interaction.editReply({ content: NOT_REGISTERED });
 			return;
 		}
 		if (result.status === 'no-character') {
-			await interaction.editReply({ content: 'Bạn chưa tạo nhân vật. Dùng `/create` trước đã.' });
+			await interaction.editReply({ content: NO_CHARACTER });
 			return;
 		}
 

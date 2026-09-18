@@ -1,8 +1,9 @@
+import { choose } from '../../../utils/weightedRandom.js';
 import type { ICasinoGame, CasinoOutcome } from '../ICasinoGame.js';
 import { EVEN_MONEY } from '../../../config/casinoPayouts.js';
 
 function rollDie(rng: () => number): number {
-	return 1 + Math.floor(rng() * 6);
+	return choose([1, 2, 3, 4, 5, 6], rng);
 }
 
 /** Two independent d6; sum's parity (odd/even) vs the player's pick, even money. */

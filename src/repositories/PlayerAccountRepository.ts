@@ -48,6 +48,9 @@ export class PlayerAccountRepository implements Repository<PlayerAccount, string
 	}
 
 	async saveCreduxWithExecutor(executor: Executor, account: PlayerAccount): Promise<void> {
-		await executor.update(usersBag).set({ credux: account.credux }).where(eq(usersBag.discordId, account.discordId));
+		await executor
+			.update(usersBag)
+			.set({ credux: account.credux })
+			.where(eq(usersBag.discordId, account.discordId));
 	}
 }

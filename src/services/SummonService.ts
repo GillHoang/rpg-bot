@@ -61,7 +61,12 @@ export class SummonService {
 				return { status: 'no-character' };
 			}
 
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			const [bag] = await tx
+				.select()
+				.from(usersBag)
+				.where(eq(usersBag.discordId, discordId))
+				.limit(1)
+				.for('update');
 			if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
 			const cost = SHARDS_PER_PULL * count;
 			if (bag.beliefShards < cost) {
@@ -82,7 +87,8 @@ export class SummonService {
 				.select()
 				.from(userCharacter)
 				.where(eq(userCharacter.discordId, discordId))
-				.limit(1);
+				.limit(1)
+				.for('update');
 			if (!character) throw new Error(`run: no user_character row for ${discordId}`);
 			const [activePreset] = await tx
 				.select()
@@ -93,18 +99,24 @@ export class SummonService {
 
 			const essenceDelta: Record<DeityTier, number> = { Epic: 0, Mythic: 0, Legendary: 0, Supreme: 0 };
 			const pulls: SummonPullResult[] = [];
+			// Resolve every pull before any mutation: missing seed must not consume shards
+			// or leave earlier pulls committed without their pity/essence updates.
+			const planned: Array<{ tier: DeityTier; deity: DeityRosterRow }> = [];
+			for (let i = 0; i < count; i++) {
+				const roll = resolveRoll(pity, rng);
+				pity = roll.newPity;
+				const deity = await this.deities.pickRandomAvailableForTier(tx, roll.tier, rng);
+				if (!deity) return { status: 'no-deities-seeded', tier: roll.tier };
+				planned.push({ tier: roll.tier, deity });
+			}
 
 			// Debit shards up front: an early return below must not leave a
 			// committed state where the player got a deity without paying.
 			const beliefShardsAfter = bag.beliefShards - cost;
 			await tx.update(usersBag).set({ beliefShards: beliefShardsAfter }).where(eq(usersBag.discordId, discordId));
 
-			for (let i = 0; i < count; i++) {
-				const roll = resolveRoll(pity, rng);
-				pity = roll.newPity;
-
-				const deity: DeityRosterRow | null = await this.deities.pickRandomAvailableForTier(tx, roll.tier);
-				if (!deity) return { status: 'no-deities-seeded', tier: roll.tier };
+			for (const roll of planned) {
+				const deity = roll.deity;
 
 				const isDupe = owned.has(deity.deityId);
 				if (isDupe) {
@@ -170,6 +182,10 @@ export class SummonService {
 				.onConflictDoUpdate({ target: pityCounters.discordId, set: { pityCount: pity } });
 
 			if (pendingActiveDeityId != null && activePreset) {
+				await tx
+					.update(userCharacter)
+					.set({ activeDeityId: pendingActiveDeityId })
+					.where(eq(userCharacter.discordId, discordId));
 				await tx
 					.update(userPresets)
 					.set({ equippedDeity1Id: pendingActiveDeityId })

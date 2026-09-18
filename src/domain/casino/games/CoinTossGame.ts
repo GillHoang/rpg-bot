@@ -1,3 +1,4 @@
+import { choose } from '../../../utils/weightedRandom.js';
 import type { ICasinoGame, CasinoOutcome } from '../ICasinoGame.js';
 import { EVEN_MONEY } from '../../../config/casinoPayouts.js';
 
@@ -9,7 +10,7 @@ export class CoinTossGame implements ICasinoGame {
 
 	play(bet: number, rng: () => number, choice?: string): CasinoOutcome {
 		const call: CoinSide = choice === 'tails' ? 'tails' : 'heads';
-		const landed: CoinSide = rng() < 0.5 ? 'heads' : 'tails';
+		const landed: CoinSide = choose(['heads', 'tails'] as const, rng);
 		const won = call === landed;
 		return {
 			won,

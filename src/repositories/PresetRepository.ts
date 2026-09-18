@@ -13,6 +13,8 @@ export class PresetRepository {
 		discordId: string,
 		starterGear: { weaponId: string; armorId: string },
 	): Promise<void> {
+		// Serialize the legacy MAX(id) allocator across different new players.
+		await executor.execute(sql`SELECT pg_advisory_xact_lock(42701)`);
 		// user_presets.id is a plain PK in the pg schema (not identity, per the
 		// schema's own note), so an explicit id is required; allocate two
 		// adjacent ids up front (called inside a transaction).

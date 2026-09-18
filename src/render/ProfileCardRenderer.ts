@@ -2,6 +2,14 @@ import { createCanvas } from '@napi-rs/canvas';
 import { CLASSES } from '../config/classes.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 import { MAX_COMBAT_LEVEL } from '../config/combatExp.js';
+import { CURRENCY } from '../text/common.js';
+import {
+	PROFILE_CLASS_SEPARATOR,
+	PROFILE_EXP_LABEL,
+	PROFILE_LEVEL_PREFIX,
+	PROFILE_MAX_LEVEL_SUFFIX,
+	PROFILE_STAT_LABELS,
+} from '../text/profile.js';
 
 export interface ProfileCardData {
 	username: string;
@@ -56,8 +64,9 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	const cls = CLASSES[data.combatClass];
 	ctx.fillStyle = accent;
 	ctx.font = 'bold 26px sans-serif';
+	const maxSuffix = data.level >= MAX_COMBAT_LEVEL ? PROFILE_MAX_LEVEL_SUFFIX : '';
 	ctx.fillText(
-		`${cls.emoji} ${data.combatClass} · Lv.${data.level}${data.level >= MAX_COMBAT_LEVEL ? ' (MAX)' : ''}`,
+		`${cls.emoji} ${data.combatClass} ${PROFILE_CLASS_SEPARATOR} ${PROFILE_LEVEL_PREFIX}${data.level}${maxSuffix}`,
 		40,
 		120,
 	);
@@ -74,14 +83,18 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	ctx.fillRect(expBarX, expBarY, expBarW * expPct, expBarH);
 	ctx.fillStyle = '#ffffffaa';
 	ctx.font = '13px sans-serif';
-	ctx.fillText(`${data.exp.toLocaleString()} / ${data.expToNext.toLocaleString()} EXP`, expBarX, expBarY - 6);
+	ctx.fillText(
+		`${data.exp.toLocaleString()} / ${data.expToNext.toLocaleString()} ${PROFILE_EXP_LABEL}`,
+		expBarX,
+		expBarY - 6,
+	);
 
 	// Stat blocks.
 	const stats: Array<[string, string]> = [
-		['HP', data.stats.hp.toLocaleString()],
-		['ATK', data.stats.atk.toLocaleString()],
-		['DEF', data.stats.def.toLocaleString()],
-		['CRIT', `${data.stats.crit.toFixed(1)}%`],
+		[PROFILE_STAT_LABELS.hp, data.stats.hp.toLocaleString()],
+		[PROFILE_STAT_LABELS.atk, data.stats.atk.toLocaleString()],
+		[PROFILE_STAT_LABELS.def, data.stats.def.toLocaleString()],
+		[PROFILE_STAT_LABELS.crit, `${data.stats.crit.toFixed(1)}%`],
 	];
 	const blockW = (WIDTH - 80 - 3 * 20) / 4;
 	stats.forEach(([label, value], i) => {
@@ -100,8 +113,8 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	// Currency footer.
 	ctx.fillStyle = '#ffffffcc';
 	ctx.font = '20px sans-serif';
-	ctx.fillText(`💰 ${data.credux.toLocaleString()} Credux`, 40, 340);
-	ctx.fillText(`🔮 ${data.beliefShards.toLocaleString()} Belief Shards`, 40, 375);
+	ctx.fillText(`💰 ${data.credux.toLocaleString()} ${CURRENCY.credux}`, 40, 340);
+	ctx.fillText(`🔮 ${data.beliefShards.toLocaleString()} ${CURRENCY.beliefShards}`, 40, 375);
 
 	ctx.fillStyle = '#ffffff55';
 	ctx.font = 'italic 14px sans-serif';

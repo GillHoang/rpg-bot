@@ -4,6 +4,14 @@ import { CharacterCreationService } from '../../services/CharacterCreationServic
 import { CLASSES, CLASS_NAMES } from '../../config/classes.js';
 import { GRANT_BELIEF_SHARDS, GRANT_SILVER_CHESTS } from '../../config/starter.js';
 import type { CombatClass } from '../../domain/entities/PlayerAccount.js';
+import {
+	CREATE_ALREADY_HAS_CHARACTER,
+	CREATE_CLASS_OPTION_DESC,
+	CREATE_DESCRIPTION,
+	CREATE_STARTER_GEAR_MISSING,
+	CREATE_SUCCESS,
+} from '../../text/create.js';
+import { NOT_REGISTERED } from '../../text/common.js';
 
 /**
  * Simplified UX vs the original create.js: that version shows a button
@@ -14,11 +22,11 @@ import type { CombatClass } from '../../domain/entities/PlayerAccount.js';
 export class CreateCharacterCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('create')
-		.setDescription('Tạo nhân vật của bạn')
+		.setDescription(CREATE_DESCRIPTION)
 		.addStringOption((opt) =>
 			opt
 				.setName('class')
-				.setDescription('Lớp nhân vật')
+				.setDescription(CREATE_CLASS_OPTION_DESC)
 				.setRequired(true)
 				.addChoices(...CLASS_NAMES.map((name) => ({ name, value: name }))),
 		);
@@ -31,27 +39,24 @@ export class CreateCharacterCommand implements ICommand {
 
 		switch (result.status) {
 			case 'not-registered':
-				await interaction.reply({ content: 'Bạn chưa đăng ký. Dùng `/register` trước đã.', ephemeral: true });
+				await interaction.reply({ content: NOT_REGISTERED, ephemeral: true });
 				return;
 			case 'already-has-character':
-				await interaction.reply({
-					content: 'Bạn đã có nhân vật rồi. Dùng `/balance` hoặc lệnh profile để xem.',
-					ephemeral: true,
-				});
+				await interaction.reply({ content: CREATE_ALREADY_HAS_CHARACTER, ephemeral: true });
 				return;
 			case 'starter-gear-missing':
-				await interaction.reply({
-					content: 'Tạo nhân vật tạm thời không khả dụng (thiếu dữ liệu gear khởi đầu). Thử lại sau.',
-					ephemeral: true,
-				});
+				await interaction.reply({ content: CREATE_STARTER_GEAR_MISSING, ephemeral: true });
 				return;
 			case 'ok': {
 				const cls = CLASSES[combatClass];
 				await interaction.reply(
-					`${cls.emoji} **Character Created — ${combatClass}**\n` +
-						`Passive: ${cls.passiveName}\n\n` +
-						`Starter gear equipped. Starter grant: +${GRANT_BELIEF_SHARDS.toLocaleString()} Belief Shards, ` +
-						`+${GRANT_SILVER_CHESTS} Silver Chests.`,
+					CREATE_SUCCESS(
+						cls.emoji,
+						combatClass,
+						cls.passiveName,
+						GRANT_BELIEF_SHARDS.toLocaleString(),
+						GRANT_SILVER_CHESTS,
+					),
 				);
 			}
 		}

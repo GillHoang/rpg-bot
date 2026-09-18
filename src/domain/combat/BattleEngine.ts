@@ -1,9 +1,19 @@
+import { rollChance } from '../../utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
 import { findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
 import { mitigate, rollVariance, rollCrit, hitMultiplier } from './DamageCalculator.js';
 import { createRng } from './Rng.js';
+import {
+	COMBAT_ATTACK_MISSES_DIZZY,
+	COMBAT_CRIT_SUFFIX,
+	COMBAT_DEFEATED_SUFFIX,
+	COMBAT_DOT_TICK,
+	COMBAT_HIT,
+	COMBAT_ROUND_HEADER,
+	COMBAT_UNABLE_TO_ACT,
+} from '../../text/combat.js';
 
 export type BattleOutcome = 'player_win' | 'enemy_win' | 'draw';
 
@@ -22,10 +32,9 @@ const MAX_ROUNDS = 30;
  * docs on each Strategy) from engine/battleEngine.js's resolveBattle.
  *
  * Deliberately out of scope for this milestone (left for later, item/
- * content-system dependent): weapon/armor/deity passives, rune effects,
- * boss-specific mechanics (phase transitions, threshold buffs), sudden
- * death past round 30, PvP/duel/ranked-specific rules. Those all layer
- * on top of this same class-strategy pipeline once ported.
+ * content-system dependent): weapon/armor/deity passives, additional bosses,
+ * sudden death past round 30 and PvP/duel/ranked-specific rules. Rune effects
+ * and Bakunawa/elite passives use the same strategy hooks.
  */
 export class BattleEngine {
 	resolve(
@@ -42,7 +51,7 @@ export class BattleEngine {
 		let round = 1;
 		for (; round <= MAX_ROUNDS; round++) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
-			log.push(`— Round ${round} —`);
+			log.push(COMBAT_ROUND_HEADER(round));
 
 			playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 			enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
@@ -99,10 +108,15 @@ export class BattleEngine {
 		log: string[],
 	): void {
 		const ctx: StrategyContext = { self: attacker, enemy: defender, round, rng, log: (m) => log.push(m) };
+		const immunities = attacker.immunityTags;
+		if (immunities)
+			attacker.debuffs = attacker.debuffs.filter(
+				(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
+			);
 
 		// Hard crowd-control: skip the action entirely.
 		if (findDebuff(attacker, 'stun') || findDebuff(attacker, 'paralyze')) {
-			log.push(`${attacker.name} is unable to act this turn.`);
+			log.push(COMBAT_UNABLE_TO_ACT(attacker.name));
 			return;
 		}
 
@@ -110,8 +124,8 @@ export class BattleEngine {
 		const dizzy = findDebuff(attacker, 'dizzy');
 		if (dizzy) {
 			attacker.debuffs = attacker.debuffs.filter((d) => d !== dizzy);
-			if (rng() < dizzy.value) {
-				log.push(`${attacker.name}'s attack misses (Dizzy)!`);
+			if (rollChance(dizzy.value, rng)) {
+				log.push(COMBAT_ATTACK_MISSES_DIZZY(attacker.name));
 				return;
 			}
 		}
@@ -148,7 +162,10 @@ export class BattleEngine {
 		};
 		defStrategy.prepareIncomingHit(defCtx, incoming);
 
-		const atkDownPct = findDebuff(attacker, 'atk_down')?.value ?? 0;
+		const atkDownPct = Math.min(
+			1,
+			(findDebuff(attacker, 'atk_down')?.value ?? 0) + (findDebuff(attacker, 'blight')?.value ?? 0),
+		);
 		const defDownPct = findDebuff(defender, 'def_down')?.value ?? 0;
 
 		const effAtk = attacker.atk * (1 - atkDownPct);
@@ -169,8 +186,13 @@ export class BattleEngine {
 		defender.hp = Math.max(0, defender.hp - dealt);
 
 		ctx.log(
-			`${attacker.name} hits ${defender.name} for ${dealt.toLocaleString()}${crit ? ' (CRIT)' : ''} damage.` +
-				(defender.hp <= 0 ? ` ${defender.name} is defeated!` : ''),
+			COMBAT_HIT(
+				attacker.name,
+				defender.name,
+				dealt.toLocaleString(),
+				crit ? COMBAT_CRIT_SUFFIX : '',
+				defender.hp <= 0 ? COMBAT_DEFEATED_SUFFIX(defender.name) : '',
+			),
 		);
 
 		const resolved: ResolvedHit = { damageDealt: dealt, crit, triggerExtraAttack: false };
@@ -199,6 +221,11 @@ export class BattleEngine {
 	): void {
 		if (side.hp <= 0) return;
 		const ctx: StrategyContext = { self: side, enemy: side, round, rng, log: (m) => log.push(m) };
+		const immunities = side.immunityTags;
+		if (immunities)
+			side.debuffs = side.debuffs.filter(
+				(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
+			);
 
 		// DOT ticks (bleed, burn, venom), reduced by the target's Warding rune (if any).
 		const wardingPct = (side.flags.warding_pct as number) ?? 0;
@@ -207,7 +234,7 @@ export class BattleEngine {
 			const tick = Math.floor(debuff.value * (1 - wardingPct));
 			if (tick > 0) {
 				side.hp = Math.max(0, side.hp - tick);
-				log.push(`${side.name} suffers ${tick.toLocaleString()} ${debuff.tag} damage.`);
+				log.push(COMBAT_DOT_TICK(side.name, tick.toLocaleString(), debuff.tag));
 			}
 			debuff.turnsLeft -= 1;
 		}
@@ -215,7 +242,7 @@ export class BattleEngine {
 		// except ones applied this same round — those start counting next round.
 		for (const debuff of side.debuffs) {
 			if (debuff.tag === 'bleed' || debuff.tag === 'burn' || debuff.tag === 'venom') continue;
-			if (freshDebuffs.has(debuff)) continue;
+			if (!freshDebuffs.has(debuff)) continue;
 			debuff.turnsLeft -= 1;
 		}
 		side.debuffs = side.debuffs.filter((d) => d.turnsLeft > 0);

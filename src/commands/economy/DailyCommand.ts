@@ -1,9 +1,11 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { DailyService } from '../../services/DailyService.js';
+import { DAILY_ALREADY_CLAIMED, DAILY_DESCRIPTION, DAILY_MILESTONE_LINE, DAILY_SUCCESS } from '../../text/daily.js';
+import { NOT_REGISTERED } from '../../text/common.js';
 
 export class DailyCommand implements ICommand {
-	readonly data = new SlashCommandBuilder().setName('daily').setDescription('Nhận phần thưởng điểm danh hàng ngày');
+	readonly data = new SlashCommandBuilder().setName('daily').setDescription(DAILY_DESCRIPTION);
 
 	constructor(private readonly daily = new DailyService()) {}
 
@@ -12,23 +14,25 @@ export class DailyCommand implements ICommand {
 		const result = await this.daily.claim(interaction.user.id);
 
 		if (result.status === 'not-registered') {
-			await interaction.editReply({ content: 'Bạn chưa đăng ký. Dùng `/register` trước đã.' });
+			await interaction.editReply({ content: NOT_REGISTERED });
 			return;
 		}
 		if (result.status === 'already-claimed') {
-			await interaction.editReply(
-				`⏳ Bạn đã điểm danh hôm nay rồi (Day ${result.overall}). Quay lại sau nửa đêm giờ Manila.`,
-			);
+			await interaction.editReply(DAILY_ALREADY_CLAIMED(result.overall));
 			return;
 		}
 
-		const milestoneLine = result.milestoneChestLabel ? `\n🎁 Milestone: +1 ${result.milestoneChestLabel}` : '';
+		const milestoneLine = result.milestoneChestLabel ? DAILY_MILESTONE_LINE(result.milestoneChestLabel) : '';
 		await interaction.editReply(
-			`📅 **Daily Attendance — Day ${result.day}**\n` +
-				`Month: ${result.monthly} / 30 · Streak: ${result.overall}\n\n` +
-				`💰 +${result.credux.toLocaleString()} Credux\n` +
-				`🔮 +${result.shards} Belief Shards\n` +
-				`🎁 +1 ${result.chestLabel}${milestoneLine}`,
+			DAILY_SUCCESS(
+				result.day,
+				result.monthly,
+				result.overall,
+				result.credux.toLocaleString(),
+				result.shards,
+				result.chestLabel,
+				milestoneLine,
+			),
 		);
 	}
 }

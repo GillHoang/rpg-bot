@@ -34,11 +34,7 @@ export class GearIdGenerator {
 	}
 
 	private async isFree(id: string): Promise<boolean> {
-		const [weaponHit] = await this.executor
-			.select()
-			.from(userWeapons)
-			.where(eq(userWeapons.weaponId, id))
-			.limit(1);
+		const [weaponHit] = await this.executor.select().from(userWeapons).where(eq(userWeapons.weaponId, id)).limit(1);
 		if (weaponHit) return false;
 		const [armorHit] = await this.executor.select().from(userArmors).where(eq(userArmors.armorId, id)).limit(1);
 		if (armorHit) return false;

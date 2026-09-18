@@ -1,12 +1,21 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { EnhancementService } from '../../services/EnhancementService.js';
+import {
+	ENHANCE_DESCRIPTION,
+	ENHANCE_FAILURE,
+	ENHANCE_GEAR_OPTION_DESC,
+	ENHANCE_INSUFFICIENT_CREDUX,
+	ENHANCE_MAXED,
+	ENHANCE_NOT_FOUND,
+	ENHANCE_SUCCESS,
+} from '../../text/enhance.js';
 
 export class EnhanceCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('enhance')
-		.setDescription('Nâng cấp trang bị (+1 mỗi lần thử)')
-		.addStringOption((opt) => opt.setName('gear_id').setDescription('ID vũ khí/giáp').setRequired(true));
+		.setDescription(ENHANCE_DESCRIPTION)
+		.addStringOption((opt) => opt.setName('gear_id').setDescription(ENHANCE_GEAR_OPTION_DESC).setRequired(true));
 
 	constructor(private readonly enhancement = new EnhancementService()) {}
 
@@ -17,25 +26,21 @@ export class EnhanceCommand implements ICommand {
 
 		switch (result.status) {
 			case 'not-found':
-				await interaction.editReply({ content: 'Không tìm thấy trang bị này thuộc về bạn.' });
+				await interaction.editReply({ content: ENHANCE_NOT_FOUND });
 				return;
 			case 'maxed-or-not-enhanceable':
-				await interaction.editReply({ content: 'Trang bị đã đạt mức tối đa hoặc không thể nâng cấp.' });
+				await interaction.editReply({ content: ENHANCE_MAXED });
 				return;
 			case 'insufficient-credux':
 				await interaction.editReply({
-					content: `Không đủ Credux. Cần ${result.needed.toLocaleString()}, hiện có ${result.have.toLocaleString()}.`,
+					content: ENHANCE_INSUFFICIENT_CREDUX(result.needed.toLocaleString(), result.have.toLocaleString()),
 				});
 				return;
 			case 'success':
-				await interaction.editReply(
-					`✅ **Thành công!** Trang bị lên +${result.newLevel - 1}. (-${result.cost.toLocaleString()} Credux)`,
-				);
+				await interaction.editReply(ENHANCE_SUCCESS(result.newLevel - 1, result.cost.toLocaleString()));
 				return;
 			case 'failure':
-				await interaction.editReply(
-					`❌ **Thất bại.** Trang bị giữ nguyên cấp độ. (-${result.cost.toLocaleString()} Credux)`,
-				);
+				await interaction.editReply(ENHANCE_FAILURE(result.cost.toLocaleString()));
 				return;
 		}
 	}

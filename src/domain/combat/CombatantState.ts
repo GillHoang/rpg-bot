@@ -25,6 +25,7 @@ export interface CombatantState {
 	def: number;
 	crit: number; // percent, e.g. 5 means 5%
 	debuffs: Debuff[];
+	immunityTags?: string[];
 	/** Free-form per-battle scratch space for a class strategy (e.g. Swordsman's ATK-stack %, Mage's overcharge charge counter). */
 	flags: Record<string, number | boolean>;
 }

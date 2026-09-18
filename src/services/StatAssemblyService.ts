@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { db } from '../db/client.js';
+import { db, type Executor } from '../db/client.js';
 import { userCharacter, userPresets } from '../db/schema.js';
 import { computeClassStats } from '../config/classes.js';
 import { STAT_EFFECT_KEYS, type RuneEffectKey } from '../config/runes.js';
@@ -38,11 +38,9 @@ const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct'> = {
  * compounded per-rune. This fixes a real bug from the first rune-integration
  * pass (M5), which multiplied atk/def once per rune sequentially.
  *
- * NOT ported (deferred, see README): pantheon slots 2/3 + resonance
- * (50%-weight secondary deities), deity Ascension/sigil scaling
- * (computeDeityProgressionStats — deity stats used here are the raw
- * curr_atk/hp/def from user_deities, i.e. pre-Ascension), weapon
- * bonus_dmg_pct tier scaling, blessings.
+ * DeityRepository computes current Sigil stats at read time. Ascension is
+ * prestige only. Pantheon slots 2/3, resonance, weapon bonus damage and
+ * blessings remain outside this gameplay flow.
  */
 export class StatAssemblyService {
 	constructor(
@@ -51,16 +49,21 @@ export class StatAssemblyService {
 		private readonly runes = new RuneRepository(),
 	) {}
 
-	async assemble(discordId: string, combatClass: CombatClass, level: number): Promise<AssembledPlayer> {
+	async assemble(
+		discordId: string,
+		combatClass: CombatClass,
+		level: number,
+		executor: Executor = db,
+	): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
 
-		const [character] = await db
+		const [character] = await executor
 			.select()
 			.from(userCharacter)
 			.where(eq(userCharacter.discordId, discordId))
 			.limit(1);
 		const [preset] = character
-			? await db
+			? await executor
 					.select()
 					.from(userPresets)
 					.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, character.activePresetSlot)))
@@ -68,17 +71,21 @@ export class StatAssemblyService {
 			: [];
 
 		const weapon = preset?.equippedWeaponId
-			? await this.gear.findWeaponCurrStats(db, discordId, preset.equippedWeaponId)
+			? await this.gear.findWeaponCurrStats(executor, discordId, preset.equippedWeaponId)
 			: null;
 		const armor = preset?.equippedArmorId
-			? await this.gear.findArmorCurrStats(db, discordId, preset.equippedArmorId)
+			? await this.gear.findArmorCurrStats(executor, discordId, preset.equippedArmorId)
 			: null;
 		const deity =
-			preset?.equippedDeity1Id != null ? await this.deities.findUserDeityCurrStats(db, preset.equippedDeity1Id) : null;
+			preset?.equippedDeity1Id != null
+				? await this.deities.findUserDeityCurrStats(executor, preset.equippedDeity1Id)
+				: null;
 
 		const allEffects: SocketedRuneEffect[] = [
-			...(preset?.equippedWeaponId ? await this.runes.findSocketedEffects(db, preset.equippedWeaponId) : []),
-			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(db, preset.equippedArmorId) : []),
+			...(preset?.equippedWeaponId
+				? await this.runes.findSocketedEffects(executor, preset.equippedWeaponId)
+				: []),
+			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(executor, preset.equippedArmorId) : []),
 		];
 
 		const statMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0 };
@@ -96,10 +103,10 @@ export class StatAssemblyService {
 		const baseDef = cls.def + (armor?.currDef ?? 0);
 
 		const stats: AssembledPlayerStats = {
-			atk: Math.floor(baseAtk * (1 + statMods.atkPct / 100) + (deity?.currAtk ?? 0)),
-			hp: Math.floor(baseHp * (1 + statMods.hpPct / 100) + (deity?.currHp ?? 0)),
-			def: Math.floor(baseDef * (1 + statMods.defPct / 100) + (deity?.currDef ?? 0)),
-			crit: cls.crit + (weapon?.crit ?? 0) + statMods.critPts,
+			atk: Math.floor(baseAtk * (1 + statMods.atkPct) + (deity?.currAtk ?? 0)),
+			hp: Math.floor(baseHp * (1 + statMods.hpPct) + (deity?.currHp ?? 0)),
+			def: Math.floor(baseDef * (1 + statMods.defPct) + (deity?.currDef ?? 0)),
+			crit: cls.crit + (weapon?.crit ?? 0) + statMods.critPts * 100,
 		};
 
 		return { stats, combatEffectRunes };

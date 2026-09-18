@@ -18,7 +18,12 @@ const CHEST_COLUMN_MAP = {
 
 export class DailyRepository {
 	async hasBag(executor: Executor, discordId: string): Promise<boolean> {
-		const [row] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+		const [row] = await executor
+			.select()
+			.from(usersBag)
+			.where(eq(usersBag.discordId, discordId))
+			.limit(1)
+			.for('update');
 		return !!row;
 	}
 

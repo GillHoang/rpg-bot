@@ -1,30 +1,60 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SocketService } from '../../services/SocketService.js';
+import {
+	SOCKET_DESCRIPTION,
+	SOCKET_EQUIP_SUB_DESC,
+	SOCKET_UNEQUIP_SUB_DESC,
+	SOCKET_RUNE_OPTION_DESC,
+	SOCKET_GEAR_OPTION_DESC,
+	SOCKET_SLOT_OPTION_DESC,
+	SOCKET_RUNE_NOT_OWNED,
+	SOCKET_GEAR_NOT_OWNED,
+	SOCKET_INVALID_SLOT,
+	SOCKET_SLOT_OCCUPIED,
+	SOCKET_LANE_MISMATCH,
+	SOCKET_EQUIP_SUCCESS,
+	SOCKET_NOT_SOCKETED,
+	SOCKET_UNEQUIP_SUCCESS,
+} from '../../text/socket.js';
 
 export class SocketCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('socket')
-		.setDescription('Gắn/tháo rune vào trang bị')
+		.setDescription(SOCKET_DESCRIPTION)
 		.addSubcommand((sub) =>
 			sub
 				.setName('equip')
-				.setDescription('Gắn rune vào 1 slot native của trang bị')
-				.addStringOption((opt) => opt.setName('rune_uid').setDescription('UID của rune').setRequired(true))
-				.addStringOption((opt) => opt.setName('gear_id').setDescription('ID vũ khí/giáp').setRequired(true))
+				.setDescription(SOCKET_EQUIP_SUB_DESC)
+				.addStringOption((opt) =>
+					opt.setName('rune_uid').setDescription(SOCKET_RUNE_OPTION_DESC).setRequired(true),
+				)
+				.addStringOption((opt) =>
+					opt.setName('gear_id').setDescription(SOCKET_GEAR_OPTION_DESC).setRequired(true),
+				)
 				.addIntegerOption((opt) =>
-					opt
-						.setName('slot_num')
-						.setDescription('Số thứ tự slot (1, 2, ...)')
-						.setMinValue(1)
-						.setRequired(true),
+					opt.setName('slot_num').setDescription(SOCKET_SLOT_OPTION_DESC).setMinValue(1).setRequired(true),
+				)
+				.addStringOption((o) =>
+					o
+						.setName('lane')
+						.setDescription('Lane rune (xem /inventory)')
+						.addChoices({ name: 'native', value: 'native' }, { name: 'opposite', value: 'opposite' }),
 				),
 		)
 		.addSubcommand((sub) =>
 			sub
 				.setName('unequip')
-				.setDescription('Tháo rune khỏi trang bị')
-				.addStringOption((opt) => opt.setName('rune_uid').setDescription('UID của rune').setRequired(true)),
+				.setDescription(SOCKET_UNEQUIP_SUB_DESC)
+				.addStringOption((opt) =>
+					opt.setName('rune_uid').setDescription(SOCKET_RUNE_OPTION_DESC).setRequired(true),
+				),
+		)
+		.addSubcommand((s) =>
+			s
+				.setName('unlock')
+				.setDescription('Mở thêm native socket bằng Credux và essence')
+				.addStringOption((o) => o.setName('gear_id').setDescription('ID gear').setRequired(true)),
 		);
 
 	constructor(private readonly socket = new SocketService()) {}
@@ -32,46 +62,56 @@ export class SocketCommand implements ICommand {
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
 		const sub = interaction.options.getSubcommand(true);
+		if (sub === 'unlock') {
+			await interaction.editReply(
+				await this.socket.unlock(interaction.user.id, interaction.options.getString('gear_id', true)),
+			);
+			return;
+		}
 		const runeUid = interaction.options.getString('rune_uid', true);
 
 		if (sub === 'equip') {
 			const gearId = interaction.options.getString('gear_id', true);
 			const slotNum = interaction.options.getInteger('slot_num', true);
-			const result = await this.socket.equip(interaction.user.id, runeUid, gearId, slotNum);
+			const result = await this.socket.equip(
+				interaction.user.id,
+				runeUid,
+				gearId,
+				slotNum,
+				(interaction.options.getString('lane') ?? 'native') as 'native' | 'opposite',
+			);
 
 			switch (result.status) {
 				case 'rune-not-owned':
-					await interaction.editReply({ content: 'Bạn không sở hữu rune này.' });
+					await interaction.editReply({ content: SOCKET_RUNE_NOT_OWNED });
 					return;
 				case 'gear-not-owned':
-					await interaction.editReply({ content: 'Bạn không sở hữu trang bị này.' });
+					await interaction.editReply({ content: SOCKET_GEAR_NOT_OWNED });
 					return;
 				case 'invalid-slot':
-					await interaction.editReply({ content: 'Trang bị không có slot số đó (hoặc chưa mở khoá).' });
+					await interaction.editReply({ content: SOCKET_INVALID_SLOT });
 					return;
 				case 'slot-occupied':
-					await interaction.editReply({ content: 'Slot này đã có rune khác. Hãy tháo trước.' });
+					await interaction.editReply({ content: SOCKET_SLOT_OCCUPIED });
 					return;
 				case 'lane-mismatch':
-					await interaction.editReply({
-						content: `Sai lane: slot yêu cầu **${result.expected}**, rune này là **${result.actual}**.`,
-					});
+					await interaction.editReply({ content: SOCKET_LANE_MISMATCH(result.expected, result.actual) });
 					return;
 				case 'ok':
-					await interaction.editReply('✅ Đã gắn rune vào trang bị.');
+					await interaction.editReply(SOCKET_EQUIP_SUCCESS);
 					return;
 			}
 		} else {
 			const result = await this.socket.unequip(interaction.user.id, runeUid);
 			switch (result.status) {
 				case 'rune-not-owned':
-					await interaction.editReply({ content: 'Bạn không sở hữu rune này.' });
+					await interaction.editReply({ content: SOCKET_RUNE_NOT_OWNED });
 					return;
 				case 'not-socketed':
-					await interaction.editReply({ content: 'Rune này chưa được gắn vào đâu cả.' });
+					await interaction.editReply({ content: SOCKET_NOT_SOCKETED });
 					return;
 				case 'ok':
-					await interaction.editReply('✅ Đã tháo rune khỏi trang bị.');
+					await interaction.editReply(SOCKET_UNEQUIP_SUCCESS);
 					return;
 			}
 		}
