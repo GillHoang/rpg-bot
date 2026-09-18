@@ -13,5 +13,4 @@
     "[json]": {
         "editor.tabSize": 4
     },
-    "eslint.useFlatConfig": true
 }
