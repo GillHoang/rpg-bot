@@ -6,9 +6,9 @@
  * Tên riêng (blessing, rune, hiệu lực như Dizzy/CRIT/HP) giữ nguyên.
  */
 
-/** Tag nhất quán 8 ký tự bên trong ngoặc. */
+/** Tag gọn — log hiển thị ngoài codeblock nên markdown (bold/underline) hoạt động. */
 export function combatTag(tag: string): string {
-	return `[${tag.padStart(8)}]`;
+	return `[${tag.trim()}]`;
 }
 
 export const COMBAT_TAGS = {
@@ -37,13 +37,13 @@ export const COMBAT_SUDDEN_DEATH_HEADER = (multiplier: number): string =>
 export const COMBAT_DEFEATED_SUFFIX = (name: string): string => ` — ${name} gục ngã!`;
 
 export const COMBAT_HIT = (tag: string, attacker: string, defender: string, dealt: string, defeatedSuffix: string): string =>
-	`${combatTag(tag)} ${attacker} đánh ${defender}, gây ${dealt} HP.${defeatedSuffix}`;
+	`${combatTag(tag)} ${attacker} đánh ${defender}, gây __${dealt} HP__.${defeatedSuffix}`;
 
 export const COMBAT_GUARD = (defender: string, pct: number): string =>
-	`${combatTag(COMBAT_TAGS.GUARD)} ${defender} chặn ${pct}% sát thương.`;
+	`${combatTag(COMBAT_TAGS.GUARD)} ${defender} chặn __${pct}%__ sát thương.`;
 
 export const COMBAT_DOT_TICK = (tag: string, name: string, tick: string, label: string): string =>
-	`${combatTag(tag)} ${name} trừ ${tick} HP (${label}).`;
+	`${combatTag(tag)} ${name} trừ __${tick} HP__ (${label}).`;
 
 // --- Trạng thái hành động ---
 export const COMBAT_UNABLE_TO_ACT = (name: string): string =>
@@ -61,23 +61,23 @@ export const COMBAT_FIGHTER_BASH = (name: string, enemy: string, stunTurns: numb
 export const COMBAT_MAGE_OVERCHARGE = (name: string, debuffName: string): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} 🔮 ${name} Quá Tải — áp hiệu ${debuffName}.`;
 export const COMBAT_KNIGHT_REGEN = (name: string, restored: string): string =>
-	`${combatTag(COMBAT_TAGS.REGEN)} 🛡️ ${name} hồi ${restored} HP.`;
+	`${combatTag(COMBAT_TAGS.REGEN)} 🛡️ ${name} hồi __${restored} HP__.`;
 export const COMBAT_ARCHER_DOUBLE_ATTACK = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} 🏹 ${name} kích hoạt Đánh Đôi!`;
 
 // --- Rune decorator ---
 export const COMBAT_RUNE_VAMPIRIC = (name: string, healed: string): string =>
-	`${combatTag(COMBAT_TAGS.LIFEST)} 🩸 ${name} hút ${healed} HP.`;
+	`${combatTag(COMBAT_TAGS.LIFEST)} 🩸 ${name} hút __${healed} HP__.`;
 export const COMBAT_RUNE_VENOM = (name: string, enemy: string, value: string): string =>
 	`${combatTag(COMBAT_TAGS.VENM)} ☠️ ${name} nhiễm độc ${enemy} (${value} HP mỗi lượt).`;
 export const COMBAT_RUNE_THORNS = (name: string, reflected: string): string =>
-	`${combatTag(COMBAT_TAGS.THORN)} 🌵 ${name} phản lại ${reflected} HP.`;
+	`${combatTag(COMBAT_TAGS.THORN)} 🌵 ${name} phản lại __${reflected} HP__.`;
 export const COMBAT_RUNE_AEGIS = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.AEGIS)} 🛡️ ${name} hoá giải trọn vẹn đòn đánh.`;
 
 // --- Deity blessing decorator ---
 export const COMBAT_BLESSING_GUARDIAN_LIGHT = (name: string, healed: string): string =>
-	`${combatTag(COMBAT_TAGS.REGEN)} ✨ Guardian Light — ${name} hồi ${healed} HP.`;
+	`${combatTag(COMBAT_TAGS.REGEN)} ✨ Guardian Light — ${name} hồi __${healed} HP__.`;
 export const COMBAT_BLESSING_TAILWIND = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.BLESS)} 🌬️ Tailwind — ${name} có lợi thế ra đòn trước.`;
 export const COMBAT_BLESSING_TIDAL_WRATH = (name: string, bonus: number): string =>
@@ -99,6 +99,6 @@ export const COMBAT_MONSTER_ECLIPSE = (): string =>
 export const COMBAT_MONSTER_FRENZY = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.FRENZY)} 🩸 ${name} cuồng nộ — sát thương +40%.`;
 export const COMBAT_MONSTER_FEAST = (name: string, healed: string): string =>
-	`${combatTag(COMBAT_TAGS.LIFEST)} 🩸 ${name} tấn ${healed} HP.`;
+	`${combatTag(COMBAT_TAGS.LIFEST)} 🩸 ${name} tấn __${healed} HP__.`;
 export const COMBAT_MONSTER_VENOM_SPIT = (name: string, enemy: string, value: string): string =>
 	`${combatTag(COMBAT_TAGS.VENM)} ☠️ ${name} phun nọc vào ${enemy} (${value} HP mỗi lượt).`;

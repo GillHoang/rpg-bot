@@ -154,6 +154,6 @@ export function renderDuel(result: DuelAcceptResult): string {
 		outcomeLine +
 		'\n' +
 		RAID_ROUND_SUMMARY(result.battle.rounds, result.battle.playerHpRemaining, result.battle.enemyHpRemaining) +
-		`\n\`\`\`\n${logText}\n\`\`\``
+		`\n${logText}`
 	);
 }

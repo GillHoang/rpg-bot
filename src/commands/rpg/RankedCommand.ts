@@ -98,7 +98,7 @@ export class RankedCommand implements ICommand {
 				`Rating: **${result.ratingBefore} → ${result.ratingAfter}** (${result.delta >= 0 ? '+' : ''}${result.delta}) · ` +
 				`Bracket: ${result.bracketBefore} → **${result.bracketAfter}** · Peak ${result.peak}` +
 				(result.shieldUsed ? RANKED_SHIELD_NOTE : '') +
-				`\n\`\`\`\n${logText}\n\`\`\`\n` +
+				`\n${logText}\n` +
 				RANKED_FOOTER,
 		);
 	}

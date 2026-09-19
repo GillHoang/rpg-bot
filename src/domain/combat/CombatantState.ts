@@ -40,9 +40,9 @@ export function hasDebuff(side: CombatantState, tag: DebuffTag): boolean {
 	return findDebuff(side, tag) !== undefined;
 }
 
-/** `🐅 Tiger` — tên kèm emoji (nếu có) để log dễ đọc. */
+/** `**🐅 Tiger**` — tên bold (kèm emoji nếu có) để log dễ đọc trong Discord. */
 export function combatDisplayName(c: CombatantState): string {
-	return c.emoji ? `${c.emoji} ${c.name}` : c.name;
+	return c.emoji ? `**${c.emoji} ${c.name}**` : `**${c.name}**`;
 }
 
 export function createCombatant(params: {

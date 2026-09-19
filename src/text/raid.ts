@@ -8,14 +8,16 @@ export const RAID_WIN = (monsterName: string): string => `🏆 **Chiến thắng
 export const RAID_LOSE = (monsterName: string): string => `💀 **Thất bại.** ${monsterName} đã đánh bại bạn.`;
 export const RAID_DRAW = `⚖️ **Hòa.** Cả hai đều gục ngã.`;
 
-export const RAID_REWARD_EXP = (exp: string): string => `✨ +${exp} EXP`;
-export const RAID_REWARD_CREDUX = (credux: string): string => `🪙 +${credux} ${CURRENCY.credux}`;
-export const RAID_REWARD_SHARDS = (shards: number): string => `🔮 +${shards} ${CURRENCY.beliefShards}`;
+export const RAID_REWARD_EXP = (exp: string): string => `✨ +__${exp}__ EXP`;
+export const RAID_REWARD_CREDUX = (credux: string): string => `🪙 +__${credux}__ ${CURRENCY.credux}`;
+export const RAID_REWARD_SHARDS = (shards: number): string => `🔮 +__${shards}__ ${CURRENCY.beliefShards}`;
 export const RAID_REWARD_CHEST = `🎁 +1 Silver Chest`;
-export const RAID_REWARD_LEVEL_UP = (prev: number, next: number): string => `⬆️ **Lên cấp ${prev} → ${next}!**`;
+export const RAID_REWARD_LEVEL_UP = (prev: number, next: number): string => `⬆️ **Lên cấp __${prev}__ → __${next}__!**`;
 
 export const RAID_ROUND_SUMMARY = (rounds: number, playerHp: number, enemyHp: number): string =>
-	`Số vòng: ${rounds} · HP còn lại — Bạn: ${playerHp} / Quái: ${enemyHp}\n\n`;
+	`Số vòng: __${rounds}__ · HP còn lại — **Bạn**: __${playerHp}__ / **Quái**: __${enemyHp}__
+
+`;
 
 /** Giới hạn ký tự của battle log trong 1 tin nhắn Discord. */
 export const RAID_MAX_LOG_CHARS = 1200;
