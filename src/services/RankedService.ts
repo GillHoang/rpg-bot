@@ -165,58 +165,18 @@ export class RankedService {
 			const ratingAfter = meChange.rating;
 			const opponentRatingAfter = opponentChange.rating;
 
-			if (meChange.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
-				// Bracket promotion → rank_season title (challenger/initiator only).
-				await this.cosmetics.grantTitleInTx(
-					tx,
-					discordId,
-					`rank_${bracketFor(ratingAfter).name.toLowerCase()}`,
-				);
-			}
-
-			await tx
-				.update(userCharacter)
-				.set({
-					pvpRating: ratingAfter,
-					pvpPeak: Math.max(me.pvpPeak, ratingAfter),
-					// A fresh promotion re-arms the shield; falling without it breaks it.
-					pvpDemotionShield: meChange.shield,
-					// Ranked counts toward the PvP win/loss record too (draw = no change).
-					pvpWins: me.pvpWins + (won ? 1 : 0),
-					pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
-				})
-				.where(eq(userCharacter.discordId, discordId));
-			await tx
-				.update(userCharacter)
-				.set({
-					pvpRating: opponentRatingAfter,
-					pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
-					pvpDemotionShield: opponentChange.shield,
-					pvpWins: opponentRow.pvpWins + (!won ? 1 : 0),
-					pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
-				})
-				.where(eq(userCharacter.discordId, opponentRow.discordId));
-
-			await tx.insert(rankedLogs).values({
-				playerId: discordId,
-				opponentId: opponentRow.discordId,
-				result: won ? 'win' : 'loss',
+			await this.persistRankedOutcome(tx, {
+				discordId,
+				me,
+				opponentRow,
+				opponentRatingAfter,
 				ratingBefore,
 				ratingAfter,
+				won,
+				draw,
+				meChange,
+				opponentChange,
 			});
-			await tx.insert(rankedLogs).values({
-				playerId: opponentRow.discordId,
-				opponentId: discordId,
-				result: won ? 'loss' : 'win',
-				ratingBefore: opponentRow.pvpRating,
-				ratingAfter: opponentRatingAfter,
-			});
-
-			const streak = await this.currentWinStreak(tx, discordId);
-			await tx
-				.update(userCharacter)
-				.set({ highestRankStreak: Math.max(me.highestRankStreak, streak) })
-				.where(eq(userCharacter.discordId, discordId));
 
 			await this.ensureActiveSeason(tx);
 			await tx.delete(activeRankedFights).where(eq(activeRankedFights.discordId, discordId));
@@ -363,6 +323,74 @@ export class RankedService {
 		if (promoted) shield = true;
 		else if (shieldUsed) shield = false;
 		return { rating, shield, shieldUsed, promoted };
+	}
+
+	/** Persist both fighters' rating/record/log rows for one ranked fight. */
+	private async persistRankedOutcome(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		input: {
+			discordId: string;
+			me: typeof userCharacter.$inferSelect;
+			opponentRow: typeof userCharacter.$inferSelect;
+			opponentRatingAfter: number;
+			ratingBefore: number;
+			ratingAfter: number;
+			won: boolean;
+			draw: boolean;
+			meChange: { shield: boolean; promoted: boolean };
+			opponentChange: { shield: boolean; promoted: boolean };
+		},
+	): Promise<void> {
+		const { discordId, me, opponentRow, opponentRatingAfter, ratingBefore, ratingAfter, won, draw, meChange, opponentChange } = input;
+
+		if (meChange.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
+			// Bracket promotion → rank_season title (challenger/initiator only).
+			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
+		}
+
+		await tx
+			.update(userCharacter)
+			.set({
+				pvpRating: ratingAfter,
+				pvpPeak: Math.max(me.pvpPeak, ratingAfter),
+				// A fresh promotion re-arms the shield; falling without it breaks it.
+				pvpDemotionShield: meChange.shield,
+				// Ranked counts toward the PvP win/loss record too (draw = no change).
+				pvpWins: me.pvpWins + (won ? 1 : 0),
+				pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
+			})
+			.where(eq(userCharacter.discordId, discordId));
+		await tx
+			.update(userCharacter)
+			.set({
+				pvpRating: opponentRatingAfter,
+				pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
+				pvpDemotionShield: opponentChange.shield,
+				pvpWins: opponentRow.pvpWins + (!won ? 1 : 0),
+				pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
+			})
+			.where(eq(userCharacter.discordId, opponentRow.discordId));
+
+		await tx.insert(rankedLogs).values({
+			playerId: discordId,
+			opponentId: opponentRow.discordId,
+			result: won ? 'win' : 'loss',
+			ratingBefore,
+			ratingAfter,
+		});
+		await tx.insert(rankedLogs).values({
+			playerId: opponentRow.discordId,
+			opponentId: discordId,
+			result: won ? 'loss' : 'win',
+			ratingBefore: opponentRow.pvpRating,
+			ratingAfter: opponentRatingAfter,
+		});
+
+		const streak = await this.currentWinStreak(tx, discordId);
+		await tx
+			.update(userCharacter)
+			.set({ highestRankStreak: Math.max(me.highestRankStreak, streak) })
+			.where(eq(userCharacter.discordId, discordId));
 	}
 
 	/** Opponent: a random non-banned registered player, widening the rating window until someone is found. */

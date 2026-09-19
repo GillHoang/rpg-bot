@@ -63,6 +63,7 @@ export class RaidService {
 		private readonly characters = new UserCharacterRepository(),
 		private readonly rewards = new RaidRewardRepository(),
 		private readonly statAssembly = new StatAssemblyService(),
+		private readonly cosmetics = new CosmeticService(),
 		private readonly events = EventBus.getInstance(),
 	) {}
 
@@ -157,24 +158,8 @@ export class RaidService {
 				enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
 				won,
 			});
-			if (won) {
-				// Raid win streak — computed from the raid_logs tail that grant()
-				// just appended to; only the record streak is persisted.
-				const streak = await this.rewards.currentWinStreak(tx, discordId);
-				if (streak > character.highestRaidStreak) {
-					await tx
-						.update(userCharacter)
-						.set({ highestRaidStreak: streak })
-						.where(eq(userCharacter.discordId, discordId));
-				}
-			}
-			const gearDrop =
-				won && boss && rollRaidChest(lootRng, BOSS_ENTRY.gearChance)
-					? await new LootRepository().gear(tx, discordId, 'Mythic', lootRng)
-					: null;
-			if (won && boss) {
-				await new CosmeticService().grantTitleInTx(tx, discordId, 'boss_slayer');
-			}
+			await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
+			const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
 			return {
 				status: 'ok',
 				battle,
@@ -203,6 +188,39 @@ export class RaidService {
 		if (progress.leveledUp) this.events.emit('level.up', { discordId, newLevel: progress.newLevel });
 
 		return result;
+	}
+
+	/** Win streak from the raid_logs tail that grant() just appended to; only the record streak is persisted. */
+	private async updateRaidStreak(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		discordId: string,
+		highestRaidStreak: number,
+		won: boolean,
+	): Promise<void> {
+		if (!won) return;
+		const streak = await this.rewards.currentWinStreak(tx, discordId);
+		if (streak > highestRaidStreak) {
+			await tx
+				.update(userCharacter)
+				.set({ highestRaidStreak: streak })
+				.where(eq(userCharacter.discordId, discordId));
+		}
+	}
+
+	/** Boss-only extras: the Bakunawa Slayer title and the 30% Mythic gear drop. */
+	private async grantRaidExtras(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		discordId: string,
+		lootRng: () => number,
+		won: boolean,
+		boss: boolean,
+	): Promise<string | null> {
+		if (!won || !boss) return null;
+		await this.cosmetics.grantTitleInTx(tx, discordId, 'boss_slayer');
+		if (rollRaidChest(lootRng, BOSS_ENTRY.gearChance)) {
+			return new LootRepository().gear(tx, discordId, 'Mythic', lootRng);
+		}
+		return null;
 	}
 
 	/** Boss entry gate: level, once-per-Manila-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */

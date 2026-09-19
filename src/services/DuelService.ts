@@ -291,49 +291,37 @@ export class DuelService {
 	): Promise<void> {
 		const { duel, bags, duelists, battle } = input;
 		const stake = duel.stake ?? 0;
-		const draw = battle.outcome === 'draw';
-		const challengerWon = battle.outcome === 'player_win';
-		const winnerId = draw ? null : challengerWon ? duel.challengerId : duel.opponentId;
-		const loserId = draw ? null : challengerWon ? duel.opponentId : duel.challengerId;
-
-		if (draw) {
-			// Nobody died-died: refund both stakes (bags were debited at accept).
-			if (stake > 0) {
-				await tx
-					.update(usersBag)
-					.set({ credux: bags.challengerBag.credux })
-					.where(eq(usersBag.discordId, duel.challengerId));
-				await tx
-					.update(usersBag)
-					.set({ credux: bags.opponentBag.credux })
-					.where(eq(usersBag.discordId, duel.opponentId));
-			}
+		if (battle.outcome === 'draw') {
+			await this.refundWager(tx, duel, bags, stake);
 			return;
 		}
-		if (!winnerId || !loserId) return;
+
+		const challengerWon = battle.outcome === 'player_win';
+		const winnerId = challengerWon ? duel.challengerId : duel.opponentId;
+		const loserId = challengerWon ? duel.opponentId : duel.challengerId;
+		const winner = challengerWon ? duelists.challenger : duelists.opponent;
+		const loser = challengerWon ? duelists.opponent : duelists.challenger;
+		const winnerBag = challengerWon ? bags.challengerBag : bags.opponentBag;
 
 		if (stake > 0) {
 			// Bags were debited `stake` each; the winner now takes the whole pot
 			// (their own stake back plus the loser's).
-			const winnerBag = winnerId === duel.challengerId ? bags.challengerBag : bags.opponentBag;
 			await tx
 				.update(usersBag)
 				.set({ credux: winnerBag.credux + stake })
 				.where(eq(usersBag.discordId, winnerId));
 		}
-		const winnerChar = winnerId === duel.challengerId ? duelists.challenger.character : duelists.opponent.character;
-		const loserChar = loserId === duel.challengerId ? duelists.challenger.character : duelists.opponent.character;
 		await tx
 			.update(userCharacter)
-			.set({ pvpWins: winnerChar.pvpWins + 1 })
+			.set({ pvpWins: winner.character.pvpWins + 1 })
 			.where(eq(userCharacter.discordId, winnerId));
-		if (winnerChar.pvpWins === 0) {
+		if (winner.character.pvpWins === 0) {
 			// First-ever duel win → First Blood title (idempotent grant).
 			await this.cosmetics.grantTitleInTx(tx, winnerId, 'first_blood');
 		}
 		await tx
 			.update(userCharacter)
-			.set({ pvpLosses: loserChar.pvpLosses + 1 })
+			.set({ pvpLosses: loser.character.pvpLosses + 1 })
 			.where(eq(userCharacter.discordId, loserId));
 		await tx.insert(pvpLogs).values({
 			duelId: duel.duelId,
@@ -351,6 +339,24 @@ export class DuelService {
 				amount: stake,
 			});
 		}
+	}
+
+	/** Nobody died-died: refund both stakes (bags were debited at accept). */
+	private async refundWager(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		duel: DuelRow,
+		bags: { challengerBag: BagRow; opponentBag: BagRow },
+		stake: number,
+	): Promise<void> {
+		if (stake <= 0) return;
+		await tx
+			.update(usersBag)
+			.set({ credux: bags.challengerBag.credux })
+			.where(eq(usersBag.discordId, duel.challengerId));
+		await tx
+			.update(usersBag)
+			.set({ credux: bags.opponentBag.credux })
+			.where(eq(usersBag.discordId, duel.opponentId));
 	}
 
 	async decline(duelId: string, userId: string): Promise<boolean> {
