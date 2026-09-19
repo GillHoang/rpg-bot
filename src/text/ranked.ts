@@ -13,7 +13,7 @@ export const RANKED_NO_OPPONENT = 'Không tìm thấy đối thủ nào đã đ�
 export const RANKED_OUTCOME_DRAW = '⚖️ Hòa.';
 export const RANKED_OUTCOME_WIN = '🏆 **Thắng!**';
 export const RANKED_OUTCOME_LOSE = '💀 **Thua.**';
-export const RANKED_MATCHUP = (opponent: string, outcome: string): string => `${outcome} vs **${opponent}**`;
+export const RANKED_MATCHUP = (opponent: string, outcome: string): string => `${outcome} vs \`${opponent}\``;
 export const RANKED_RATING_LINE = (
 	before: number,
 	after: number,

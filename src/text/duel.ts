@@ -28,6 +28,6 @@ export const DUEL_NOT_FOUND = 'Duel không còn tồn tại.';
 export const DUEL_EXPIRED_ACCEPT = 'Duel đã hết hạn.';
 export const DUEL_INSUFFICIENT_FUNDS_ACCEPT = 'Một trong hai người không đủ Credux lúc chấp nhận — duel bị huỷ.';
 export const DUEL_DRAW = '⚖️ **Hòa!** Cược được hoàn lại cho cả hai.';
-export const DUEL_WIN = (winner: string): string => `🏆 **${winner} thắng!**`;
+export const DUEL_WIN = (winner: string): string => `🏆 **\`${winner}\` thắng!**`;
 export const DUEL_POT = (stake: string): string => ` Nhận ${stake} Credux.`;
 export const DUEL_WHO = { challenger: 'Bạn', opponent: 'Đối thủ' } as const;
