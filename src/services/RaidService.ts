@@ -205,6 +205,10 @@ export class RaidService {
 				.set({ highestRaidStreak: streak })
 				.where(eq(userCharacter.discordId, discordId));
 		}
+		if (streak >= 10) {
+			// Chuỗi thắng raid 10 — title Unstoppable (idempotent).
+			await this.cosmetics.grantTitleInTx(tx, discordId, 'streak_master');
+		}
 	}
 
 	/** Boss-only extras: the Bakunawa Slayer title and the 30% Mythic gear drop. */

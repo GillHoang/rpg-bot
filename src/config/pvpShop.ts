@@ -49,4 +49,25 @@ export const PVP_SHOP_ITEMS: readonly PvpShopItem[] = [
 		kind: { type: 'title', titleCode: 'rank_champion' },
 		limitPerSeason: 1,
 	},
+	{
+		key: 'banner_crimson',
+		label: 'Cosmetic — Crimson Battle Banner (tier Chosen)',
+		cost: 50,
+		kind: { type: 'cosmetic', cosmeticKey: 'banner_crimson' },
+		limitPerSeason: 1,
+	},
+	{
+		key: 'summon_circle_gold',
+		label: 'Cosmetic — Golden Summon Circle (tier Chosen)',
+		cost: 70,
+		kind: { type: 'cosmetic', cosmeticKey: 'summon_circle_gold' },
+		limitPerSeason: 1,
+	},
+	{
+		key: 'title_legend',
+		label: 'Title — Arena Legend',
+		cost: 150,
+		kind: { type: 'title', titleCode: 'arena_legend' },
+		limitPerSeason: 1,
+	},
 ];

@@ -8,6 +8,7 @@ import {
 	type BelieverExpSource,
 } from '../config/reputation.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
+import { CosmeticService } from './CosmeticService.js';
 
 export interface BelieverAwardResult {
 	granted: number;
@@ -48,6 +49,10 @@ export class ReputationService {
 			believerExp -= believerLevelCost(believerLevel);
 			believerLevel += 1;
 			newLevel = believerLevel;
+		}
+		if (newLevel != null && believerLevel >= 10) {
+			// Believer level 10 — title Devout Believer (idempotent grant).
+			await new CosmeticService().grantTitleInTx(tx, discordId, 'devout_believer');
 		}
 
 		await tx

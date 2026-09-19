@@ -48,4 +48,22 @@ export const TITLE_SEED: TitleSeed[] = [
 		source: 'rank_season',
 		howTo: 'Đạt bracket Divine trong ranked.',
 	},
+	{
+		code: 'streak_master',
+		display: 'Unstoppable',
+		source: 'event',
+		howTo: 'Chuỗi thắng raid đạt 10 trận liên tiếp.',
+	},
+	{
+		code: 'devout_believer',
+		display: 'Devout Believer',
+		source: 'believer',
+		howTo: 'Đạt believer level 10.',
+	},
+	{
+		code: 'arena_legend',
+		display: 'Arena Legend',
+		source: 'event',
+		howTo: 'Mua bằng Valor Medals ở /pvp shop.',
+	},
 ];

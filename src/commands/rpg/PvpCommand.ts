@@ -20,6 +20,9 @@ export class PvpCommand implements ICommand {
 						'frame_gold',
 						'frame_eternal',
 						'title_champion',
+						'banner_crimson',
+						'summon_circle_gold',
+						'title_legend',
 					])
 						o.addChoices({ name: key, value: key });
 					return o;

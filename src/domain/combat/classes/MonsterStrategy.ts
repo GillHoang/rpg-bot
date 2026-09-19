@@ -1,5 +1,6 @@
 import { NullClassStrategy } from './NullClassStrategy.js';
-import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
+import { findDebuff } from '../CombatantState.js';
+import type { StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from '../IClassStrategy.js';
 import { BOSS_ENTRY } from '../../../config/raidLoot.js';
 
 export class MonsterStrategy extends NullClassStrategy {
@@ -14,9 +15,29 @@ export class MonsterStrategy extends NullClassStrategy {
 				ctx.log('🌑 Bakunawa bước vào Eclipse: sát thương +50%.');
 			}
 		}
+		// Blood frenzy: below 40% HP the beast hits harder (M7 mob variety).
+		if (this.skill === 'blood_frenzy' && ctx.self.hp < ctx.self.maxHp * 0.4) {
+			hit.damagePctBonus += 0.4;
+			if (!ctx.self.flags.frenzy_logged) {
+				ctx.self.flags.frenzy_logged = true;
+				ctx.log(`🩸 ${ctx.self.name} cuồng nộ: sát thương +40%.`);
+			}
+		}
+	}
+
+	override prepareIncomingHit(_ctx: StrategyContext, hit: IncomingHit): void {
+		// Stone hide: a flat chunk of incoming damage never gets through.
+		if (this.skill === 'stone_hide') {
+			hit.reductionFraction = Math.max(hit.reductionFraction, 0.2);
+		}
 	}
 	override onHitLanded(ctx: StrategyContext, hit: ResolvedHit): void {
 		if (this.skill === 'flesh_feast')
 			ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + Math.floor(hit.damageDealt * 0.1));
+		// Venom spit: wounds fester, ticking true damage for 2 rounds.
+		if (this.skill === 'venom_spit' && hit.damageDealt > 0 && ctx.enemy.hp > 0 && !findDebuff(ctx.enemy, 'venom')) {
+			const value = Math.max(5, Math.floor(ctx.enemy.maxHp * 0.03));
+			ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
+		}
 	}
 }
