@@ -3,9 +3,9 @@ import { CURRENCY } from './common.js';
 export const DAILY_DESCRIPTION = 'Nhận phần thưởng điểm danh hàng ngày';
 
 export const DAILY_ALREADY_CLAIMED = (day: number): string =>
-	`⏳ Bạn đã điểm danh hôm nay rồi (Day ${day}). Quay lại sau nửa đêm giờ Manila.`;
+	`⏳ Bạn đã điểm danh hôm nay rồi (Ngày ${day}). Quay lại sau nửa đêm giờ Manila.`;
 
-export const DAILY_MILESTONE_LINE = (chestLabel: string): string => `\n🎁 Milestone: +1 ${chestLabel}`;
+export const DAILY_MILESTONE_LINE = (chestLabel: string): string => `\n🎁 Cột mốc: +1 ${chestLabel}`;
 
 export const DAILY_SUCCESS = (
 	day: number,
@@ -16,8 +16,8 @@ export const DAILY_SUCCESS = (
 	chestLabel: string,
 	milestoneLine: string,
 ): string =>
-	`📅 **Daily Attendance — Day ${day}**\n` +
-	`Month: ${monthly} / 30 · Streak: ${streak}\n\n` +
+	`📅 **Điểm Danh Hằng Ngày — Ngày ${day}**\n` +
+	`Tháng: ${monthly}/30 · Chuỗi ngày: ${streak}\n\n` +
 	`💰 +${credux} ${CURRENCY.credux}\n` +
 	`🔮 +${shards} ${CURRENCY.beliefShards}\n` +
 	`🎁 +1 ${chestLabel}${milestoneLine}`;

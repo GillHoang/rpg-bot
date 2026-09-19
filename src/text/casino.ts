@@ -40,7 +40,7 @@ export const CASINO_CASH_OUT_LABEL = 'Cash Out';
 
 // --- Render view (domain/casino/InteractiveGame + session settle) ---
 export const CASINO_BLACKJACK_VIEW = (bet: string, player: string, dealer: string): string =>
-	`Blackjack · Cược ${bet}\nBạn: ${player}\nDealer: ${dealer}`;
+	`Blackjack · Cược ${bet}\nBạn: ${player}\nNhà cái: ${dealer}`;
 export const CASINO_CRASH_VIEW = (bet: string, round: number, multiplier: string, state: string): string =>
 	`Crash · Cược ${bet}\nLượt ${round} · Hệ số ${multiplier}x · ${state}`;
 export const CASINO_SETTLE_LINE = (view: string, result: string, payout: string, balance: string): string =>

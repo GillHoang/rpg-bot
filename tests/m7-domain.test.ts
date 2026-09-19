@@ -42,7 +42,7 @@ describe('sudden death', () => {
 			enemyStrategy: new NullClassStrategy(),
 		});
 		expect(result.rounds).toBeGreaterThan(SUDDEN_DEATH_START);
-		expect(result.log.filter((line) => line.includes('SUDDEN DEATH'))).toHaveLength(1);
+		expect(result.log.filter((line) => line.includes('TỬ CHIẾN'))).toHaveLength(1);
 	});
 });
 
@@ -68,7 +68,7 @@ describe('deity blessing decorator', () => {
 		});
 		// Round 1: Tailwind log, then the biased holder acts first.
 		expect(result.log[1]).toContain('Tailwind');
-		expect(result.log[2]).toContain('P hits E for 0');
+		expect(result.log[2]).toContain('P đánh E, gây 0');
 		// ~100 damage/round against a 20M-per-round heal cap → a heal log every round.
 		expect(result.log.filter((line) => line.includes('Guardian Light')).length).toBeGreaterThanOrEqual(35);
 	});
@@ -82,7 +82,7 @@ describe('deity blessing decorator', () => {
 			enemyStrategy: new NullClassStrategy(),
 		});
 		expect(result.log.filter((line) => line.includes('Sky Sovereign'))).toHaveLength(1);
-		expect(result.log.filter((line) => line.includes('hits P for 0'))).toHaveLength(1);
+		expect(result.log.filter((line) => line.includes('E đánh P, gây 0'))).toHaveLength(1);
 		expect(result.outcome).toBe('enemy_win');
 	});
 });

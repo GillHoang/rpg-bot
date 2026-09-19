@@ -12,48 +12,48 @@ export interface ClassText {
 
 export const CLASS_TEXT: Record<CombatClass, ClassText> = {
 	Swordsman: {
-		passiveName: 'Bleed',
+		passiveName: 'Chảy Máu',
 		flavor:
-			'A warrior forged for the battlefield. Neither the strongest nor the fastest, but the most reliable. ' +
-			'The Swordsman walks the line between offense and defense, adapting to any fight. Every strike leaves a mark, and every mark bleeds.',
+			'Chiến binh được tôi luyện cho chiến trường. Không phải mạnh nhất hay nhanh nhất, nhưng là đáng tin nhất. ' +
+			'Kiếm Sĩ đi trên sợi dây giữa công và thủ, thích ứng với mọi trận đánh. Mỗi nhát kiếm để lại một vết thương, và mỗi vết thương đều chảy máu.',
 		passiveLine:
-			'**Passive: Bleed** — Attacks inflict 4% Bleed, stacking up to 20%. ' +
-			'Gains +5% ATK each turn, stacking up to +30% for the battle.',
+			'**Nội tại: Chảy Máu** — Đòn đánh gây 4% Chảy máu, cộng dồn tới 20%. ' +
+			'Nhận +5% ATK mỗi lượt, cộng dồn tới +30% trong trận.',
 	},
 	Fighter: {
-		passiveName: 'Stun',
+		passiveName: 'Choáng',
 		flavor:
-			'A warrior who does not wait for the fight to come — they bring it. The Fighter is built on aggression, ' +
-			'raw power, and the unshakable belief that the best defense is a fist to the jaw.',
+			'Chiến binh không chờ trận đấu đến — họ tự mang nó đến. Chiến Binh được dựng nên từ hung hãn, ' +
+			'sức mạnh thô và niềm tin sắt đá rằng đòn phòng thủ tốt nhất là một cú đấm thẳng vào hàm.',
 		passiveLine:
-			'**Passive: Stun** — Attacks deal +50% damage and have a 30% chance to become a Bash. Bash adds another ' +
-			'+50% damage, Stuns for 1 turn, and leaves the target Dizzy with a 15% chance to miss its next attack.',
+			'**Nội tại: Choáng** — Đòn đánh gây thêm +50% sát thương với 30% cơ hội biến thành Bash. Bash cộng thêm ' +
+			'+50% sát thương, Choáng 1 lượt và khiến mục tiêu Dizzy với 15% trượt đòn tiếp theo.',
 	},
 	Mage: {
-		passiveName: 'Overcharge',
+		passiveName: 'Quá Tải',
 		flavor:
-			'The Mage does not swing a sword. They do not need to. While others close the distance, the Mage is ' +
-			'already three moves ahead, building energy that no armor can absorb.',
+			'Pháp Sư không vung kiếm. Họ không cần. Khi kẻ khác đang thu ngắn khoảng cách, Pháp Sư ' +
+			'đã đi trước ba nước, tích tụ nguồn năng lượng không lớp giáp nào hấp thụ nổi.',
 		passiveLine:
-			"**Passive: Overcharge** — Every third battle turn's primary attack rolls 4.0x damage (60%) or 5.0x " +
-			'damage (40%), cannot crit, and applies one random 25% debuff: Paralyze, Burn, DEF Down, or ATK Down.',
+			'**Nội tại: Quá Tải** — Đòn chính của mỗi lượt thứ ba trong trận gieo xác suất 4.0x sát thương (60%) hoặc 5.0x ' +
+			'sát thương (40%), không thể CRIT, và áp một hiệu giảm ngẫu nhiên 25%: Paralyze, Burn, DEF Down hoặc ATK Down.',
 	},
 	Knight: {
-		passiveName: 'Damage Reduction',
+		passiveName: 'Giảm Sát Thương',
 		flavor:
-			'The Knight does not fall easily. Where others break under pressure, the Knight absorbs it, holds the ' +
-			'line, and keeps fighting.',
+			'Hiệp Sĩ không dễ ngã. Trong khi kẻ khác gãy đổ dưới áp lực, Hiệp Sĩ hấp thụ nó, ' +
+			'giữ vững phòng tuyến và tiếp tục chiến đấu.',
 		passiveLine:
-			'**Passive: Damage Reduction** — Incoming damage is reduced by 25%, outgoing damage is increased by 30%, ' +
-			'and the Knight restores 2% of maximum HP every turn.',
+			'**Nội tại: Giảm Sát Thương** — Sát thương nhận vào giảm 25%, sát thương gây ra tăng 30%, ' +
+			'và Hiệp Sĩ hồi 2% HP tối đa mỗi lượt.',
 	},
 	Archer: {
-		passiveName: 'Armor Pierce & Double Attack',
+		passiveName: 'Xuyên Giáp & Đánh Đôi',
 		flavor:
-			'Swift, precise, and deadly from a distance. The Archer does not wait for the enemy to come — they are ' +
-			'already gone before the enemy arrives.',
+			'Nhanh nhẹn, chuẩn xác và chết chóc từ xa. Cung Thủ không chờ kẻ địch đến — họ ' +
+			'đã biến mất từ trước khi địch kịp áp sát.',
 		passiveLine:
-			"**Passive: Armor Pierce & Double Attack** — Attacks ignore 25% of the target's Defense and have a 35% " +
-			'chance to immediately perform an additional attack.',
+			'**Nội tại: Xuyên Giáp & Đánh Đôi** — Đòn đánh bỏ qua 25% DEF của mục tiêu và có 35% ' +
+			'cơ hội thực hiện thêm một đòn tấn công ngay lập tức.',
 	},
 };

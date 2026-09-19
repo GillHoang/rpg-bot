@@ -1,12 +1,13 @@
 /**
  * Text battle log hiển thị trong output của /raid (BattleEngine +
  * class strategies + rune decorator). `{name}`/số liệu được chèn lúc chạy.
+ * Tên riêng (blessing, rune, hiệu lực như Dizzy/Bleed/CRIT) giữ nguyên.
  */
 
 // --- BattleEngine ---
-export const COMBAT_ROUND_HEADER = (round: number): string => `— Round ${round} —`;
-export const COMBAT_UNABLE_TO_ACT = (name: string): string => `${name} is unable to act this turn.`;
-export const COMBAT_ATTACK_MISSES_DIZZY = (name: string): string => `${name}'s attack misses (Dizzy)!`;
+export const COMBAT_ROUND_HEADER = (round: number): string => `— Hiệp ${round} —`;
+export const COMBAT_UNABLE_TO_ACT = (name: string): string => `${name} không thể hành động trong lượt này.`;
+export const COMBAT_ATTACK_MISSES_DIZZY = (name: string): string => `Đòn đánh của ${name} bị trượt (Dizzy)!`;
 export const COMBAT_CRIT_SUFFIX = ' (CRIT)';
 export const COMBAT_HIT = (
 	attacker: string,
@@ -14,19 +15,20 @@ export const COMBAT_HIT = (
 	dealt: string,
 	critSuffix: string,
 	defeatedSuffix: string,
-): string => `${attacker} hits ${defender} for ${dealt}${critSuffix} damage.${defeatedSuffix}`;
-export const COMBAT_DEFEATED_SUFFIX = (name: string): string => ` ${name} is defeated!`;
+): string => `${attacker} đánh ${defender}, gây ${dealt}${critSuffix} sát thương.${defeatedSuffix}`;
+export const COMBAT_DEFEATED_SUFFIX = (name: string): string => ` ${name} đã gục ngã!`;
 export const COMBAT_DOT_TICK = (name: string, tick: string, tag: string): string =>
-	`${name} suffers ${tick} ${tag} damage.`;
+	`${name} nhận ${tick} sát thương ${tag}.`;
 
-// --- Sudden death (sau round 30) ---
+// --- Tử chiến (sau round 30) ---
 export const COMBAT_SUDDEN_DEATH_HEADER = (multiplier: number): string =>
-	`💀 SUDDEN DEATH — mọi sát thương nhân x${multiplier}!`;
+	`💀 TỬ CHIẾN — mọi sát thương nhân x${multiplier}!`;
 
 // --- Deity blessing decorator ---
 export const COMBAT_BLESSING_GUARDIAN_LIGHT = (name: string, healed: string): string =>
 	`✨ Guardian Light — ${name} hồi ${healed} HP.`;
-export const COMBAT_BLESSING_TAILWIND = (name: string): string => `🌬️ Tailwind — ${name} có lợi thế ra đòn trước.`;
+export const COMBAT_BLESSING_TAILWIND = (name: string): string =>
+	`🌬️ Tailwind — ${name} có lợi thế ra đòn trước.`;
 export const COMBAT_BLESSING_TIDAL_WRATH = (name: string, bonus: number): string =>
 	`🌊 Tidal Wrath — ${name} +${bonus}% sát thương khi máu cạn.`;
 export const COMBAT_BLESSING_MOON_DEVOURER = (name: string): string =>
@@ -40,18 +42,18 @@ export const COMBAT_BLESSING_MOUNTAIN_GRACE = (name: string): string =>
 export const COMBAT_BLESSING_SKY_SOVEREIGN = (name: string): string =>
 	`🌩️ Sky Sovereign — thiên lệnh hoá giải trọn vẹn đòn đánh vào ${name}!`;
 
-// --- Class passives ---
-export const COMBAT_SWORDSMAN_ATK_UP = (pct: number): string => `⚔️ Swordsman Passive: ATK increased by ${pct}%.`;
+// --- Nội tại class ---
+export const COMBAT_SWORDSMAN_ATK_UP = (pct: number): string => `⚔️ Nội tại Kiếm Sĩ: ATK tăng ${pct}%.`;
 export const COMBAT_SWORDSMAN_BLEED = (stacks: number, maxStacks: number, pct: number): string =>
-	`⚔️ Swordsman Passive — applied Bleed. Stack: ${stacks}/${maxStacks} (${pct}% ATK/turn).`;
+	`⚔️ Nội tại Kiếm Sĩ — gây Chảy máu. Cột: ${stacks}/${maxStacks} (${pct}% ATK mỗi lượt).`;
 export const COMBAT_FIGHTER_BASH = (stunTurns: number): string =>
-	`👊 Fighter Passive — Bash! Stunned for ${stunTurns} turn and left Dizzy.`;
+	`👊 Nội tại Chiến Binh — Bash! Choáng ${stunTurns} lượt và để đối thủ Dizzy.`;
 export const COMBAT_MAGE_OVERCHARGE = (debuffName: string): string =>
-	`🔮 Mage Passive: Overcharge — nuke landed, applying ${debuffName}.`;
-export const COMBAT_KNIGHT_REGEN = (restored: string): string => `🛡️ Knight Passive: Restored ${restored} HP.`;
-export const COMBAT_ARCHER_DOUBLE_ATTACK = '🏹 Archer Passive — Double Attack!';
+	`🔮 Nội tại Pháp Sư: Quá Tải — đòn nặng trúng, áp hiệu ${debuffName}.`;
+export const COMBAT_KNIGHT_REGEN = (restored: string): string => `🛡️ Nội tại Hiệp Sĩ: Hồi ${restored} HP.`;
+export const COMBAT_ARCHER_DOUBLE_ATTACK = '🏹 Nội tại Cung Thủ — Đánh Đôi!';
 
 // --- Rune decorator ---
-export const COMBAT_RUNE_VAMPIRIC = (healed: string): string => `🩸 Vampiric Rune — lifesteal ${healed} HP.`;
-export const COMBAT_RUNE_VENOM = (value: string): string => `☠️ Venom Rune — applied Poison (${value}/turn).`;
-export const COMBAT_RUNE_THORNS = (reflected: string): string => `🌵 Thorns Rune — reflected ${reflected} damage back.`;
+export const COMBAT_RUNE_VAMPIRIC = (healed: string): string => `🩸 Rune Hút Máu — hồi ${healed} HP.`;
+export const COMBAT_RUNE_VENOM = (value: string): string => `☠️ Rune Nọc Độc — áp Nhiễm độc (${value}/lượt).`;
+export const COMBAT_RUNE_THORNS = (reflected: string): string => `🌵 Rune Gai — phản lại ${reflected} sát thương.`;

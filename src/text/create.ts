@@ -14,9 +14,9 @@ export const CREATE_SUCCESS = (
 	shards: string,
 	chests: number,
 ): string =>
-	`${emoji} **Character Created — ${className}**\n` +
-	`Passive: ${passiveName}\n\n` +
-	`Starter gear equipped. Starter grant: +${shards} ${CURRENCY.beliefShards}, ` +
+	`${emoji} **Đã tạo nhân vật — ${className}**\n` +
+	`Nội tại: ${passiveName}\n\n` +
+	`Đã trang bị gear khởi đầu. Quà tạo nhân vật: +${shards} ${CURRENCY.beliefShards}, ` +
 	`+${chests} Silver Chests.\n\n` +
 	`Bước tiếp theo: /daily nhận quà → /raid hunt luyện cấp → /summon triệu hồi deity.\n` +
 	`/open mở rương · /inventory xem ID · /equip trang bị · /runes shop mua rune.`;
