@@ -36,9 +36,7 @@ export class EventBus {
 	}
 
 	static getInstance(): EventBus {
-		if (!EventBus.instance) {
-			EventBus.instance = new EventBus();
-		}
+		EventBus.instance ??= new EventBus();
 		return EventBus.instance;
 	}
 

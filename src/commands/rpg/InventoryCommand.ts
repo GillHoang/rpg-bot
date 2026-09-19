@@ -2,6 +2,7 @@ import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } f
 import type { ICommand } from '../../core/ICommand.js';
 import { InventoryRepository } from '../../repositories/InventoryRepository.js';
 import {
+	bagSummary,
 	DEITIES_DESCRIPTION,
 	DEITIES_EMPTY_PAGE,
 	DEITIES_FOOTER,
@@ -14,7 +15,6 @@ import {
 	INVENTORY_PAGE_OPTION_DESC,
 	INVENTORY_TITLE,
 } from '../../text/inventory.js';
-import { bagSummary } from '../../text/inventory.js';
 import { NOT_REGISTERED } from '../../text/common.js';
 
 export class InventoryCommand implements ICommand {

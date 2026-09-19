@@ -3,6 +3,22 @@ import { EVEN_MONEY } from '../../../config/casinoPayouts.js';
 import { newDeck, baccaratValue, baccaratScore, type Card } from '../CardDeck.js';
 
 /**
+ * Banker's third-card rule, evaluated against the banker's ORIGINAL two-card
+ * score and the player's third-card value (null when the player stood).
+ * Ported 1:1 from casino/baccarat.js.
+ */
+function bankerDrawsThird(bTwo: number, playerThirdVal: number | null): boolean {
+	if (playerThirdVal === null) return bTwo <= 5;
+	const pt = playerThirdVal;
+	if (bTwo <= 2) return true;
+	if (bTwo === 3) return pt !== 8;
+	if (bTwo === 4) return pt >= 2 && pt <= 7;
+	if (bTwo === 5) return pt >= 4 && pt <= 7;
+	if (bTwo === 6) return pt >= 6 && pt <= 7;
+	return false;
+}
+
+/**
  * Standard punto banco, ported 1:1 from casino/baccarat.js:
  *  - 2 cards each; a natural (either hand 8 or 9 on the first two) stands.
  *  - else PLAYER draws a third on 0-5, stands 6-7.
@@ -33,31 +49,24 @@ export class BaccaratGame implements ICasinoGame {
 				player.push(c);
 				playerThirdVal = baccaratValue(c.rank);
 			}
-
-			let bankerDraws: boolean;
-			if (playerThirdVal === null) {
-				bankerDraws = bTwo <= 5;
-			} else {
-				const pt = playerThirdVal;
-				if (bTwo <= 2) bankerDraws = true;
-				else if (bTwo === 3) bankerDraws = pt !== 8;
-				else if (bTwo === 4) bankerDraws = pt >= 2 && pt <= 7;
-				else if (bTwo === 5) bankerDraws = pt >= 4 && pt <= 7;
-				else if (bTwo === 6) bankerDraws = pt >= 6 && pt <= 7;
-				else bankerDraws = false;
-			}
-			if (bankerDraws) banker.push(deck.draw());
+			if (bankerDrawsThird(bTwo, playerThirdVal)) banker.push(deck.draw());
 		}
 
 		const pScore = baccaratScore(player);
 		const bScore = baccaratScore(banker);
-		const winner = pScore > bScore ? 'player' : bScore > pScore ? 'banker' : 'tie';
+		let winner: 'player' | 'banker' | 'tie';
+		if (pScore > bScore) winner = 'player';
+		else if (bScore > pScore) winner = 'banker';
+		else winner = 'tie';
 		const push = winner === 'tie';
 		const won = !push && winner === pick;
 
+		let payout = 0;
+		if (push) payout = bet;
+		else if (won) payout = Math.floor(bet * EVEN_MONEY);
 		return {
 			won,
-			payout: push ? bet : won ? Math.floor(bet * EVEN_MONEY) : 0,
+			payout,
 			result: winner,
 			metadata: { player, banker, pScore, bScore, pick, push },
 		};

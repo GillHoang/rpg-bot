@@ -1,10 +1,10 @@
-import { CURRENCY, NO_CHARACTER } from './common.js';
+import { CURRENCY } from './common.js';
 
 export const SUMMON_DESCRIPTION = 'Triệu hồi vị thần bằng Belief Shards';
 export const SUMMON_COUNT_OPTION_DESC = (max: number): string => `Số lượt triệu hồi (1-${max})`;
 
 export const SUMMON_INVALID_COUNT = (max: number): string => `Số lượt phải trong khoảng 1-${max}.`;
-export const SUMMON_NO_CHARACTER = NO_CHARACTER;
+export { NO_CHARACTER as SUMMON_NO_CHARACTER } from './common.js';
 export const SUMMON_INSUFFICIENT_SHARDS = (needed: string, have: string): string =>
 	`Không đủ ${CURRENCY.beliefShards}. Cần ${needed}, hiện có ${have}.`;
 export const SUMMON_NO_DEITIES_SEEDED = (tier: string): string =>

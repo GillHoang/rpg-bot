@@ -34,8 +34,10 @@ export class FighterStrategy extends NullClassStrategy {
 		if (!ctx.self.flags.fighter_bash_this_hit || resolved.damageDealt <= 0) return;
 		ctx.self.flags.fighter_bash_this_hit = false;
 
-		ctx.enemy.debuffs.push({ tag: 'stun', turnsLeft: STUN_TURNS, value: 0 });
-		ctx.enemy.debuffs.push({ tag: 'dizzy', turnsLeft: 1, value: DIZZY_MISS_CHANCE });
+		ctx.enemy.debuffs.push(
+			{ tag: 'stun', turnsLeft: STUN_TURNS, value: 0 },
+			{ tag: 'dizzy', turnsLeft: 1, value: DIZZY_MISS_CHANCE },
+		);
 		ctx.log(COMBAT_FIGHTER_BASH(STUN_TURNS));
 	}
 }

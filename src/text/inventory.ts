@@ -23,47 +23,61 @@ export const DEITIES_EMPTY_PAGE = 'Chưa có deity ở trang này. Dùng /summon
 export const DEITIES_FOOTER = '/equip kind:deity · /deity sigil · /deity ascend (prestige)';
 
 // --- Dòng render từng vật phẩm trong list (InventoryRepository) ---
-export const WEAPON_LIST_LINE = (
-	name: string,
-	tier: string,
-	enhancement: number,
-	id: string,
-	atk: number,
-	crit: number,
-	native: string,
-	opposite: string,
-): string =>
-	`**${name}** (${tier}) +${enhancement}\nID: \`${id}\` · ATK ${atk} · CRIT ${crit}%\nSockets: ${native} / ${opposite}`;
-export const ARMOR_LIST_LINE = (
-	name: string,
-	tier: string,
-	enhancement: number,
-	id: string,
-	hp: number,
-	def: number,
-	native: string,
-	opposite: string,
-): string =>
-	`**${name}** (${tier}) +${enhancement}\nID: \`${id}\` · HP ${hp} · DEF ${def}\nSockets: ${native} / ${opposite}`;
-export const RUNE_LIST_LINE = (
-	name: string,
-	tier: string,
-	lane: string,
-	uid: string,
-	description: string,
-	socketedInto: string,
-): string => `**${name}** (${tier}, ${lane})\nID: \`${uid}\` · ${description}\nGắn vào: ${socketedInto}`;
-export const DEITY_LIST_LINE = (
-	name: string,
-	tier: string,
-	userDeityId: number,
-	sigils: number,
-	ascended: boolean,
-	atk: number,
-	hp: number,
-	def: number,
-): string =>
-	`**${name}** (${tier}) · ID: \`${userDeityId}\`\nSigil ${sigils}/10 · Ascended: ${ascended ? 'Có (prestige)' : 'Chưa'}\nATK ${atk} · HP ${hp} · DEF ${def}`;
+export interface GearListEntry {
+	name: string;
+	tier: string;
+	/** Cấp enhance hiện tại - 1 (hiển thị dạng +N, Common = +0). */
+	plus: number;
+	id: string;
+	native: string;
+	opposite: string;
+}
+
+export function WEAPON_LIST_LINE(e: GearListEntry & { atk: number; crit: number }): string {
+	return (
+		`**${e.name}** (${e.tier}) +${e.plus}
+` +
+		`ID: \`${e.id}\` · ATK ${e.atk} · CRIT ${e.crit}%
+` +
+		`Sockets: ${e.native} / ${e.opposite}`
+	);
+}
+
+export function ARMOR_LIST_LINE(e: GearListEntry & { hp: number; def: number }): string {
+	return (
+		`**${e.name}** (${e.tier}) +${e.plus}
+` +
+		`ID: \`${e.id}\` · HP ${e.hp} · DEF ${e.def}
+` +
+		`Sockets: ${e.native} / ${e.opposite}`
+	);
+}
+
+export function RUNE_LIST_LINE(e: { name: string; tier: string; lane: string; uid: string; description: string; socketedInto: string }): string {
+	return `**${e.name}** (${e.tier}, ${e.lane})
+ID: \`${e.uid}\` · ${e.description}
+Gắn vào: ${e.socketedInto}`;
+}
+
 export const DEITY_ASCENDED_YES = 'Có (prestige)';
 export const DEITY_ASCENDED_NO = 'Chưa';
 export const RUNE_NOT_SOCKETED = 'chưa gắn';
+
+export function DEITY_LIST_LINE(e: {
+	name: string;
+	tier: string;
+	userDeityId: number;
+	sigils: number;
+	ascended: boolean;
+	atk: number;
+	hp: number;
+	def: number;
+}): string {
+	return (
+		`**${e.name}** (${e.tier}) · ID: \`${e.userDeityId}\`
+` +
+		`Sigil ${e.sigils}/10 · Ascended: ${e.ascended ? DEITY_ASCENDED_YES : DEITY_ASCENDED_NO}
+` +
+		`ATK ${e.atk} · HP ${e.hp} · DEF ${e.def}`
+	);
+}

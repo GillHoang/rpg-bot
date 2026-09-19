@@ -35,12 +35,11 @@ export function computeSigilStats(
 }
 
 /** Cost of the NEXT Sigil (null at 10/10 — next step is Ascension, not a Sigil). */
-export function nextSigilCost(tier: DeityTier, sigils: number): { sigil: number; essence: number } | null {
-	const n = sigils || 0;
-	if (n >= MAX_SIGILS) return null;
+export function nextSigilCost(tier: DeityTier, sigils = 0): { sigil: number; essence: number } | null {
+	if (sigils >= MAX_SIGILS) return null;
 	const costs = SIGIL_ESSENCE_COST[tier];
-	const essence = costs?.[n + 1];
-	return essence == null ? null : { sigil: n + 1, essence };
+	const essence = costs?.[sigils + 1];
+	return essence == null ? null : { sigil: sigils + 1, essence };
 }
 
 export function ascensionCost(tier: DeityTier): { essence: number; credux: number } | null {

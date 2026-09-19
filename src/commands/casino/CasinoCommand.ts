@@ -59,7 +59,9 @@ export class CasinoCommand implements ICommand {
 		}
 
 		const { outcome, balanceAfter } = result;
-		const verdict = outcome.won ? CASINO_WIN : outcome.payout > 0 ? CASINO_PUSH : CASINO_LOSE;
+		let verdict = CASINO_LOSE;
+		if (outcome.won) verdict = CASINO_WIN;
+		else if (outcome.payout > 0) verdict = CASINO_PUSH;
 		const delta = (outcome.payout - bet >= 0 ? '+' : '') + (outcome.payout - bet).toLocaleString();
 		await interaction.editReply(CASINO_RESULT_LINE(verdict, outcome.result, delta, balanceAfter.toLocaleString()));
 	}

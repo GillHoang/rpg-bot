@@ -99,27 +99,7 @@ export class RankedService {
 			if (!lock) return { status: 'busy' };
 
 			// Opponent: random registered player, nearest rating window first.
-			const windows = [RANKED.WINDOW, RANKED.WINDOW * 3, Number.MAX_SAFE_INTEGER];
-			let opponentRow: typeof userCharacter.$inferSelect | undefined;
-			for (const window of windows) {
-				const [row] = await tx
-					.select()
-					.from(userCharacter)
-					.innerJoin(users, eq(users.discordId, userCharacter.discordId))
-					.where(
-						and(
-							ne(userCharacter.discordId, discordId),
-							eq(users.isBanned, false),
-							sql`abs(${userCharacter.pvpRating} - ${me.pvpRating}) <= ${window}`,
-						),
-					)
-					.orderBy(sql`random()`)
-					.limit(1);
-				if (row) {
-					opponentRow = row.user_character;
-					break;
-				}
-			}
+			const opponentRow = await this.pickOpponentRow(tx, discordId, me.pvpRating);
 			if (!opponentRow) return { status: 'no-opponent' };
 
 			const opponentAccount = await this.accounts.findByIdWithExecutor(tx, opponentRow.discordId);
@@ -164,7 +144,9 @@ export class RankedService {
 
 			const won = battle.outcome === 'player_win';
 			const draw = battle.outcome === 'draw';
-			const score = won ? 1 : draw ? 0.5 : 0;
+			let score: 0 | 0.5 | 1 = 0;
+			if (won) score = 1;
+			else if (draw) score = 0.5;
 
 			const ratingBefore = me.pvpRating;
 			const meChange = this.resolveRatingChange(
@@ -377,7 +359,35 @@ export class RankedService {
 			shieldUsed = true;
 		}
 		const promoted = index(after) > index(before);
-		return { rating, shield: promoted ? true : shieldUsed ? false : hadShield, shieldUsed, promoted };
+		let shield = hadShield;
+		if (promoted) shield = true;
+		else if (shieldUsed) shield = false;
+		return { rating, shield, shieldUsed, promoted };
+	}
+
+	/** Opponent: a random non-banned registered player, widening the rating window until someone is found. */
+	private async pickOpponentRow(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		discordId: string,
+		rating: number,
+	): Promise<typeof userCharacter.$inferSelect | null> {
+		for (const window of [RANKED.WINDOW, RANKED.WINDOW * 3, Number.MAX_SAFE_INTEGER]) {
+			const [row] = await tx
+				.select()
+				.from(userCharacter)
+				.innerJoin(users, eq(users.discordId, userCharacter.discordId))
+				.where(
+					and(
+						ne(userCharacter.discordId, discordId),
+						eq(users.isBanned, false),
+						sql`abs(${userCharacter.pvpRating} - ${rating}) <= ${window}`,
+					),
+				)
+				.orderBy(sql`random()`)
+				.limit(1);
+			if (row) return row.user_character;
+		}
+		return null;
 	}
 
 	/** Win streak = consecutive wins at the tail of ranked_logs. */

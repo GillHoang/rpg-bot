@@ -33,7 +33,7 @@ export class LootRepository {
 				),
 			)
 			.orderBy(runeRoster.runeId);
-		if (filter.names && filter.names.some((name) => !pool.some((r) => r.name === name)))
+		if (filter.names?.some((name) => !pool.some((r) => r.name === name)))
 			throw new Error('Thiếu rune trong seed shop.');
 		const rune = choose(pool, rng);
 		const runeUid = `r_${randomUUID()}`;

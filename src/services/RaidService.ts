@@ -1,5 +1,6 @@
 import { db } from '../db/client.js';
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
+import type { PlayerAccount } from '../domain/entities/PlayerAccount.js';
 import { MonsterRepository } from '../repositories/MonsterRepository.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
 import { RaidRewardRepository, type RaidRewardResult } from '../repositories/RaidRewardRepository.js';
@@ -81,24 +82,8 @@ export class RaidService {
 			const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
 			if (!monsterStats) return { status: 'no-monsters-seeded' };
 			if (boss) {
-				if (account.combatLevel < BOSS_ENTRY.minLevel)
-					return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
-				const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
-				if (user.lastBossAttackDate === DailyCycle.keyAt())
-					return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
-				if (account.credux < BOSS_ENTRY.credux)
-					return {
-						status: 'boss-locked',
-						message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()),
-					};
-				await tx
-					.update(users)
-					.set({ lastBossAttackDate: DailyCycle.keyAt() })
-					.where(eq(users.discordId, discordId));
-				await tx
-					.update(usersBag)
-					.set({ credux: account.credux - BOSS_ENTRY.credux })
-					.where(eq(usersBag.discordId, discordId));
+				const gate = await this.bossGate(tx, discordId, account);
+				if (gate) return gate;
 			}
 
 			const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
@@ -133,21 +118,18 @@ export class RaidService {
 			});
 			const won = battle.outcome === 'player_win';
 
-			const table = boss
-				? RAID_LOOT_BOSS
-				: monsterStats.mobType === 'elite'
-					? RAID_LOOT_ELITE
-					: RAID_LOOT_REGULAR;
-			const chestField = boss
-				? 'bossTreasureChest'
-				: monsterStats.mobType === 'elite'
-					? 'goldChest'
-					: 'silverChest';
-			const chestName = boss
-				? 'Boss Treasure Chest'
-				: monsterStats.mobType === 'elite'
-					? 'Gold Chest'
-					: 'Silver Chest';
+			let table: typeof RAID_LOOT_BOSS | typeof RAID_LOOT_ELITE | typeof RAID_LOOT_REGULAR = RAID_LOOT_REGULAR;
+			let chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest' = 'silverChest';
+			let chestName = 'Silver Chest';
+			if (boss) {
+				table = RAID_LOOT_BOSS;
+				chestField = 'bossTreasureChest';
+				chestName = 'Boss Treasure Chest';
+			} else if (monsterStats.mobType === 'elite') {
+				table = RAID_LOOT_ELITE;
+				chestField = 'goldChest';
+				chestName = 'Gold Chest';
+			}
 			let credux = 0;
 			let shards = 0;
 			let baseExp: number;
@@ -221,5 +203,29 @@ export class RaidService {
 		if (progress.leveledUp) this.events.emit('level.up', { discordId, newLevel: progress.newLevel });
 
 		return result;
+	}
+
+	/** Boss entry gate: level, once-per-Manila-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
+	private async bossGate(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		discordId: string,
+		account: PlayerAccount,
+	): Promise<RaidResult | null> {
+		if (account.combatLevel < BOSS_ENTRY.minLevel)
+			return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
+		const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
+		if (user.lastBossAttackDate === DailyCycle.keyAt())
+			return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
+		if (account.credux < BOSS_ENTRY.credux)
+			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()) };
+		await tx
+			.update(users)
+			.set({ lastBossAttackDate: DailyCycle.keyAt() })
+			.where(eq(users.discordId, discordId));
+		await tx
+			.update(usersBag)
+			.set({ credux: account.credux - BOSS_ENTRY.credux })
+			.where(eq(usersBag.discordId, discordId));
+		return null;
 	}
 }

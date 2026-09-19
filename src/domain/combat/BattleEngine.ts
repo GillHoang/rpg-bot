@@ -62,67 +62,88 @@ export class BattleEngine {
 		let round = 1;
 		for (; round <= MAX_ROUNDS; round++) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
-			log.push(COMBAT_ROUND_HEADER(round));
-			if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
-
-			playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
-			enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
-
-			// Initiative: the holder of a higher `initiative_bias` flag (Tailwind
-			// blessing) is more likely to act first this round; even footing is 50/50.
-			const playerBias = (player.flags.initiative_bias as number) ?? 0;
-			const enemyBias = (enemy.flags.initiative_bias as number) ?? 0;
-			const playerFirst = rollChance(0.5 + playerBias - enemyBias, rng);
-
-			// Debuffs pushed during THIS round must not tick down at this round's
-			// end — a 1-turn debuff would otherwise expire before ever taking
-			// effect on the holder's next turn.
-			const freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
-
-			const playerTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
-				player,
-				enemy,
-				playerStrategy,
-				enemyStrategy,
-			];
-			const enemyTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
-				enemy,
-				player,
-				enemyStrategy,
-				playerStrategy,
-			];
-			const turns = playerFirst ? [playerTurn, enemyTurn] : [enemyTurn, playerTurn];
-			for (const [attacker, defender, atkStrategy, defStrategy] of turns) {
-				if (player.hp <= 0 || enemy.hp <= 0) break;
-				this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, rng, log);
-			}
-
-			if (player.hp <= 0 || enemy.hp <= 0) break;
-
-			this.endOfRound(player, playerStrategy, round, rng, log, freshDebuffs);
-			if (player.hp <= 0) break;
-			this.endOfRound(enemy, enemyStrategy, round, rng, log, freshDebuffs);
+			this.playRound(player, enemy, playerStrategy, enemyStrategy, round, rng, log);
 		}
 
-		const outcome: BattleOutcome =
-			player.hp <= 0 && enemy.hp <= 0
-				? 'draw'
-				: enemy.hp <= 0
-					? 'player_win'
-					: player.hp <= 0
-						? 'enemy_win'
-						: // Round-limit reached with both alive: whoever has the higher HP% wins.
-							player.hp / player.maxHp >= enemy.hp / enemy.maxHp
-							? 'player_win'
-							: 'enemy_win';
-
 		return {
-			outcome,
+			outcome: this.resolveOutcome(player, enemy),
 			rounds: Math.min(round, MAX_ROUNDS),
 			log,
 			playerHpRemaining: player.hp,
 			enemyHpRemaining: enemy.hp,
 		};
+	}
+
+	private playRound(
+		player: CombatantState,
+		enemy: CombatantState,
+		playerStrategy: IClassStrategy,
+		enemyStrategy: IClassStrategy,
+		round: number,
+		rng: () => number,
+		log: string[],
+	): void {
+		log.push(COMBAT_ROUND_HEADER(round));
+		if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
+
+		playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
+		enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
+
+		// Debuffs pushed during THIS round must not tick down at this round's
+		// end — a 1-turn debuff would otherwise expire before ever taking
+		// effect on the holder's next turn.
+		const freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
+
+		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(
+			player,
+			enemy,
+			playerStrategy,
+			enemyStrategy,
+			rng,
+		)) {
+			if (player.hp <= 0 || enemy.hp <= 0) break;
+			this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, rng, log);
+		}
+
+		if (player.hp <= 0 || enemy.hp <= 0) return;
+
+		this.endOfRound(player, playerStrategy, round, rng, log, freshDebuffs);
+		if (player.hp <= 0) return;
+		this.endOfRound(enemy, enemyStrategy, round, rng, log, freshDebuffs);
+	}
+
+	/** Initiative: the holder of a higher `initiative_bias` flag (Tailwind blessing) is more likely to act first; even footing is 50/50. */
+	private turnOrder(
+		player: CombatantState,
+		enemy: CombatantState,
+		playerStrategy: IClassStrategy,
+		enemyStrategy: IClassStrategy,
+		rng: () => number,
+	): Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> {
+		const playerBias = (player.flags.initiative_bias as number) ?? 0;
+		const enemyBias = (enemy.flags.initiative_bias as number) ?? 0;
+		const playerFirst = rollChance(0.5 + playerBias - enemyBias, rng);
+		const playerTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
+			player,
+			enemy,
+			playerStrategy,
+			enemyStrategy,
+		];
+		const enemyTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
+			enemy,
+			player,
+			enemyStrategy,
+			playerStrategy,
+		];
+		return playerFirst ? [playerTurn, enemyTurn] : [enemyTurn, playerTurn];
+	}
+
+	private resolveOutcome(player: CombatantState, enemy: CombatantState): BattleOutcome {
+		if (player.hp <= 0 && enemy.hp <= 0) return 'draw';
+		if (enemy.hp <= 0) return 'player_win';
+		if (player.hp <= 0) return 'enemy_win';
+		// Round-limit reached with both alive: whoever has the higher HP% wins.
+		return player.hp / player.maxHp >= enemy.hp / enemy.maxHp ? 'player_win' : 'enemy_win';
 	}
 
 	private takeTurn(

@@ -86,13 +86,15 @@ export class QuestService {
 				.limit(1);
 			const allDaily = dailies.length > 0 && dailies.every((q) => q.completed);
 			const allWeekly = weeklies.length > 0 && weeklies.every((q) => q.completed);
+			let grandFooter = '';
+			if (allWeekly) grandFooter = grand?.claimed ? QUEST_GRAND_CLAIMED : QUEST_GRAND_READY;
 			return (
 				QUEST_DAILY_HEADER(day) +
 				(lines.length ? '\n' + lines.join('\n') : '') +
 				(allDaily ? QUEST_DAILY_ALL_DONE(DAILY_ALL_COMPLETE_RELICS) : '') +
 				QUEST_WEEKLY_HEADER(week) +
 				(weeklyLines.length ? '\n' + weeklyLines.join('\n') : '') +
-				(allWeekly ? (grand?.claimed ? QUEST_GRAND_CLAIMED : QUEST_GRAND_READY) : '')
+				grandFooter
 			);
 		});
 	}

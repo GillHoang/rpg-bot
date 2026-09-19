@@ -74,21 +74,7 @@ export class RaidRewardRepository {
 					[chestField]: chestAfter,
 				})
 				.where(eq(usersBag.discordId, discordId));
-
-			if (grant.credux > 0) {
-				await executor
-					.insert(gameLogs)
-					.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creuxAfter });
-			}
-			if (grant.grantChest) {
-				await executor.insert(gameLogs).values({
-					discordId,
-					action: 'Raid',
-					itemType: chestField,
-					previousChestCount: bag[chestField],
-					updatedChestCount: chestAfter,
-				});
-			}
+			await this.logRaidCurrency(executor, discordId, grant, bag, creuxAfter, chestField, chestAfter);
 		}
 
 		// History row for every battle — win or loss (the table was previously
@@ -109,6 +95,31 @@ export class RaidRewardRepository {
 		});
 
 		return { previousLevel: character.combatLevel, newLevel: next.level, leveledUp: next.leveledUp };
+	}
+
+	private async logRaidCurrency(
+		executor: Executor,
+		discordId: string,
+		grant: RaidRewardGrant,
+		bag: typeof usersBag.$inferSelect,
+		creuxAfter: number,
+		chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest',
+		chestAfter: number,
+	): Promise<void> {
+		if (grant.credux > 0) {
+			await executor
+				.insert(gameLogs)
+				.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creuxAfter });
+		}
+		if (grant.grantChest) {
+			await executor.insert(gameLogs).values({
+				discordId,
+				action: 'Raid',
+				itemType: chestField,
+				previousChestCount: bag[chestField],
+				updatedChestCount: chestAfter,
+			});
+		}
 	}
 
 	/** Consecutive wins at the tail of raid_logs — for highestRaidStreak. */

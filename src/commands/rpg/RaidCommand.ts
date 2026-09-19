@@ -52,12 +52,9 @@ export class RaidCommand implements ICommand {
 		}
 
 		const { battle, monsterName, credux, shards, expGained, gotChest, progress } = result;
-		const outcomeLine =
-			battle.outcome === 'player_win'
-				? RAID_WIN(monsterName)
-				: battle.outcome === 'enemy_win'
-					? RAID_LOSE(monsterName)
-					: RAID_DRAW;
+		let outcomeLine = RAID_DRAW;
+		if (battle.outcome === 'player_win') outcomeLine = RAID_WIN(monsterName);
+		else if (battle.outcome === 'enemy_win') outcomeLine = RAID_LOSE(monsterName);
 
 		let logText = battle.log.join('\n');
 		if (logText.length > RAID_MAX_LOG_CHARS)

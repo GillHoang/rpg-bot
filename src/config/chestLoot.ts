@@ -1,5 +1,4 @@
-import { pick, rollChance } from '../utils/weightedRandom.js';
-import { choose } from '../utils/weightedRandom.js';
+import { choose, pick, rollChance } from '../utils/weightedRandom.js';
 export { choose };
 import { randInt } from './raidLoot.js';
 

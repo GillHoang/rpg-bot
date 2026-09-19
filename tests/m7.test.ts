@@ -285,7 +285,7 @@ describe('M7 relics, rune bags and new chests', () => {
 		expect(await svc.openRuneBag(id, 'xx')).toContain('lb | gb | db');
 		const runesBefore = (await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).length;
 		expect(await svc.openRuneBag(id, 'lb')).toContain('Mở túi lb');
-		expect((await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).length).toBe(runesBefore + 1);
+		expect(await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).toHaveLength(runesBefore + 1);
 		expect((await bag()).lesserRuneBag).toBe(0);
 		expect(await svc.openRuneBag(id, 'lb')).toContain('Không đủ');
 		expect(await svc.openRuneBag(id, 'db')).toContain('Mở túi db');

@@ -16,9 +16,7 @@ export class CommandRegistry {
 	private constructor() {}
 
 	static getInstance(): CommandRegistry {
-		if (!CommandRegistry.instance) {
-			CommandRegistry.instance = new CommandRegistry();
-		}
+		CommandRegistry.instance ??= new CommandRegistry();
 		return CommandRegistry.instance;
 	}
 

@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { cosmeticCatalog, pvpShopPurchases, seasons, usersBag, userCharacter } from '../db/schema.js';
-import { PVP_SHOP_ITEMS, type PvpShopItem } from '../config/pvpShop.js';
+import { PVP_SHOP_ITEMS } from '../config/pvpShop.js';
 import { COSMETIC_TIER_MIN_LEVEL } from '../config/reputation.js';
 import { CosmeticService } from './CosmeticService.js';
 import {
@@ -131,4 +131,4 @@ export class PvpShopService {
 	}
 }
 
-export type { PvpShopItem };
+export type { PvpShopItem } from '../config/pvpShop.js';

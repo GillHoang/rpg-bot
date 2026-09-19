@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
-import { RankedService } from '../../services/RankedService.js';
+import { RankedService, type RankedClaimResult } from '../../services/RankedService.js';
 import {
 	RANKED_ALREADY_CLAIMED,
 	RANKED_BUSY,
@@ -34,32 +34,31 @@ export class RankedCommand implements ICommand {
 
 	constructor(private readonly ranked = new RankedService()) {}
 
+	private claimMessage(result: RankedClaimResult): string {
+		switch (result.status) {
+			case 'not-registered':
+				return RANKED_NOT_REGISTERED;
+			case 'already-claimed':
+				return RANKED_ALREADY_CLAIMED;
+			case 'no-fights':
+				return RANKED_NO_FIGHTS;
+			case 'no-reward-row':
+				return RANKED_NO_REWARD_ROW;
+			default:
+				return (
+					RANKED_CLAIM_OK(result.bracket, result.credux.toLocaleString(), result.valor) +
+					(result.chests.length ? ` · ${result.chests.join(' · ')}` : '')
+				);
+		}
+	}
+
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
 		const sub = interaction.options.getSubcommand(false);
 
 		if (sub === 'claim') {
 			const result = await this.ranked.claim(interaction.user.id);
-			let message: string;
-			switch (result.status) {
-				case 'not-registered':
-					message = RANKED_NOT_REGISTERED;
-					break;
-				case 'already-claimed':
-					message = RANKED_ALREADY_CLAIMED;
-					break;
-				case 'no-fights':
-					message = RANKED_NO_FIGHTS;
-					break;
-				case 'no-reward-row':
-					message = RANKED_NO_REWARD_ROW;
-					break;
-				default:
-					message =
-						RANKED_CLAIM_OK(result.bracket, result.credux.toLocaleString(), result.valor) +
-						(result.chests.length ? ` · ${result.chests.join(' · ')}` : '');
-			}
-			await interaction.editReply(message);
+			await interaction.editReply(this.claimMessage(result));
 			return;
 		}
 
@@ -86,7 +85,9 @@ export class RankedCommand implements ICommand {
 			return;
 		}
 
-		const outcome = result.draw ? RANKED_OUTCOME_DRAW : result.won ? RANKED_OUTCOME_WIN : RANKED_OUTCOME_LOSE;
+		let outcome = RANKED_OUTCOME_LOSE;
+		if (result.draw) outcome = RANKED_OUTCOME_DRAW;
+		else if (result.won) outcome = RANKED_OUTCOME_WIN;
 		let logText = result.battle.log.join('\n');
 		if (logText.length > RANKED_LOG_MAX_CHARS) {
 			logText = RANKED_LOG_TRUNCATE_PREFIX + logText.slice(-RANKED_LOG_MAX_CHARS);

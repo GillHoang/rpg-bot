@@ -143,9 +143,11 @@ export function renderDuel(result: DuelAcceptResult): string {
 	if (result.status === 'expired') return DUEL_EXPIRED_ACCEPT;
 	if (result.status === 'insufficient-funds') return DUEL_INSUFFICIENT_FUNDS_ACCEPT;
 
-	const outcomeLine = result.draw
-		? DUEL_DRAW
-		: DUEL_WIN(result.winnerName ?? '') + (result.stake > 0 ? DUEL_POT((result.stake * 2).toLocaleString()) : '');
+	let outcomeLine = DUEL_DRAW;
+	if (!result.draw) {
+		outcomeLine = DUEL_WIN(result.winnerName ?? '');
+		if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
+	}
 	let logText = result.battle.log.join('\n');
 	if (logText.length > RAID_MAX_LOG_CHARS) logText = RAID_LOG_TRUNCATE_PREFIX + logText.slice(-RAID_MAX_LOG_CHARS);
 	return (

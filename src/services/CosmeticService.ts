@@ -166,11 +166,10 @@ export class CosmeticService {
 				'\n' +
 				catalog
 					.map((t) => {
-						const ownedMark = ownedIds.has(t.titleId)
-							? character.equippedTitleId === t.titleId
-								? TITLE_EQUIPPED_MARK
-								: ''
-							: TITLE_LOCK_MARK;
+						let ownedMark = TITLE_LOCK_MARK;
+						if (ownedIds.has(t.titleId)) {
+							ownedMark = character.equippedTitleId === t.titleId ? TITLE_EQUIPPED_MARK : '';
+						}
 						return TITLE_ENTRY(t.titleId, t.display) + ownedMark + ` — ${t.howTo}`;
 					})
 					.join('\n') +

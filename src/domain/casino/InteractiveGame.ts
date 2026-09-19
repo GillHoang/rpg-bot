@@ -11,27 +11,33 @@ export interface StoredGame {
 
 /** Replay the small action history from a secret, server-side seed after every click. */
 export function replayGame(game: InteractiveGame, bet: number, stored: StoredGame) {
+	return game === 'blackjack' ? replayBlackjack(bet, stored) : replayCrash(bet, stored);
+}
+
+function replayBlackjack(bet: number, stored: StoredGame) {
 	const rng = createRng(stored.seed);
-	if (game === 'blackjack') {
-		const s = BlackjackSession.create(bet, rng);
-		for (const action of stored.actions) {
-			if (action === 'hit') BlackjackSession.hit(s);
-			else if (action === 'stand' || action === 'timeout') BlackjackSession.stand(s);
-		}
-		const hand = (cards: typeof s.player) => cards.map((c) => `${c.rank.toUpperCase()}-${c.suit}`).join(' ');
-		return {
-			done: s.state === 'done',
-			payout: s.payout,
-			result: s.outcome ?? 'active',
-			text: CASINO_BLACKJACK_VIEW(
-				bet.toLocaleString(),
-				`${hand(s.player)} (${BlackjackSession.playerValue(s)})`,
-				s.revealed
-					? `${hand(s.dealer)} (${BlackjackSession.dealerValue(s)})`
-					: `${hand([s.dealer[0]])} ${CASINO_HIDDEN_CARD}`,
-			),
-		};
+	const s = BlackjackSession.create(bet, rng);
+	for (const action of stored.actions) {
+		if (action === 'hit') BlackjackSession.hit(s);
+		else if (action === 'stand' || action === 'timeout') BlackjackSession.stand(s);
 	}
+	const hand = (cards: typeof s.player) => cards.map((c) => `${c.rank.toUpperCase()}-${c.suit}`).join(' ');
+	return {
+		done: s.state === 'done',
+		payout: s.payout,
+		result: s.outcome ?? 'active',
+		text: CASINO_BLACKJACK_VIEW(
+			bet.toLocaleString(),
+			`${hand(s.player)} (${BlackjackSession.playerValue(s)})`,
+			s.revealed
+				? `${hand(s.dealer)} (${BlackjackSession.dealerValue(s)})`
+				: `${hand([s.dealer[0]])} ${CASINO_HIDDEN_CARD}`,
+		),
+	};
+}
+
+function replayCrash(bet: number, stored: StoredGame) {
+	const rng = createRng(stored.seed);
 	const s = CrashSession.create(bet);
 	for (const action of stored.actions) {
 		if (action === 'push') {
@@ -39,10 +45,13 @@ export function replayGame(game: InteractiveGame, bet: number, stored: StoredGam
 			if (r.maxed) CrashSession.cashOut(s);
 		} else if (action === 'cash' || action === 'timeout') CrashSession.cashOut(s);
 	}
+	let result: 'win' | 'loss' | 'push' | 'active' = 'active';
+	if (s.state === 'crashed') result = 'loss';
+	else if (s.state === 'cashed') result = s.payout > bet ? 'win' : 'push';
 	return {
 		done: s.state !== 'active',
 		payout: s.payout,
-		result: s.state === 'crashed' ? 'loss' : s.state === 'cashed' ? (s.payout > bet ? 'win' : 'push') : 'active',
+		result,
 		text: CASINO_CRASH_VIEW(bet.toLocaleString(), s.push, s.multiplier.toFixed(2), s.state),
 	};
 }

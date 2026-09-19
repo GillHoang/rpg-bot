@@ -81,6 +81,9 @@ export class BlackjackSession {
 
 		s.state = 'done';
 		s.outcome = outcome;
-		s.payout = outcome === 'win' ? Math.floor(s.bet * EVEN_MONEY) : outcome === 'push' ? s.bet : 0;
+		let payout = 0;
+		if (outcome === 'win') payout = Math.floor(s.bet * EVEN_MONEY);
+		else if (outcome === 'push') payout = s.bet;
+		s.payout = payout;
 	}
 }

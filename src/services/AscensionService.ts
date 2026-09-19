@@ -31,7 +31,7 @@ export class AscensionService {
 		return db.transaction(async (tx): Promise<SigilResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const progress = await this.deities.findOwnedProgress(tx, discordId, userDeityId);
-			if (!progress || progress.userDeityId == null) return { status: 'not-owned' };
+			if (progress?.userDeityId == null) return { status: 'not-owned' };
 
 			const next = nextSigilCost(progress.tier, progress.sigils);
 			if (!next) return { status: 'maxed' };
