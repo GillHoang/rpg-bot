@@ -73,7 +73,7 @@ export class RaidCommand implements ICommand {
 		await interaction.editReply(
 			`${outcomeLine}\n` +
 				RAID_ROUND_SUMMARY(battle.rounds, battle.playerHpRemaining, battle.enemyHpRemaining) +
-				`\`\`\`\n${logText}\n\`\`\`\n` +
+				logText +
 				rewardLines.join('\n'),
 		);
 	}
