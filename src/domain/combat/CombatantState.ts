@@ -18,6 +18,8 @@ export interface Debuff {
 /** One combatant's mutable state for the duration of a single battle. */
 export interface CombatantState {
 	name: string;
+	/** Emoji hiển thị trước tên trong battle log (VD: 🐅 cho mob) — tuỳ chọn. */
+	emoji?: string;
 	combatClass: CombatClass | null; // null for mobs — mobs get the no-op strategy
 	hp: number;
 	maxHp: number;
@@ -38,6 +40,11 @@ export function hasDebuff(side: CombatantState, tag: DebuffTag): boolean {
 	return findDebuff(side, tag) !== undefined;
 }
 
+/** `🐅 Tiger` — tên kèm emoji (nếu có) để log dễ đọc. */
+export function combatDisplayName(c: CombatantState): string {
+	return c.emoji ? `${c.emoji} ${c.name}` : c.name;
+}
+
 export function createCombatant(params: {
 	name: string;
 	combatClass: CombatClass | null;
@@ -45,9 +52,11 @@ export function createCombatant(params: {
 	atk: number;
 	def: number;
 	crit: number;
+	emoji?: string;
 }): CombatantState {
 	return {
 		name: params.name,
+		emoji: params.emoji,
 		combatClass: params.combatClass,
 		hp: params.hp,
 		maxHp: params.hp,

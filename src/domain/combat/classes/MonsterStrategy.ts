@@ -1,7 +1,13 @@
 import { NullClassStrategy } from './NullClassStrategy.js';
-import { findDebuff } from '../CombatantState.js';
+import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from '../IClassStrategy.js';
 import { BOSS_ENTRY } from '../../../config/raidLoot.js';
+import {
+	COMBAT_MONSTER_ECLIPSE,
+	COMBAT_MONSTER_FRENZY,
+	COMBAT_MONSTER_FEAST,
+	COMBAT_MONSTER_VENOM_SPIT,
+} from '../../../text/combat.js';
 
 export class MonsterStrategy extends NullClassStrategy {
 	constructor(private readonly skill: string) {
@@ -12,7 +18,7 @@ export class MonsterStrategy extends NullClassStrategy {
 			hit.damagePctBonus += BOSS_ENTRY.eclipseDamageBonus;
 			if (!ctx.self.flags.eclipse) {
 				ctx.self.flags.eclipse = true;
-				ctx.log('🌑 Bakunawa bước vào Eclipse: sát thương +50%.');
+				ctx.log(COMBAT_MONSTER_ECLIPSE());
 			}
 		}
 		// Blood frenzy: below 40% HP the beast hits harder (M7 mob variety).
@@ -20,7 +26,7 @@ export class MonsterStrategy extends NullClassStrategy {
 			hit.damagePctBonus += 0.4;
 			if (!ctx.self.flags.frenzy_logged) {
 				ctx.self.flags.frenzy_logged = true;
-				ctx.log(`🩸 ${ctx.self.name} cuồng nộ: sát thương +40%.`);
+				ctx.log(COMBAT_MONSTER_FRENZY(combatDisplayName(ctx.self)));
 			}
 		}
 	}
@@ -32,12 +38,16 @@ export class MonsterStrategy extends NullClassStrategy {
 		}
 	}
 	override onHitLanded(ctx: StrategyContext, hit: ResolvedHit): void {
-		if (this.skill === 'flesh_feast')
-			ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + Math.floor(hit.damageDealt * 0.1));
+		if (this.skill === 'flesh_feast') {
+			const healed = Math.floor(hit.damageDealt * 0.1);
+			ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + healed);
+			if (healed > 0) ctx.log(COMBAT_MONSTER_FEAST(combatDisplayName(ctx.self), healed.toLocaleString()));
+		}
 		// Venom spit: wounds fester, ticking true damage for 2 rounds.
 		if (this.skill === 'venom_spit' && hit.damageDealt > 0 && ctx.enemy.hp > 0 && !findDebuff(ctx.enemy, 'venom')) {
 			const value = Math.max(5, Math.floor(ctx.enemy.maxHp * 0.03));
 			ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
+			ctx.log(COMBAT_MONSTER_VENOM_SPIT(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), value.toLocaleString()));
 		}
 	}
 }

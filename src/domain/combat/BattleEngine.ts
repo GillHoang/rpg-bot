@@ -7,14 +7,16 @@ import { mitigate, rollVariance, rollCrit, hitMultiplier } from './DamageCalcula
 import { createRng } from './Rng.js';
 import {
 	COMBAT_ATTACK_MISSES_DIZZY,
-	COMBAT_CRIT_SUFFIX,
 	COMBAT_DEFEATED_SUFFIX,
 	COMBAT_DOT_TICK,
+	COMBAT_GUARD,
 	COMBAT_HIT,
 	COMBAT_ROUND_HEADER,
 	COMBAT_SUDDEN_DEATH_HEADER,
+	COMBAT_TAGS,
 	COMBAT_UNABLE_TO_ACT,
 } from '../../text/combat.js';
+import { combatDisplayName } from './CombatantState.js';
 
 export type BattleOutcome = 'player_win' | 'enemy_win' | 'draw';
 
@@ -164,7 +166,7 @@ export class BattleEngine {
 
 		// Hard crowd-control: skip the action entirely.
 		if (findDebuff(attacker, 'stun') || findDebuff(attacker, 'paralyze')) {
-			log.push(COMBAT_UNABLE_TO_ACT(attacker.name));
+			log.push(COMBAT_UNABLE_TO_ACT(combatDisplayName(attacker)));
 			return;
 		}
 
@@ -173,7 +175,7 @@ export class BattleEngine {
 		if (dizzy) {
 			attacker.debuffs = attacker.debuffs.filter((d) => d !== dizzy);
 			if (rollChance(dizzy.value, rng)) {
-				log.push(COMBAT_ATTACK_MISSES_DIZZY(attacker.name));
+				log.push(COMBAT_ATTACK_MISSES_DIZZY(combatDisplayName(attacker)));
 				return;
 			}
 		}
@@ -236,13 +238,16 @@ export class BattleEngine {
 
 		ctx.log(
 			COMBAT_HIT(
-				attacker.name,
-				defender.name,
+				crit ? COMBAT_TAGS.CRIT : COMBAT_TAGS.PHYS,
+				combatDisplayName(attacker),
+				combatDisplayName(defender),
 				dealt.toLocaleString(),
-				crit ? COMBAT_CRIT_SUFFIX : '',
-				defender.hp <= 0 ? COMBAT_DEFEATED_SUFFIX(defender.name) : '',
+				defender.hp <= 0 ? COMBAT_DEFEATED_SUFFIX(combatDisplayName(defender)) : '',
 			),
 		);
+		if (incoming.reductionFraction > 0) {
+			ctx.log(COMBAT_GUARD(combatDisplayName(defender), Math.round(incoming.reductionFraction * 100)));
+		}
 
 		const resolved: ResolvedHit = { damageDealt: dealt, crit, triggerExtraAttack: false };
 		atkStrategy.onHitLanded(ctx, resolved);
@@ -283,7 +288,9 @@ export class BattleEngine {
 			const tick = Math.floor(debuff.value * (1 - wardingPct));
 			if (tick > 0) {
 				side.hp = Math.max(0, side.hp - tick);
-				log.push(COMBAT_DOT_TICK(side.name, tick.toLocaleString(), debuff.tag));
+				const dotTag = debuff.tag === 'bleed' ? COMBAT_TAGS.BLEED : debuff.tag === 'burn' ? COMBAT_TAGS.BURN : COMBAT_TAGS.VENM;
+				const label = debuff.tag === 'bleed' ? 'Chảy máu' : debuff.tag === 'burn' ? 'Bỏng' : 'Nhiễm độc';
+				log.push(COMBAT_DOT_TICK(dotTag, combatDisplayName(side), tick.toLocaleString(), label));
 			}
 			debuff.turnsLeft -= 1;
 		}

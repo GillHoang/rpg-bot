@@ -1,7 +1,7 @@
 import { rollChance } from '../../../utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
-import { findDebuff } from '../CombatantState.js';
+import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import { COMBAT_FIGHTER_BASH } from '../../../text/combat.js';
 
 const DAMAGE_BONUS_PCT = 50;
@@ -38,6 +38,6 @@ export class FighterStrategy extends NullClassStrategy {
 			{ tag: 'stun', turnsLeft: STUN_TURNS, value: 0 },
 			{ tag: 'dizzy', turnsLeft: 1, value: DIZZY_MISS_CHANCE },
 		);
-		ctx.log(COMBAT_FIGHTER_BASH(STUN_TURNS));
+		ctx.log(COMBAT_FIGHTER_BASH(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), STUN_TURNS));
 	}
 }

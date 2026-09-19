@@ -1,4 +1,5 @@
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
+import { combatDisplayName } from './CombatantState.js';
 import type { BlessingKey } from '../../config/blessings.js';
 import { rollChance } from '../../utils/weightedRandom.js';
 import {
@@ -38,7 +39,7 @@ export class DeityBlessingDecorator implements IClassStrategy {
 		if (this.effectKey === 'tailwind') {
 			const current = (ctx.self.flags.initiative_bias as number) ?? 0;
 			ctx.self.flags.initiative_bias = current + 0.25 * this.strength;
-			ctx.log(COMBAT_BLESSING_TAILWIND(ctx.self.name));
+			ctx.log(COMBAT_BLESSING_TAILWIND(combatDisplayName(ctx.self)));
 		}
 	}
 
@@ -47,17 +48,17 @@ export class DeityBlessingDecorator implements IClassStrategy {
 		if (this.effectKey === 'solar_fury') {
 			const pct = Math.round(6 * this.strength);
 			hit.damagePctBonus += 0.06 * this.strength;
-			ctx.log(COMBAT_BLESSING_SOLAR_FURY(ctx.self.name, pct));
+			ctx.log(COMBAT_BLESSING_SOLAR_FURY(combatDisplayName(ctx.self), pct));
 		} else if (this.effectKey === 'tidal_wrath') {
 			const missingHpFraction = 1 - ctx.self.hp / ctx.self.maxHp;
 			if (missingHpFraction > 0) {
 				const bonusPct = Math.round(35 * this.strength * missingHpFraction);
 				hit.damagePctBonus += 0.35 * this.strength * missingHpFraction;
-				ctx.log(COMBAT_BLESSING_TIDAL_WRATH(ctx.self.name, bonusPct));
+				ctx.log(COMBAT_BLESSING_TIDAL_WRATH(combatDisplayName(ctx.self), bonusPct));
 			}
 		} else if (this.effectKey === 'moon_devourer' && rollChance(0.15 * this.strength, ctx.rng)) {
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
-			ctx.log(COMBAT_BLESSING_MOON_DEVOURER(ctx.self.name));
+			ctx.log(COMBAT_BLESSING_MOON_DEVOURER(combatDisplayName(ctx.self)));
 		}
 	}
 
@@ -65,15 +66,15 @@ export class DeityBlessingDecorator implements IClassStrategy {
 		this.inner.prepareIncomingHit(ctx, hit);
 		if (this.effectKey === 'mountain_grace' && ctx.self.hp < ctx.self.maxHp / 2) {
 			hit.reductionFraction = Math.max(hit.reductionFraction, 0.35 * this.strength);
-			ctx.log(COMBAT_BLESSING_MOUNTAIN_GRACE(ctx.self.name));
+			ctx.log(COMBAT_BLESSING_MOUNTAIN_GRACE(combatDisplayName(ctx.self)));
 		} else if (this.effectKey === 'lunar_veil' && ctx.self.flags.blessing_veil_active) {
 			ctx.self.flags.blessing_veil_active = false;
 			hit.reductionFraction = Math.max(hit.reductionFraction, 0.3 * this.strength);
-			ctx.log(COMBAT_BLESSING_LUNAR_VEIL(ctx.self.name));
+			ctx.log(COMBAT_BLESSING_LUNAR_VEIL(combatDisplayName(ctx.self)));
 		} else if (this.effectKey === 'sky_sovereign' && !ctx.self.flags.blessing_sovereign_used) {
 			ctx.self.flags.blessing_sovereign_used = true;
 			hit.reductionFraction = 1;
-			ctx.log(COMBAT_BLESSING_SKY_SOVEREIGN(ctx.self.name));
+			ctx.log(COMBAT_BLESSING_SKY_SOVEREIGN(combatDisplayName(ctx.self)));
 		}
 	}
 
@@ -94,7 +95,7 @@ export class DeityBlessingDecorator implements IClassStrategy {
 			const healed = Math.min(ctx.self.maxHp - ctx.self.hp, Math.floor(ctx.self.maxHp * 0.04 * this.strength));
 			if (healed > 0) {
 				ctx.self.hp += healed;
-				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(ctx.self.name, healed.toLocaleString()));
+				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(combatDisplayName(ctx.self), healed.toLocaleString()));
 			}
 		}
 	}

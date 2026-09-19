@@ -1,4 +1,5 @@
 import { rollChance } from '../../../utils/weightedRandom.js';
+import { combatDisplayName } from '../CombatantState.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
 import { COMBAT_ARCHER_DOUBLE_ATTACK } from '../../../text/combat.js';
@@ -24,7 +25,7 @@ export class ArcherStrategy extends NullClassStrategy {
 		if (resolved.damageDealt <= 0) return;
 		if (rollChance(DOUBLE_ATTACK_CHANCE, ctx.rng)) {
 			resolved.triggerExtraAttack = true;
-			ctx.log(COMBAT_ARCHER_DOUBLE_ATTACK);
+			ctx.log(COMBAT_ARCHER_DOUBLE_ATTACK(combatDisplayName(ctx.self)));
 		}
 	}
 }

@@ -1,6 +1,6 @@
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
-import { findDebuff } from '../CombatantState.js';
+import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import { COMBAT_SWORDSMAN_ATK_UP, COMBAT_SWORDSMAN_BLEED } from '../../../text/combat.js';
 
 const BLEED_PCT_PER_STACK = 0.04;
@@ -39,7 +39,7 @@ export class SwordsmanStrategy extends NullClassStrategy {
 		if (current < ATK_STACK_MAX) {
 			const next = Math.min(ATK_STACK_MAX, current + ATK_STACK_PER_TURN);
 			ctx.self.flags.swordsman_atk_stack_pct = next;
-			ctx.log(COMBAT_SWORDSMAN_ATK_UP(Math.round((next - current) * 100)));
+			ctx.log(COMBAT_SWORDSMAN_ATK_UP(combatDisplayName(ctx.self), Math.round((next - current) * 100)));
 		}
 
 		// Apply/refresh the Bleed stack on the defender.
@@ -54,6 +54,6 @@ export class SwordsmanStrategy extends NullClassStrategy {
 			ctx.enemy.debuffs.push({ tag: 'bleed', turnsLeft: 2, value, stacks });
 		}
 		const pct = Math.round(Math.min(BLEED_MAX_PCT, stacks * BLEED_PCT_PER_STACK) * 100);
-		ctx.log(COMBAT_SWORDSMAN_BLEED(stacks, BLEED_MAX_STACKS, pct));
+		ctx.log(COMBAT_SWORDSMAN_BLEED(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), stacks, BLEED_MAX_STACKS, pct));
 	}
 }

@@ -1,7 +1,7 @@
 import { rollChance, choose } from '../../../utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
-import { findDebuff } from '../CombatantState.js';
+import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import {
 	MAGE_OVERCHARGE_MULT,
 	MAGE_OVERCHARGE_HIGH_MULT,
@@ -38,7 +38,7 @@ export class MageStrategy extends NullClassStrategy {
 		if (resolved.damageDealt <= 0) return;
 
 		const pick = choose(OVERCHARGE_DEBUFFS, ctx.rng);
-		ctx.log(COMBAT_MAGE_OVERCHARGE(pick));
+		ctx.log(COMBAT_MAGE_OVERCHARGE(combatDisplayName(ctx.self), pick));
 
 		if (pick === 'paralyze') {
 			ctx.enemy.debuffs.push({ tag: 'paralyze', turnsLeft: 1, value: 0 });
