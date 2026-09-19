@@ -238,6 +238,9 @@ describe('M7 ranked', () => {
 		expect(result.ratingAfter).not.toBe(result.ratingBefore);
 		const [me] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(me.pvpRating).toBe(result.ratingAfter);
+		// Ranked feeds the PvP win/loss record (draw leaves both counters alone).
+		if (result.won) expect(me.pvpWins).toBe(1);
+		else if (!result.draw) expect(me.pvpLosses).toBe(1);
 		const logs = await db.select().from(s.rankedLogs);
 		expect(logs).toHaveLength(2); // both perspectives
 		expect(await db.select().from(s.seasons)).toHaveLength(1); // lazy season
@@ -298,11 +301,13 @@ describe('M7 relics, rune bags and new chests', () => {
 		expect(afterDiamond.diamondChest).toBe(0);
 		expect(afterDiamond.credux).toBe(before.credux + 200_000);
 		expect(afterDiamond.greaterRuneBag).toBe(before.greaterRuneBag + 1); // 50/25 roll at rng 0
+		expect(afterDiamond.sacredRelics).toBe(before.sacredRelics + 1); // 25% relic at rng 0
 		expect(await svc.open(id, 'genesis', 1)).toContain('Genesis');
 		const afterGenesis = await bag();
 		expect(afterGenesis.genesisChest).toBe(0);
 		expect(afterGenesis.supremeEssence).toBe(before.supremeEssence + 1);
 		expect(afterGenesis.divineRuneBag).toBe(before.divineRuneBag + 1); // guaranteed db
+		expect(afterGenesis.supremeRelics).toBe(before.supremeRelics + 1); // guaranteed supreme relic
 		const runes = await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id));
 		expect(runes.length).toBeGreaterThanOrEqual(2); // Legendary (diamond) + Supreme (genesis)
 	});

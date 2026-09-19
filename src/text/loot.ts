@@ -42,3 +42,4 @@ export const RUNE_BAG_BAD_KEY = 'Túi phải là lb | gb | db.';
 export const RUNE_BAG_EMPTY = 'Không đủ túi rune. Mở rương để lấy thêm.';
 export const RUNE_BAG_OPENED = (bag: string, item: string): string => `Mở túi ${bag}: ${item}`;
 export const RUNE_BAG_HINT = '\n/socket equip để gắn vào gear; /inventory category:runes xem lane.';
+export const OPEN_ITEM_RELIC = (relic: string): string => `+1 ${relic}`;

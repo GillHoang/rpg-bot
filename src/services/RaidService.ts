@@ -68,7 +68,11 @@ export class RaidService {
 	async run(discordId: string, boss = false): Promise<RaidResult> {
 		const result = await db.transaction(async (tx): Promise<RaidResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
-			await tx.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).for('update');
+			const [character] = await tx
+				.select()
+				.from(userCharacter)
+				.where(eq(userCharacter.discordId, discordId))
+				.for('update');
 			const account = await this.accounts.findByIdWithExecutor(tx, discordId);
 			if (!account) return { status: 'not-registered' };
 			if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
@@ -166,7 +170,22 @@ export class RaidService {
 				grantChest: gotChest,
 				chestField,
 				boss,
+				battleType: boss ? 'boss' : 'raid',
+				enemyName: monsterStats.name,
+				enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
+				won,
 			});
+			if (won) {
+				// Raid win streak — computed from the raid_logs tail that grant()
+				// just appended to; only the record streak is persisted.
+				const streak = await this.rewards.currentWinStreak(tx, discordId);
+				if (streak > character.highestRaidStreak) {
+					await tx
+						.update(userCharacter)
+						.set({ highestRaidStreak: streak })
+						.where(eq(userCharacter.discordId, discordId));
+				}
+			}
 			const gearDrop =
 				won && boss && rollRaidChest(lootRng, BOSS_ENTRY.gearChance)
 					? await new LootRepository().gear(tx, discordId, 'Mythic', lootRng)

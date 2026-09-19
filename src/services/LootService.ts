@@ -9,6 +9,7 @@ import {
 	OPEN_BAD_COUNT,
 	OPEN_HINT,
 	OPEN_ITEM_ESSENCE,
+	OPEN_ITEM_RELIC,
 	OPEN_ITEM_RUNE_BAG,
 	OPEN_NO_CHESTS,
 	OPEN_NO_REGISTER,
@@ -60,6 +61,7 @@ export class LootService {
 				supremeEssence: bag.supremeEssence,
 			};
 			const runeBags = { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 0 };
+			const relics = { sacredRelics: 0, supremeRelics: 0 };
 			for (let n = 0; n < count; n++) {
 				const roll = rollChest(key, rng);
 				creux += roll.credux;
@@ -71,6 +73,10 @@ export class LootService {
 				if (roll.runeBag) {
 					runeBags[roll.runeBag] += 1;
 					items.push(OPEN_ITEM_RUNE_BAG(RUNE_BAG_SHORT_LABEL[roll.runeBag]));
+				}
+				if (roll.relic) {
+					relics[roll.relic] += 1;
+					items.push(OPEN_ITEM_RELIC(roll.relic));
 				}
 				if (roll.runeTier) items.push(await this.repo.rune(tx, id, rng, { tier: roll.runeTier }));
 				if (roll.gearTier) items.push(await this.repo.gear(tx, id, roll.gearTier, rng));
@@ -86,6 +92,8 @@ export class LootService {
 					lesserRuneBag: bag.lesserRuneBag + runeBags.lesserRuneBag,
 					greaterRuneBag: bag.greaterRuneBag + runeBags.greaterRuneBag,
 					divineRuneBag: bag.divineRuneBag + runeBags.divineRuneBag,
+					sacredRelics: bag.sacredRelics + relics.sacredRelics,
+					supremeRelics: bag.supremeRelics + relics.supremeRelics,
 				})
 				.where(eq(usersBag.discordId, id));
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);

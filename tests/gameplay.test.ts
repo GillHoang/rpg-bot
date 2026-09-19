@@ -200,6 +200,12 @@ describe('closed gameplay economy', () => {
 		expect(result.status).toBe('ok');
 		if (result.status === 'ok') expect(result.chestName).toBe('Gold Chest');
 		expect((await bag()).goldChest).toBe(1);
+		// raid history is written for every battle; a win feeds the streak.
+		const [log] = await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id));
+		expect(log.result).toBe('win');
+		expect(log.enemyTier).toBe('elite');
+		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
+		expect(character.highestRaidStreak).toBe(1);
 	});
 	it('enforces boss level, fee and daily limit; rewards a victory atomically', async () => {
 		const raid = new RaidService();
@@ -215,6 +221,9 @@ describe('closed gameplay economy', () => {
 		expect(character.bossKills).toBe(1);
 		expect(character.raidsWon).toBe(0);
 		expect(character.raidsLost).toBe(0);
+		const [bossLog] = await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id));
+		expect(bossLog.battleType).toBe('boss');
+		expect(bossLog.result).toBe('win');
 		const after = await bag();
 		expect((await raid.run(id, true)).status).toBe('boss-locked');
 		expect(await bag()).toEqual(after);

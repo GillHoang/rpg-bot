@@ -68,6 +68,7 @@ Ba quyết định phạm vi do người dùng chốt:
 | `/quest refresh` | 1 lần/ngày, chỉ reroll daily chưa hoàn thành |
 | Believer EXP | daily 50 · raid win 30 · duel win 40 · ranked win 50 · quest 25 · weekly grand 100; cap 500/ngày; level cost 400+100×N |
 | Relic pull | sacred = Mythic 70/Legendary 28/Supreme 2; supreme = Legendary 70/Supreme 30; không tốn shards, không đụng pity, ghi `summon_reward_grants` |
+| Relic faucet | Diamond chest 25% +1 Sacred Relic · Genesis chest 100% +1 Supreme Relic — vòng kín relic: daily quest → sacred, genesis chest → supreme, cả hai tiêu ở `/summon relic` |
 | Rune bag drop | Gold 8% lb · Boss Treasure 20% lb/8% gb · Boss Golden 30% gb/12% db · Diamond 50% gb/25% db · Genesis 100% db |
 | Diamond chest | 200–400k Credux, 300–600 shards, 100% rune Legendary, 40% gear Legendary, 50% legendary essence |
 | Genesis chest | 500k–1M Credux, 800–1500 shards, 100% rune Supreme, 50% gear Supreme, 100% supreme essence |
@@ -93,6 +94,15 @@ Ba quyết định phạm vi do người dùng chốt:
 - Chưa port (nằm ngoài quyết định phạm vi): world boss guild, vote reward,
   echo deity slot (`active_echo_deity_id` — schema có, chưa có cơ chế),
   supporter/stripe/tickets, season-end payout (bảng `seasons` chỉ tạo lazily).
+- Cột/bảng schema vẫn nằm im sau M7 (không faucet không sink, có chủ đích):
+  `users_bag.supreme_chest`, `users_bag.custom_avatar_token` /
+  `custom_deity_token` (hệ supporter), `essence_exchange_submissions`,
+  `raid_reward_grants` (phần thưởng theo level), `user_guild_activity`,
+  `user_character.boss_top_damage`, `topgg_vote_events`, `boss_*`/`auto_raids`.
+- `raid_logs` giờ được ghi cho MỌI trận raid/boss (win lẫn loss) — trước đợt
+  audit này bảng tồn tại nhưng không bao giờ được ghi; `highest_raid_streak`
+  tính từ đuôi raid_logs, `ranked` cũng đã cộng `pvp_wins`/`pvp_losses` cho
+  cả hai đấu thủ.
 - Tailwind của cả hai bên cộng trừ qua `initiative_bias` — mob thường không có
   bias nên deity tailwind luôn có lợi trong raid.
 - Draw ở duel (double KO) hoàn cược cho cả hai và không ghi `pvp_logs`.

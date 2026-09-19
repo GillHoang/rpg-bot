@@ -1,6 +1,6 @@
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import type { Executor } from '../db/client.js';
-import { userCharacter, usersBag, gameLogs } from '../db/schema.js';
+import { raidLogs, userCharacter, usersBag, gameLogs } from '../db/schema.js';
 import { applyCombatExp } from '../config/combatExp.js';
 
 export interface RaidRewardGrant {
@@ -10,6 +10,11 @@ export interface RaidRewardGrant {
 	grantChest: boolean;
 	chestField?: 'silverChest' | 'goldChest' | 'bossTreasureChest';
 	boss?: boolean;
+	/** Battle metadata for the raid_logs history row. */
+	battleType: 'raid' | 'boss';
+	enemyName: string;
+	enemyTier: 'regular' | 'elite' | 'boss';
+	won: boolean;
 }
 
 export interface RaidRewardResult {
@@ -38,6 +43,8 @@ export class RaidRewardRepository {
 			.limit(1)
 			.for('update');
 		if (!character) throw new Error(`grant: no user_character row for ${discordId}`);
+		if (!lockedBag) throw new Error(`grant: no users_bag row for ${discordId}`);
+		const bag = lockedBag;
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
 
 		await executor
@@ -52,18 +59,16 @@ export class RaidRewardRepository {
 			})
 			.where(eq(userCharacter.discordId, discordId));
 
-		if (grant.credux > 0 || grant.shards > 0 || grant.grantChest) {
-			const bag = lockedBag;
-			if (!bag) throw new Error(`grant: no users_bag row for ${discordId}`);
-			const creduxAfter = bag.credux + grant.credux;
-			const shardsAfter = bag.beliefShards + grant.shards;
-			const chestField = grant.chestField ?? 'silverChest';
-			const chestAfter = bag[chestField] + (grant.grantChest ? 1 : 0);
+		const creuxAfter = bag.credux + grant.credux;
+		const shardsAfter = bag.beliefShards + grant.shards;
+		const chestField = grant.chestField ?? 'silverChest';
+		const chestAfter = bag[chestField] + (grant.grantChest ? 1 : 0);
 
+		if (grant.credux > 0 || grant.shards > 0 || grant.grantChest) {
 			await executor
 				.update(usersBag)
 				.set({
-					credux: creduxAfter,
+					credux: creuxAfter,
 					beliefShards: shardsAfter,
 					lifetimeCreduxEarned: bag.lifetimeCreduxEarned + grant.credux,
 					[chestField]: chestAfter,
@@ -73,7 +78,7 @@ export class RaidRewardRepository {
 			if (grant.credux > 0) {
 				await executor
 					.insert(gameLogs)
-					.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creduxAfter });
+					.values({ discordId, action: 'Raid', previousCredux: bag.credux, updatedCredux: creuxAfter });
 			}
 			if (grant.grantChest) {
 				await executor.insert(gameLogs).values({
@@ -86,6 +91,39 @@ export class RaidRewardRepository {
 			}
 		}
 
+		// History row for every battle — win or loss (the table was previously
+		// never written; raid streaks below depend on it).
+		await executor.insert(raidLogs).values({
+			discordId,
+			battleType: grant.battleType,
+			enemyName: grant.enemyName,
+			enemyTier: grant.enemyTier,
+			result: grant.won ? 'win' : 'loss',
+			expEarned: grant.expGain,
+			updatedExp: next.exp,
+			beliefShardsDropped: grant.shards,
+			updatedBeliefShards: shardsAfter,
+			creduxEarned: grant.credux,
+			updatedCredux: creuxAfter,
+			chestDropped: grant.grantChest ? chestField : null,
+		});
+
 		return { previousLevel: character.combatLevel, newLevel: next.level, leveledUp: next.leveledUp };
+	}
+
+	/** Consecutive wins at the tail of raid_logs — for highestRaidStreak. */
+	async currentWinStreak(executor: Executor, discordId: string): Promise<number> {
+		const logs = await executor
+			.select({ result: raidLogs.result })
+			.from(raidLogs)
+			.where(eq(raidLogs.discordId, discordId))
+			.orderBy(desc(raidLogs.id))
+			.limit(50);
+		let streak = 0;
+		for (const log of logs) {
+			if (log.result !== 'win') break;
+			streak += 1;
+		}
+		return streak;
 	}
 }

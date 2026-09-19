@@ -199,6 +199,9 @@ export class RankedService {
 					pvpPeak: Math.max(me.pvpPeak, ratingAfter),
 					// A fresh promotion re-arms the shield; falling without it breaks it.
 					pvpDemotionShield: meChange.shield,
+					// Ranked counts toward the PvP win/loss record too (draw = no change).
+					pvpWins: me.pvpWins + (won ? 1 : 0),
+					pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
 				})
 				.where(eq(userCharacter.discordId, discordId));
 			await tx
@@ -207,6 +210,8 @@ export class RankedService {
 					pvpRating: opponentRatingAfter,
 					pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
 					pvpDemotionShield: opponentChange.shield,
+					pvpWins: opponentRow.pvpWins + (!won ? 1 : 0),
+					pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
 				})
 				.where(eq(userCharacter.discordId, opponentRow.discordId));
 

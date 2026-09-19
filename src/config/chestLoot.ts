@@ -15,6 +15,8 @@ export const CHESTS = {
 		gearTiers: ['Rare'],
 		essenceChance: 0,
 		essence: 'mythicEssence',
+		relicChance: 0,
+		relic: null,
 	},
 	gold: {
 		column: 'goldChest',
@@ -27,6 +29,8 @@ export const CHESTS = {
 		gearTiers: ['Rare', 'Mythic'],
 		essenceChance: 5,
 		essence: 'mythicEssence',
+		relicChance: 0,
+		relic: null,
 	},
 	boss_treasure: {
 		column: 'bossTreasureChest',
@@ -39,6 +43,8 @@ export const CHESTS = {
 		gearTiers: ['Mythic'],
 		essenceChance: 100,
 		essence: 'mythicEssence',
+		relicChance: 0,
+		relic: null,
 	},
 	boss_golden: {
 		column: 'bossGoldenChest',
@@ -51,6 +57,8 @@ export const CHESTS = {
 		gearTiers: ['Legendary'],
 		essenceChance: 100,
 		essence: 'legendaryEssence',
+		relicChance: 0,
+		relic: null,
 	},
 	diamond: {
 		column: 'diamondChest',
@@ -63,6 +71,8 @@ export const CHESTS = {
 		gearTiers: ['Legendary'],
 		essenceChance: 50,
 		essence: 'legendaryEssence',
+		relicChance: 25,
+		relic: 'sacredRelics',
 	},
 	genesis: {
 		column: 'genesisChest',
@@ -75,6 +85,8 @@ export const CHESTS = {
 		gearTiers: ['Supreme'],
 		essenceChance: 100,
 		essence: 'supremeEssence',
+		relicChance: 100,
+		relic: 'supremeRelics',
 	},
 } as const;
 export type ChestKey = keyof typeof CHESTS;
@@ -122,6 +134,7 @@ export function rollChest(key: ChestKey, rng: () => number) {
 		gearTier: chance(table.gearChance, rng) ? choose(table.gearTiers, rng) : null,
 		essence: chance(table.essenceChance, rng) ? table.essence : null,
 		runeBag: rollRuneBagField(key, rng),
+		relic: chance(table.relicChance, rng) ? table.relic : null,
 	};
 }
 // New balance values: roster rows contain names/passives, not base gear stats.

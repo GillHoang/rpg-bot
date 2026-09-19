@@ -176,9 +176,11 @@ pnpm lint
   đúng một đòn/trận; 10 Sigil = 100% base stat; Ascension không cộng stat hay
   kích hoạt blessing; gear/deity mới phải trang bị vào preset mới có tác dụng
   (deity đầu tiên tự equip nếu slot trống).
-- **Chưa thuộc phạm vi** (cố ý, xem §8 gameplay-flow): world boss guild
-  (`boss_*`, `auto_raids`), vote reward top.gg (`topgg_vote_events`), echo
-  deity slot, season-end payout, supporter/stripe/tickets, passive
+- **Chưa thuộc phạm vi** (cố ý, xem §8 gameplay-flow + docs/m7-implementation.md
+  §Giới hạn): world boss guild (`boss_*`, `auto_raids`), vote reward top.gg
+  (`topgg_vote_events`), echo deity slot, season-end payout,
+  supporter/stripe/tickets (`custom_avatar_token`, `custom_deity_token`),
+  `supreme_chest`, essence exchange, per-level reward grants, passive
   weapon/armor theo roster, portrait canvas.
 - [docs/port-history.md](docs/port-history.md) — lịch sử port trước gameflow,
   giữ làm tham khảo kiến trúc, không phải hướng dẫn chạy hiện tại.
