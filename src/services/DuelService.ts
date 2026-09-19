@@ -127,9 +127,18 @@ export class DuelService {
 		return null;
 	}
 
-	private async bothCanAfford(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], a: string, b: string, stake: number): Promise<boolean> {
+	private async bothCanAfford(
+		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		a: string,
+		b: string,
+		stake: number,
+	): Promise<boolean> {
 		const creux = async (id: string) => {
-			const [bag] = await tx.select({ creux: usersBag.credux }).from(usersBag).where(eq(usersBag.discordId, id)).limit(1);
+			const [bag] = await tx
+				.select({ creux: usersBag.credux })
+				.from(usersBag)
+				.where(eq(usersBag.discordId, id))
+				.limit(1);
 			return bag?.creux ?? null;
 		};
 		const aBalance = await creux(a);
@@ -171,7 +180,11 @@ export class DuelService {
 				challengerName: duelists.challenger.account.username,
 				opponentName: duelists.opponent.account.username,
 				winnerId: settlementWinnerId(battle, duel.challengerId, duel.opponentId),
-				winnerName: drawOrWinner(battle, duelists.challenger.account.username, duelists.opponent.account.username),
+				winnerName: drawOrWinner(
+					battle,
+					duelists.challenger.account.username,
+					duelists.opponent.account.username,
+				),
 				stake,
 				draw: battle.outcome === 'draw',
 			};
@@ -361,7 +374,12 @@ export class DuelService {
 
 	async decline(duelId: string, userId: string): Promise<boolean> {
 		return db.transaction(async (tx) => {
-			const [duel] = await tx.select().from(activeDuels).where(eq(activeDuels.duelId, duelId)).limit(1).for('update');
+			const [duel] = await tx
+				.select()
+				.from(activeDuels)
+				.where(eq(activeDuels.duelId, duelId))
+				.limit(1)
+				.for('update');
 			if (duel?.status !== 'pending') return false;
 			if (userId !== duel.challengerId && userId !== duel.opponentId) return false;
 			await tx.delete(activeDuels).where(eq(activeDuels.duelId, duelId));

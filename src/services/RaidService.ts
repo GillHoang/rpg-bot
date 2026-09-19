@@ -236,10 +236,7 @@ export class RaidService {
 			return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
 		if (account.credux < BOSS_ENTRY.credux)
 			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()) };
-		await tx
-			.update(users)
-			.set({ lastBossAttackDate: DailyCycle.keyAt() })
-			.where(eq(users.discordId, discordId));
+		await tx.update(users).set({ lastBossAttackDate: DailyCycle.keyAt() }).where(eq(users.discordId, discordId));
 		await tx
 			.update(usersBag)
 			.set({ credux: account.credux - BOSS_ENTRY.credux })

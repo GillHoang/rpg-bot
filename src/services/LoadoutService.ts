@@ -25,7 +25,11 @@ type PresetRow = typeof userPresets.$inferSelect;
 export class LoadoutService {
 	async equip(id: string, kind: string, item: string, slot?: number): Promise<string> {
 		return db.transaction(async (tx) => {
-			const [character] = await tx.select().from(userCharacter).where(eq(userCharacter.discordId, id)).for('update');
+			const [character] = await tx
+				.select()
+				.from(userCharacter)
+				.where(eq(userCharacter.discordId, id))
+				.for('update');
 			if (!character) return LOADOUT_NO_CHARACTER;
 			const target = slot ?? character.activePresetSlot;
 			if (target !== 1 && target !== 2) return LOADOUT_BAD_PRESET;
@@ -109,9 +113,7 @@ export class LoadoutService {
 		const slotIndex = kind === 'deity' ? 1 : Number(kind.slice(5));
 		const column = `equippedDeity${slotIndex}Id` as 'equippedDeity1Id' | 'equippedDeity2Id' | 'equippedDeity3Id';
 		const activeColumn = `activeDeityId${slotIndex === 1 ? '' : slotIndex}` as
-			| 'activeDeityId'
-			| 'activeDeityId2'
-			| 'activeDeityId3';
+			'activeDeityId' | 'activeDeityId2' | 'activeDeityId3';
 		// One deity cannot hold two pantheon slots at once.
 		const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
 		if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId) return LOADOUT_DEITY_IN_OTHER_SLOT;
@@ -120,14 +122,21 @@ export class LoadoutService {
 			.set({ [column]: userDeityId, updatedAt: new Date() })
 			.where(eq(userPresets.id, preset.id));
 		if (target === character.activePresetSlot)
-			await tx.update(userCharacter).set({ [activeColumn]: userDeityId }).where(eq(userCharacter.discordId, id));
+			await tx
+				.update(userCharacter)
+				.set({ [activeColumn]: userDeityId })
+				.where(eq(userCharacter.discordId, id));
 		return null;
 	}
 
 	async switch(id: string, slot: number): Promise<string> {
 		if (slot !== 1 && slot !== 2) return LOADOUT_BAD_PRESET;
 		return db.transaction(async (tx) => {
-			const [character] = await tx.select().from(userCharacter).where(eq(userCharacter.discordId, id)).for('update');
+			const [character] = await tx
+				.select()
+				.from(userCharacter)
+				.where(eq(userCharacter.discordId, id))
+				.for('update');
 			if (!character) return LOADOUT_NO_CHARACTER;
 			const [preset] = await tx
 				.select()

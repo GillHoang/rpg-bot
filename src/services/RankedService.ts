@@ -341,7 +341,18 @@ export class RankedService {
 			opponentChange: { shield: boolean; promoted: boolean };
 		},
 	): Promise<void> {
-		const { discordId, me, opponentRow, opponentRatingAfter, ratingBefore, ratingAfter, won, draw, meChange, opponentChange } = input;
+		const {
+			discordId,
+			me,
+			opponentRow,
+			opponentRatingAfter,
+			ratingBefore,
+			ratingAfter,
+			won,
+			draw,
+			meChange,
+			opponentChange,
+		} = input;
 
 		if (meChange.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
 			// Bracket promotion → rank_season title (challenger/initiator only).

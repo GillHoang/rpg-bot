@@ -92,12 +92,7 @@ export class SummonService {
 			// can't exist without a user row (FK), so one check suffices.
 			return { status: 'no-character' };
 		}
-		const [bag] = await tx
-			.select()
-			.from(usersBag)
-			.where(eq(usersBag.discordId, discordId))
-			.limit(1)
-			.for('update');
+		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1).for('update');
 		if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
 
 		const funds = this.checkFunds(bag, count, relic);
@@ -249,7 +244,11 @@ export class SummonService {
 		owned: Set<number>,
 		todayKey: string,
 		activePreset: typeof userPresets.$inferSelect | null,
-	): Promise<{ pulls: SummonPullResult[]; essenceDelta: Record<DeityTier, number>; pendingActiveDeityId: number | null }> {
+	): Promise<{
+		pulls: SummonPullResult[];
+		essenceDelta: Record<DeityTier, number>;
+		pendingActiveDeityId: number | null;
+	}> {
 		const essenceDelta: Record<DeityTier, number> = { Epic: 0, Mythic: 0, Legendary: 0, Supreme: 0 };
 		const pulls: SummonPullResult[] = [];
 		let pendingActiveDeityId: number | null = null;

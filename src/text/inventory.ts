@@ -53,7 +53,14 @@ export function ARMOR_LIST_LINE(e: GearListEntry & { hp: number; def: number }):
 	);
 }
 
-export function RUNE_LIST_LINE(e: { name: string; tier: string; lane: string; uid: string; description: string; socketedInto: string }): string {
+export function RUNE_LIST_LINE(e: {
+	name: string;
+	tier: string;
+	lane: string;
+	uid: string;
+	description: string;
+	socketedInto: string;
+}): string {
 	return `**${e.name}** (${e.tier}, ${e.lane})
 ID: \`${e.uid}\` · ${e.description}
 Gắn vào: ${e.socketedInto}`;
