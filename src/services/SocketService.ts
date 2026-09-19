@@ -4,6 +4,13 @@ import { GearRepository } from '../repositories/GearRepository.js';
 import { and, eq } from 'drizzle-orm';
 import { usersBag, userWeapons, userArmors, weaponRoster, armorRoster, socketUnlockCost } from '../db/schema.js';
 import { ESSENCE_FIELDS } from './LootService.js';
+import {
+	SOCKET_UNLOCK_COST_NEEDED,
+	SOCKET_UNLOCK_DONE,
+	SOCKET_UNLOCK_LIMIT,
+	SOCKET_UNLOCK_NO_REGISTER,
+	SOCKET_UNLOCK_NOT_OWNED,
+} from '../text/socket.js';
 
 export type SocketResult =
 	| { status: 'rune-not-owned' }
@@ -89,9 +96,9 @@ export class SocketService {
 	async unlock(discordId: string, gearId: string): Promise<string> {
 		return db.transaction(async (tx) => {
 			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
-			if (!bag) return 'Dùng /register trước.';
+			if (!bag) return SOCKET_UNLOCK_NO_REGISTER;
 			const info = await this.gear.findSocketInfo(tx, discordId, gearId);
-			if (!info) return 'Bạn không sở hữu gear này.';
+			if (!info) return SOCKET_UNLOCK_NOT_OWNED;
 			const rows =
 				info.kind === 'weapon'
 					? await tx
@@ -109,12 +116,11 @@ export class SocketService {
 				.select()
 				.from(socketUnlockCost)
 				.where(and(eq(socketUnlockCost.tier, rows[0].tier), eq(socketUnlockCost.slotIndex, next)));
-			if (!cost)
-				return 'Gear đã đạt giới hạn socket hoặc chưa có giá mở slot. Slot 1 native/opposite luôn miễn phí.';
+			if (!cost) return SOCKET_UNLOCK_LIMIT;
 			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier)) throw new Error('Invalid socket essence tier');
 			const field = ESSENCE_FIELDS[cost.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < cost.creduxCost || bag[field] < cost.essenceCost)
-				return `Cần ${cost.creduxCost} Credux + ${cost.essenceCost} ${cost.essenceTier} essence.`;
+				return SOCKET_UNLOCK_COST_NEEDED(cost.creduxCost, cost.essenceCost, cost.essenceTier);
 			await tx
 				.update(usersBag)
 				.set({ credux: bag.credux - cost.creduxCost, [field]: bag[field] - cost.essenceCost })
@@ -123,7 +129,7 @@ export class SocketService {
 				...(info.nativeSockets.length ? info.nativeSockets : [null]),
 				null,
 			]);
-			return `Đã mở native socket ${next}.`;
+			return SOCKET_UNLOCK_DONE(next);
 		});
 	}
 }

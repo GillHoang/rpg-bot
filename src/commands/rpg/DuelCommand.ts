@@ -9,18 +9,44 @@ import {
 import type { ICommand } from '../../core/ICommand.js';
 import { DuelService, DUEL_STAKE_MIN, type DuelAcceptResult } from '../../services/DuelService.js';
 import { RAID_LOG_TRUNCATE_PREFIX, RAID_MAX_LOG_CHARS, RAID_ROUND_SUMMARY } from '../../text/raid.js';
+import {
+	DUEL_ACCEPT_LABEL,
+	DUEL_BUSY,
+	DUEL_CASUAL_LINE,
+	DUEL_CHALLENGE,
+	DUEL_DECLINE_LABEL,
+	DUEL_DECLINED,
+	DUEL_DESCRIPTION,
+	DUEL_DRAW,
+	DUEL_EXPIRED,
+	DUEL_EXPIRED_ACCEPT,
+	DUEL_INSUFFICIENT_FUNDS,
+	DUEL_INSUFFICIENT_FUNDS_ACCEPT,
+	DUEL_NO_CHARACTER,
+	DUEL_NOT_FOUND,
+	DUEL_NOT_REGISTERED,
+	DUEL_ONLY_OPPONENT_BUTTON,
+	DUEL_OPPONENT_OPTION_DESC,
+	DUEL_POT,
+	DUEL_SELF,
+	DUEL_STAKE_OPTION_DESC,
+	DUEL_STAKE_TOO_LOW,
+	DUEL_WIN,
+	DUEL_WAGER_LINE,
+	DUEL_WHO,
+} from '../../text/duel.js';
 
 const STAKE_OPTION = 'stake';
 
 export class DuelCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('duel')
-		.setDescription('Thách đấu 1v1 với người chơi khác (tuỳ chọn cược Credux)')
-		.addUserOption((o) => o.setName('opponent').setDescription('Người chơi bị thách đấu').setRequired(true))
+		.setDescription(DUEL_DESCRIPTION)
+		.addUserOption((o) => o.setName('opponent').setDescription(DUEL_OPPONENT_OPTION_DESC).setRequired(true))
 		.addIntegerOption((o) =>
 			o
 				.setName(STAKE_OPTION)
-				.setDescription(`Cược Credux cho cả hai (tối thiểu ${DUEL_STAKE_MIN.toLocaleString()})`)
+				.setDescription(DUEL_STAKE_OPTION_DESC(DUEL_STAKE_MIN.toLocaleString()))
 				.setMinValue(0),
 		);
 
@@ -33,56 +59,41 @@ export class DuelCommand implements ICommand {
 		const created = await this.duels.create(interaction.user.id, opponent.id, stake);
 		switch (created.status) {
 			case 'self':
-				await interaction.reply({ content: 'Không thể tự thách chính mình.', ephemeral: true });
+				await interaction.reply({ content: DUEL_SELF, ephemeral: true });
 				return;
 			case 'invalid-stake':
 				await interaction.reply({
-					content: `Cược tối thiểu ${DUEL_STAKE_MIN.toLocaleString()} Credux (hoặc 0 để giao hữu).`,
+					content: DUEL_STAKE_TOO_LOW(DUEL_STAKE_MIN.toLocaleString()),
 					ephemeral: true,
 				});
 				return;
 			case 'not-registered':
-				await interaction.reply({
-					content: `${created.who === 'challenger' ? 'Bạn' : 'Đối thủ'} chưa /register.`,
-					ephemeral: true,
-				});
+				await interaction.reply({ content: DUEL_NOT_REGISTERED(DUEL_WHO[created.who]), ephemeral: true });
 				return;
 			case 'no-character':
-				await interaction.reply({
-					content: `${created.who === 'challenger' ? 'Bạn' : 'Đối thủ'} chưa /create nhân vật.`,
-					ephemeral: true,
-				});
+				await interaction.reply({ content: DUEL_NO_CHARACTER(DUEL_WHO[created.who]), ephemeral: true });
 				return;
 			case 'busy':
-				await interaction.reply({
-					content: `${created.who === 'challenger' ? 'Bạn' : 'Đối thủ'} đang có một duel khác chờ xử lý.`,
-					ephemeral: true,
-				});
+				await interaction.reply({ content: DUEL_BUSY(DUEL_WHO[created.who]), ephemeral: true });
 				return;
 			case 'insufficient-funds':
-				await interaction.reply({
-					content: 'Một trong hai người không đủ Credux cho mức cược này.',
-					ephemeral: true,
-				});
+				await interaction.reply({ content: DUEL_INSUFFICIENT_FUNDS, ephemeral: true });
 				return;
 		}
 
-		const wagerLine =
-			created.stake > 0
-				? `\n💰 **Wager**: ${created.stake.toLocaleString()} Credux mỗi bên — winner ăn trọn pot.`
-				: '\n🤝 Giao hữu (không cược).';
+		const wagerLine = created.stake > 0 ? DUEL_WAGER_LINE(created.stake.toLocaleString()) : DUEL_CASUAL_LINE;
 		const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
 				.setCustomId(`duel:accept:${created.duelId}`)
-				.setLabel('Chấp nhận')
+				.setLabel(DUEL_ACCEPT_LABEL)
 				.setStyle(ButtonStyle.Success),
 			new ButtonBuilder()
 				.setCustomId(`duel:decline:${created.duelId}`)
-				.setLabel('Từ chối')
+				.setLabel(DUEL_DECLINE_LABEL)
 				.setStyle(ButtonStyle.Danger),
 		);
 		await interaction.reply({
-			content: `⚔️ **${interaction.user.username}** thách đấu **${opponent.username}**!${wagerLine}\n⏳ Hết hạn sau 60 giây.`,
+			content: DUEL_CHALLENGE(interaction.user.username, opponent.username, wagerLine),
 			components: [buttons],
 		});
 
@@ -100,7 +111,7 @@ export class DuelCommand implements ICommand {
 			}
 			if (button.customId !== `duel:accept:${created.duelId}`) return;
 			if (button.user.id !== opponent.id) {
-				await button.reply({ content: 'Chỉ đối thủ mới được chấp nhận.', ephemeral: true });
+				await button.reply({ content: DUEL_ONLY_OPPONENT_BUTTON, ephemeral: true });
 				return;
 			}
 			await button.deferUpdate();
@@ -114,32 +125,27 @@ export class DuelCommand implements ICommand {
 				return;
 			}
 			if (reason === 'declined') {
-				await interaction.editReply({ content: 'Duel đã bị từ chối.', components: [] });
+				await interaction.editReply({ content: DUEL_DECLINED, components: [] });
 				return;
 			}
 			if (reason === 'stale') return;
 			// Expired — the sweep drops the pending row; just clean the buttons.
 			await interaction
-				.editReply({
-					content: `⌛ Duel hết hạn — ${interaction.user.username} không dám đánh.`,
-					components: [],
-				})
+				.editReply({ content: DUEL_EXPIRED(interaction.user.username), components: [] })
 				.catch(() => undefined);
 		});
 	}
 }
 
 export function renderDuel(result: DuelAcceptResult): string {
-	if (result.status === 'not-found') return 'Duel không còn tồn tại.';
-	if (result.status === 'not-opponent') return 'Chỉ đối thủ mới được chấp nhận.';
-	if (result.status === 'expired') return 'Duel đã hết hạn.';
-	if (result.status === 'insufficient-funds')
-		return 'Một trong hai người không đủ Credux lúc chấp nhận — duel bị huỷ.';
+	if (result.status === 'not-found') return DUEL_NOT_FOUND;
+	if (result.status === 'not-opponent') return DUEL_ONLY_OPPONENT_BUTTON;
+	if (result.status === 'expired') return DUEL_EXPIRED_ACCEPT;
+	if (result.status === 'insufficient-funds') return DUEL_INSUFFICIENT_FUNDS_ACCEPT;
 
 	const outcomeLine = result.draw
-		? '⚖️ **Hòa!** Cược được hoàn lại cho cả hai.'
-		: `🏆 **${result.winnerName} thắng!**` +
-			(result.stake > 0 ? ` Nhận ${(result.stake * 2).toLocaleString()} Credux.` : '');
+		? DUEL_DRAW
+		: DUEL_WIN(result.winnerName ?? '') + (result.stake > 0 ? DUEL_POT((result.stake * 2).toLocaleString()) : '');
 	let logText = result.battle.log.join('\n');
 	if (logText.length > RAID_MAX_LOG_CHARS) logText = RAID_LOG_TRUNCATE_PREFIX + logText.slice(-RAID_MAX_LOG_CHARS);
 	return (

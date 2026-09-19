@@ -1,16 +1,36 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { RankedService } from '../../services/RankedService.js';
+import {
+	RANKED_ALREADY_CLAIMED,
+	RANKED_BUSY,
+	RANKED_CLAIM_DESC,
+	RANKED_CLAIM_OK,
+	RANKED_DESCRIPTION,
+	RANKED_FIGHT_DESC,
+	RANKED_FOOTER,
+	RANKED_LOG_MAX_CHARS,
+	RANKED_LOG_TRUNCATE_PREFIX,
+	RANKED_MATCHUP,
+	RANKED_NO_CHARACTER,
+	RANKED_NO_FIGHTS,
+	RANKED_NO_OPPONENT,
+	RANKED_NOT_REGISTERED,
+	RANKED_NO_REWARD_ROW,
+	RANKED_OUTCOME_DRAW,
+	RANKED_OUTCOME_LOSE,
+	RANKED_OUTCOME_WIN,
+	RANKED_SHIELD_NOTE,
+	RANKED_STATS_DESC,
+} from '../../text/ranked.js';
 
 export class RankedCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('ranked')
-		.setDescription('Ranked PvP: đấu async với loadout của đối thủ ngẫu nhiên cùng tầm rating')
-		.addSubcommand((s) => s.setName('fight').setDescription('Tìm đối thủ và đấu 1 trận (Elo)'))
-		.addSubcommand((s) =>
-			s.setName('claim').setDescription('Nhận thưởng tuần theo bracket (cần ≥1 trận trong tuần)'),
-		)
-		.addSubcommand((s) => s.setName('stats').setDescription('Xem rating, bracket, peak và trạng thái thưởng tuần'));
+		.setDescription(RANKED_DESCRIPTION)
+		.addSubcommand((s) => s.setName('fight').setDescription(RANKED_FIGHT_DESC))
+		.addSubcommand((s) => s.setName('claim').setDescription(RANKED_CLAIM_DESC))
+		.addSubcommand((s) => s.setName('stats').setDescription(RANKED_STATS_DESC));
 
 	constructor(private readonly ranked = new RankedService()) {}
 
@@ -20,17 +40,25 @@ export class RankedCommand implements ICommand {
 
 		if (sub === 'claim') {
 			const result = await this.ranked.claim(interaction.user.id);
-			const message =
-				result.status === 'not-registered'
-					? 'Dùng /register trước.'
-					: result.status === 'already-claimed'
-						? 'Đã nhận thưởng tuần này rồi. Reset vào thứ Hai (Asia/Manila).'
-						: result.status === 'no-fights'
-							? 'Chưa có trận ranked nào trong tuần này.'
-							: result.status === 'no-reward-row'
-								? 'Chưa seed bảng ranked_reward — báo admin chạy db:seed.'
-								: `🏅 Weekly reward (${result.bracket}): +${result.credux.toLocaleString()} Credux · +${result.valor} Valor Medals` +
-									(result.chests.length ? ` · ${result.chests.join(' · ')}` : '');
+			let message: string;
+			switch (result.status) {
+				case 'not-registered':
+					message = RANKED_NOT_REGISTERED;
+					break;
+				case 'already-claimed':
+					message = RANKED_ALREADY_CLAIMED;
+					break;
+				case 'no-fights':
+					message = RANKED_NO_FIGHTS;
+					break;
+				case 'no-reward-row':
+					message = RANKED_NO_REWARD_ROW;
+					break;
+				default:
+					message =
+						RANKED_CLAIM_OK(result.bracket, result.credux.toLocaleString(), result.valor) +
+						(result.chests.length ? ` · ${result.chests.join(' · ')}` : '');
+			}
 			await interaction.editReply(message);
 			return;
 		}
@@ -42,33 +70,35 @@ export class RankedCommand implements ICommand {
 
 		const result = await this.ranked.fight(interaction.user.id);
 		if (result.status === 'not-registered') {
-			await interaction.editReply('Dùng /register trước.');
+			await interaction.editReply(RANKED_NOT_REGISTERED);
 			return;
 		}
 		if (result.status === 'no-character') {
-			await interaction.editReply('Dùng /create trước.');
+			await interaction.editReply(RANKED_NO_CHARACTER);
 			return;
 		}
 		if (result.status === 'busy') {
-			await interaction.editReply('Bạn đang có một trận ranked khác. Chờ giây lát rồi thử lại.');
+			await interaction.editReply(RANKED_BUSY);
 			return;
 		}
 		if (result.status === 'no-opponent') {
-			await interaction.editReply('Không tìm thấy đối thủ nào đã đăng ký. Mời thêm người chơi vào server!');
+			await interaction.editReply(RANKED_NO_OPPONENT);
 			return;
 		}
 
-		const outcome = result.draw ? '⚖️ Hòa.' : result.won ? '🏆 **Thắng!**' : '💀 **Thua.**';
-		const shieldNote = result.shieldUsed ? '\n🛡️ Demotion shield đã cứu bạn khỏi rớt bracket (đỡ 1 lần).' : '';
+		const outcome = result.draw ? RANKED_OUTCOME_DRAW : result.won ? RANKED_OUTCOME_WIN : RANKED_OUTCOME_LOSE;
 		let logText = result.battle.log.join('\n');
-		if (logText.length > 900) logText = '…' + logText.slice(-900);
+		if (logText.length > RANKED_LOG_MAX_CHARS) {
+			logText = RANKED_LOG_TRUNCATE_PREFIX + logText.slice(-RANKED_LOG_MAX_CHARS);
+		}
 		await interaction.editReply(
-			`${outcome} vs **${result.opponentName}**\n` +
+			RANKED_MATCHUP(result.opponentName, outcome) +
+				'\n' +
 				`Rating: **${result.ratingBefore} → ${result.ratingAfter}** (${result.delta >= 0 ? '+' : ''}${result.delta}) · ` +
 				`Bracket: ${result.bracketBefore} → **${result.bracketAfter}** · Peak ${result.peak}` +
-				shieldNote +
+				(result.shieldUsed ? RANKED_SHIELD_NOTE : '') +
 				`\n\`\`\`\n${logText}\n\`\`\`\n` +
-				`/ranked claim để nhận thưởng tuần · /ranked stats để xem tổng quan.`,
+				RANKED_FOOTER,
 		);
 	}
 }

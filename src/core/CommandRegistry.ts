@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from './ICommand.js';
 import { logger } from '../utils/logger.js';
+import { GENERIC_ERROR } from '../text/common.js';
 
 /**
  * Singleton registry mapping command name -> ICommand instance.
@@ -49,7 +50,7 @@ export class CommandRegistry {
 			// failed command never escalates into an unhandled rejection that
 			// kills the process.
 			try {
-				const payload = { content: 'Đã có lỗi xảy ra khi thực thi lệnh này.', ephemeral: true };
+				const payload = { content: GENERIC_ERROR, ephemeral: true };
 				if (interaction.replied || interaction.deferred) {
 					await interaction.followUp(payload);
 				} else {

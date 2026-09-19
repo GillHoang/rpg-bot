@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { usersBag, pityCounters, userCharacter, userPresets, gameLogs, summonRewardGrants } from '../db/schema.js';
@@ -146,7 +147,8 @@ export class SummonService {
 			if (relic) {
 				for (let i = 0; i < count; i++) {
 					await tx.insert(summonRewardGrants).values({
-						rewardKey: `${discordId}:${todayKey}:${i}:${Date.now()}`,
+						// UUID suffix: two pulls in the same millisecond must not collide.
+						rewardKey: `${discordId}:${todayKey}:${i}:${randomUUID()}`,
 						discordId,
 						source: `${relic}_relic`,
 					});
@@ -207,12 +209,16 @@ export class SummonService {
 					.set(patch as Partial<typeof usersBag.$inferInsert>)
 					.where(eq(usersBag.discordId, discordId));
 			}
-			await tx.insert(gameLogs).values({
-				discordId,
-				action: 'Deity Pull',
-				previousBeliefShards: bag.beliefShards,
-				updatedBeliefShards: beliefShardsAfter,
-			});
+			// Shard-delta log belongs to the natural (belief-shards) path only — a
+			// relic pull does not touch shards and must not log a misleading 0-delta.
+			if (!relic) {
+				await tx.insert(gameLogs).values({
+					discordId,
+					action: 'Deity Pull',
+					previousBeliefShards: bag.beliefShards,
+					updatedBeliefShards: beliefShardsAfter,
+				});
+			}
 
 			await tx
 				.insert(pityCounters)

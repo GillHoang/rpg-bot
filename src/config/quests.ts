@@ -1,32 +1,32 @@
 /**
  * Quest balance — M7 design defaults (không port từ bản gốc).
- * Mỗi ngày/week người chơi nhận lazily 3 quest từ pool (không trùng loại);
+ * Mỗi ngày/tuần người chơi nhận lazily 3 quest từ pool (không trùng loại);
  * progress chạy qua EventBus subscriber, hoàn thành tự cộng thưởng.
+ * Wording của từng quest nằm ở src/text/quest.ts (QUEST_*_LABELS).
  */
 export type QuestType = 'raid_win' | 'duel_win' | 'ranked' | 'summon' | 'enhance' | 'open_chest' | 'casino' | 'daily';
 
 export interface QuestTemplate {
 	type: QuestType;
 	target: number;
-	label: string;
 }
 
 export const DAILY_POOL: readonly QuestTemplate[] = [
-	{ type: 'raid_win', target: 5, label: 'Thắng 5 lượt /raid hunt' },
-	{ type: 'summon', target: 3, label: 'Summon 3 lượt (bất kỳ)' },
-	{ type: 'enhance', target: 2, label: 'Nâng gear 2 lần' },
-	{ type: 'open_chest', target: 3, label: 'Mở 3 rương' },
-	{ type: 'casino', target: 5, label: 'Chơi casino 5 ván' },
-	{ type: 'daily', target: 1, label: 'Claim /daily' },
+	{ type: 'raid_win', target: 5 },
+	{ type: 'summon', target: 3 },
+	{ type: 'enhance', target: 2 },
+	{ type: 'open_chest', target: 3 },
+	{ type: 'casino', target: 5 },
+	{ type: 'daily', target: 1 },
 ];
 
 export const WEEKLY_POOL: readonly QuestTemplate[] = [
-	{ type: 'raid_win', target: 15, label: 'Thắng 15 lượt raid/boss' },
-	{ type: 'summon', target: 10, label: 'Summon 10 lượt' },
-	{ type: 'duel_win', target: 5, label: 'Thắng 5 duel' },
-	{ type: 'ranked', target: 5, label: 'Đủ 5 trận ranked' },
-	{ type: 'open_chest', target: 10, label: 'Mở 10 rương' },
-	{ type: 'enhance', target: 6, label: 'Nâng gear 6 lần' },
+	{ type: 'raid_win', target: 15 },
+	{ type: 'summon', target: 10 },
+	{ type: 'duel_win', target: 5 },
+	{ type: 'ranked', target: 5 },
+	{ type: 'open_chest', target: 10 },
+	{ type: 'enhance', target: 6 },
 ];
 
 /** Thưởng mỗi daily quest — roll ngẫu nhiên trong range lúc sinh quest. */

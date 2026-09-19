@@ -23,3 +23,26 @@ export const CASINO_LOSE = '💸 **Thua.**';
 
 export const CASINO_RESULT_LINE = (verdict: string, result: string, delta: string, balance: string): string =>
 	`${verdict} Kết quả: \`${result}\`\n` + `Thay đổi: ${delta} ${CURRENCY.credux} · Số dư: ${balance}`;
+
+// --- Session (Blackjack/Crash) ---
+export const CASINO_SESSION_BAD_BET = (maxBet: number): string => `Cược từ 1 đến ${maxBet}.`;
+export const CASINO_SESSION_NO_REGISTER = 'Dùng /register trước.';
+export const CASINO_SESSION_BUSY = 'Bạn đang có một ván chơi. Hoàn tất hoặc chờ hết 60 giây.';
+export const CASINO_SESSION_INSUFFICIENT = 'Không đủ Credux.';
+export const CASINO_SESSION_NOT_FOUND = 'Không tìm thấy phiên chơi của bạn.';
+
+// --- Nút bấm ---
+export const CASINO_NOT_YOUR_ROUND = 'Đây không phải ván của bạn.';
+export const CASINO_HIT_LABEL = 'Hit';
+export const CASINO_STAND_LABEL = 'Stand';
+export const CASINO_PUSH_LABEL = 'Push';
+export const CASINO_CASH_OUT_LABEL = 'Cash Out';
+
+// --- Render view (domain/casino/InteractiveGame + session settle) ---
+export const CASINO_BLACKJACK_VIEW = (bet: string, player: string, dealer: string): string =>
+	`Blackjack · Cược ${bet}\nBạn: ${player}\nDealer: ${dealer}`;
+export const CASINO_CRASH_VIEW = (bet: string, round: number, multiplier: string, state: string): string =>
+	`Crash · Cược ${bet}\nLượt ${round} · Hệ số ${multiplier}x · ${state}`;
+export const CASINO_SETTLE_LINE = (view: string, result: string, payout: string, balance: string): string =>
+	`${view}\n${result} · Nhận ${payout} · Số dư ${balance} Credux.`;
+export const CASINO_HIDDEN_CARD = '[ẩn]';

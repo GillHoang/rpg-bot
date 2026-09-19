@@ -8,6 +8,7 @@ import {
 	SOCKET_RUNE_OPTION_DESC,
 	SOCKET_GEAR_OPTION_DESC,
 	SOCKET_SLOT_OPTION_DESC,
+	SOCKET_LANE_OPTION_DESC,
 	SOCKET_RUNE_NOT_OWNED,
 	SOCKET_GEAR_NOT_OWNED,
 	SOCKET_INVALID_SLOT,
@@ -16,6 +17,8 @@ import {
 	SOCKET_EQUIP_SUCCESS,
 	SOCKET_NOT_SOCKETED,
 	SOCKET_UNEQUIP_SUCCESS,
+	SOCKET_UNLOCK_SUB_DESC,
+	SOCKET_UNLOCK_GEAR_OPTION_DESC,
 } from '../../text/socket.js';
 
 export class SocketCommand implements ICommand {
@@ -38,7 +41,7 @@ export class SocketCommand implements ICommand {
 				.addStringOption((o) =>
 					o
 						.setName('lane')
-						.setDescription('Lane rune (xem /inventory)')
+						.setDescription(SOCKET_LANE_OPTION_DESC)
 						.addChoices({ name: 'native', value: 'native' }, { name: 'opposite', value: 'opposite' }),
 				),
 		)
@@ -53,8 +56,10 @@ export class SocketCommand implements ICommand {
 		.addSubcommand((s) =>
 			s
 				.setName('unlock')
-				.setDescription('Mở thêm native socket bằng Credux và essence')
-				.addStringOption((o) => o.setName('gear_id').setDescription('ID gear').setRequired(true)),
+				.setDescription(SOCKET_UNLOCK_SUB_DESC)
+				.addStringOption((o) =>
+					o.setName('gear_id').setDescription(SOCKET_UNLOCK_GEAR_OPTION_DESC).setRequired(true),
+				),
 		);
 
 	constructor(private readonly socket = new SocketService()) {}

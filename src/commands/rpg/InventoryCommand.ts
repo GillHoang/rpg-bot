@@ -1,20 +1,33 @@
 import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import {
+	DEITIES_DESCRIPTION,
+	DEITIES_EMPTY_PAGE,
+	DEITIES_FOOTER,
+	DEITIES_PAGE_OPTION_DESC,
+	DEITIES_TITLE,
+	INVENTORY_CATEGORY_OPTION_DESC,
+	INVENTORY_DESCRIPTION,
+	INVENTORY_EMPTY_PAGE,
+	INVENTORY_FOOTER,
+	INVENTORY_PAGE_OPTION_DESC,
+	INVENTORY_TITLE,
+} from '../../text/inventory.js';
 import { bagSummary } from '../../text/inventory.js';
 import { NOT_REGISTERED } from '../../text/common.js';
 
 export class InventoryCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('inventory')
-		.setDescription('Xem tài nguyên và ID vật phẩm')
+		.setDescription(INVENTORY_DESCRIPTION)
 		.addStringOption((o) =>
 			o
 				.setName('category')
-				.setDescription('Loại vật phẩm')
+				.setDescription(INVENTORY_CATEGORY_OPTION_DESC)
 				.addChoices(...['bag', 'weapons', 'armors', 'runes'].map((value) => ({ name: value, value }))),
 		)
-		.addIntegerOption((o) => o.setName('page').setDescription('Trang (8 vật phẩm/trang)').setMinValue(1));
+		.addIntegerOption((o) => o.setName('page').setDescription(INVENTORY_PAGE_OPTION_DESC).setMinValue(1));
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
 		const repo = new InventoryRepository();
@@ -29,9 +42,9 @@ export class InventoryCommand implements ICommand {
 		await i.editReply({
 			embeds: [
 				new EmbedBuilder()
-					.setTitle(`Inventory · ${category} · Trang ${page}`)
-					.setDescription(lines.join('\n\n').slice(0, 4000) || 'Trang trống.')
-					.setFooter({ text: '/equip · /enhance · /socket · Đổi page để xem tiếp' }),
+					.setTitle(INVENTORY_TITLE(category, page))
+					.setDescription(lines.join('\n\n').slice(0, 4000) || INVENTORY_EMPTY_PAGE)
+					.setFooter({ text: INVENTORY_FOOTER }),
 			],
 		});
 	}
@@ -39,8 +52,8 @@ export class InventoryCommand implements ICommand {
 export class DeitiesCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('deities')
-		.setDescription('Xem ID, Sigil và chỉ số deity')
-		.addIntegerOption((o) => o.setName('page').setDescription('Trang').setMinValue(1));
+		.setDescription(DEITIES_DESCRIPTION)
+		.addIntegerOption((o) => o.setName('page').setDescription(DEITIES_PAGE_OPTION_DESC).setMinValue(1));
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
 		const page = i.options.getInteger('page') ?? 1;
@@ -48,9 +61,9 @@ export class DeitiesCommand implements ICommand {
 		await i.editReply({
 			embeds: [
 				new EmbedBuilder()
-					.setTitle(`Deities · Trang ${page}`)
-					.setDescription(rows.join('\n\n').slice(0, 4000) || 'Chưa có deity ở trang này. Dùng /summon.')
-					.setFooter({ text: '/equip kind:deity · /deity sigil · /deity ascend (prestige)' }),
+					.setTitle(DEITIES_TITLE(page))
+					.setDescription(rows.join('\n\n').slice(0, 4000) || DEITIES_EMPTY_PAGE)
+					.setFooter({ text: DEITIES_FOOTER }),
 			],
 		});
 	}

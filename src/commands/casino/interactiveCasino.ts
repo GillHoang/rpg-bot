@@ -8,6 +8,13 @@ import {
 import { CasinoSessionService, type SessionView } from '../../services/CasinoSessionService.js';
 import type { CasinoAction, InteractiveGame } from '../../domain/casino/InteractiveGame.js';
 import { logger } from '../../utils/logger.js';
+import {
+	CASINO_CASH_OUT_LABEL,
+	CASINO_HIT_LABEL,
+	CASINO_NOT_YOUR_ROUND,
+	CASINO_PUSH_LABEL,
+	CASINO_STAND_LABEL,
+} from '../../text/casino.js';
 
 export async function interactiveCasino(
 	i: ChatInputCommandInteraction,
@@ -28,13 +35,13 @@ export async function interactiveCasino(
 								.setCustomId(
 									`${view.sessionId}:${game === 'blackjack' ? 'hit' : 'push'}:${view.revision}`,
 								)
-								.setLabel(game === 'blackjack' ? 'Hit' : 'Push')
+								.setLabel(game === 'blackjack' ? CASINO_HIT_LABEL : CASINO_PUSH_LABEL)
 								.setStyle(ButtonStyle.Primary),
 							new ButtonBuilder()
 								.setCustomId(
 									`${view.sessionId}:${game === 'blackjack' ? 'stand' : 'cash'}:${view.revision}`,
 								)
-								.setLabel(game === 'blackjack' ? 'Stand' : 'Cash Out')
+								.setLabel(game === 'blackjack' ? CASINO_STAND_LABEL : CASINO_CASH_OUT_LABEL)
 								.setStyle(ButtonStyle.Success),
 						),
 					],
@@ -45,7 +52,7 @@ export async function interactiveCasino(
 	let queue = Promise.resolve();
 	collector.on('collect', (button) => {
 		if (button.user.id !== i.user.id) {
-			void button.reply({ content: 'Đây không phải ván của bạn.', ephemeral: true }).catch(() => {});
+			void button.reply({ content: CASINO_NOT_YOUR_ROUND, ephemeral: true }).catch(() => {});
 			return;
 		}
 		// Acknowledge before waiting behind a previous click; serialize both state and UI.

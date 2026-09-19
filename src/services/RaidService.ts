@@ -24,6 +24,7 @@ import { CosmeticService } from './CosmeticService.js';
 import { eq } from 'drizzle-orm';
 import { users, usersBag, userCharacter } from '../db/schema.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
+import { BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
 import { MonsterStrategy } from '../domain/combat/classes/MonsterStrategy.js';
 import { LootRepository } from '../repositories/LootRepository.js';
 
@@ -77,14 +78,14 @@ export class RaidService {
 			if (!monsterStats) return { status: 'no-monsters-seeded' };
 			if (boss) {
 				if (account.combatLevel < BOSS_ENTRY.minLevel)
-					return { status: 'boss-locked', message: `Boss yêu cầu cấp ${BOSS_ENTRY.minLevel}.` };
+					return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
 				const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
 				if (user.lastBossAttackDate === DailyCycle.keyAt())
-					return { status: 'boss-locked', message: 'Đã đánh boss hôm nay. Reset lúc 00:00 Asia/Manila.' };
+					return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
 				if (account.credux < BOSS_ENTRY.credux)
 					return {
 						status: 'boss-locked',
-						message: `Phí vào boss: ${BOSS_ENTRY.credux.toLocaleString()} Credux.`,
+						message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()),
 					};
 				await tx
 					.update(users)

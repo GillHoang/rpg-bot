@@ -18,6 +18,23 @@ import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { weekWindowAt } from '../config/ranked.js';
 import { ReputationService } from './ReputationService.js';
+import {
+	DAILY_QUEST_LABELS,
+	QUEST_BONUS_SHARDS,
+	QUEST_BONUS_VALOR,
+	QUEST_CLAIM_ALREADY,
+	QUEST_CLAIM_NOT_READY,
+	QUEST_CLAIM_OK,
+	QUEST_DAILY_ALL_DONE,
+	QUEST_DAILY_HEADER,
+	QUEST_GRAND_CLAIMED,
+	QUEST_GRAND_READY,
+	QUEST_REFRESH_DONE,
+	QUEST_REFRESH_LIMIT,
+	QUEST_REGISTER_FIRST,
+	QUEST_WEEKLY_HEADER,
+	WEEKLY_QUEST_LABELS,
+} from '../text/quest.js';
 
 export type QuestRow = typeof dailyQuests.$inferSelect;
 export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
@@ -27,6 +44,7 @@ export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
  * cron, quest xuất hiện đúng lúc người chơi chạm vào hệ thống. Progress đến
  * qua EventBus (`progress`), hoàn thành tự cộng thưởng trong cùng giao dịch.
  * Đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand claim được.
+ * Toàn bộ wording nằm ở src/text/quest.ts.
  */
 export class QuestService {
 	constructor(private readonly reputation = new ReputationService()) {}
@@ -47,20 +65,19 @@ export class QuestService {
 
 	async view(discordId: string): Promise<string> {
 		return db.transaction(async (tx) => {
+			// Guard before the lazy insert: quest rows FK to users, so generating
+			// quests for an unregistered id would crash with a constraint error.
+			const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+			if (!user) return QUEST_REGISTER_FIRST;
 			const day = DailyCycle.keyAt();
 			const { week } = weekWindowAt();
 			const dailies = await this.ensureDailyQuests(tx, discordId, day);
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			const lines = dailies.map((q) =>
-				this.formatQuest(
-					q,
-					this.labelFor(DAILY_POOL, q.questType as QuestType),
-					'shards',
-					q.rewardBeliefShards,
-				),
+				this.formatQuest(q, DAILY_QUEST_LABELS[q.questType as QuestType], 'shards', q.rewardBeliefShards),
 			);
 			const weeklyLines = weeklies.map((q) =>
-				this.formatQuest(q, this.labelFor(WEEKLY_POOL, q.questType as QuestType), 'valor', q.rewardValor),
+				this.formatQuest(q, WEEKLY_QUEST_LABELS[q.questType as QuestType], 'valor', q.rewardValor),
 			);
 			const [grand] = await tx
 				.select()
@@ -70,14 +87,12 @@ export class QuestService {
 			const allDaily = dailies.length > 0 && dailies.every((q) => q.completed);
 			const allWeekly = weeklies.length > 0 && weeklies.every((q) => q.completed);
 			return (
-				`📜 **Daily quests (${day})**\n${lines.join('\n')}` +
-				(allDaily ? `\n✅ Đủ 3 daily — đã nhận +${DAILY_ALL_COMPLETE_RELICS} Sacred Relic.` : '') +
-				`\n\n🗓️ **Weekly quests (tuần ${week})**\n${weeklyLines.join('\n')}` +
-				(allWeekly
-					? grand?.claimed
-						? '\n✅ Weekly grand đã claim tuần này.'
-						: '\n🎁 Đủ 3 weekly — dùng `/quest claim` nhận Weekly Grand!'
-					: '')
+				QUEST_DAILY_HEADER(day) +
+				(lines.length ? '\n' + lines.join('\n') : '') +
+				(allDaily ? QUEST_DAILY_ALL_DONE(DAILY_ALL_COMPLETE_RELICS) : '') +
+				QUEST_WEEKLY_HEADER(week) +
+				(weeklyLines.length ? '\n' + weeklyLines.join('\n') : '') +
+				(allWeekly ? (grand?.claimed ? QUEST_GRAND_CLAIMED : QUEST_GRAND_READY) : '')
 			);
 		});
 	}
@@ -85,9 +100,9 @@ export class QuestService {
 	async refresh(discordId: string): Promise<string> {
 		return db.transaction(async (tx) => {
 			const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).limit(1).for('update');
-			if (!user) return 'Dùng /register trước.';
+			if (!user) return QUEST_REGISTER_FIRST;
 			const day = DailyCycle.keyAt();
-			if (user.lastQuestRefreshDate === day) return 'Đã refresh daily hôm nay. Reset lúc 00:00 Asia/Manila.';
+			if (user.lastQuestRefreshDate === day) return QUEST_REFRESH_LIMIT;
 			await tx
 				.delete(dailyQuests)
 				.where(
@@ -102,28 +117,30 @@ export class QuestService {
 				.update(users)
 				.set({ questRefreshesToday: 1, lastQuestRefreshDate: day })
 				.where(eq(users.discordId, discordId));
-			return 'Đã reroll daily quests — /quest để xem bộ mới.';
+			return QUEST_REFRESH_DONE;
 		});
 	}
 
 	async claimWeeklyGrand(discordId: string): Promise<string> {
 		return db.transaction(async (tx) => {
+			const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+			if (!user) return QUEST_REGISTER_FIRST;
 			const { week } = weekWindowAt();
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
-			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return 'Chưa đủ 3 weekly quest.';
+			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return QUEST_CLAIM_NOT_READY;
 			const [bag] = await tx
 				.select()
 				.from(usersBag)
 				.where(eq(usersBag.discordId, discordId))
 				.limit(1)
 				.for('update');
-			if (!bag) return 'Dùng /register trước.';
+			if (!bag) return QUEST_REGISTER_FIRST;
 			const [grand] = await tx
 				.insert(weeklyGrand)
 				.values({ discordId, questWeek: week, claimed: true })
 				.onConflictDoNothing()
 				.returning();
-			if (!grand) return 'Weekly grand tuần này đã nhận rồi.';
+			if (!grand) return QUEST_CLAIM_ALREADY;
 			await tx
 				.update(usersBag)
 				.set({
@@ -133,7 +150,7 @@ export class QuestService {
 				})
 				.where(eq(usersBag.discordId, discordId));
 			await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
-			return `🎁 Weekly Grand! +${WEEKLY_GRAND.credux.toLocaleString()} Credux · +${WEEKLY_GRAND.diamondChest} Diamond Chest.`;
+			return QUEST_CLAIM_OK(WEEKLY_GRAND.credux.toLocaleString(), WEEKLY_GRAND.diamondChest);
 		});
 	}
 
@@ -144,12 +161,8 @@ export class QuestService {
 		bonus: number,
 	): string {
 		const mark = quest.completed ? '✅' : `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
-		const bonusLabel = bonusKind === 'shards' ? `${bonus} shards` : `${bonus} valor`;
+		const bonusLabel = bonusKind === 'shards' ? QUEST_BONUS_SHARDS(bonus) : QUEST_BONUS_VALOR(bonus);
 		return `${mark} — ${label} (+${quest.rewardCredux.toLocaleString()} Credux, +${bonusLabel})`;
-	}
-
-	private labelFor(pool: readonly QuestTemplate[], type: QuestType): string {
-		return pool.find((t) => t.type === type)?.label ?? type;
 	}
 
 	private async ensureDailyQuests(tx: Executor, discordId: string, day: string): Promise<QuestRow[]> {
@@ -159,16 +172,21 @@ export class QuestService {
 			.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
 		if (existing.length > 0) return existing;
 		const rng = createRng(createSecureSeed());
-		await tx.insert(dailyQuests).values(
-			this.rollTemplates(DAILY_POOL, rng).map((t) => ({
-				discordId,
-				questType: t.type,
-				targetCount: t.target,
-				rewardCredux: randInt(rng, DAILY_REWARD.credux),
-				rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
-				questDate: day,
-			})),
-		);
+		// Two racing callers both see zero rows: the unique (discordId, type, date)
+		// constraint turns the second insert into a no-op instead of an error.
+		await tx
+			.insert(dailyQuests)
+			.values(
+				this.rollTemplates(DAILY_POOL, rng).map((t) => ({
+					discordId,
+					questType: t.type,
+					targetCount: t.target,
+					rewardCredux: randInt(rng, DAILY_REWARD.credux),
+					rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
+					questDate: day,
+				})),
+			)
+			.onConflictDoNothing();
 		return tx
 			.select()
 			.from(dailyQuests)
@@ -182,16 +200,19 @@ export class QuestService {
 			.where(and(eq(weeklyQuests.discordId, discordId), eq(weeklyQuests.questWeek, week)));
 		if (existing.length > 0) return existing;
 		const rng = createRng(createSecureSeed());
-		await tx.insert(weeklyQuests).values(
-			this.rollTemplates(WEEKLY_POOL, rng).map((t) => ({
-				discordId,
-				questType: t.type,
-				targetCount: t.target,
-				rewardCredux: randInt(rng, WEEKLY_REWARD.credux),
-				rewardValor: randInt(rng, WEEKLY_REWARD.valor),
-				questWeek: week,
-			})),
-		);
+		await tx
+			.insert(weeklyQuests)
+			.values(
+				this.rollTemplates(WEEKLY_POOL, rng).map((t) => ({
+					discordId,
+					questType: t.type,
+					targetCount: t.target,
+					rewardCredux: randInt(rng, WEEKLY_REWARD.credux),
+					rewardValor: randInt(rng, WEEKLY_REWARD.valor),
+					questWeek: week,
+				})),
+			)
+			.onConflictDoNothing();
 		return tx
 			.select()
 			.from(weeklyQuests)
@@ -211,6 +232,8 @@ export class QuestService {
 	}
 
 	private async bumpDaily(tx: Executor, discordId: string, day: string, questType: QuestType): Promise<void> {
+		// Row lock: two concurrent progress events for the same quest must not
+		// read the same counter (read–modify–write would drop one increment).
 		const [quest] = await tx
 			.select()
 			.from(dailyQuests)
@@ -221,7 +244,8 @@ export class QuestService {
 					eq(dailyQuests.questType, questType),
 				),
 			)
-			.limit(1);
+			.limit(1)
+			.for('update');
 		if (!quest || quest.completed) return;
 		const count = quest.currentCount + 1;
 		const completed = count >= quest.targetCount;
@@ -260,6 +284,7 @@ export class QuestService {
 	}
 
 	private async bumpWeekly(tx: Executor, discordId: string, week: number, questType: QuestType): Promise<void> {
+		// Row lock — same lost-update protection as bumpDaily.
 		const [quest] = await tx
 			.select()
 			.from(weeklyQuests)
@@ -270,7 +295,8 @@ export class QuestService {
 					eq(weeklyQuests.questType, questType),
 				),
 			)
-			.limit(1);
+			.limit(1)
+			.for('update');
 		if (!quest || quest.completed) return;
 		const count = quest.currentCount + 1;
 		const completed = count >= quest.targetCount;

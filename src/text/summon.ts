@@ -33,3 +33,4 @@ export const TIER_ALIAS: Record<string, string> = {
 	Legendary: 'Undying',
 	Supreme: 'Primordial',
 };
+export const SUMMON_RELIC_OPTION_DESC = 'Dùng Sacred/Supreme Relic để ép tier (1 relic/lượt, không tốn shards)';

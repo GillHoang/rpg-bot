@@ -12,6 +12,13 @@ import {
 	deityRoster,
 } from '../db/schema.js';
 import { computeSigilStats } from '../config/ascension.js';
+import {
+	ARMOR_LIST_LINE,
+	DEITY_LIST_LINE,
+	RUNE_LIST_LINE,
+	RUNE_NOT_SOCKETED,
+	WEAPON_LIST_LINE,
+} from '../text/inventory.js';
 
 export class InventoryRepository {
 	async bag(id: string) {
@@ -29,9 +36,17 @@ export class InventoryRepository {
 					.orderBy(userWeapons.weaponId)
 					.limit(8)
 					.offset(offset)
-			).map(
-				({ user_weapons: w, weapon_roster: r }) =>
-					`**${r.name}** (${r.tier}) +${w.enhancement - 1}\nID: \`${w.weaponId}\` · ATK ${w.currAtk} · CRIT ${w.crit}%\nSockets: ${JSON.stringify(w.nativeSockets)} / ${JSON.stringify(w.oppositeSockets)}`,
+			).map(({ user_weapons: w, weapon_roster: r }) =>
+				WEAPON_LIST_LINE(
+					r.name,
+					r.tier,
+					w.enhancement - 1,
+					w.weaponId,
+					w.currAtk,
+					w.crit,
+					JSON.stringify(w.nativeSockets),
+					JSON.stringify(w.oppositeSockets),
+				),
 			);
 		if (category === 'armors')
 			return (
@@ -43,9 +58,17 @@ export class InventoryRepository {
 					.orderBy(userArmors.armorId)
 					.limit(8)
 					.offset(offset)
-			).map(
-				({ user_armors: a, armor_roster: r }) =>
-					`**${r.name}** (${r.tier}) +${a.enhancement - 1}\nID: \`${a.armorId}\` · HP ${a.currHp} · DEF ${a.currDef}\nSockets: ${JSON.stringify(a.nativeSockets)} / ${JSON.stringify(a.oppositeSockets)}`,
+			).map(({ user_armors: a, armor_roster: r }) =>
+				ARMOR_LIST_LINE(
+					r.name,
+					r.tier,
+					a.enhancement - 1,
+					a.armorId,
+					a.currHp,
+					a.currDef,
+					JSON.stringify(a.nativeSockets),
+					JSON.stringify(a.oppositeSockets),
+				),
 			);
 		if (category === 'runes')
 			return (
@@ -57,9 +80,8 @@ export class InventoryRepository {
 					.orderBy(userRunes.runeUid)
 					.limit(8)
 					.offset(offset)
-			).map(
-				({ user_runes: u, rune_roster: r }) =>
-					`**${r.name}** (${r.tier}, ${r.lane})\nID: \`${u.runeUid}\` · ${r.description}\nGắn vào: ${u.socketedInto ?? 'chưa gắn'}`,
+			).map(({ user_runes: u, rune_roster: r }) =>
+				RUNE_LIST_LINE(r.name, r.tier, r.lane, u.runeUid, r.description, u.socketedInto ?? RUNE_NOT_SOCKETED),
 			);
 		return (
 			await db
@@ -72,7 +94,7 @@ export class InventoryRepository {
 				.offset(offset)
 		).map(({ user_deities: u, deity_roster: r }) => {
 			const s = computeSigilStats({ atk: r.baseAtk, hp: r.baseHp, def: r.baseDef }, u.sigils);
-			return `**${r.name}** (${r.tier}) · ID: \`${u.userDeityId}\`\nSigil ${u.sigils}/10 · Ascended: ${u.ascended ? 'Có (prestige)' : 'Chưa'}\nATK ${s.atk} · HP ${s.hp} · DEF ${s.def}`;
+			return DEITY_LIST_LINE(r.name, r.tier, u.userDeityId, u.sigils, u.ascended, s.atk, s.hp, s.def);
 		});
 	}
 }

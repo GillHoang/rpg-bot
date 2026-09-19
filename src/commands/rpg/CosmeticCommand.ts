@@ -1,20 +1,25 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { CosmeticService } from '../../services/CosmeticService.js';
+import {
+	COSMETIC_DESCRIPTION,
+	COSMETIC_EQUIP_DESC,
+	COSMETIC_ID_OPTION_DESC,
+	COSMETIC_LIST_DESC,
+} from '../../text/cosmetic.js';
 
 export class CosmeticCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('cosmetic')
-		.setDescription('Quản lý cosmetics')
-		.addSubcommand((s) => s.setName('list').setDescription('Xem catalog và item đang sở hữu'))
+		.setDescription(COSMETIC_DESCRIPTION)
+		.addSubcommand((s) => s.setName('list').setDescription(COSMETIC_LIST_DESC))
 		.addSubcommand((s) =>
 			s
 				.setName('equip')
-				.setDescription('Trang bị cosmetic')
-				.addIntegerOption((o) => {
-					o.setName('id').setDescription('Cosmetic ID từ /cosmetic list').setRequired(true).setMinValue(1);
-					return o;
-				}),
+				.setDescription(COSMETIC_EQUIP_DESC)
+				.addIntegerOption((o) =>
+					o.setName('id').setDescription(COSMETIC_ID_OPTION_DESC).setRequired(true).setMinValue(1),
+				),
 		);
 
 	constructor(private readonly cosmetics = new CosmeticService()) {}

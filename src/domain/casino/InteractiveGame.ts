@@ -1,6 +1,7 @@
 import { BlackjackSession } from './BlackjackSession.js';
 import { CrashSession } from './CrashSession.js';
 import { createRng } from '../combat/Rng.js';
+import { CASINO_BLACKJACK_VIEW, CASINO_CRASH_VIEW, CASINO_HIDDEN_CARD } from '../../text/casino.js';
 export type InteractiveGame = 'blackjack' | 'crash';
 export type CasinoAction = 'hit' | 'stand' | 'push' | 'cash' | 'timeout';
 export interface StoredGame {
@@ -22,7 +23,13 @@ export function replayGame(game: InteractiveGame, bet: number, stored: StoredGam
 			done: s.state === 'done',
 			payout: s.payout,
 			result: s.outcome ?? 'active',
-			text: `Blackjack · Cược ${bet.toLocaleString()}\nBạn: ${hand(s.player)} (${BlackjackSession.playerValue(s)})\nDealer: ${s.revealed ? `${hand(s.dealer)} (${BlackjackSession.dealerValue(s)})` : `${hand([s.dealer[0]])} [ẩn]`}`,
+			text: CASINO_BLACKJACK_VIEW(
+				bet.toLocaleString(),
+				`${hand(s.player)} (${BlackjackSession.playerValue(s)})`,
+				s.revealed
+					? `${hand(s.dealer)} (${BlackjackSession.dealerValue(s)})`
+					: `${hand([s.dealer[0]])} ${CASINO_HIDDEN_CARD}`,
+			),
 		};
 	}
 	const s = CrashSession.create(bet);
@@ -36,6 +43,6 @@ export function replayGame(game: InteractiveGame, bet: number, stored: StoredGam
 		done: s.state !== 'active',
 		payout: s.payout,
 		result: s.state === 'crashed' ? 'loss' : s.state === 'cashed' ? (s.payout > bet ? 'win' : 'push') : 'active',
-		text: `Crash · Cược ${bet.toLocaleString()}\nLượt ${s.push} · Hệ số ${s.multiplier.toFixed(2)}x · ${s.state}`,
+		text: CASINO_CRASH_VIEW(bet.toLocaleString(), s.push, s.multiplier.toFixed(2), s.state),
 	};
 }

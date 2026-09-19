@@ -2,19 +2,31 @@ import { EmbedBuilder, SlashCommandBuilder, type ChatInputCommandInteraction } f
 import type { ICommand } from '../../core/ICommand.js';
 import { LootService } from '../../services/LootService.js';
 import { CHESTS, type ChestKey } from '../../config/chestLoot.js';
+import {
+	OPEN_CHEST_OPTION_DESC,
+	OPEN_COUNT_OPTION_DESC,
+	OPEN_DESCRIPTION,
+	RUNES_DESCRIPTION,
+	RUNES_OPEN_BAG_OPTION_DESC,
+	RUNES_OPEN_DESC,
+	RUNES_SHOP_BAG_OPTION_DESC,
+	RUNES_SHOP_DESC,
+} from '../../text/loot.js';
 
 export class OpenCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('open')
-		.setDescription('Mở rương nhận tiền, rune và gear')
+		.setDescription(OPEN_DESCRIPTION)
 		.addStringOption((o) =>
 			o
 				.setName('chest')
-				.setDescription('Loại rương')
+				.setDescription(OPEN_CHEST_OPTION_DESC)
 				.setRequired(true)
 				.addChoices(...Object.entries(CHESTS).map(([value, c]) => ({ name: c.label, value }))),
 		)
-		.addIntegerOption((o) => o.setName('count').setDescription('Số lượng (1–10)').setMinValue(1).setMaxValue(10));
+		.addIntegerOption((o) =>
+			o.setName('count').setDescription(OPEN_COUNT_OPTION_DESC).setMinValue(1).setMaxValue(10),
+		);
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
 		const result = await new LootService().open(
@@ -28,26 +40,26 @@ export class OpenCommand implements ICommand {
 export class RunesCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('runes')
-		.setDescription('Shop và túi rune')
+		.setDescription(RUNES_DESCRIPTION)
 		.addSubcommand((s) =>
 			s
 				.setName('shop')
-				.setDescription('Xem giá hoặc mua và mở ngay túi rune (essence + Credux)')
+				.setDescription(RUNES_SHOP_DESC)
 				.addStringOption((o) =>
 					o
 						.setName('bag')
-						.setDescription('Bỏ trống để xem giá')
+						.setDescription(RUNES_SHOP_BAG_OPTION_DESC)
 						.addChoices(...['lb', 'gb', 'db'].map((value) => ({ name: value, value }))),
 				),
 		)
 		.addSubcommand((s) =>
 			s
 				.setName('open')
-				.setDescription('Mở 1 túi rune đang có trong bag (từ /open hoặc shop)')
+				.setDescription(RUNES_OPEN_DESC)
 				.addStringOption((o) =>
 					o
 						.setName('bag')
-						.setDescription('lb = lesser · gb = greater · db = divine')
+						.setDescription(RUNES_OPEN_BAG_OPTION_DESC)
 						.setRequired(true)
 						.addChoices(...['lb', 'gb', 'db'].map((value) => ({ name: value, value }))),
 				),

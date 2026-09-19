@@ -13,6 +13,14 @@ import { createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
 import { BRACKETS, RANKED, bracketFor, eloDelta, weekWindowAt, type Bracket } from '../config/ranked.js';
 import type { AssembledPlayer } from './StatAssemblyService.js';
+import {
+	RANKED_NOT_REGISTERED,
+	RANKED_SHIELD_OFF,
+	RANKED_SHIELD_ON,
+	RANKED_STATS_BODY,
+	RANKED_STATS_HEADER,
+	RANKED_WEEK_STATUS,
+} from '../text/ranked.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 
 const accountCombatClass = (value: string): CombatClass => value as CombatClass;
@@ -157,30 +165,31 @@ export class RankedService {
 			const won = battle.outcome === 'player_win';
 			const draw = battle.outcome === 'draw';
 			const score = won ? 1 : draw ? 0.5 : 0;
-			const delta = eloDelta(me.pvpRating, opponentRow.pvpRating, score);
-			const opponentDelta = eloDelta(opponentRow.pvpRating, me.pvpRating, (1 - score) as 0 | 0.5 | 1);
 
 			const ratingBefore = me.pvpRating;
-			let ratingAfter = Math.max(0, ratingBefore + (won ? delta : -delta));
-			const opponentRatingAfter = Math.max(0, opponentRow.pvpRating - opponentDelta);
+			const meChange = this.resolveRatingChange(
+				ratingBefore,
+				Math.max(0, ratingBefore + eloDelta(ratingBefore, opponentRow.pvpRating, score)),
+				me.pvpDemotionShield,
+			);
+			const opponentChange = this.resolveRatingChange(
+				opponentRow.pvpRating,
+				Math.max(
+					0,
+					opponentRow.pvpRating + eloDelta(opponentRow.pvpRating, ratingBefore, (1 - score) as 0 | 0.5 | 1),
+				),
+				opponentRow.pvpDemotionShield,
+			);
+			const ratingAfter = meChange.rating;
+			const opponentRatingAfter = opponentChange.rating;
 
-			const bracketBefore = bracketFor(ratingBefore);
-			const bracketAfter = bracketFor(ratingAfter);
-			let shieldUsed = false;
-			if (!won && !draw && bracketAfter.name !== bracketBefore.name) {
-				// First fall out of a bracket is cushioned by the demotion shield:
-				// rating drops only to the old bracket's floor and the shield breaks.
-				if (me.pvpDemotionShield) {
-					ratingAfter = bracketBefore.min;
-					shieldUsed = true;
-				}
-			}
-			const promoted =
-				BRACKETS.findIndex((b) => b.name === bracketAfter.name) >
-				BRACKETS.findIndex((b) => b.name === bracketBefore.name);
-			if (promoted && bracketAfter.name !== 'Mortal') {
+			if (meChange.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
 				// Bracket promotion → rank_season title (challenger/initiator only).
-				await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketAfter.name.toLowerCase()}`);
+				await this.cosmetics.grantTitleInTx(
+					tx,
+					discordId,
+					`rank_${bracketFor(ratingAfter).name.toLowerCase()}`,
+				);
 			}
 
 			await tx
@@ -189,12 +198,16 @@ export class RankedService {
 					pvpRating: ratingAfter,
 					pvpPeak: Math.max(me.pvpPeak, ratingAfter),
 					// A fresh promotion re-arms the shield; falling without it breaks it.
-					pvpDemotionShield: promoted ? true : shieldUsed ? false : me.pvpDemotionShield,
+					pvpDemotionShield: meChange.shield,
 				})
 				.where(eq(userCharacter.discordId, discordId));
 			await tx
 				.update(userCharacter)
-				.set({ pvpRating: opponentRatingAfter })
+				.set({
+					pvpRating: opponentRatingAfter,
+					pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
+					pvpDemotionShield: opponentChange.shield,
+				})
 				.where(eq(userCharacter.discordId, opponentRow.discordId));
 
 			await tx.insert(rankedLogs).values({
@@ -230,10 +243,10 @@ export class RankedService {
 				draw,
 				ratingBefore,
 				ratingAfter,
-				bracketBefore: bracketBefore.name,
-				bracketAfter: shieldUsed ? bracketBefore.name : bracketAfter.name,
+				bracketBefore: bracketFor(ratingBefore).name,
+				bracketAfter: bracketFor(ratingAfter).name,
 				peak: Math.max(me.pvpPeak, ratingAfter),
-				shieldUsed,
+				shieldUsed: meChange.shieldUsed,
 				delta: ratingAfter - ratingBefore,
 			};
 		});
@@ -320,16 +333,46 @@ export class RankedService {
 
 	async stats(discordId: string): Promise<string> {
 		const [me] = await db.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).limit(1);
-		if (!me) return 'Dùng /register trước.';
+		if (!me) return RANKED_NOT_REGISTERED;
 		const bracket = bracketFor(me.pvpRating);
 		const { week, endsAt } = weekWindowAt();
 		const claimed = me.lastWeeklyClaimWeek === week;
 		return (
-			`🏅 **Ranked** — Rating **${me.pvpRating}** (${bracket.name}) · Peak **${me.pvpPeak}**\n` +
-			`PvP ${me.pvpWins}W / ${me.pvpLosses}L · Streak kỷ lục ${me.highestRankStreak} · ` +
-			`Demotion shield: ${me.pvpDemotionShield ? 'bật' : 'đã mất'}\n` +
-			`Thưởng tuần ${week} (reset ${endsAt.toISOString().slice(0, 10)}): ${claimed ? 'đã claim' : 'chưa claim — /ranked claim'}`
+			RANKED_STATS_HEADER(me.pvpRating, bracket.name, me.pvpPeak) +
+			'\n' +
+			RANKED_STATS_BODY(
+				me.pvpWins,
+				me.pvpLosses,
+				me.highestRankStreak,
+				me.pvpDemotionShield ? RANKED_SHIELD_ON : RANKED_SHIELD_OFF,
+			) +
+			'\n' +
+			RANKED_WEEK_STATUS(week, endsAt.toISOString().slice(0, 10), claimed)
 		);
+	}
+
+	/**
+	 * Bracket guard applied identically to both fighters: falling out of a
+	 * bracket (decisive loss or a draw that still crosses the line) is
+	 * cushioned once by the demotion shield — rating drops only to the old
+	 * bracket's floor and the shield breaks; any promotion re-arms it.
+	 */
+	private resolveRatingChange(
+		beforeRating: number,
+		rawAfterRating: number,
+		hadShield: boolean,
+	): { rating: number; shield: boolean; shieldUsed: boolean; promoted: boolean } {
+		const before = bracketFor(beforeRating);
+		const after = bracketFor(rawAfterRating);
+		const index = (b: Bracket) => BRACKETS.findIndex((x) => x.name === b.name);
+		let rating = rawAfterRating;
+		let shieldUsed = false;
+		if (index(after) < index(before) && hadShield) {
+			rating = before.min;
+			shieldUsed = true;
+		}
+		const promoted = index(after) > index(before);
+		return { rating, shield: promoted ? true : shieldUsed ? false : hadShield, shieldUsed, promoted };
 	}
 
 	/** Win streak = consecutive wins at the tail of ranked_logs. */

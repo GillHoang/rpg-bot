@@ -39,10 +39,16 @@ export function bracketBelow(bracket: Bracket): Bracket | null {
 	return index > 0 ? BRACKETS[index - 1] : null;
 }
 
-/** Standard two-player Elo, zero-sum on the rounded delta. score: 1 win · 0.5 draw · 0 loss. */
+/**
+ * Signed Elo delta (M7 design default). Zero-sum by construction: the
+ * opponent's delta for the mirrored score is the exact negation — decisive
+ * results are clamped to |Δ| ≥ 1 so the ladder always moves, a draw between
+ * equals is 0 and must never destroy or create rating.
+ */
 export function eloDelta(rating: number, opponentRating: number, score: 0 | 0.5 | 1): number {
 	const expected = 1 / (1 + 10 ** ((opponentRating - rating) / 400));
-	return Math.max(1, Math.round(RANKED.K * (score - expected)));
+	const raw = Math.round(RANKED.K * (score - expected));
+	return score === 1 ? Math.max(1, raw) : score === 0 ? Math.min(-1, raw) : raw;
 }
 
 export interface WeekWindow {

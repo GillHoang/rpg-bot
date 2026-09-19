@@ -10,3 +10,4 @@ export const CURRENCY = {
 	credux: 'Credux',
 	beliefShards: 'Belief Shards',
 } as const;
+export const GENERIC_ERROR = 'Đã có lỗi xảy ra khi thực thi lệnh này.';

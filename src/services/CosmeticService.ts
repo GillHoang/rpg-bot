@@ -9,12 +9,35 @@ import {
 	userTitles,
 } from '../db/schema.js';
 import { COSMETIC_TIER_MIN_LEVEL } from '../config/reputation.js';
+import {
+	COSMETIC_ENTRY,
+	COSMETIC_EQUIPPED,
+	COSMETIC_EQUIPPED_MARK,
+	COSMETIC_LIST_FOOTER,
+	COSMETIC_LIST_HEADER,
+	COSMETIC_LOCK,
+	COSMETIC_NOT_FOUND,
+	COSMETIC_NOT_OWNED,
+	COSMETIC_NO_CHARACTER,
+	COSMETIC_SEED_MISSING,
+	COSMETIC_TIER_LOCKED,
+	TITLE_EQUIPPED,
+	TITLE_EQUIPPED_MARK,
+	TITLE_ENTRY,
+	TITLE_LIST_FOOTER,
+	TITLE_LIST_HEADER,
+	TITLE_LOCK_MARK,
+	TITLE_NOT_OWNED,
+	TITLE_REMOVED,
+	TITLE_SEED_MISSING,
+} from '../text/cosmetic.js';
 
 /**
  * Cosmetic + title (M7). Catalog nằm trong seed; equip lưu xuống
  * equipped_skins / user_character.equipped_title_id. Cosmetic tier gate theo
  * believer level (config/reputation.ts). Grant helpers dùng được trong tx —
  * Duel/Ranked/Raid/PvpShop gọi trực tiếp, command dùng facade ngoài tx.
+ * Wording nằm ở src/text/cosmetic.ts.
  */
 export class CosmeticService {
 	// --- In-tx grant helpers (used by other services) ---
@@ -25,7 +48,7 @@ export class CosmeticService {
 			.from(cosmeticCatalog)
 			.where(eq(cosmeticCatalog.cosmeticKey, cosmeticKey))
 			.limit(1);
-		if (!catalog) throw new Error(`Thiếu cosmetic trong seed: ${cosmeticKey}`);
+		if (!catalog) throw new Error(COSMETIC_SEED_MISSING(cosmeticKey));
 		const [row] = await tx
 			.insert(userCosmetics)
 			.values({ discordId, cosmeticId: catalog.cosmeticId, source })
@@ -51,7 +74,7 @@ export class CosmeticService {
 
 	async grantTitleInTx(tx: Executor, discordId: string, code: string): Promise<boolean> {
 		const [catalog] = await tx.select().from(titleCatalog).where(eq(titleCatalog.code, code)).limit(1);
-		if (!catalog) throw new Error(`Thiếu title trong seed: ${code}`);
+		if (!catalog) throw new Error(TITLE_SEED_MISSING(code));
 		const [row] = await tx
 			.insert(userTitles)
 			.values({ discordId, titleId: catalog.titleId })
@@ -69,25 +92,25 @@ export class CosmeticService {
 				.from(userCharacter)
 				.where(eq(userCharacter.discordId, discordId))
 				.limit(1);
-			if (!character) return 'Dùng /create trước.';
+			if (!character) return COSMETIC_NO_CHARACTER;
 			const catalog = await tx.select().from(cosmeticCatalog).orderBy(cosmeticCatalog.cosmeticId);
 			const owned = await tx.select().from(userCosmetics).where(eq(userCosmetics.discordId, discordId));
 			const equipped = await tx.select().from(equippedSkins).where(eq(equippedSkins.discordId, discordId));
 			const ownedIds = new Set(owned.map((o) => o.cosmeticId));
 			const equippedIds = new Set(equipped.map((e) => e.cosmeticId));
 			return (
-				'🎨 **Cosmetics**\n' +
+				COSMETIC_LIST_HEADER +
+				'\n' +
 				catalog
 					.map((c) => {
 						const has = ownedIds.has(c.cosmeticId);
-						const equippedMark = equippedIds.has(c.cosmeticId) ? ' · [đang dùng]' : '';
-						const lock = has
-							? ''
-							: ` · 🔒 cần believer level ${COSMETIC_TIER_MIN_LEVEL[c.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL]}`;
-						return `#${c.cosmeticId} ${c.displayName} (${c.category}, tier ${c.tier})${equippedMark}${has ? '' : lock}`;
+						const equippedMark = equippedIds.has(c.cosmeticId) ? COSMETIC_EQUIPPED_MARK : '';
+						const minLevel = COSMETIC_TIER_MIN_LEVEL[c.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
+						const lock = has ? '' : COSMETIC_LOCK(minLevel);
+						return COSMETIC_ENTRY(c.cosmeticId, c.displayName, c.category, c.tier) + equippedMark + lock;
 					})
 					.join('\n') +
-				'\n/cosmetic equip id:<#> để trang bị.'
+				COSMETIC_LIST_FOOTER
 			);
 		});
 	}
@@ -99,20 +122,23 @@ export class CosmeticService {
 				.from(userCharacter)
 				.where(eq(userCharacter.discordId, discordId))
 				.limit(1);
-			if (!character) return 'Dùng /create trước.';
+			if (!character) return COSMETIC_NO_CHARACTER;
 			const [catalog] = await tx
 				.select()
 				.from(cosmeticCatalog)
 				.where(eq(cosmeticCatalog.cosmeticId, cosmeticId))
 				.limit(1);
-			if (!catalog) return 'Cosmetic không tồn tại.';
+			if (!catalog) return COSMETIC_NOT_FOUND;
+			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
 			const [owned] = await tx
 				.select()
 				.from(userCosmetics)
 				.where(and(eq(userCosmetics.discordId, discordId), eq(userCosmetics.cosmeticId, cosmeticId)))
 				.limit(1);
-			if (!owned)
-				return `Bạn chưa sở hữu cosmetic này (tier ${catalog.tier} cần believer level ${COSMETIC_TIER_MIN_LEVEL[catalog.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL]}).`;
+			if (!owned) return COSMETIC_NOT_OWNED(catalog.tier, minLevel);
+			// Tier gate is enforced here, not just displayed: believer < chosen < eternal.
+			if (character.believerLevel < minLevel)
+				return COSMETIC_TIER_LOCKED(catalog.tier, minLevel, character.believerLevel);
 			await tx
 				.insert(equippedSkins)
 				.values({ discordId, category: catalog.category, cosmeticId })
@@ -120,7 +146,7 @@ export class CosmeticService {
 					target: [equippedSkins.discordId, equippedSkins.category],
 					set: { cosmeticId, updatedAt: new Date() },
 				});
-			return `Đã trang bị ${catalog.displayName} (${catalog.category}).`;
+			return COSMETIC_EQUIPPED(catalog.displayName, catalog.category);
 		});
 	}
 
@@ -131,19 +157,24 @@ export class CosmeticService {
 				.from(userCharacter)
 				.where(eq(userCharacter.discordId, discordId))
 				.limit(1);
-			if (!character) return 'Dùng /create trước.';
+			if (!character) return COSMETIC_NO_CHARACTER;
 			const catalog = await tx.select().from(titleCatalog).orderBy(titleCatalog.titleId);
 			const owned = await tx.select().from(userTitles).where(eq(userTitles.discordId, discordId));
 			const ownedIds = new Set(owned.map((o) => o.titleId));
 			return (
-				'🏷️ **Titles**\n' +
+				TITLE_LIST_HEADER +
+				'\n' +
 				catalog
-					.map(
-						(t) =>
-							`#${t.titleId} **${t.display}**${ownedIds.has(t.titleId) ? (character.equippedTitleId === t.titleId ? ' · [đang dùng]' : '') : ' · 🔒'} — ${t.howTo}`,
-					)
+					.map((t) => {
+						const ownedMark = ownedIds.has(t.titleId)
+							? character.equippedTitleId === t.titleId
+								? TITLE_EQUIPPED_MARK
+								: ''
+							: TITLE_LOCK_MARK;
+						return TITLE_ENTRY(t.titleId, t.display) + ownedMark + ` — ${t.howTo}`;
+					})
 					.join('\n') +
-				'\n/title equip id:<#> để đeo title.'
+				TITLE_LIST_FOOTER
 			);
 		});
 	}
@@ -155,25 +186,25 @@ export class CosmeticService {
 				.from(userCharacter)
 				.where(eq(userCharacter.discordId, discordId))
 				.limit(1);
-			if (!character) return 'Dùng /create trước.';
+			if (!character) return COSMETIC_NO_CHARACTER;
 			if (titleId === 0) {
 				await tx
 					.update(userCharacter)
 					.set({ equippedTitleId: null })
 					.where(eq(userCharacter.discordId, discordId));
-				return 'Đã tháo title.';
+				return TITLE_REMOVED;
 			}
 			const [owned] = await tx
 				.select()
 				.from(userTitles)
 				.where(and(eq(userTitles.discordId, discordId), eq(userTitles.titleId, titleId)))
 				.limit(1);
-			if (!owned) return 'Bạn chưa có title này.';
+			if (!owned) return TITLE_NOT_OWNED;
 			await tx
 				.update(userCharacter)
 				.set({ equippedTitleId: titleId })
 				.where(eq(userCharacter.discordId, discordId));
-			return 'Đã đeo title.';
+			return TITLE_EQUIPPED;
 		});
 	}
 }

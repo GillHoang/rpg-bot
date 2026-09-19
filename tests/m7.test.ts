@@ -138,6 +138,16 @@ describe('M7 quests + believer EXP', () => {
 		expect((await bag()).sacredRelics).toBe(1);
 	});
 
+	it('answers view/claim politely before registration instead of crashing on FK', async () => {
+		const ghost = `ghost-${++sequence}`;
+		const quests = new QuestService();
+		expect(await quests.view(ghost)).toContain('/register');
+		expect(await quests.claimWeeklyGrand(ghost)).toContain('/register');
+		// Nothing was lazily generated for the unregistered id.
+		expect(await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, ghost))).toHaveLength(0);
+		expect(await db.select().from(s.weeklyQuests).where(eq(s.weeklyQuests.discordId, ghost))).toHaveLength(0);
+	});
+
 	it('caps believer EXP per Manila day and levels up at the threshold', async () => {
 		const reputation = new ReputationService();
 		for (let i = 0; i < 10; i++) await reputation.award(id, 'daily'); // 10×50 = cap 500
@@ -310,6 +320,9 @@ describe('M7 cosmetics, titles, class change', () => {
 		expect((await bag()).changeClass).toBe(1);
 		expect((await bag()).valorMedals).toBe(80);
 
+		// Tier Chosen gates on believer level 5 — enforced at purchase AND equip.
+		expect(await pvp.buy(id, 'frame_gold')).toContain('believer level');
+		await db.update(s.userCharacter).set({ believerLevel: 5 }).where(eq(s.userCharacter.discordId, id));
 		expect(await pvp.buy(id, 'frame_gold')).toContain('Đã mua');
 		expect(await pvp.buy(id, 'frame_gold')).toContain('tối đa');
 		const catalog = await db.select().from(s.cosmeticCatalog);
@@ -326,7 +339,7 @@ describe('M7 cosmetics, titles, class change', () => {
 		const profile = await new ProfileService().get(id);
 		if (profile.status !== 'ok') throw new Error('profile failed');
 		expect(profile.data.title).toContain('Champion');
-		expect(profile.data.believerLevel).toBe(1);
+		expect(profile.data.believerLevel).toBe(5);
 		expect(profile.data.pvpRating).toBe(1000);
 	});
 

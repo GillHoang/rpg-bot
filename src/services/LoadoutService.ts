@@ -1,25 +1,42 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { userCharacter, userPresets, userWeapons, userArmors, userDeities } from '../db/schema.js';
+import {
+	LOADOUT_ARMOR_NOT_OWNED,
+	LOADOUT_BAD_PRESET,
+	LOADOUT_DEITY_IN_OTHER_SLOT,
+	LOADOUT_DEITY_NOT_OWNED,
+	LOADOUT_EMPTY,
+	LOADOUT_EQUIPPED,
+	LOADOUT_INVALID_KIND,
+	LOADOUT_NO_CHARACTER,
+	LOADOUT_PRESET_MISSING,
+	LOADOUT_SWITCHED,
+	LOADOUT_WEAPON_NOT_OWNED,
+} from '../text/loadout.js';
 
+/**
+ * Facade cho /equip và /preset switch. Deity nhận slot 1/2/3 (kind:
+ * deity|deity2|deity3) — pantheon M7. Wording nằm ở src/text/loadout.ts.
+ */
 export class LoadoutService {
 	async equip(id: string, kind: string, item: string, slot?: number): Promise<string> {
 		return db.transaction(async (tx) => {
 			const [c] = await tx.select().from(userCharacter).where(eq(userCharacter.discordId, id)).for('update');
-			if (!c) return 'Dùng /create trước.';
+			if (!c) return LOADOUT_NO_CHARACTER;
 			const target = slot ?? c.activePresetSlot;
-			if (target !== 1 && target !== 2) return 'Preset phải là 1 hoặc 2.';
+			if (target !== 1 && target !== 2) return LOADOUT_BAD_PRESET;
 			const [preset] = await tx
 				.select()
 				.from(userPresets)
 				.where(and(eq(userPresets.discordId, id), eq(userPresets.slot, target)));
-			if (!preset) return 'Không tìm thấy preset.';
+			if (!preset) return LOADOUT_PRESET_MISSING;
 			if (kind === 'weapon') {
 				const [owned] = await tx
 					.select()
 					.from(userWeapons)
 					.where(and(eq(userWeapons.discordId, id), eq(userWeapons.weaponId, item)));
-				if (!owned) return 'Bạn không sở hữu vũ khí này.';
+				if (!owned) return LOADOUT_WEAPON_NOT_OWNED;
 				await tx
 					.update(userPresets)
 					.set({ equippedWeaponId: item, updatedAt: new Date() })
@@ -34,7 +51,7 @@ export class LoadoutService {
 					.select()
 					.from(userArmors)
 					.where(and(eq(userArmors.discordId, id), eq(userArmors.armorId, item)));
-				if (!owned) return 'Bạn không sở hữu giáp này.';
+				if (!owned) return LOADOUT_ARMOR_NOT_OWNED;
 				await tx
 					.update(userPresets)
 					.set({ equippedArmorId: item, updatedAt: new Date() })
@@ -50,7 +67,7 @@ export class LoadoutService {
 					.select()
 					.from(userDeities)
 					.where(and(eq(userDeities.discordId, id), eq(userDeities.userDeityId, userDeityId)));
-				if (!owned) return 'Bạn không sở hữu deity này.';
+				if (!owned) return LOADOUT_DEITY_NOT_OWNED;
 				const slotIndex = kind === 'deity' ? 1 : Number(kind.slice(5));
 				const column = `equippedDeity${slotIndex}Id` as
 					'equippedDeity1Id' | 'equippedDeity2Id' | 'equippedDeity3Id';
@@ -59,7 +76,7 @@ export class LoadoutService {
 				// One deity cannot hold two pantheon slots at once.
 				const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
 				if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId)
-					return 'Deity này đã ở slot pantheon khác.';
+					return LOADOUT_DEITY_IN_OTHER_SLOT;
 				await tx
 					.update(userPresets)
 					.set({ [column]: userDeityId, updatedAt: new Date() })
@@ -69,20 +86,20 @@ export class LoadoutService {
 						.update(userCharacter)
 						.set({ [activeColumn]: userDeityId })
 						.where(eq(userCharacter.discordId, id));
-			} else return 'Loại hoặc ID không hợp lệ.';
-			return `Đã trang bị ${kind} ${item} vào preset ${target}. /profile để xem chỉ số.`;
+			} else return LOADOUT_INVALID_KIND;
+			return LOADOUT_EQUIPPED(kind, item, target);
 		});
 	}
 	async switch(id: string, slot: number): Promise<string> {
-		if (slot !== 1 && slot !== 2) return 'Preset phải là 1 hoặc 2.';
+		if (slot !== 1 && slot !== 2) return LOADOUT_BAD_PRESET;
 		return db.transaction(async (tx) => {
 			const [c] = await tx.select().from(userCharacter).where(eq(userCharacter.discordId, id)).for('update');
-			if (!c) return 'Dùng /create trước.';
+			if (!c) return LOADOUT_NO_CHARACTER;
 			const [p] = await tx
 				.select()
 				.from(userPresets)
 				.where(and(eq(userPresets.discordId, id), eq(userPresets.slot, slot)));
-			if (!p) return 'Không tìm thấy preset.';
+			if (!p) return LOADOUT_PRESET_MISSING;
 			await tx
 				.update(userCharacter)
 				.set({
@@ -95,7 +112,12 @@ export class LoadoutService {
 					activeEchoDeityId: p.equippedEchoDeityId,
 				})
 				.where(eq(userCharacter.discordId, id));
-			return `Đang dùng preset ${slot}. Weapon: ${p.equippedWeaponId ?? 'trống'} · Armor: ${p.equippedArmorId ?? 'trống'} · Deity: ${p.equippedDeity1Id ?? 'trống'}\n/equip để thay trang bị.`;
+			return LOADOUT_SWITCHED(
+				slot,
+				p.equippedWeaponId ?? LOADOUT_EMPTY,
+				p.equippedArmorId ?? LOADOUT_EMPTY,
+				p.equippedDeity1Id != null ? String(p.equippedDeity1Id) : LOADOUT_EMPTY,
+			);
 		});
 	}
 }

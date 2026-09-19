@@ -20,3 +20,8 @@ export const RAID_ROUND_SUMMARY = (rounds: number, playerHp: number, enemyHp: nu
 /** Giới hạn ký tự của battle log trong 1 tin nhắn Discord. */
 export const RAID_MAX_LOG_CHARS = 1200;
 export const RAID_LOG_TRUNCATE_PREFIX = '…\n';
+
+// --- Boss (RaidService) ---
+export const BOSS_LEVEL_REQUIRED = (minLevel: number): string => `Boss yêu cầu cấp ${minLevel}.`;
+export const BOSS_ALREADY_DONE = 'Đã đánh boss hôm nay. Reset lúc 00:00 Asia/Manila.';
+export const BOSS_FEE_REQUIRED = (fee: string): string => `Phí vào boss: ${fee} Credux.`;

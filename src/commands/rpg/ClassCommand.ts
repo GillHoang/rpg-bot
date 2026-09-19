@@ -2,20 +2,21 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 import type { ICommand } from '../../core/ICommand.js';
 import { ClassChangeService } from '../../services/ClassChangeService.js';
 import { CLASS_NAMES } from '../../config/classes.js';
+import { CLASS_CHANGE_DESC, CLASS_DESCRIPTION, CLASS_NEW_CLASS_OPTION_DESC } from '../../text/class.js';
 import type { CombatClass } from '../../domain/entities/PlayerAccount.js';
 
 export class ClassCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('class')
-		.setDescription('Quản lý class nhân vật')
+		.setDescription(CLASS_DESCRIPTION)
 		.addSubcommand((s) =>
 			s
 				.setName('change')
-				.setDescription('Đổi class bằng Change-Class Token (mua ở /pvp shop)')
+				.setDescription(CLASS_CHANGE_DESC)
 				.addStringOption((opt) =>
 					opt
 						.setName('new_class')
-						.setDescription('Class mới')
+						.setDescription(CLASS_NEW_CLASS_OPTION_DESC)
 						.setRequired(true)
 						.addChoices(...CLASS_NAMES.map((name) => ({ name, value: name }))),
 				),

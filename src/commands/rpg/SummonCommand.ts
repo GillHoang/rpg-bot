@@ -12,6 +12,7 @@ import {
 	SUMMON_NEW_SUFFIX,
 	SUMMON_NO_CHARACTER,
 	SUMMON_NO_DEITIES_SEEDED,
+	SUMMON_RELIC_OPTION_DESC,
 	SUMMON_SUCCESS,
 	SUMMON_SUCCESS_RELIC,
 	TIER_ALIAS,
@@ -32,7 +33,7 @@ export class SummonCommand implements ICommand {
 		.addStringOption((opt) =>
 			opt
 				.setName('relic')
-				.setDescription('Dùng Sacred/Supreme Relic để ép tier (1 relic/lượt, không tốn shards)')
+				.setDescription(SUMMON_RELIC_OPTION_DESC)
 				.addChoices(
 					{ name: 'sacred (đảm bảo Mythic+)', value: 'sacred' },
 					{ name: 'supreme (đảm bảo Legendary+)', value: 'supreme' },

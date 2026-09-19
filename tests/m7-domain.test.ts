@@ -4,6 +4,28 @@ import { createCombatant } from '../src/domain/combat/CombatantState.js';
 import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
 import { wrapWithBlessings } from '../src/domain/combat/DeityBlessingDecorator.js';
 import { blessingStrength, resonanceBonus } from '../src/config/blessings.js';
+import { eloDelta } from '../src/config/ranked.js';
+
+describe('elo', () => {
+	it('is zero-sum: decisive deltas mirror, draws between equals move nothing', () => {
+		for (let rating = 800; rating <= 2200; rating += 100) {
+			expect(eloDelta(rating, rating, 1)).toBe(16);
+			expect(eloDelta(rating, rating, 0)).toBe(-16);
+			expect(eloDelta(rating, rating, 0.5)).toBe(0);
+		}
+		for (let d = -400; d <= 400; d += 50) {
+			const high = 1500 + d;
+			const low = 1500 - d;
+			// Zero-sum: win/loss mirror exactly, draw deltas cancel (sum-based —
+			// Object.is would distinguish 0 from -0).
+			expect(eloDelta(high, low, 1) + eloDelta(low, high, 0)).toBe(0);
+			expect(eloDelta(high, low, 0.5) + eloDelta(low, high, 0.5)).toBe(0);
+		}
+		// An upset and a favourite's win still move the ladder by at least 1.
+		expect(eloDelta(1200, 2400, 1)).toBeGreaterThanOrEqual(1);
+		expect(eloDelta(2400, 1200, 0)).toBeLessThanOrEqual(-1);
+	});
+});
 
 describe('sudden death', () => {
 	it('multiplies damage ×2 per round past 30 and logs the header once', () => {
