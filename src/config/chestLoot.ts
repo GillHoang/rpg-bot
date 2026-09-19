@@ -1,5 +1,6 @@
-import { choose, rollChance } from '../utils/weightedRandom.js';
-export { choose } from '../utils/weightedRandom.js';
+import { pick, rollChance } from '../utils/weightedRandom.js';
+import { choose } from '../utils/weightedRandom.js';
+export { choose };
 import { randInt } from './raidLoot.js';
 
 export const CHESTS = {
@@ -51,8 +52,64 @@ export const CHESTS = {
 		essenceChance: 100,
 		essence: 'legendaryEssence',
 	},
+	diamond: {
+		column: 'diamondChest',
+		label: 'Diamond',
+		credux: [200000, 400000],
+		shards: [300, 600],
+		runeChance: 100,
+		runeTier: 'Legendary',
+		gearChance: 40,
+		gearTiers: ['Legendary'],
+		essenceChance: 50,
+		essence: 'legendaryEssence',
+	},
+	genesis: {
+		column: 'genesisChest',
+		label: 'Genesis',
+		credux: [500000, 1000000],
+		shards: [800, 1500],
+		runeChance: 100,
+		runeTier: 'Supreme',
+		gearChance: 50,
+		gearTiers: ['Supreme'],
+		essenceChance: 100,
+		essence: 'supremeEssence',
+	},
 } as const;
 export type ChestKey = keyof typeof CHESTS;
+
+/**
+ * Rune-bag drop per chest (M7): rương càng hiếm càng nghiêng túi lớn.
+ * Weighted single pick mỗi lần mở — 0% được lọc bỏ trước khi pick.
+ */
+export const RUNE_BAG_DROPS: Record<
+	ChestKey,
+	{ lesserRuneBag: number; greaterRuneBag: number; divineRuneBag: number }
+> = {
+	silver: { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 0 },
+	gold: { lesserRuneBag: 8, greaterRuneBag: 0, divineRuneBag: 0 },
+	boss_treasure: { lesserRuneBag: 20, greaterRuneBag: 8, divineRuneBag: 0 },
+	boss_golden: { lesserRuneBag: 0, greaterRuneBag: 30, divineRuneBag: 12 },
+	diamond: { lesserRuneBag: 0, greaterRuneBag: 50, divineRuneBag: 25 },
+	genesis: { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 100 },
+};
+
+export function rollRuneBagField(
+	key: ChestKey,
+	rng: () => number,
+): 'lesserRuneBag' | 'greaterRuneBag' | 'divineRuneBag' | null {
+	const entries = Object.entries(RUNE_BAG_DROPS[key]).filter(([, weight]) => weight > 0);
+	if (!entries.length) return null;
+	return pick(
+		entries.map(([original, weight]) => ({
+			original: original as 'lesserRuneBag' | 'greaterRuneBag' | 'divineRuneBag',
+			weight,
+		})),
+		{ next: rng },
+	);
+}
+
 export function chance(percent: number, rng: () => number): boolean {
 	return rollChance(percent / 100, rng);
 }
@@ -64,6 +121,7 @@ export function rollChest(key: ChestKey, rng: () => number) {
 		runeTier: chance(table.runeChance, rng) ? table.runeTier : null,
 		gearTier: chance(table.gearChance, rng) ? choose(table.gearTiers, rng) : null,
 		essence: chance(table.essenceChance, rng) ? table.essence : null,
+		runeBag: rollRuneBagField(key, rng),
 	};
 }
 // New balance values: roster rows contain names/passives, not base gear stats.
@@ -71,4 +129,5 @@ export const GEAR_STATS = {
 	Rare: { atk: [80, 120], hp: [400, 600], def: [40, 60], crit: [2, 4] },
 	Mythic: { atk: [160, 240], hp: [800, 1200], def: [80, 120], crit: [4, 6] },
 	Legendary: { atk: [320, 480], hp: [1600, 2400], def: [160, 240], crit: [6, 8] },
+	Supreme: { atk: [640, 960], hp: [3200, 4800], def: [320, 480], crit: [8, 10] },
 } as const;

@@ -100,4 +100,19 @@ export const WEAPON_SEED: WeaponSeed[] = [
 		imageFilename: null,
 		isAvailable: true,
 	},
+
+	// ── Supreme ──────────────────────────────────────────────────────────────
+	{
+		weaponRosterId: 401,
+		name: 'Kampilan of Kaptan',
+		type: 'Sword',
+		tier: 'Supreme',
+		mythology: 'Filipino',
+		passiveKey: 'sky_sunder',
+		passiveName: 'Sky Sunder',
+		passiveDescription: 'The sky-lord\u2019s blade splits the firmament with every swing.',
+		lore: 'Forged in the first lightning, wielded by the primordial lord of the sky.',
+		imageFilename: null,
+		isAvailable: true,
+	},
 ];

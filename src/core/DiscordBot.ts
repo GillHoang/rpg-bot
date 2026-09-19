@@ -1,5 +1,6 @@
 import { Client, Events, GatewayIntentBits, type Interaction } from 'discord.js';
 import { CommandRegistry } from './CommandRegistry.js';
+import { Scheduler } from './Scheduler.js';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 import { CasinoSessionService } from '../services/CasinoSessionService.js';
@@ -37,6 +38,7 @@ export class DiscordBot {
 			};
 			void recover();
 			setInterval(() => void recover(), 15000).unref();
+			new Scheduler().start();
 		});
 
 		this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {

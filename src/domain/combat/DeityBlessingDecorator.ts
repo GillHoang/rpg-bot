@@ -1,0 +1,112 @@
+import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
+import type { BlessingKey } from '../../config/blessings.js';
+import { rollChance } from '../../utils/weightedRandom.js';
+import {
+	COMBAT_BLESSING_GUARDIAN_LIGHT,
+	COMBAT_BLESSING_LUNAR_VEIL,
+	COMBAT_BLESSING_MOON_DEVOURER,
+	COMBAT_BLESSING_MOUNTAIN_GRACE,
+	COMBAT_BLESSING_SKY_SOVEREIGN,
+	COMBAT_BLESSING_SOLAR_FURY,
+	COMBAT_BLESSING_TAILWIND,
+	COMBAT_BLESSING_TIDAL_WRATH,
+} from '../../text/combat.js';
+
+/**
+ * Decorator pattern — cùng kiến trúc với RuneStrategyDecorator: bọc bất kỳ
+ * IClassStrategy nào (kể cả decorator khác, chain được) và áp MỘT blessing
+ * của deity slot 1, không để class Strategy gốc biết blessing tồn tại.
+ *
+ * `strength` đã tính sẵn ở StatAssemblyService: scalable = 0.5 + 0.05×sigils
+ * (cap 1.0), binary = 1. Tailwind không nằm ở đây — nó ghi cờ
+ * `initiative_bias` vào CombatantState qua onRoundStart và BattleEngine tự
+ * roll lượt đi trước mỗi round dựa trên chênh lệch bias 2 bên.
+ */
+export class DeityBlessingDecorator implements IClassStrategy {
+	readonly key: IClassStrategy['key'];
+
+	constructor(
+		private readonly inner: IClassStrategy,
+		private readonly effectKey: BlessingKey,
+		private readonly strength: number,
+	) {
+		this.key = inner.key;
+	}
+
+	onRoundStart(ctx: StrategyContext): void {
+		this.inner.onRoundStart(ctx);
+		if (this.effectKey === 'tailwind') {
+			const current = (ctx.self.flags.initiative_bias as number) ?? 0;
+			ctx.self.flags.initiative_bias = current + 0.25 * this.strength;
+			ctx.log(COMBAT_BLESSING_TAILWIND(ctx.self.name));
+		}
+	}
+
+	prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
+		this.inner.prepareOutgoingHit(ctx, hit);
+		if (this.effectKey === 'solar_fury') {
+			const pct = Math.round(6 * this.strength);
+			hit.damagePctBonus += 0.06 * this.strength;
+			ctx.log(COMBAT_BLESSING_SOLAR_FURY(ctx.self.name, pct));
+		} else if (this.effectKey === 'tidal_wrath') {
+			const missingHpFraction = 1 - ctx.self.hp / ctx.self.maxHp;
+			if (missingHpFraction > 0) {
+				const bonusPct = Math.round(35 * this.strength * missingHpFraction);
+				hit.damagePctBonus += 0.35 * this.strength * missingHpFraction;
+				ctx.log(COMBAT_BLESSING_TIDAL_WRATH(ctx.self.name, bonusPct));
+			}
+		} else if (this.effectKey === 'moon_devourer' && rollChance(0.15 * this.strength, ctx.rng)) {
+			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
+			ctx.log(COMBAT_BLESSING_MOON_DEVOURER(ctx.self.name));
+		}
+	}
+
+	prepareIncomingHit(ctx: StrategyContext, hit: IncomingHit): void {
+		this.inner.prepareIncomingHit(ctx, hit);
+		if (this.effectKey === 'mountain_grace' && ctx.self.hp < ctx.self.maxHp / 2) {
+			hit.reductionFraction = Math.max(hit.reductionFraction, 0.35 * this.strength);
+			ctx.log(COMBAT_BLESSING_MOUNTAIN_GRACE(ctx.self.name));
+		} else if (this.effectKey === 'lunar_veil' && ctx.self.flags.blessing_veil_active) {
+			ctx.self.flags.blessing_veil_active = false;
+			hit.reductionFraction = Math.max(hit.reductionFraction, 0.3 * this.strength);
+			ctx.log(COMBAT_BLESSING_LUNAR_VEIL(ctx.self.name));
+		} else if (this.effectKey === 'sky_sovereign' && !ctx.self.flags.blessing_sovereign_used) {
+			ctx.self.flags.blessing_sovereign_used = true;
+			hit.reductionFraction = 1;
+			ctx.log(COMBAT_BLESSING_SKY_SOVEREIGN(ctx.self.name));
+		}
+	}
+
+	onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
+		this.inner.onHitLanded(ctx, resolved);
+	}
+
+	onDamageTaken(ctx: StrategyContext, resolved: ResolvedHit): void {
+		this.inner.onDamageTaken(ctx, resolved);
+		if (this.effectKey === 'lunar_veil' && resolved.damageDealt > 0 && ctx.self.hp > 0) {
+			ctx.self.flags.blessing_veil_active = true;
+		}
+	}
+
+	onRoundEnd(ctx: StrategyContext): void {
+		this.inner.onRoundEnd(ctx);
+		if (this.effectKey === 'guardian_light' && ctx.self.hp > 0) {
+			const healed = Math.min(ctx.self.maxHp - ctx.self.hp, Math.floor(ctx.self.maxHp * 0.04 * this.strength));
+			if (healed > 0) {
+				ctx.self.hp += healed;
+				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(ctx.self.name, healed.toLocaleString()));
+			}
+		}
+	}
+}
+
+/** Chains one strategy through every blessing of the equipped pantheon lead. */
+export function wrapWithBlessings(
+	base: IClassStrategy,
+	blessings: Array<{ key: string; strength: number }>,
+): IClassStrategy {
+	return blessings.reduce<IClassStrategy>(
+		(strategy, blessing) => new DeityBlessingDecorator(strategy, blessing.key as BlessingKey, blessing.strength),
+		base,
+	);
+}

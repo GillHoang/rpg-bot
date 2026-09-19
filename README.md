@@ -1,7 +1,9 @@
 # credd-bot-ts
 
 Discord RPG bot viết bằng TypeScript, discord.js v14, Drizzle ORM và PostgreSQL.
-Gameflow đã nối từ tạo nhân vật đến loot, gear/rune/deity, elite/boss và casino.
+Gameflow đã nối từ tạo nhân vật đến loot, gear/rune/deity, elite/boss, casino và
+nay đủ thêm PvP (duel/ranked), quest, pantheon/blessing, cosmetic/title và
+believer EXP (M7 — xem [docs/m7-implementation.md](docs/m7-implementation.md)).
 
 ## Chạy project
 
@@ -40,7 +42,21 @@ Gameflow dùng các bảng sẵn có; không có migration mới trong đợt n�
 11. `/casino coin_toss|dice_roll|slot_machine|baccarat|blackjack|crash bet:<số>`.
     Blackjack/Crash có nút của chủ ván, 60 giây tự Stand/Cash Out. Cược trừ trước;
     phiên lưu DB, bot phục hồi kết toán phiên hết hạn khi chạy lại.
-12. `/balance`, `/profile` xem tài nguyên và sức mạnh từ preset đang dùng.
+12. `/balance`, `/profile` xem tài nguyên và sức mạnh từ preset đang dùng
+    (profile có title, believer level, pvp rating).
+13. `/equip kind:deity2|deity3 id:<ID>` thêm pantheon slot 2/3 — stat deity
+    nhân 0.5/0.25, 2–3 deity cùng mythology được resonance +10%/+20%; blessing
+    của deity slot 1 kích hoạt trong combat (theo Sigil).
+14. `/duel opponent:@user stake:<số>` thách đấu 1v1 (60 giây, cược cả hai bên,
+    winner ăn pot); `/ranked fight|claim|stats` Elo async mirror match với
+    bracket + demotion shield + thưởng tuần; `/pvp shop|buy` tiêu Valor Medals.
+15. `/quest view|refresh|claim` — quest daily/weekly sinh tự động theo tiến
+    trình; đủ 3 daily nhận Sacred Relic, đủ 3 weekly nhận Weekly Grand.
+16. `/cosmetic list|equip`, `/title list|equip` — cosmetics/titles (base tự
+    grant khi tạo nhân vật, title kiếm qua duel/boss/ranked, mua bằng valor).
+17. `/class change new_class:<X>` đổi class bằng Change-Class Token.
+18. `/summon relic:sacred|supreme` ép tier bằng relic; `/runes open bag:lb|gb|db`
+    mở túi rune; `/open chest:diamond|genesis` mở rương cao cấp.
 
 ## Balance và phạm vi
 
@@ -54,8 +70,12 @@ Gameflow dùng các bảng sẵn có; không có migration mới trong đợt n�
 - Stat rune theo đơn vị fraction của seed (`0.05 = 5%`); Aegis chặn một đòn/trận.
   Gear/deity mới phải được trang bị vào preset để có tác dụng, deity đầu tự equip nếu slot trống.
 - Ascension không tăng stat hay kích hoạt blessing; 10 Sigil đã đạt 100% base stat.
-- Chưa thuộc phạm vi: PvP/ranked, quest/vote/cosmetic, pantheon/resonance, deity blessing,
-  các boss khác và passive weapon/armor. Seed roster vẫn là dữ liệu mẫu để phát triển.
+- M7 (PvP/quest/pantheon/blessing/cosmetic/believer EXP/relic/rune bag/diamond
+  & genesis chest): số liệu mặc định mới, ghi trong
+  [docs/m7-implementation.md](docs/m7-implementation.md). Nạp seed mới trước khi chơi.
+- Chưa thuộc phạm vi: world boss guild, vote reward (top.gg), echo deity slot,
+  season-end payout, supporter/stripe, passive weapon/armor. Seed roster vẫn là
+  dữ liệu mẫu để phát triển.
 
 ## Kiểm tra và kiến trúc
 

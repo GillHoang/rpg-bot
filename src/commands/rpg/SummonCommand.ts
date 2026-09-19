@@ -1,17 +1,19 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SummonService } from '../../services/SummonService.js';
-import { MAX_PULLS } from '../../config/gachaRates.js';
+import { MAX_PULLS, type RelicKind } from '../../config/gachaRates.js';
 import {
 	SUMMON_COUNT_OPTION_DESC,
 	SUMMON_DESCRIPTION,
 	SUMMON_DUPE_SUFFIX,
+	SUMMON_INSUFFICIENT_RELICS,
 	SUMMON_INSUFFICIENT_SHARDS,
 	SUMMON_INVALID_COUNT,
 	SUMMON_NEW_SUFFIX,
 	SUMMON_NO_CHARACTER,
 	SUMMON_NO_DEITIES_SEEDED,
 	SUMMON_SUCCESS,
+	SUMMON_SUCCESS_RELIC,
 	TIER_ALIAS,
 } from '../../text/summon.js';
 
@@ -26,6 +28,15 @@ export class SummonCommand implements ICommand {
 				.setMinValue(1)
 				.setMaxValue(MAX_PULLS)
 				.setRequired(true),
+		)
+		.addStringOption((opt) =>
+			opt
+				.setName('relic')
+				.setDescription('Dùng Sacred/Supreme Relic để ép tier (1 relic/lượt, không tốn shards)')
+				.addChoices(
+					{ name: 'sacred (đảm bảo Mythic+)', value: 'sacred' },
+					{ name: 'supreme (đảm bảo Legendary+)', value: 'supreme' },
+				),
 		);
 
 	constructor(private readonly summon = new SummonService()) {}
@@ -34,7 +45,8 @@ export class SummonCommand implements ICommand {
 		// Multi-pull transactions can exceed the 3s reply window — acknowledge first.
 		await interaction.deferReply();
 		const count = interaction.options.getInteger('count', true);
-		const result = await this.summon.run(interaction.user.id, count);
+		const relic = (interaction.options.getString('relic') ?? undefined) as RelicKind | undefined;
+		const result = await this.summon.run(interaction.user.id, count, relic);
 
 		switch (result.status) {
 			case 'invalid-count':
@@ -48,6 +60,11 @@ export class SummonCommand implements ICommand {
 					content: SUMMON_INSUFFICIENT_SHARDS(result.needed.toLocaleString(), result.have.toLocaleString()),
 				});
 				return;
+			case 'insufficient-relics':
+				await interaction.editReply({
+					content: SUMMON_INSUFFICIENT_RELICS(result.relic, result.needed, result.have),
+				});
+				return;
 			case 'no-deities-seeded':
 				await interaction.editReply({ content: SUMMON_NO_DEITIES_SEEDED(result.tier) });
 				return;
@@ -57,13 +74,16 @@ export class SummonCommand implements ICommand {
 					const suffix = p.isDupe ? SUMMON_DUPE_SUFFIX(p.essenceGained, p.tier) : SUMMON_NEW_SUFFIX;
 					return `**[${p.tier} · ${alias}]** ${p.name} (${p.mythology})${suffix}`;
 				});
+				const cost = `${count} ${relic === 'sacred' ? 'Sacred' : 'Supreme'} Relic`;
 				await interaction.editReply(
-					SUMMON_SUCCESS(
-						result.pulls.length,
-						result.shardsSpent.toLocaleString(),
-						lines.join('\n'),
-						result.finalPity,
-					),
+					relic
+						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines.join('\n'), result.finalPity)
+						: SUMMON_SUCCESS(
+								result.pulls.length,
+								result.shardsSpent.toLocaleString(),
+								lines.join('\n'),
+								result.finalPity,
+							),
 				);
 			}
 		}

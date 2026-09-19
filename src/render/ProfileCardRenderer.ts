@@ -20,6 +20,11 @@ export interface ProfileCardData {
 	stats: { hp: number; atk: number; def: number; crit: number };
 	credux: number;
 	beliefShards: number;
+	/** M7 extras — optional so callers outside the RPG flow still render. */
+	title?: string | null;
+	believerLevel?: number;
+	believerExp?: number;
+	pvpRating?: number;
 }
 
 const WIDTH = 900;
@@ -115,6 +120,18 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	ctx.font = '20px sans-serif';
 	ctx.fillText(`💰 ${data.credux.toLocaleString()} ${CURRENCY.credux}`, 40, 340);
 	ctx.fillText(`🔮 ${data.beliefShards.toLocaleString()} ${CURRENCY.beliefShards}`, 40, 375);
+
+	// M7 line: title · believer level · pvp rating (when provided).
+	const m7Parts: string[] = [];
+	if (data.title) m7Parts.push(`🏷️ ${data.title}`);
+	if (data.believerLevel != null)
+		m7Parts.push(`🙏 Believer Lv.${data.believerLevel} (${(data.believerExp ?? 0).toLocaleString()} exp)`);
+	if (data.pvpRating != null) m7Parts.push(`🏅 ${data.pvpRating} rated`);
+	if (m7Parts.length > 0) {
+		ctx.fillStyle = '#ffffffaa';
+		ctx.font = '16px sans-serif';
+		ctx.fillText(m7Parts.join('  ·  '), 40, 410);
+	}
 
 	ctx.fillStyle = '#ffffff55';
 	ctx.font = 'italic 14px sans-serif';

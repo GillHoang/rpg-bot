@@ -15,6 +15,21 @@ export const PITY_THRESHOLD = 500;
 export const SHARDS_PER_PULL = 100;
 export const MAX_PULLS = 30;
 
+/** Relic-forced tier pulls (/summon relic:…): không đụng pity, không tốn shards. */
+export const RELIC_TIER_WEIGHTS: Record<'sacred' | 'supreme', ReadonlyArray<[DeityTier, number]>> = {
+	sacred: [
+		['Mythic', 0.7],
+		['Legendary', 0.28],
+		['Supreme', 0.02],
+	],
+	supreme: [
+		['Legendary', 0.7],
+		['Supreme', 0.3],
+	],
+};
+export const RELIC_FIELD = { sacred: 'sacredRelics', supreme: 'supremeRelics' } as const;
+export type RelicKind = keyof typeof RELIC_TIER_WEIGHTS;
+
 export const ESSENCE_PER_DUPLICATE: Record<DeityTier, number> = {
 	Epic: 1,
 	Mythic: 2,

@@ -5,6 +5,7 @@ import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../con
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { eq } from 'drizzle-orm';
 import { usersBag } from '../db/schema.js';
+import { EventBus } from '../core/EventBus.js';
 
 export type EnhanceResult =
 	| { status: 'not-found' }
@@ -20,10 +21,13 @@ export type EnhanceResult =
  * loop is just repeated calls to this same use-case.
  */
 export class EnhancementService {
-	constructor(private readonly repo = new EnhancementRepository()) {}
+	constructor(
+		private readonly repo = new EnhancementRepository(),
+		private readonly events = EventBus.getInstance(),
+	) {}
 
 	async attempt(discordId: string, gearId: string): Promise<EnhanceResult> {
-		return db.transaction(async (tx): Promise<EnhanceResult> => {
+		const result = await db.transaction(async (tx): Promise<EnhanceResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			const gear = await this.repo.findGear(tx, discordId, gearId);
 			if (!gear) return { status: 'not-found' };
@@ -50,5 +54,11 @@ export class EnhancementService {
 			}
 			return { status: 'success', newLevel, cost: attempt.cost };
 		});
+
+		// Both success and failure count as an enhance attempt for quests.
+		if (result.status === 'success' || result.status === 'failure') {
+			this.events.emit('gear.enhanced', { discordId, success: result.status === 'success' });
+		}
+		return result;
 	}
 }

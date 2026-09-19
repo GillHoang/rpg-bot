@@ -28,20 +28,36 @@ export class OpenCommand implements ICommand {
 export class RunesCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('runes')
-		.setDescription('Shop rune')
+		.setDescription('Shop và túi rune')
 		.addSubcommand((s) =>
 			s
 				.setName('shop')
-				.setDescription('Xem giá hoặc mua và mở ngay túi rune')
+				.setDescription('Xem giá hoặc mua và mở ngay túi rune (essence + Credux)')
 				.addStringOption((o) =>
 					o
 						.setName('bag')
 						.setDescription('Bỏ trống để xem giá')
 						.addChoices(...['lb', 'gb', 'db'].map((value) => ({ name: value, value }))),
 				),
+		)
+		.addSubcommand((s) =>
+			s
+				.setName('open')
+				.setDescription('Mở 1 túi rune đang có trong bag (từ /open hoặc shop)')
+				.addStringOption((o) =>
+					o
+						.setName('bag')
+						.setDescription('lb = lesser · gb = greater · db = divine')
+						.setRequired(true)
+						.addChoices(...['lb', 'gb', 'db'].map((value) => ({ name: value, value }))),
+				),
 		);
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
+		if (i.options.getSubcommand(false) === 'open') {
+			await i.editReply(await new LootService().openRuneBag(i.user.id, i.options.getString('bag', true)));
+			return;
+		}
 		await i.editReply(await new LootService().shop(i.user.id, i.options.getString('bag') ?? undefined));
 	}
 }

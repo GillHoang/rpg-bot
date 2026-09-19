@@ -6,6 +6,7 @@ import { UserCharacterRepository } from '../repositories/UserCharacterRepository
 import { GearRepository } from '../repositories/GearRepository.js';
 import { PresetRepository } from '../repositories/PresetRepository.js';
 import { GearIdGenerator } from '../utils/idGenerator.js';
+import { CosmeticService } from './CosmeticService.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 import {
 	STARTER_WEAPON_NAME,
@@ -29,7 +30,6 @@ export type CreateCharacterResult =
  *
  * NOT ported yet (left for later milestones, see README roadmap):
  *  - class preview canvas card (M2, canvas rendering)
- *  - class battle skin auto-grant/equip via cosmetic_catalog (M7, cosmetics)
  */
 export class CharacterCreationService {
 	constructor(
@@ -37,6 +37,7 @@ export class CharacterCreationService {
 		private readonly characters = new UserCharacterRepository(),
 		private readonly gear = new GearRepository(),
 		private readonly presets = new PresetRepository(),
+		private readonly cosmetics = new CosmeticService(),
 	) {}
 
 	async createCharacter(discordId: string, combatClass: CombatClass): Promise<CreateCharacterResult> {
@@ -79,6 +80,8 @@ export class CharacterCreationService {
 
 			await this.characters.insert(tx, discordId, combatClass);
 			await this.presets.createDefaultPresets(tx, discordId, { weaponId, armorId });
+			// M7 cosmetics: base skins auto-granted and equipped per category.
+			await this.cosmetics.grantBaseInTx(tx, discordId);
 
 			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
 			if (!bag) throw new Error(`createCharacter: no users_bag row for ${discordId}`);

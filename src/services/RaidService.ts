@@ -8,6 +8,7 @@ import { createCombatant } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
 import { ClassStrategyRegistry } from '../domain/combat/ClassStrategyRegistry.js';
 import { wrapWithRunes } from '../domain/combat/RuneStrategyDecorator.js';
+import { wrapWithBlessings } from '../domain/combat/DeityBlessingDecorator.js';
 import { scaleExpForMobLevel } from '../config/expScaling.js';
 import {
 	RAID_LOOT_REGULAR,
@@ -19,6 +20,7 @@ import {
 } from '../config/raidLoot.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
+import { CosmeticService } from './CosmeticService.js';
 import { eq } from 'drizzle-orm';
 import { users, usersBag, userCharacter } from '../db/schema.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
@@ -105,7 +107,10 @@ export class RaidService {
 			});
 
 			const baseStrategy = ClassStrategyRegistry.forClass(account.combatClass);
-			const playerStrategy = wrapWithRunes(baseStrategy, assembled.combatEffectRunes);
+			const playerStrategy = wrapWithBlessings(
+				wrapWithRunes(baseStrategy, assembled.combatEffectRunes),
+				assembled.blessings,
+			);
 
 			const monster = createCombatant({
 				name: monsterStats.name,
@@ -165,6 +170,9 @@ export class RaidService {
 				won && boss && rollRaidChest(lootRng, BOSS_ENTRY.gearChance)
 					? await new LootRepository().gear(tx, discordId, 'Mythic', lootRng)
 					: null;
+			if (won && boss) {
+				await new CosmeticService().grantTitleInTx(tx, discordId, 'boss_slayer');
+			}
 			return {
 				status: 'ok',
 				battle,

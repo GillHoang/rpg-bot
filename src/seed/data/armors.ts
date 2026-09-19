@@ -83,4 +83,19 @@ export const ARMOR_SEED: ArmorSeed[] = [
 		imageFilename: null,
 		isAvailable: true,
 	},
+
+	// ── Supreme ──────────────────────────────────────────────────────────────
+	{
+		armorRosterId: 401,
+		name: 'Mantle of the First Dawn',
+		type: 'Heavy',
+		tier: 'Supreme',
+		mythology: 'Filipino',
+		passiveKey: 'first_dawn',
+		passiveName: 'First Dawn',
+		passiveDescription: 'Woven from the light that ended the first night.',
+		lore: 'When Apolaki first rose, his rays left an imprint on the sky; this mantle is its echo.',
+		imageFilename: null,
+		isAvailable: true,
+	},
 ];

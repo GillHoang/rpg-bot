@@ -12,6 +12,7 @@ import {
 	COMBAT_DOT_TICK,
 	COMBAT_HIT,
 	COMBAT_ROUND_HEADER,
+	COMBAT_SUDDEN_DEATH_HEADER,
 	COMBAT_UNABLE_TO_ACT,
 } from '../../text/combat.js';
 
@@ -25,16 +26,26 @@ export interface BattleResult {
 	enemyHpRemaining: number;
 }
 
-const MAX_ROUNDS = 30;
+/** Rounds 1–30 are normal; 31–40 sudden death: all damage × 2^(round−30). */
+export const SUDDEN_DEATH_START = 30;
+const MAX_ROUNDS = 40;
+
+/** Damage amplifier once sudden death kicks in (round ≤ 30 → ×1). */
+export function suddenDeathMultiplier(round: number): number {
+	if (round <= SUDDEN_DEATH_START) return 1;
+	return 2 ** (round - SUDDEN_DEATH_START);
+}
 
 /**
  * Core turn-based combat loop, ported (in reduced scope — see class-level
  * docs on each Strategy) from engine/battleEngine.js's resolveBattle.
  *
  * Deliberately out of scope for this milestone (left for later, item/
- * content-system dependent): weapon/armor/deity passives, additional bosses,
- * sudden death past round 30 and PvP/duel/ranked-specific rules. Rune effects
- * and Bakunawa/elite passives use the same strategy hooks.
+ * content-system dependent): weapon/armor passives, additional bosses and
+ * PvP/duel/ranked-specific rules. Rune effects, deity blessings (via the
+ * DeityBlessingDecorator) and Bakunawa/elite passives use the same strategy
+ * hooks; sudden death (rounds 31–40, damage doubling each round) and the
+ * initiative roll (Tailwind bias flag) are part of the core loop.
  */
 export class BattleEngine {
 	resolve(
@@ -52,19 +63,35 @@ export class BattleEngine {
 		for (; round <= MAX_ROUNDS; round++) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
 			log.push(COMBAT_ROUND_HEADER(round));
+			if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
 
 			playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 			enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
+
+			// Initiative: the holder of a higher `initiative_bias` flag (Tailwind
+			// blessing) is more likely to act first this round; even footing is 50/50.
+			const playerBias = (player.flags.initiative_bias as number) ?? 0;
+			const enemyBias = (enemy.flags.initiative_bias as number) ?? 0;
+			const playerFirst = rollChance(0.5 + playerBias - enemyBias, rng);
 
 			// Debuffs pushed during THIS round must not tick down at this round's
 			// end — a 1-turn debuff would otherwise expire before ever taking
 			// effect on the holder's next turn.
 			const freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
 
-			const turns: Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> = [
-				[player, enemy, playerStrategy, enemyStrategy],
-				[enemy, player, enemyStrategy, playerStrategy],
+			const playerTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
+				player,
+				enemy,
+				playerStrategy,
+				enemyStrategy,
 			];
+			const enemyTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
+				enemy,
+				player,
+				enemyStrategy,
+				playerStrategy,
+			];
+			const turns = playerFirst ? [playerTurn, enemyTurn] : [enemyTurn, playerTurn];
 			for (const [attacker, defender, atkStrategy, defStrategy] of turns) {
 				if (player.hp <= 0 || enemy.hp <= 0) break;
 				this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, rng, log);
@@ -181,6 +208,7 @@ export class BattleEngine {
 			amount = mitigate(effAtk, effDef) * variance * hitMultiplier(crit, hit.damagePctBonus);
 		}
 		amount *= 1 - incoming.reductionFraction;
+		amount *= suddenDeathMultiplier(ctx.round);
 
 		const dealt = Math.max(0, Math.floor(amount));
 		defender.hp = Math.max(0, defender.hp - dealt);

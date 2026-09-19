@@ -44,20 +44,30 @@ export class LoadoutService {
 						.update(userCharacter)
 						.set({ equippedArmorId: item })
 						.where(eq(userCharacter.discordId, id));
-			} else if (kind === 'deity' && /^\d+$/.test(item) && Number.isSafeInteger(Number(item))) {
+			} else if (/^deity[123]?$/.test(kind) && /^\d+$/.test(item) && Number.isSafeInteger(Number(item))) {
+				const userDeityId = Number(item);
 				const [owned] = await tx
 					.select()
 					.from(userDeities)
-					.where(and(eq(userDeities.discordId, id), eq(userDeities.userDeityId, Number(item))));
+					.where(and(eq(userDeities.discordId, id), eq(userDeities.userDeityId, userDeityId)));
 				if (!owned) return 'Bạn không sở hữu deity này.';
+				const slotIndex = kind === 'deity' ? 1 : Number(kind.slice(5));
+				const column = `equippedDeity${slotIndex}Id` as
+					'equippedDeity1Id' | 'equippedDeity2Id' | 'equippedDeity3Id';
+				const activeColumn = `activeDeityId${slotIndex === 1 ? '' : slotIndex}` as
+					'activeDeityId' | 'activeDeityId2' | 'activeDeityId3';
+				// One deity cannot hold two pantheon slots at once.
+				const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
+				if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId)
+					return 'Deity này đã ở slot pantheon khác.';
 				await tx
 					.update(userPresets)
-					.set({ equippedDeity1Id: Number(item), updatedAt: new Date() })
+					.set({ [column]: userDeityId, updatedAt: new Date() })
 					.where(eq(userPresets.id, preset.id));
 				if (target === c.activePresetSlot)
 					await tx
 						.update(userCharacter)
-						.set({ activeDeityId: Number(item) })
+						.set({ [activeColumn]: userDeityId })
 						.where(eq(userCharacter.discordId, id));
 			} else return 'Loại hoặc ID không hợp lệ.';
 			return `Đã trang bị ${kind} ${item} vào preset ${target}. /profile để xem chỉ số.`;

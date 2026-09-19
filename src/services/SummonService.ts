@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/client.js';
-import { usersBag, pityCounters, userCharacter, userPresets, gameLogs } from '../db/schema.js';
+import { usersBag, pityCounters, userCharacter, userPresets, gameLogs, summonRewardGrants } from '../db/schema.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
 import { DeityRepository, type DeityRosterRow } from '../repositories/DeityRepository.js';
 import {
@@ -9,10 +9,15 @@ import {
 	MAX_PULLS,
 	ESSENCE_PER_DUPLICATE,
 	TIER_ESSENCE_FIELD,
+	RELIC_TIER_WEIGHTS,
+	RELIC_FIELD,
 	type DeityTier,
+	type RelicKind,
 } from '../config/gachaRates.js';
+import { pick } from '../utils/weightedRandom.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
+import { EventBus } from '../core/EventBus.js';
 
 export interface SummonPullResult {
 	tier: DeityTier;
@@ -28,6 +33,7 @@ export type SummonResult =
 	| { status: 'no-character' }
 	| { status: 'invalid-count' }
 	| { status: 'insufficient-shards'; needed: number; have: number }
+	| { status: 'insufficient-relics'; relic: RelicKind; needed: number; have: number }
 	| { status: 'no-deities-seeded'; tier: DeityTier }
 	| { status: 'ok'; pulls: SummonPullResult[]; finalPity: number; shardsSpent: number };
 
@@ -47,14 +53,15 @@ export class SummonService {
 	constructor(
 		private readonly characters = new UserCharacterRepository(),
 		private readonly deities = new DeityRepository(),
+		private readonly events = EventBus.getInstance(),
 	) {}
 
-	async run(discordId: string, count: number): Promise<SummonResult> {
+	async run(discordId: string, count: number, relic?: RelicKind): Promise<SummonResult> {
 		if (!Number.isInteger(count) || count < 1 || count > MAX_PULLS) {
 			return { status: 'invalid-count' };
 		}
 
-		return db.transaction(async (tx): Promise<SummonResult> => {
+		const result = await db.transaction(async (tx): Promise<SummonResult> => {
 			if (!(await this.characters.hasCharacter(tx, discordId))) {
 				// hasCharacter also covers "not registered" here, since a character
 				// can't exist without a user row (FK), so one check suffices.
@@ -68,8 +75,19 @@ export class SummonService {
 				.limit(1)
 				.for('update');
 			if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
-			const cost = SHARDS_PER_PULL * count;
-			if (bag.beliefShards < cost) {
+
+			// Relic pull: 1 relic/pull, no shards, no pity; forced tier table instead.
+			const relicField = relic ? RELIC_FIELD[relic] : null;
+			const cost = relic ? 0 : SHARDS_PER_PULL * count;
+			if (relicField && bag[relicField] < count) {
+				return {
+					status: 'insufficient-relics',
+					relic: relic as RelicKind,
+					needed: count,
+					have: bag[relicField],
+				};
+			}
+			if (!relic && bag.beliefShards < cost) {
 				return { status: 'insufficient-shards', needed: cost, have: bag.beliefShards };
 			}
 
@@ -103,17 +121,37 @@ export class SummonService {
 			// or leave earlier pulls committed without their pity/essence updates.
 			const planned: Array<{ tier: DeityTier; deity: DeityRosterRow }> = [];
 			for (let i = 0; i < count; i++) {
-				const roll = resolveRoll(pity, rng);
-				pity = roll.newPity;
-				const deity = await this.deities.pickRandomAvailableForTier(tx, roll.tier, rng);
-				if (!deity) return { status: 'no-deities-seeded', tier: roll.tier };
-				planned.push({ tier: roll.tier, deity });
+				const tier = relic
+					? pick(
+							RELIC_TIER_WEIGHTS[relic].map(([original, weight]) => ({ original, weight })),
+							{ next: rng },
+						)
+					: (() => {
+							const roll = resolveRoll(pity, rng);
+							pity = roll.newPity;
+							return roll.tier;
+						})();
+				const deity = await this.deities.pickRandomAvailableForTier(tx, tier, rng);
+				if (!deity) return { status: 'no-deities-seeded', tier };
+				planned.push({ tier, deity });
 			}
 
-			// Debit shards up front: an early return below must not leave a
+			// Debit the currency up front: an early return below must not leave a
 			// committed state where the player got a deity without paying.
 			const beliefShardsAfter = bag.beliefShards - cost;
-			await tx.update(usersBag).set({ beliefShards: beliefShardsAfter }).where(eq(usersBag.discordId, discordId));
+			await tx
+				.update(usersBag)
+				.set(relicField ? { [relicField]: bag[relicField] - count } : { beliefShards: beliefShardsAfter })
+				.where(eq(usersBag.discordId, discordId));
+			if (relic) {
+				for (let i = 0; i < count; i++) {
+					await tx.insert(summonRewardGrants).values({
+						rewardKey: `${discordId}:${todayKey}:${i}:${Date.now()}`,
+						discordId,
+						source: `${relic}_relic`,
+					});
+				}
+			}
 
 			for (const roll of planned) {
 				const deity = roll.deity;
@@ -194,5 +232,10 @@ export class SummonService {
 
 			return { status: 'ok', pulls, finalPity: pity, shardsSpent: cost };
 		});
+
+		if (result.status === 'ok') {
+			this.events.emit('summon.done', { discordId, count });
+		}
+		return result;
 	}
 }

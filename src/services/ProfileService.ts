@@ -3,6 +3,8 @@ import { UserCharacterRepository } from '../repositories/UserCharacterRepository
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { expRequiredForLevel } from '../config/combatExp.js';
 import { db } from '../db/client.js';
+import { titleCatalog, userCharacter } from '../db/schema.js';
+import { eq } from 'drizzle-orm';
 import type { ProfileCardData } from '../render/ProfileCardRenderer.js';
 
 export type ProfileResult =
@@ -21,6 +23,20 @@ export class ProfileService {
 		if (!(await this.characters.hasCharacter(db, discordId))) return { status: 'no-character' };
 
 		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
+		const [character] = await db
+			.select()
+			.from(userCharacter)
+			.where(eq(userCharacter.discordId, discordId))
+			.limit(1);
+		let title: string | null = null;
+		if (character?.equippedTitleId) {
+			const [row] = await db
+				.select({ display: titleCatalog.display })
+				.from(titleCatalog)
+				.where(eq(titleCatalog.titleId, character.equippedTitleId))
+				.limit(1);
+			title = row?.display ?? null;
+		}
 
 		return {
 			status: 'ok',
@@ -33,6 +49,10 @@ export class ProfileService {
 				stats: assembled.stats,
 				credux: account.credux,
 				beliefShards: account.beliefShards,
+				title,
+				believerLevel: character?.believerLevel,
+				believerExp: character?.believerExp,
+				pvpRating: character?.pvpRating,
 			},
 		};
 	}

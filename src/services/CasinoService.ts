@@ -4,6 +4,7 @@ import { CasinoGameRegistry, type StatelessCasinoGameKey } from '../domain/casin
 import type { CasinoOutcome } from '../domain/casino/ICasinoGame.js';
 import { MAX_BET } from '../config/casinoPayouts.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
+import { EventBus } from '../core/EventBus.js';
 
 export type PlayResult =
 	| { status: 'not-registered' }
@@ -18,15 +19,18 @@ export type PlayResult =
  * multi-write service in this codebase.
  */
 export class CasinoService {
-	constructor(private readonly repo = new CasinoRepository()) {}
+	constructor(
+		private readonly repo = new CasinoRepository(),
+		private readonly events = EventBus.getInstance(),
+	) {}
 
 	async play(discordId: string, game: StatelessCasinoGameKey, bet: number, choice?: string): Promise<PlayResult> {
 		if (!Number.isInteger(bet) || bet <= 0 || bet > MAX_BET) return { status: 'invalid-bet' };
 
-		return db.transaction(async (tx): Promise<PlayResult> => {
-			const credux = await this.repo.getCredux(tx, discordId);
-			if (credux == null) return { status: 'not-registered' };
-			if (credux < bet) return { status: 'insufficient-credux', have: credux };
+		const result = await db.transaction(async (tx): Promise<PlayResult> => {
+			const creux = await this.repo.getCredux(tx, discordId);
+			if (creux == null) return { status: 'not-registered' };
+			if (creux < bet) return { status: 'insufficient-credux', have: creux };
 
 			const rng = createRng(createSecureSeed());
 			const outcome = CasinoGameRegistry.get(game).play(bet, rng, choice);
@@ -41,5 +45,10 @@ export class CasinoService {
 
 			return { status: 'ok', outcome, balanceAfter };
 		});
+
+		if (result.status === 'ok') {
+			this.events.emit('casino.played', { discordId, game });
+		}
+		return result;
 	}
 }

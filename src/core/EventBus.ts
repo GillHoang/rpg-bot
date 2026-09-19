@@ -12,6 +12,12 @@ export interface DomainEvents {
 	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' };
 	'currency.earned': { discordId: string; currency: string; amount: number; source: string };
 	'level.up': { discordId: string; newLevel: number };
+	// --- M7 quest/reputation hooks (subscribers: QuestService, ReputationService) ---
+	'summon.done': { discordId: string; count: number };
+	'gear.enhanced': { discordId: string; success: boolean };
+	'chest.opened': { discordId: string; chest: string; count: number };
+	'casino.played': { discordId: string; game: string };
+	'daily.claimed': { discordId: string; streak: number };
 }
 
 type Listener<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void | Promise<void>;

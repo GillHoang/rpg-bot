@@ -18,6 +18,14 @@ export const SUMMON_SUCCESS = (pullCount: number, shardsSpent: string, lines: st
 	`${lines}\n\n` +
 	`_Pity hiện tại: ${pity}/500_`;
 
+export const SUMMON_INSUFFICIENT_RELICS = (relic: string, needed: number, have: number): string =>
+	`Không đủ ${relic === 'sacred' ? 'Sacred' : 'Supreme'} Relic. Cần ${needed}, hiện có ${have}.`;
+
+export const SUMMON_SUCCESS_RELIC = (pullCount: number, relicLabel: string, lines: string, pity: number): string =>
+	`🔮 **Triệu hồi x${pullCount} (relic)** — đã dùng ${relicLabel}\n\n` +
+	`${lines}\n\n` +
+	`_Pity hiện tại: ${pity}/500 (relic không ảnh hưởng pity)_`;
+
 /** Tên "hạng" hiển thị cạnh tier khi gacha. (Di chuyển từ config/gachaRates.ts) */
 export const TIER_ALIAS: Record<string, string> = {
 	Epic: 'Remnant',

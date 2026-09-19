@@ -20,6 +20,9 @@ import {
 	runeRoster,
 	socketUnlockCost,
 	essenceBagDef,
+	cosmeticCatalog,
+	titleCatalog,
+	rankedReward,
 } from '../db/schema.js';
 import { DEITY_SEED } from './data/deities.js';
 import { MOB_SEED } from './data/mobs.js';
@@ -27,6 +30,9 @@ import { WEAPON_SEED } from './data/weapons.js';
 import { ARMOR_SEED } from './data/armors.js';
 import { RUNE_SEED } from './data/runes.js';
 import { SOCKET_UNLOCK_COST_SEED, ESSENCE_BAG_DEF_SEED } from './data/runeEconomy.js';
+import { COSMETIC_SEED } from './data/cosmetics.js';
+import { TITLE_SEED } from './data/titles.js';
+import { RANKED_REWARD_SEED } from './data/rankedRewards.js';
 
 const counts = await db.transaction(async (tx) => {
 	for (const row of DEITY_SEED) {
@@ -71,6 +77,21 @@ const counts = await db.transaction(async (tx) => {
 		await tx.insert(essenceBagDef).values(row).onConflictDoUpdate({ target: essenceBagDef.bagKey, set: row });
 	}
 
+	for (const row of COSMETIC_SEED) {
+		await tx
+			.insert(cosmeticCatalog)
+			.values({ ...row, isActive: true })
+			.onConflictDoUpdate({ target: cosmeticCatalog.cosmeticKey, set: { ...row, isActive: true } });
+	}
+
+	for (const row of TITLE_SEED) {
+		await tx.insert(titleCatalog).values(row).onConflictDoUpdate({ target: titleCatalog.code, set: row });
+	}
+
+	for (const row of RANKED_REWARD_SEED) {
+		await tx.insert(rankedReward).values(row).onConflictDoUpdate({ target: rankedReward.bracket, set: row });
+	}
+
 	return {
 		deities: DEITY_SEED.length,
 		mobs: MOB_SEED.length,
@@ -79,12 +100,15 @@ const counts = await db.transaction(async (tx) => {
 		runes: RUNE_SEED.length,
 		socketUnlockCosts: SOCKET_UNLOCK_COST_SEED.length,
 		essenceBags: ESSENCE_BAG_DEF_SEED.length,
+		cosmetics: COSMETIC_SEED.length,
+		titles: TITLE_SEED.length,
+		rankedRewards: RANKED_REWARD_SEED.length,
 	};
 });
 
 logger.info(
 	counts,
-	'Seed complete: deities=%s, mobs=%s, weapons=%s, armors=%s, runes=%s, socketUnlockCosts=%s, essenceBags=%s',
+	'Seed complete: deities=%s, mobs=%s, weapons=%s, armors=%s, runes=%s, socketUnlockCosts=%s, essenceBags=%s, cosmetics=%s, titles=%s, rankedRewards=%s',
 	counts.deities,
 	counts.mobs,
 	counts.weapons,
@@ -92,6 +116,9 @@ logger.info(
 	counts.runes,
 	counts.socketUnlockCosts,
 	counts.essenceBags,
+	counts.cosmetics,
+	counts.titles,
+	counts.rankedRewards,
 );
 
 await pool.end();

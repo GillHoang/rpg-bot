@@ -265,8 +265,13 @@ phải lọc bỏ trước khi đưa vào picker, không đưa weight 0 vào.
 
 ## 8. Phạm vi thiết kế này KHÔNG bao phủ
 
-Giữ nguyên ranh giới như README: duel/ranked/boss-pvp (cơ chế hoàn toàn khác),
-reputation/believer EXP, quest/achievement (EventBus đã emit, chưa subscriber),
-cosmetic, vote reward, scheduler, pantheon slot 2/3 + resonance, deity blessing
-trong combat, sudden-death sau round 30. Các mục này thuộc M7 trở đi, không
-phải lỗ hổng của flow mà là hệ thống lớn độc lập.
+> Cập nhật M7: duel/ranked PvP, quest/achievement, pantheon slot 2/3 + resonance,
+> deity blessing, sudden-death sau round 30, cosmetic/title, scheduler sweep,
+> reputation/believer EXP và các cột bag nằm im (relic, rune bag lb/gb/db, valor
+> medals, diamond/genesis chest, change-class token) **đã được triển khai** —
+> số liệu và lựa chọn thiết kế xem [m7-implementation.md](m7-implementation.md).
+> Vote reward bị loại theo quyết định phạm vi (bảng `topgg_vote_events` nằm im).
+
+Vẫn giữ ranh giới như README: world boss guild (`boss_*`, `auto_raids`), echo
+deity slot, season-end payout, supporter/stripe/tickets, portrait canvas. Đây
+là các hệ thống lớn độc lập còn lại, không phải lỗ hổng của flow.

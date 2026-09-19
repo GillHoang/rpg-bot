@@ -2,6 +2,7 @@ import { db } from '../db/client.js';
 import { DailyRepository } from '../repositories/DailyRepository.js';
 import { DailyRewardTable } from '../domain/economy/DailyRewardTable.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
+import { EventBus } from '../core/EventBus.js';
 
 export type ClaimDailyResult =
 	| { status: 'not-registered' }
@@ -24,10 +25,13 @@ export type ClaimDailyResult =
  * used for milestone chests and the player-facing "Day N" label).
  */
 export class DailyService {
-	constructor(private readonly repo = new DailyRepository()) {}
+	constructor(
+		private readonly repo = new DailyRepository(),
+		private readonly events = EventBus.getInstance(),
+	) {}
 
 	async claim(discordId: string, now: Date = new Date()): Promise<ClaimDailyResult> {
-		return db.transaction(async (tx): Promise<ClaimDailyResult> => {
+		const result = await db.transaction(async (tx): Promise<ClaimDailyResult> => {
 			if (!(await this.repo.hasBag(tx, discordId))) return { status: 'not-registered' };
 
 			const state = await this.repo.getDailyState(tx, discordId);
@@ -102,5 +106,10 @@ export class DailyService {
 				milestoneChestLabel: milestone?.chestLabel ?? null,
 			};
 		});
+
+		if (result.status === 'ok') {
+			this.events.emit('daily.claimed', { discordId, streak: result.overall });
+		}
+		return result;
 	}
 }

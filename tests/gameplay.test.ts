@@ -34,6 +34,8 @@ import { RUNE_SEED } from '../src/seed/data/runes.js';
 import { DEITY_SEED } from '../src/seed/data/deities.js';
 import { MOB_SEED } from '../src/seed/data/mobs.js';
 import { ESSENCE_BAG_DEF_SEED, SOCKET_UNLOCK_COST_SEED } from '../src/seed/data/runeEconomy.js';
+import { COSMETIC_SEED } from '../src/seed/data/cosmetics.js';
+import { TITLE_SEED } from '../src/seed/data/titles.js';
 import * as rngModule from '../src/domain/combat/Rng.js';
 
 let id: string;
@@ -50,6 +52,8 @@ beforeAll(async () => {
 	await db.insert(s.deityRoster).values(DEITY_SEED);
 	await db.insert(s.mobRoster).values(MOB_SEED);
 	await db.insert(s.essenceBagDef).values(ESSENCE_BAG_DEF_SEED);
+	await db.insert(s.cosmeticCatalog).values(COSMETIC_SEED.map((c) => ({ ...c, isActive: true })));
+	await db.insert(s.titleCatalog).values(TITLE_SEED);
 	await db.insert(s.socketUnlockCost).values(SOCKET_UNLOCK_COST_SEED);
 }, 30000);
 afterAll(async () => { await pool.end(); });

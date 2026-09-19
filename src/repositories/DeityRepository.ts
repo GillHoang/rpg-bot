@@ -60,12 +60,37 @@ export class DeityRepository {
 		executor: Executor,
 		userDeityId: number,
 	): Promise<{ currAtk: number; currHp: number; currDef: number } | null> {
+		const row = await this.findUserDeityAssemblyInfo(executor, userDeityId);
+		if (!row) return null;
+		return { currAtk: row.currAtk, currHp: row.currHp, currDef: row.currDef };
+	}
+
+	/**
+	 * Everything stat assembly needs about one owned deity: effective Sigil
+	 * stats, mythology (resonance), blessing key + scaling and sigils (blessing
+	 * strength). One query, used per equipped pantheon slot.
+	 */
+	async findUserDeityAssemblyInfo(
+		executor: Executor,
+		userDeityId: number,
+	): Promise<{
+		currAtk: number;
+		currHp: number;
+		currDef: number;
+		mythology: string;
+		blessingKey: string;
+		blessingScaling: string;
+		sigils: number;
+	} | null> {
 		const [row] = await executor
 			.select({
 				sigils: userDeities.sigils,
 				baseAtk: deityRoster.baseAtk,
 				baseHp: deityRoster.baseHp,
 				baseDef: deityRoster.baseDef,
+				mythology: deityRoster.mythology,
+				blessingKey: deityRoster.blessingKey,
+				blessingScaling: deityRoster.blessingScaling,
 			})
 			.from(userDeities)
 			.innerJoin(deityRoster, eq(userDeities.deityId, deityRoster.deityId))
@@ -73,7 +98,15 @@ export class DeityRepository {
 			.limit(1);
 		if (!row) return null;
 		const eff = computeSigilStats({ atk: row.baseAtk, hp: row.baseHp, def: row.baseDef }, row.sigils);
-		return { currAtk: eff.atk, currHp: eff.hp, currDef: eff.def };
+		return {
+			currAtk: eff.atk,
+			currHp: eff.hp,
+			currDef: eff.def,
+			mythology: row.mythology,
+			blessingKey: row.blessingKey,
+			blessingScaling: row.blessingScaling,
+			sigils: row.sigils,
+		};
 	}
 
 	async findOwnedProgress(

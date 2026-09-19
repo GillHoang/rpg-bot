@@ -136,4 +136,13 @@ export const RUNE_SEED: RuneSeed[] = [
 		description: 'Once per battle, nullify one incoming hit entirely.',
 		isAvailable: true,
 	},
+	{
+		name: 'Rune of Eternity',
+		lane: 'native',
+		effectKey: 'warding',
+		tier: 'Supreme',
+		value: 0.25,
+		description: 'Reduce incoming damage by 25%.',
+		isAvailable: true,
+	},
 ];

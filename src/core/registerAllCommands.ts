@@ -13,6 +13,13 @@ import { DeityCommand } from '../commands/rpg/DeityCommand.js';
 import { InventoryCommand, DeitiesCommand } from '../commands/rpg/InventoryCommand.js';
 import { OpenCommand, RunesCommand } from '../commands/rpg/LootCommand.js';
 import { EquipCommand, PresetCommand } from '../commands/rpg/LoadoutCommand.js';
+import { DuelCommand } from '../commands/rpg/DuelCommand.js';
+import { RankedCommand } from '../commands/rpg/RankedCommand.js';
+import { PvpCommand } from '../commands/rpg/PvpCommand.js';
+import { QuestCommand } from '../commands/rpg/QuestCommand.js';
+import { CosmeticCommand } from '../commands/rpg/CosmeticCommand.js';
+import { TitleCommand } from '../commands/rpg/TitleCommand.js';
+import { ClassCommand } from '../commands/rpg/ClassCommand.js';
 
 /**
  * Composition root — the ONLY place that knows the full list of commands.
@@ -40,5 +47,12 @@ export function registerAllCommands(): void {
 	registry.register(new RunesCommand());
 	registry.register(new EquipCommand());
 	registry.register(new PresetCommand());
+	registry.register(new DuelCommand());
+	registry.register(new RankedCommand());
+	registry.register(new PvpCommand());
+	registry.register(new QuestCommand());
+	registry.register(new CosmeticCommand());
+	registry.register(new TitleCommand());
+	registry.register(new ClassCommand());
 	// ...ported one module at a time per the migration roadmap.
 }

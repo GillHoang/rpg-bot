@@ -1,5 +1,6 @@
 import { DiscordBot } from './core/DiscordBot.js';
 import { registerAllCommands } from './core/registerAllCommands.js';
+import { subscribeDomainEvents } from './core/subscribeDomainEvents.js';
 import { logger } from './utils/logger.js';
 
 async function main(): Promise<void> {
@@ -14,6 +15,8 @@ async function main(): Promise<void> {
 	});
 
 	registerAllCommands();
+	// Quest progress + believer EXP are pure EventBus subscribers — wire once.
+	subscribeDomainEvents();
 	const bot = new DiscordBot();
 	await bot.start();
 }
