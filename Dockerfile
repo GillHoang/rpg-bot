@@ -34,7 +34,8 @@ COPY src/db/migrations ./src/db/migrations
 COPY drizzle.config.ts ./
 COPY scripts/docker-entrypoint.sh ./scripts/docker-entrypoint.sh
 
-# Người chạy container (không cần root)
+RUN chmod +x ./scripts/docker-entrypoint.sh
+
 USER node
 
 ENTRYPOINT ["dumb-init", "--"]
