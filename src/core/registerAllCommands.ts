@@ -19,6 +19,7 @@ import { QuestCommand } from '../commands/rpg/QuestCommand.js';
 import { CosmeticCommand } from '../commands/rpg/CosmeticCommand.js';
 import { TitleCommand } from '../commands/rpg/TitleCommand.js';
 import { ClassCommand } from '../commands/rpg/ClassCommand.js';
+import { HelpCommand } from '../commands/rpg/HelpCommand.js';
 import { TestCommand } from '../commands/admin/TestCommand.js';
 import { ResetCommand } from '../commands/admin/ResetCommand.js';
 import { PingCommand } from '../commands/admin/PingCommand.js';
@@ -55,6 +56,7 @@ export function registerAllCommands(): void {
 	registry.register(new CosmeticCommand());
 	registry.register(new TitleCommand());
 	registry.register(new ClassCommand());
+	registry.register(new HelpCommand());
 	registry.register(new TestCommand());
 	registry.register(new ResetCommand());
 	registry.register(new PingCommand());

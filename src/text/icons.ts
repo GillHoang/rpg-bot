@@ -146,4 +146,10 @@ export const ICONS = {
 		next: '▶',
 		last: '⏭',
 	},
+
+	/** Lệnh /help. */
+	help: {
+		book: '📖',
+		beta: '🚧',
+	},
 } as const;
