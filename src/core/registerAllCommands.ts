@@ -21,6 +21,7 @@ import { TitleCommand } from '../commands/rpg/TitleCommand.js';
 import { ClassCommand } from '../commands/rpg/ClassCommand.js';
 import { TestCommand } from '../commands/admin/TestCommand.js';
 import { ResetCommand } from '../commands/admin/ResetCommand.js';
+import { PingCommand } from '../commands/admin/PingCommand.js';
 
 /**
  * Composition root — the ONLY place that knows the full list of commands.
@@ -56,5 +57,6 @@ export function registerAllCommands(): void {
 	registry.register(new ClassCommand());
 	registry.register(new TestCommand());
 	registry.register(new ResetCommand());
+	registry.register(new PingCommand());
 	// ...ported one module at a time per the migration roadmap.
 }
