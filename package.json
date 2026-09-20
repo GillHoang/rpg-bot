@@ -16,6 +16,7 @@
     "db:seed": "tsx src/seed/seed.ts",
     "db:studio": "drizzle-kit studio",
     "lint": "eslint src",
+    "lint:check": "eslint src",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "vitest run"
   },

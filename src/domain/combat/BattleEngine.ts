@@ -50,6 +50,22 @@ export function suddenDeathMultiplier(round: number): number {
 	return 2 ** (round - SUDDEN_DEATH_START);
 }
 
+/** Context dùng chung xuyên suốt một trận — tránh hàm nào cũng nhận 7-8 tham số lặp lại. */
+/**
+ * Context dùng chung xuyên suốt một trận — tránh hàm nào cũng nhận 7-8 tham
+ * số lặp lại (player/enemy/strategy/rng/log đi cùng nhau khắp engine).
+ */
+interface RoundContext {
+	player: CombatantState;
+	enemy: CombatantState;
+	playerStrategy: IClassStrategy;
+	enemyStrategy: IClassStrategy;
+	rng: () => number;
+	log: string[];
+	/** Debuffs applied during the CURRENT round — they must not tick at this round's end. */
+	freshDebuffs: Set<Debuff>;
+}
+
 /**
  * Core turn-based combat loop, ported (in reduced scope — see class-level
  * docs on each Strategy) from engine/battleEngine.js's resolveBattle.
@@ -72,15 +88,24 @@ export class BattleEngine {
 		const roundLogs: BattleRoundLog[] = [];
 		const playerStrategy = overrides?.playerStrategy ?? ClassStrategyRegistry.forClass(player.combatClass);
 		const enemyStrategy = overrides?.enemyStrategy ?? ClassStrategyRegistry.forClass(enemy.combatClass);
+		const ctx: RoundContext = {
+			player,
+			enemy,
+			playerStrategy,
+			enemyStrategy,
+			rng,
+			log: [],
+			freshDebuffs: new Set(),
+		};
 
 		let round = 1;
 		for (; round <= MAX_ROUNDS; round++) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
-			const lines: string[] = [];
-			this.playRound(player, enemy, playerStrategy, enemyStrategy, round, rng, lines);
+			ctx.log = [];
+			this.playRound(ctx, round);
 			roundLogs.push({
 				round,
-				lines,
+				lines: ctx.log,
 				playerHp: player.hp,
 				playerMaxHp: player.maxHp,
 				enemyHp: enemy.hp,
@@ -98,15 +123,8 @@ export class BattleEngine {
 		};
 	}
 
-	private playRound(
-		player: CombatantState,
-		enemy: CombatantState,
-		playerStrategy: IClassStrategy,
-		enemyStrategy: IClassStrategy,
-		round: number,
-		rng: () => number,
-		log: string[],
-	): void {
+	private playRound(ctx: RoundContext, round: number): void {
+		const { player, enemy, playerStrategy, enemyStrategy, rng, log } = ctx;
 		log.push(COMBAT_ROUND_HEADER(round));
 		if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
 
@@ -116,47 +134,28 @@ export class BattleEngine {
 		// Debuffs pushed during THIS round must not tick down at this round's
 		// end — a 1-turn debuff would otherwise expire before ever taking
 		// effect on the holder's next turn.
-		const freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
+		ctx.freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
 
-		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(
-			player,
-			enemy,
-			playerStrategy,
-			enemyStrategy,
-			rng,
-		)) {
+		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(ctx)) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
-			this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, rng, log);
+			this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, ctx);
 		}
 
-		this.closeRound(player, enemy, playerStrategy, enemyStrategy, round, rng, log, freshDebuffs);
+		this.closeRound(ctx, round);
 	}
 
 	/** End-of-round bookkeeping, skipped entirely once either side has fallen. */
-	private closeRound(
-		player: CombatantState,
-		enemy: CombatantState,
-		playerStrategy: IClassStrategy,
-		enemyStrategy: IClassStrategy,
-		round: number,
-		rng: () => number,
-		log: string[],
-		freshDebuffs: Set<Debuff>,
-	): void {
+	private closeRound(ctx: RoundContext, round: number): void {
+		const { player, enemy } = ctx;
 		if (player.hp <= 0 || enemy.hp <= 0) return;
-		this.endOfRound(player, playerStrategy, round, rng, log, freshDebuffs);
+		this.endOfRound(player, ctx.playerStrategy, round, ctx);
 		if (player.hp <= 0) return;
-		this.endOfRound(enemy, enemyStrategy, round, rng, log, freshDebuffs);
+		this.endOfRound(enemy, ctx.enemyStrategy, round, ctx);
 	}
 
 	/** Initiative: the holder of a higher `initiative_bias` flag (Tailwind blessing) is more likely to act first; even footing is 50/50. */
-	private turnOrder(
-		player: CombatantState,
-		enemy: CombatantState,
-		playerStrategy: IClassStrategy,
-		enemyStrategy: IClassStrategy,
-		rng: () => number,
-	): Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> {
+	private turnOrder(ctx: RoundContext): Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> {
+		const { player, enemy, playerStrategy, enemyStrategy, rng } = ctx;
 		const playerBias = (player.flags.initiative_bias as number) ?? 0;
 		const enemyBias = (enemy.flags.initiative_bias as number) ?? 0;
 		const playerFirst = rollChance(0.5 + playerBias - enemyBias, rng);
@@ -189,12 +188,17 @@ export class BattleEngine {
 		atkStrategy: IClassStrategy,
 		defStrategy: IClassStrategy,
 		round: number,
-		rng: () => number,
-		log: string[],
+		battle: RoundContext,
 	): void {
-		const ctx: StrategyContext = { self: attacker, enemy: defender, round, rng, log: (m) => log.push(m) };
+		const ctx: StrategyContext = {
+			self: attacker,
+			enemy: defender,
+			round,
+			rng: battle.rng,
+			log: (m) => battle.log.push(m),
+		};
 		this.shakeOffExpiredDebuffs(attacker);
-		if (this.isDisabled(attacker, rng, log)) return;
+		if (this.isDisabled(attacker, battle.rng, battle.log)) return;
 		this.strike(attacker, defender, atkStrategy, defStrategy, ctx);
 	}
 
@@ -318,19 +322,18 @@ export class BattleEngine {
 		return resolved;
 	}
 
-	private endOfRound(
-		side: CombatantState,
-		strategy: IClassStrategy,
-		round: number,
-		rng: () => number,
-		log: string[],
-		freshDebuffs: Set<Debuff>,
-	): void {
+	private endOfRound(side: CombatantState, strategy: IClassStrategy, round: number, battle: RoundContext): void {
 		if (side.hp <= 0) return;
-		const ctx: StrategyContext = { self: side, enemy: side, round, rng, log: (m) => log.push(m) };
+		const ctx: StrategyContext = {
+			self: side,
+			enemy: side,
+			round,
+			rng: battle.rng,
+			log: (m) => battle.log.push(m),
+		};
 		this.shakeOffExpiredDebuffs(side);
-		this.tickDamageOverTime(side, log);
-		this.tickStatusDurations(side, freshDebuffs);
+		this.tickDamageOverTime(side, battle.log);
+		this.tickStatusDurations(side, battle.freshDebuffs);
 		side.debuffs = side.debuffs.filter((d) => d.turnsLeft > 0);
 
 		if (side.hp > 0) strategy.onRoundEnd(ctx);
