@@ -12,8 +12,8 @@ services:
     restart: unless-stopped
     env_file: .env
     networks:
-      - credd-net   # ← đổi thành network nơi Postgres đang chạy
+      - homelab-db   # ← đổi thành network nơi Postgres đang chạy
 
 networks:
-  credd-net:
+  homelab-db:
     external: true # đã tồn tại trên server (network của Postgres)
