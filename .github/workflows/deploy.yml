@@ -5,23 +5,33 @@ on:
     branches:
       - main
 
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            cd /opt/apps/rpg-bot
+      - name: Deploy RPG Bot
+        run: |
+          set -e
 
-            git fetch origin main
-            git reset --hard origin/main
+          cd /opt/apps/rpg-bot
 
-            docker compose up -d --build
+          echo ">>> Pulling latest code"
+          git fetch origin main
+          git reset --hard origin/main
 
-            docker image prune -f
+          echo ">>> Building Docker image"
+          docker compose build
+
+          echo ">>> Starting bot"
+          docker compose up -d
+
+          echo ">>> Status"
+          docker compose ps
+
+          echo ">>> Cleaning unused images"
+          docker image prune -f
