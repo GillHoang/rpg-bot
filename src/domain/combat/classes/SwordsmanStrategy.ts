@@ -54,6 +54,14 @@ export class SwordsmanStrategy extends NullClassStrategy {
 			ctx.enemy.debuffs.push({ tag: 'bleed', turnsLeft: 2, value, stacks });
 		}
 		const pct = Math.round(Math.min(BLEED_MAX_PCT, stacks * BLEED_PCT_PER_STACK) * 100);
-		ctx.log(COMBAT_SWORDSMAN_BLEED(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), stacks, BLEED_MAX_STACKS, pct));
+		ctx.log(
+			COMBAT_SWORDSMAN_BLEED(
+				combatDisplayName(ctx.self),
+				combatDisplayName(ctx.enemy),
+				stacks,
+				BLEED_MAX_STACKS,
+				pct,
+			),
+		);
 	}
 }

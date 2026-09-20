@@ -69,7 +69,9 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			} else {
 				ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
 			}
-			ctx.log(COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), value.toLocaleString()));
+			ctx.log(
+				COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), value.toLocaleString()),
+			);
 		} else if (this.effectKey === 'blight') {
 			const existing = findDebuff(ctx.enemy, 'blight');
 			if (existing) {

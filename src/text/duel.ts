@@ -22,7 +22,8 @@ export const DUEL_ACCEPT_LABEL = 'Chấp nhận';
 export const DUEL_DECLINE_LABEL = 'Từ chối';
 export const DUEL_ONLY_OPPONENT_BUTTON = 'Chỉ đối thủ mới được chấp nhận.';
 export const DUEL_DECLINED = 'Duel đã bị từ chối.';
-export const DUEL_EXPIRED = (challenger: string): string => `${ICONS.duel.expired} Duel hết hạn — ${challenger} không dám đánh.`;
+export const DUEL_EXPIRED = (challenger: string): string =>
+	`${ICONS.duel.expired} Duel hết hạn — ${challenger} không dám đánh.`;
 
 // renderDuel
 export const DUEL_NOT_FOUND = 'Duel không còn tồn tại.';

@@ -47,7 +47,13 @@ export class MonsterStrategy extends NullClassStrategy {
 		if (this.skill === 'venom_spit' && hit.damageDealt > 0 && ctx.enemy.hp > 0 && !findDebuff(ctx.enemy, 'venom')) {
 			const value = Math.max(5, Math.floor(ctx.enemy.maxHp * 0.03));
 			ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
-			ctx.log(COMBAT_MONSTER_VENOM_SPIT(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), value.toLocaleString()));
+			ctx.log(
+				COMBAT_MONSTER_VENOM_SPIT(
+					combatDisplayName(ctx.self),
+					combatDisplayName(ctx.enemy),
+					value.toLocaleString(),
+				),
+			);
 		}
 	}
 }

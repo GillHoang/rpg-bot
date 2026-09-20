@@ -53,7 +53,8 @@ async function buildView(
 ): Promise<InventoryView> {
 	const total = category === 'bag' ? 1 : Math.max(1, Math.ceil((await repo.count(userId, category)) / PAGE_SIZE));
 	const page = Math.min(Math.max(requestedPage, 1), total);
-	const lines = category === 'bag' ? [bagSummary((await repo.bag(userId))!)] : await repo.list(userId, category, page);
+	const lines =
+		category === 'bag' ? [bagSummary((await repo.bag(userId))!)] : await repo.list(userId, category, page);
 
 	const embed = new EmbedBuilder()
 		.setTitle(INVENTORY_TITLE(category, page))
@@ -114,7 +115,12 @@ export class InventoryCommand implements ICommand {
 			await i.editReply(NOT_REGISTERED);
 			return;
 		}
-		const view = await buildView(repo, i.user.id, i.options.getString('category') ?? 'bag', i.options.getInteger('page') ?? 1);
+		const view = await buildView(
+			repo,
+			i.user.id,
+			i.options.getString('category') ?? 'bag',
+			i.options.getInteger('page') ?? 1,
+		);
 		const message: Message = await i.editReply({ embeds: [view.embed], components: view.rows });
 
 		// Chỉ chủ nhân kho được bấm (reply là ephemeral nên thực tế luôn đúng).

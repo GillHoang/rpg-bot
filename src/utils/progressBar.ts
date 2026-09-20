@@ -17,8 +17,7 @@ export interface BarPieces {
 	right: string;
 }
 
-const emoji = (animated: boolean, name: string, id: string): string =>
-	`<${animated ? 'a' : ''}:${name}:${id}>`;
+const emoji = (animated: boolean, name: string, id: string): string => `<${animated ? 'a' : ''}:${name}:${id}>`;
 
 export const PROGRESS_BAR_EMOJIS = {
 	/** Palettes for a 100% full bar — the caller picks one. */

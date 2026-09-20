@@ -124,30 +124,30 @@ export class DuelCommand implements ICommand {
 			collector.stop('accepted');
 		});
 		collector.on('end', async (_collected, reason) => {
-		if (reason === 'accepted') {
-			const result = await this.duels.accept(created.duelId, opponent.id);
-			await interaction.editReply({ components: [] });
-			if (result.status !== 'ok') {
-				await interaction.followUp(duelFailureLine(result));
+			if (reason === 'accepted') {
+				const result = await this.duels.accept(created.duelId, opponent.id);
+				await interaction.editReply({ components: [] });
+				if (result.status !== 'ok') {
+					await interaction.followUp(duelFailureLine(result));
+					return;
+				}
+				let outcomeLine = DUEL_DRAW;
+				if (!result.draw) {
+					outcomeLine = DUEL_WIN(result.winnerName ?? '');
+					if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
+				}
+				await sendBattleLog(
+					interaction,
+					{
+						battle: result.battle,
+						playerName: result.challengerName,
+						enemyName: result.opponentName,
+						headerLines: [outcomeLine],
+					},
+					'followUp',
+				);
 				return;
 			}
-			let outcomeLine = DUEL_DRAW;
-			if (!result.draw) {
-				outcomeLine = DUEL_WIN(result.winnerName ?? '');
-				if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
-			}
-			await sendBattleLog(
-				interaction,
-				{
-					battle: result.battle,
-					playerName: result.challengerName,
-					enemyName: result.opponentName,
-					headerLines: [outcomeLine],
-				},
-				'followUp',
-			);
-			return;
-		}
 			if (reason === 'declined') {
 				await interaction.editReply({ content: DUEL_DECLINED, components: [] });
 				return;

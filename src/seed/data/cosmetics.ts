@@ -25,7 +25,25 @@ export const COSMETIC_SEED: CosmeticSeed[] = [
 	{ cosmeticKey: 'frame_gold', category: 'profile', tier: 'chosen', displayName: 'Golden Frame', isBase: false },
 	{ cosmeticKey: 'frame_eternal', category: 'profile', tier: 'eternal', displayName: 'Eternal Frame', isBase: false },
 	{ cosmeticKey: 'frame_silver', category: 'profile', tier: 'believer', displayName: 'Silver Frame', isBase: false },
-	{ cosmeticKey: 'banner_crimson', category: 'battle', tier: 'chosen', displayName: 'Crimson Battle Banner', isBase: false },
-	{ cosmeticKey: 'summon_circle_gold', category: 'summon', tier: 'chosen', displayName: 'Golden Summon Circle', isBase: false },
-	{ cosmeticKey: 'banner_eternal', category: 'battle', tier: 'eternal', displayName: 'Eternal Battle Banner', isBase: false },
+	{
+		cosmeticKey: 'banner_crimson',
+		category: 'battle',
+		tier: 'chosen',
+		displayName: 'Crimson Battle Banner',
+		isBase: false,
+	},
+	{
+		cosmeticKey: 'summon_circle_gold',
+		category: 'summon',
+		tier: 'chosen',
+		displayName: 'Golden Summon Circle',
+		isBase: false,
+	},
+	{
+		cosmeticKey: 'banner_eternal',
+		category: 'battle',
+		tier: 'eternal',
+		displayName: 'Eternal Battle Banner',
+		isBase: false,
+	},
 ];

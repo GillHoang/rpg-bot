@@ -137,14 +137,24 @@ export class InventoryRepository {
 		const pattern = `%${query}%`;
 		const match = (name: AnyPgColumn, column: AnyPgColumn) => or(ilike(name, pattern), ilike(column, pattern));
 		const weapons = await db
-			.select({ id: userWeapons.weaponId, name: weaponRoster.name, tier: weaponRoster.tier, plus: userWeapons.enhancement })
+			.select({
+				id: userWeapons.weaponId,
+				name: weaponRoster.name,
+				tier: weaponRoster.tier,
+				plus: userWeapons.enhancement,
+			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
 			.where(and(eq(userWeapons.discordId, id), match(weaponRoster.name, userWeapons.weaponId)))
 			.orderBy(userWeapons.weaponId)
 			.limit(25);
 		const armors = await db
-			.select({ id: userArmors.armorId, name: armorRoster.name, tier: armorRoster.tier, plus: userArmors.enhancement })
+			.select({
+				id: userArmors.armorId,
+				name: armorRoster.name,
+				tier: armorRoster.tier,
+				plus: userArmors.enhancement,
+			})
 			.from(userArmors)
 			.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
 			.where(and(eq(userArmors.discordId, id), match(armorRoster.name, userArmors.armorId)))
@@ -179,19 +189,26 @@ export class InventoryRepository {
 
 	async searchRunes(id: string, query: string): Promise<RuneSearchRow[]> {
 		const pattern = `%${query}%`;
-		return db
-			.select({
-				uid: userRunes.runeUid,
-				name: runeRoster.name,
-				tier: runeRoster.tier,
-				socketedInto: userRunes.socketedInto,
-			})
-			.from(userRunes)
-			.innerJoin(runeRoster, eq(userRunes.runeId, runeRoster.runeId))
-			.where(and(eq(userRunes.discordId, id), or(ilike(runeRoster.name, pattern), ilike(userRunes.runeUid, pattern))))
-			// Free runes first — that is what /socket equip is looking for.
-			.orderBy(sql`${userRunes.socketedInto} is null desc`, userRunes.runeUid)
-			.limit(25);
+		return (
+			db
+				.select({
+					uid: userRunes.runeUid,
+					name: runeRoster.name,
+					tier: runeRoster.tier,
+					socketedInto: userRunes.socketedInto,
+				})
+				.from(userRunes)
+				.innerJoin(runeRoster, eq(userRunes.runeId, runeRoster.runeId))
+				.where(
+					and(
+						eq(userRunes.discordId, id),
+						or(ilike(runeRoster.name, pattern), ilike(userRunes.runeUid, pattern)),
+					),
+				)
+				// Free runes first — that is what /socket equip is looking for.
+				.orderBy(sql`${userRunes.socketedInto} is null desc`, userRunes.runeUid)
+				.limit(25)
+		);
 	}
 }
 

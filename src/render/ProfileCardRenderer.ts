@@ -126,7 +126,9 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	const m7Parts: string[] = [];
 	if (data.title) m7Parts.push(`${ICONS.gear.titles} ${data.title}`);
 	if (data.believerLevel != null)
-		m7Parts.push(`${ICONS.deity.believer} Believer Lv.${data.believerLevel} (${(data.believerExp ?? 0).toLocaleString()} exp)`);
+		m7Parts.push(
+			`${ICONS.deity.believer} Believer Lv.${data.believerLevel} (${(data.believerExp ?? 0).toLocaleString()} exp)`,
+		);
 	if (data.pvpRating != null) m7Parts.push(`${ICONS.ranked.profileBadge} ${data.pvpRating} rated`);
 	if (m7Parts.length > 0) {
 		ctx.fillStyle = '#ffffffaa';

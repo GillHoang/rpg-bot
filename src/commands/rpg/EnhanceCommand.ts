@@ -23,7 +23,10 @@ export class EnhanceCommand implements ICommand {
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
 		if (interaction.options.getFocused(true).name !== 'gear_id') return;
-		const rows = await new InventoryRepository().searchGear(interaction.user.id, String(interaction.options.getFocused()));
+		const rows = await new InventoryRepository().searchGear(
+			interaction.user.id,
+			String(interaction.options.getFocused()),
+		);
 		await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
 	}
 

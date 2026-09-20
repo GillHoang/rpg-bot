@@ -9,8 +9,7 @@ export const BATTLE_LOG_PREV_LABEL = `${ICONS.nav.prev} Trước`;
 export const BATTLE_LOG_NEXT_LABEL = `Sau ${ICONS.nav.next}`;
 export const BATTLE_LOG_LAST_LABEL = `Cuối ${ICONS.nav.last}`;
 export const heartEmoji = '<:heart:1550849637902979142>';
-export const BATTLE_LOG_PAGE_INDICATOR = (round: number, total: number): string =>
-	`Hiệp ${round}/${total}`;
+export const BATTLE_LOG_PAGE_INDICATOR = (round: number, total: number): string => `Hiệp ${round}/${total}`;
 
 export const BATTLE_LOG_HP_LINE = (name: string, hp: number, maxHp: number): string => {
 	return `**${name}** —  ${heartEmoji} __${hp.toLocaleString()}/${maxHp.toLocaleString()} HP__`;

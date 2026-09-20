@@ -1,9 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
 
-export type ResetResult =
-	| { status: 'ok'; deletedUsers: number }
-	| { status: 'nothing-to-reset' };
+export type ResetResult = { status: 'ok'; deletedUsers: number } | { status: 'nothing-to-reset' };
 
 /** Bảng KHÔNG bị reset — xoá là mất cấu hình bot / ledger đối soát. */
 const KEEP_TABLES = new Set(['server_config', 'stripe_events', 'dev_logs']);
@@ -46,16 +44,12 @@ const LOG_TABLES = [
  */
 export class ResetService {
 	async resetAll(): Promise<ResetResult> {
-		const [{ count }] = await db.execute<{ count: number }>(
-			sql`SELECT count(*)::int AS count FROM users`,
-		).then((r) => r.rows as { count: number }[]);
+		const [{ count }] = await db
+			.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM users`)
+			.then((r) => r.rows as { count: number }[]);
 		if (count === 0) return { status: 'nothing-to-reset' };
 
-		await db.execute(
-			sql.raw(
-				`TRUNCATE TABLE users, ${LOG_TABLES.join(', ')} RESTART IDENTITY CASCADE;`,
-			),
-		);
+		await db.execute(sql.raw(`TRUNCATE TABLE users, ${LOG_TABLES.join(', ')} RESTART IDENTITY CASCADE;`));
 		return { status: 'ok', deletedUsers: count };
 	}
 

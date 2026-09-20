@@ -25,7 +25,8 @@ export const RANKED_RATING_LINE = (
 ): string =>
 	`Rating: **${before} → ${after}** (${delta >= 0 ? '+' : ''}${delta}) · ` +
 	`Bracket: ${bracketBefore} → **${bracketAfter}** · Peak ${peak}`;
-export const RANKED_SHIELD_NOTE = '\n' + ICONS.ranked.shield + ' Demotion shield đã cứu bạn khỏi rớt bracket (đỡ 1 lần).';
+export const RANKED_SHIELD_NOTE =
+	'\n' + ICONS.ranked.shield + ' Demotion shield đã cứu bạn khỏi rớt bracket (đỡ 1 lần).';
 export const RANKED_FOOTER = '/ranked claim để nhận thưởng tuần · /ranked stats để xem tổng quan.';
 export const RANKED_LOG_MAX_CHARS = 900;
 export const RANKED_LOG_TRUNCATE_PREFIX = '…';

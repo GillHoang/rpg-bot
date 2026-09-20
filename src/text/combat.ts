@@ -74,7 +74,13 @@ export const COMBAT_ATTACK_MISSES_DIZZY = (name: string): string =>
 // --- Nội tại class ---
 export const COMBAT_SWORDSMAN_ATK_UP = (name: string, pct: number): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.combatClass.swordsman} ${name} tăng ${pct}% ATK (tích luỹ).`;
-export const COMBAT_SWORDSMAN_BLEED = (name: string, enemy: string, stacks: number, maxStacks: number, pct: number): string =>
+export const COMBAT_SWORDSMAN_BLEED = (
+	name: string,
+	enemy: string,
+	stacks: number,
+	maxStacks: number,
+	pct: number,
+): string =>
 	`${combatTag(COMBAT_TAGS.BLEED)} ${ICONS.combatClass.swordsman} ${name} áp Chảy máu lên ${enemy} (cột ${stacks}/${maxStacks}, ${pct}% ATK mỗi lượt).`;
 export const COMBAT_FIGHTER_BASH = (name: string, enemy: string, stunTurns: number): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.strike.bareHand} ${name} Bash ${enemy} — choáng ${stunTurns} lượt và để đối thủ Dizzy.`;

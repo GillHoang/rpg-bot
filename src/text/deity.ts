@@ -25,5 +25,4 @@ export const DEITY_NOT_ENOUGH_SIGILS = (max: number, have: number): string =>
 export const DEITY_INSUFFICIENT_RESOURCES = (neededEssence: number, neededCredux: string): string =>
 	`Không đủ tài nguyên. Cần ${neededEssence} essence + ${neededCredux} ${CURRENCY.credux}.`;
 
-export const DEITY_ASCEND_SUCCESS =
-	`${ICONS.deity.ascension} **Ascension thành công!** Đã nhận trạng thái prestige. Chỉ số giữ ở mức 10/10 Sigil; chưa có bonus stat hoặc blessing.`;
+export const DEITY_ASCEND_SUCCESS = `${ICONS.deity.ascension} **Ascension thành công!** Đã nhận trạng thái prestige. Chỉ số giữ ở mức 10/10 Sigil; chưa có bonus stat hoặc blessing.`;

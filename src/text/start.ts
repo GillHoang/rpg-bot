@@ -23,11 +23,11 @@ export const START_WELCOME =
 export const START_NOT_YOUR_FLOW = 'Quy trình này không phải của bạn. Gõ /start để bắt đầu của riêng bạn.';
 
 /** Màn 2: danh sách class (đi kèm nội tại + chỉ số từng class). */
-export const START_CLASSES_TITLE = '**Chọn class khởi đầu của bạn**\n\nBấm nút class bên dưới để xem lại chi tiết rồi xác nhận.';
+export const START_CLASSES_TITLE =
+	'**Chọn class khởi đầu của bạn**\n\nBấm nút class bên dưới để xem lại chi tiết rồi xác nhận.';
 
 /** Màn 3: xác nhận class đã chọn. */
-export const START_CONFIRM_HEADER = (emoji: string, name: string): string =>
-	`${emoji} **Xác nhận chọn ${name}?**`;
+export const START_CONFIRM_HEADER = (emoji: string, name: string): string => `${emoji} **Xác nhận chọn ${name}?**`;
 
 export const START_CONFIRM_NOTE = 'Lựa chọn này là cuối cùng — không thể đổi sau khi tạo nhân vật.';
 
@@ -38,8 +38,7 @@ export const START_BACK_LABEL = 'Quay lại';
 export const START_CONFIRM_LABEL = 'Xác nhận';
 
 /** Từ chối điều khoản — kết thúc flow, hướng dẫn gọi lại /start. */
-export const START_DECLINED =
-	'Đã hủy quy trình. Khi sẵn sàng, gõ /start để bắt đầu lại — Credd vẫn đợi bạn.';
+export const START_DECLINED = 'Đã hủy quy trình. Khi sẵn sàng, gõ /start để bắt đầu lại — Credd vẫn đợi bạn.';
 
 /** Màn thành công sau khi tạo nhân vật xong. */
 export const START_SUCCESS = (

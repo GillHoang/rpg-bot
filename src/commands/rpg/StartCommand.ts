@@ -24,7 +24,8 @@ import {
 	START_DECLINE_LABEL,
 	START_DECLINED,
 	START_DESCRIPTION,
-	START_SUCCESS,	START_WELCOME,
+	START_SUCCESS,
+	START_WELCOME,
 } from '../../text/start.js';
 
 /**
@@ -65,7 +66,10 @@ function classDetail(combatClass: CombatClass): string {
 function welcomeView(): InteractionUpdateOptions {
 	const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder().setCustomId(startCustomId.agree).setLabel(START_AGREE_LABEL).setStyle(ButtonStyle.Success),
-		new ButtonBuilder().setCustomId(startCustomId.decline).setLabel(START_DECLINE_LABEL).setStyle(ButtonStyle.Danger),
+		new ButtonBuilder()
+			.setCustomId(startCustomId.decline)
+			.setLabel(START_DECLINE_LABEL)
+			.setStyle(ButtonStyle.Danger),
 	);
 	return { content: START_WELCOME, components: [buttons] };
 }
@@ -82,15 +86,16 @@ function classesView(): InteractionUpdateOptions {
 function confirmView(combatClass: CombatClass): InteractionUpdateOptions {
 	const cls = CLASSES[combatClass];
 	const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
-		new ButtonBuilder().setCustomId(startCustomId.confirm).setLabel(START_CONFIRM_LABEL).setStyle(ButtonStyle.Success),
+		new ButtonBuilder()
+			.setCustomId(startCustomId.confirm)
+			.setLabel(START_CONFIRM_LABEL)
+			.setStyle(ButtonStyle.Success),
 		new ButtonBuilder().setCustomId(startCustomId.back).setLabel(START_BACK_LABEL).setStyle(ButtonStyle.Secondary),
 	);
 	return {
-		content: [
-			START_CONFIRM_HEADER(cls.emoji, combatClass),
-			classDetail(combatClass),
-			START_CONFIRM_NOTE,
-		].join('\n\n'),
+		content: [START_CONFIRM_HEADER(cls.emoji, combatClass), classDetail(combatClass), START_CONFIRM_NOTE].join(
+			'\n\n',
+		),
 		components: [buttons],
 	};
 }

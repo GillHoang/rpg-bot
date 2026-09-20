@@ -344,7 +344,14 @@ export class BattleEngine {
 			const tick = Math.floor(debuff.value * (1 - wardingPct));
 			if (tick <= 0) continue;
 			side.hp = Math.max(0, side.hp - tick);
-			log.push(COMBAT_DOT_TICK(dotTagOf(debuff.tag), combatDisplayName(side), tick.toLocaleString(), dotLabelOf(debuff.tag)));
+			log.push(
+				COMBAT_DOT_TICK(
+					dotTagOf(debuff.tag),
+					combatDisplayName(side),
+					tick.toLocaleString(),
+					dotLabelOf(debuff.tag),
+				),
+			);
 			debuff.turnsLeft -= 1;
 		}
 	}

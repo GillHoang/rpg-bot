@@ -41,7 +41,10 @@ export class ResetCommand implements ICommand {
 
 		const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder().setCustomId('reset:confirm').setLabel(RESET_CONFIRM_LABEL).setStyle(ButtonStyle.Danger),
-			new ButtonBuilder().setCustomId('reset:cancel').setLabel(RESET_CANCEL_LABEL).setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder()
+				.setCustomId('reset:cancel')
+				.setLabel(RESET_CANCEL_LABEL)
+				.setStyle(ButtonStyle.Secondary),
 		);
 
 		// Đếm trước để hiển thị số người chơi sẽ mất trong cảnh báo.

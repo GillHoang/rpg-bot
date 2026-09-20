@@ -188,7 +188,9 @@ export class QuestService {
 		bonusKind: 'shards' | 'valor',
 		bonus: number,
 	): string {
-		const mark = quest.completed ? ICONS.status.completed : `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
+		const mark = quest.completed
+			? ICONS.status.completed
+			: `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
 		const bonusLabel = bonusKind === 'shards' ? QUEST_BONUS_SHARDS(bonus) : QUEST_BONUS_VALOR(bonus);
 		return `${mark} — ${label} (+${quest.rewardCredux.toLocaleString()} Credux, +${bonusLabel})`;
 	}
