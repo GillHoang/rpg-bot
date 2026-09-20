@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { db } from '../db/client.js';
+import { logger } from '../utils/logger.js';
 
 export type ResetResult = { status: 'ok'; deletedUsers: number } | { status: 'nothing-to-reset' };
 
@@ -50,6 +51,7 @@ export class ResetService {
 		if (count === 0) return { status: 'nothing-to-reset' };
 
 		await db.execute(sql.raw(`TRUNCATE TABLE users, ${LOG_TABLES.join(', ')} RESTART IDENTITY CASCADE;`));
+		logger.warn({ deletedUsers: count }, 'full-reset');
 		return { status: 'ok', deletedUsers: count };
 	}
 

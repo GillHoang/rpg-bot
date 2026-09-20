@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db, type Executor } from '../db/client.js';
+import { logger } from '../utils/logger.js';
 import { userCharacter, userPresets, userWeapons, userArmors, userDeities } from '../db/schema.js';
 import {
 	LOADOUT_ARMOR_NOT_OWNED,
@@ -46,6 +47,7 @@ export class LoadoutService {
 				error = await this.equipDeity(tx, id, preset, kind, item, target, character);
 			} else return LOADOUT_INVALID_KIND;
 			if (error) return error;
+			logger.info({ user: id, kind, item, preset: target }, 'gear-equipped');
 			return LOADOUT_EQUIPPED(kind, item, target);
 		});
 	}
@@ -155,6 +157,7 @@ export class LoadoutService {
 					activeEchoDeityId: preset.equippedEchoDeityId,
 				})
 				.where(eq(userCharacter.discordId, id));
+			logger.info({ user: id, preset: slot }, 'preset-switched');
 			return LOADOUT_SWITCHED(
 				slot,
 				preset.equippedWeaponId ?? LOADOUT_EMPTY,

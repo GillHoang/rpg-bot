@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { db } from '../db/client.js';
+import { logger } from '../utils/logger.js';
 import { usersBag } from '../db/schema.js';
 import { UserRepository } from '../repositories/UserRepository.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
@@ -90,6 +91,7 @@ export class StartService {
 				})
 				.where(eq(usersBag.discordId, discordId));
 
+			logger.info({ user: discordId, username, combatClass, weaponId, armorId }, 'onboarding-start');
 			return { status: 'ok', weaponId, armorId };
 		});
 	}

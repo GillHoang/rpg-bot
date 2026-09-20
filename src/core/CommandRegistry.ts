@@ -39,6 +39,18 @@ export class CommandRegistry {
 			return;
 		}
 
+		// Audit: ai gọi lệnh gì, kèm tham số phụ (option không nhạy cảm).
+		logger.info(
+			{
+				command: interaction.commandName,
+				user: interaction.user.id,
+				username: interaction.user.username,
+				guild: interaction.guildId ?? 'dm',
+				options: interaction.options.data.map((o) => ({ name: o.name, value: o.value })),
+			},
+			'command',
+		);
+
 		try {
 			await command.execute(interaction);
 		} catch (error) {

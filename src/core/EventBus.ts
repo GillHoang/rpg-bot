@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { logger } from '../utils/logger.js';
 
 /**
  * Domain events the game engine emits. Extend this map as new systems
@@ -45,6 +46,8 @@ export class EventBus {
 	}
 
 	emit<K extends keyof DomainEvents>(event: K, payload: DomainEvents[K]): void {
+		// Audit trail: mọi nghiệp vụ phát event đều in ra console để theo dõi.
+		logger.info({ event, ...structuredClone(payload) } as unknown as Record<string, unknown>, 'domain-event');
 		this.emitter.emit(event, payload);
 	}
 }

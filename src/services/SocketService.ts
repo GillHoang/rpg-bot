@@ -1,4 +1,5 @@
 import { db } from '../db/client.js';
+import { logger } from '../utils/logger.js';
 import { RuneRepository } from '../repositories/RuneRepository.js';
 import { GearRepository } from '../repositories/GearRepository.js';
 import { and, eq } from 'drizzle-orm';
@@ -76,6 +77,7 @@ export class SocketService {
 			else await this.gear.writeOppositeSockets(tx, discordId, gearId, info.kind, next);
 			await this.runes.equip(tx, runeUid, gearId);
 
+			logger.info({ user: discordId, rune: runeUid, gear: gearId, slot: slotNum, lane }, 'rune-socketed');
 			return { status: 'ok' };
 		});
 	}
@@ -89,6 +91,7 @@ export class SocketService {
 
 			await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
 			await this.runes.unequip(tx, runeUid);
+			logger.info({ user: discordId, rune: runeUid, from: rune.socketedInto }, 'rune-unequipped');
 			return { status: 'ok' };
 		});
 	}

@@ -1,5 +1,6 @@
 import { rollChance } from '../utils/weightedRandom.js';
 import { db } from '../db/client.js';
+import { logger } from '../utils/logger.js';
 import { EnhancementRepository } from '../repositories/EnhancementRepository.js';
 import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../config/enhancement.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
@@ -58,6 +59,11 @@ export class EnhancementService {
 		// Both success and failure count as an enhance attempt for quests.
 		if (result.status === 'success' || result.status === 'failure') {
 			this.events.emit('gear.enhanced', { discordId, success: result.status === 'success' });
+		}
+		if (result.status === 'success') {
+			logger.info({ user: discordId, gearId, to: `+${result.newLevel - 1}`, cost: result.cost }, 'gear-enhanced');
+		} else if (result.status === 'failure') {
+			logger.info({ user: discordId, gearId, cost: result.cost }, 'gear-enhance-failed');
 		}
 		return result;
 	}
