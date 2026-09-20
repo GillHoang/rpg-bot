@@ -11,6 +11,8 @@
     "start": "node dist/index.js",
     "deploy:commands": "tsx src/scripts/deployCommands.ts",
     "deploy:commands:guild": "tsx src/scripts/deployCommands.ts --guild",
+    "undeploy:commands": "tsx src/scripts/clearCommands.ts",
+    "undeploy:commands:guild": "tsx src/scripts/clearCommands.ts --guild",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/seed/seed.ts",

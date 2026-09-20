@@ -14,6 +14,12 @@ export const SUMMON_NO_DEITIES_SEEDED = (tier: string): string =>
 export const SUMMON_DUPE_SUFFIX = (essence: number, tier: string): string => ` (trùng — +${essence} ${tier} Essence)`;
 export const SUMMON_NEW_SUFFIX = ` ${ICONS.summon.new} MỚI`;
 
+/** Nén danh sách trùng lặp liên tiếp: "×3" thay vì lặp dòng — giữ result ngắn. */
+export const SUMMON_DUPE_TIMES = (count: number): string => ` ×${count}`;
+
+/** Danh sách pull quá dài (x30 trùng) — phần cắt được tóm tắt bằng dòng này. */
+export const SUMMON_LINES_TRUNCATED = (hidden: number): string => `…và ${hidden} lượt nữa (xem essence trong /balance)`;
+
 export const SUMMON_SUCCESS = (pullCount: number, shardsSpent: string, lines: string, pity: number): string =>
 	`${ICONS.summon.header} **Triệu hồi x${pullCount}** — đã dùng ${shardsSpent} ${CURRENCY.beliefShards}\n\n` +
 	`${lines}\n\n` +

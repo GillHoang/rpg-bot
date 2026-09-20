@@ -47,6 +47,16 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 
    Phát triển dùng `pnpm dev` (tsx watch).
 
+   Dọn bộ slash command đã đăng ký (global + guild tuỳ chọn):
+
+   ```sh
+   pnpm undeploy:commands                       # xoá global
+   pnpm undeploy:commands -- --guild <guildId>  # xoá thêm cả guild
+   ```
+
+   Sau khi clear, mọi lệnh biến mất cho tới khi chạy lại `pnpm deploy:commands`
+   (hoặc khởi động lại bot — entrypoint tự deploy).
+
 3. **Khi cập nhật bot từ phiên bản cũ**, các bước chạy lại đã có trong
    `docker-entrypoint.sh` (migrate → seed → deploy commands); chạy thủ công thì:
    - `pnpm db:seed` — seed ở `src/seed/data/` upsert theo khóa nghiệp vụ,

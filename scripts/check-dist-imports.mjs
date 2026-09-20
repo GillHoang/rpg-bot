@@ -20,6 +20,8 @@ for (const [key, value] of Object.entries({
 	DISCORD_TOKEN: 'check-dist-token',
 	DISCORD_CLIENT_ID: 'check-dist-client-id',
 	DATABASE_URL: 'postgres://check:check@localhost:5432/check',
+	OWNER_DISCORD_IDS: '123456789012345678',
+	DEPLOY_GUILD_ID: '123456789012345678',
 })) {
 	process.env[key] ??= value;
 }

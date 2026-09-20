@@ -6,9 +6,11 @@ import {
 	SUMMON_COUNT_OPTION_DESC,
 	SUMMON_DESCRIPTION,
 	SUMMON_DUPE_SUFFIX,
+	SUMMON_DUPE_TIMES,
 	SUMMON_INSUFFICIENT_RELICS,
 	SUMMON_INSUFFICIENT_SHARDS,
 	SUMMON_INVALID_COUNT,
+	SUMMON_LINES_TRUNCATED,
 	SUMMON_NEW_SUFFIX,
 	SUMMON_NO_CHARACTER,
 	SUMMON_NO_DEITIES_SEEDED,
@@ -17,6 +19,70 @@ import {
 	SUMMON_SUCCESS_RELIC,
 	TIER_ALIAS,
 } from '../../text/summon.js';
+
+/** Độ dài tối đa của content Discord. */
+const MAX_CONTENT_CHARS = 2000;
+
+/** Header + footer của SUMMON_SUCCESS/SUMMON_SUCCESS_RELIC — khoảng trống dành cho danh sách. */
+const SUMMON_SUCCESS_OVERHEAD = 220;
+
+interface PullLine {
+	tier: string;
+	name: string;
+	mythology: string;
+	isDupe: boolean;
+	essenceGained: number;
+}
+
+/**
+ * Gộp các lượt TRÙNG LIÊN TIẾP cùng deity thành một dòng với "×N" — một
+ * pull x30 toàn trùng (thường gặp khi farm essence) không còn phình message
+ * vượt 2000 ký tự của Discord (lỗi 50035 từng làm kết quả không gửi được).
+ * Nếu vẫn vượt giới hạn (nhiều deity khác nhau), cắt đuôi và đếm số dòng ẩn.
+ */
+function summarizePulls(pulls: readonly PullLine[]): string {
+	// Gom các lượt GIỐNG HỆT nhau (tier + tên + mythology + essence) thành
+	// nhóm đếm được — kể cả không liền nhau, kết quả vẫn đầy đủ thông tin.
+	const groups = new Map<string, { line: string; count: number }>();
+	const order: string[] = [];
+	for (const p of pulls) {
+		const alias = TIER_ALIAS[p.tier];
+		const suffix = p.isDupe ? SUMMON_DUPE_SUFFIX(p.essenceGained, p.tier) : SUMMON_NEW_SUFFIX;
+		const line = `**[${p.tier} · ${alias}]** ${p.name} (${p.mythology})${suffix}`;
+		const group = groups.get(line);
+		if (group) group.count += 1;
+		else {
+			groups.set(line, { line, count: 1 });
+			order.push(line);
+		}
+	}
+	const lines = order.map((key) => {
+		const { line, count } = groups.get(key)!;
+		return count > 1 ? `${line}${SUMMON_DUPE_TIMES(count)}` : line;
+	});
+	return fitContent(lines).join('\n');
+}
+
+/** Bỏ đếm ×1 ở dòng đơn lẻ; nếu tổng vẫn vượt 2000 thì cắt đuôi kèm dòng tóm tắt. */
+function fitContent(lines: string[]): string[] {
+	const trimmed = lines.map((l) => l.replace(/ ×1$/, ''));
+	const joined = trimmed.join('\n');
+	if (joined.length <= MAX_CONTENT_CHARS - SUMMON_SUCCESS_OVERHEAD) return trimmed;
+
+	const kept: string[] = [];
+	let used = SUMMON_SUCCESS_OVERHEAD;
+	for (let i = 0; i < trimmed.length; i++) {
+		const line = trimmed[i]!;
+		const tail = SUMMON_LINES_TRUNCATED(trimmed.length - i);
+		if (used + line.length + 1 + tail.length > MAX_CONTENT_CHARS) {
+			kept.push(tail);
+			return kept;
+		}
+		kept.push(line);
+		used += line.length + 1;
+	}
+	return kept;
+}
 
 export class SummonCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -70,19 +136,15 @@ export class SummonCommand implements ICommand {
 				await interaction.editReply({ content: SUMMON_NO_DEITIES_SEEDED(result.tier) });
 				return;
 			case 'ok': {
-				const lines = result.pulls.map((p) => {
-					const alias = TIER_ALIAS[p.tier];
-					const suffix = p.isDupe ? SUMMON_DUPE_SUFFIX(p.essenceGained, p.tier) : SUMMON_NEW_SUFFIX;
-					return `**[${p.tier} · ${alias}]** ${p.name} (${p.mythology})${suffix}`;
-				});
+				const lines = summarizePulls(result.pulls);
 				const cost = `${count} ${relic === 'sacred' ? 'Sacred' : 'Supreme'} Relic`;
 				await interaction.editReply(
 					relic
-						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines.join('\n'), result.finalPity)
+						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines, result.finalPity)
 						: SUMMON_SUCCESS(
 								result.pulls.length,
 								result.shardsSpent.toLocaleString(),
-								lines.join('\n'),
+								lines,
 								result.finalPity,
 							),
 				);
