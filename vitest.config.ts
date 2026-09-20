@@ -21,6 +21,8 @@ export default defineConfig({
 			DISCORD_CLIENT_ID: 'test-client-id',
 			DATABASE_URL: 'postgres://test:test@localhost:5432/test',
 			LOG_LEVEL: 'fatal',
+			OWNER_DISCORD_IDS: '123456789012345678',
+			DEPLOY_GUILD_ID: '1234567890',
 		},
 	},
 });

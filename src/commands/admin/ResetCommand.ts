@@ -3,12 +3,12 @@ import {
 	ButtonBuilder,
 	ButtonStyle,
 	ComponentType,
-	PermissionFlagsBits,
 	SlashCommandBuilder,
 	type ButtonInteraction,
 	type ChatInputCommandInteraction,
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
+import { isOwner } from '../../core/owners.js';
 import { ResetService } from '../../services/ResetService.js';
 import {
 	RESET_ALREADY_EMPTY,
@@ -18,26 +18,44 @@ import {
 	RESET_CONFIRM_LABEL,
 	RESET_DESCRIPTION,
 	RESET_DONE,
+	RESET_NOT_OWNER,
 } from '../../text/reset.js';
 
 const CONFIRM_TTL_MS = 60_000;
 
 /**
- * Admin-only full reset: /reset đếm số người chơi sẽ bị xoá, hiện cảnh báo
- * kèm nút xác nhận 60 giây — chỉ người gọi lệnh bấm được. Xoá qua
- * ResetService (TRUNCATE users CASCADE + bảng log), giữ catalog seed và
- * server_config; ghi dấu vết vào dev_logs.
+ * Admin-only full reset. Hai lớp khoá, cả hai kiểm tra lúc runtime:
+ *  1. `OWNER_DISCORD_IDS` (.env) — ai được gọi lệnh và bấm nút xác nhận;
+ *     thiếu biến này / ID ngoài danh sách thì lệnh dừng trước khi đụng DB.
+ *  2. Nút xác nhận 60 giây — chỉ người gọi lệnh bấm được.
+ *
+ * Preview chỉ ĐẾM (`countAll`), xoá (`resetAll`) chỉ chạy khi chủ bot bấm
+ * RESET — bấm Huỷ không mất dữ liệu. Xoá qua ResetService (TRUNCATE users
+ * CASCADE + bảng log), giữ catalog seed và server_config; ghi dấu vết vào
+ * dev_logs.
  */
 export class ResetCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('reset')
 		.setDescription(RESET_DESCRIPTION)
-		.setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+		.setDefaultMemberPermissions(0); // ẩn khỏieveryone — gate thật là OWNER_DISCORD_IDS
 
 	constructor(private readonly reset = new ResetService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply({ ephemeral: true });
+
+		if (!isOwner(interaction.user.id)) {
+			await interaction.editReply(RESET_NOT_OWNER);
+			return;
+		}
+
+		// Đếm trước để hiển thị số người chơi sẽ mất trong cảnh báo — KHÔNG xoá gì.
+		const playerCount = await this.reset.countAll();
+		if (playerCount === 0) {
+			await interaction.editReply(RESET_ALREADY_EMPTY);
+			return;
+		}
 
 		const confirmRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder().setCustomId('reset:confirm').setLabel(RESET_CONFIRM_LABEL).setStyle(ButtonStyle.Danger),
@@ -46,18 +64,8 @@ export class ResetCommand implements ICommand {
 				.setLabel(RESET_CANCEL_LABEL)
 				.setStyle(ButtonStyle.Secondary),
 		);
+		await interaction.editReply({ content: RESET_CONFIRM_HEADER(playerCount), components: [confirmRow] });
 
-		// Đếm trước để hiển thị số người chơi sẽ mất trong cảnh báo.
-		const preview = await this.reset.resetAll();
-		if (preview.status === 'nothing-to-reset') {
-			await interaction.editReply(RESET_ALREADY_EMPTY);
-			return;
-		}
-		await interaction.editReply({
-			content: RESET_CONFIRM_HEADER(preview.deletedUsers),
-			components: [confirmRow],
-		});
-		// resetAll chỉ chạy khi xác nhận — preview ở trên chỉ là count, không xoá gì.
 		const collector = interaction.channel?.createMessageComponentCollector({
 			componentType: ComponentType.Button,
 			filter: (button: ButtonInteraction) =>
@@ -70,6 +78,13 @@ export class ResetCommand implements ICommand {
 				collector.stop('cancelled');
 				return;
 			}
+			if (button.customId !== 'reset:confirm') return;
+			// Chốt lại quyền lúc bấm nút — owner list có thể đã đổi giữa chừng.
+			if (!isOwner(button.user.id)) {
+				await button.update({ content: RESET_NOT_OWNER, components: [] });
+				collector.stop('not-owner');
+				return;
+			}
 			collector.stop('confirmed');
 			const result = await this.reset.resetAll();
 			if (result.status === 'nothing-to-reset') {
@@ -80,7 +95,7 @@ export class ResetCommand implements ICommand {
 			await button.update({ content: RESET_DONE(result.deletedUsers), components: [] });
 		});
 		collector?.on('end', async (_collected, reason) => {
-			if (reason === 'confirmed' || reason === 'cancelled') return;
+			if (reason === 'confirmed' || reason === 'cancelled' || reason === 'not-owner') return;
 			// Hết giờ — gỡ nút, coi như huỷ.
 			await interaction.editReply({ content: RESET_CANCELLED, components: [] }).catch(() => undefined);
 		});

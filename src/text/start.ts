@@ -22,6 +22,15 @@ export const START_WELCOME =
 /** Người khác bấm nút trong flow của ai đó. */
 export const START_NOT_YOUR_FLOW = 'Quy trình này không phải của bạn. Gõ /start để bắt đầu của riêng bạn.';
 
+/** DB lỗi khi tạo nhân vật — giữ nút để người chơi thử lại. */
+export const START_CREATE_FAILED =
+	`${ICONS.status.fail} Tạo nhân vật chưa thành công (lỗi hệ thống). ` + 'Bấm **Xác nhận** để thử lại.';
+
+/** Starter gear thiếu do seed chưa chạy — cần chủ bot chạy db:seed. */
+export const START_SEED_MISSING =
+	`${ICONS.status.fail} Chưa nạp dữ liệu khởi đầu (seed) — không thể tạo gear tân thủ. ` +
+	'Vui lòng báo chủ bot chạy seed rồi thử `/start` lại.';
+
 /** Màn 2: danh sách class (đi kèm nội tại + chỉ số từng class). */
 export const START_CLASSES_TITLE =
 	'**Chọn class khởi đầu của bạn**\n\nBấm nút class bên dưới để xem lại chi tiết rồi xác nhận.';

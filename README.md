@@ -25,12 +25,14 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 
 1. Copy `.env.example` thành `.env` và điền:
 
-   | Biến | Ý nghĩa |
-   | --- | --- |
-   | `DISCORD_TOKEN` | Token bot từ Discord Developer Portal |
-   | `DISCORD_CLIENT_ID` | Application ID dùng để đăng ký slash commands |
-   | `DATABASE_URL` | `postgres://user:password@localhost:5432/credd` |
-   | `LOG_LEVEL` | Tuỳ chọn — `fatal`…`trace`, mặc định `info` |
+| Biến | Ý nghĩa |
+| --- | --- |
+| `DISCORD_TOKEN` | Token bot từ Discord Developer Portal |
+| `DISCORD_CLIENT_ID` | Application ID dùng để đăng ký slash commands |
+| `DATABASE_URL` | `postgres://user:password@localhost:5432/credd` |
+| `LOG_LEVEL` | Tuỳ chọn — `fatal`…`trace`, mặc định `info` |
+| `OWNER_DISCORD_IDS` | Discord ID của chủ bot (phân tách bằng dấu `,`) — bắt buộc để dùng `/reset` |
+| `DEPLOY_GUILD_ID` | Tuỳ chọn — guild deploy mặc định cho `deploy:commands` trên server thử nghiệm |
 
 2. Cài đặt và khởi tạo:
 
@@ -45,7 +47,8 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 
    Phát triển dùng `pnpm dev` (tsx watch).
 
-3. **Khi cập nhật bot từ phiên bản cũ**, hai bước luôn phải chạy lại:
+3. **Khi cập nhật bot từ phiên bản cũ**, các bước chạy lại đã có trong
+   `docker-entrypoint.sh` (migrate → seed → deploy commands); chạy thủ công thì:
    - `pnpm db:seed` — seed ở `src/seed/data/` upsert theo khóa nghiệp vụ,
      không xoá dữ liệu người chơi; thiếu seed mới (M7) thì genesis chest và
      title grant sẽ lỗi.
@@ -62,8 +65,8 @@ Nhóm kinh tế và tiến trình cơ bản:
 
 | Lệnh | Chức năng |
 | --- | --- |
-| `/register` | Mở account + bag + pity counter |
-| `/create class:<Swordsman\|Fighter\|Mage\|Knight\|Archer>` | Tạo nhân vật: starter gear auto-equip, +1.000 shards, +10 Silver Chest, base cosmetics |
+| `/start` | Onboarding một chạm: đồng ý điều khoản → chọn class → xác nhận; starter gear auto-equip, +1.000 shards, +10 Silver Chest |
+| `/help` | Hướng dẫn chơi đầy đủ, phân trang theo chủ đề (bot đang beta — số liệu có thể thay đổi) |
 | `/balance` | Credux, shards, rương, essence + gợi ý lệnh |
 | `/daily` | Quà hằng ngày theo streak 1–30, milestone chest theo streak tổng |
 | `/profile` | Thẻ nhân vật canvas: stat trận đấu, EXP, title, believer level, pvp rating |
@@ -82,7 +85,7 @@ Gear, rune, deity:
 
 | Lệnh | Chức năng |
 | --- | --- |
-| `/equip kind:weapon\|armor\|deity\|deity2\|deity3 id:<ID> preset:1` | Trang bị vào preset; deity2/3 là pantheon phụ (stat ×0.5/×0.25) |
+| `/equip kind:weapon\|armor\|deity id:<ID> preset:1` | Trang bị vào preset (option `id` có autocomplete theo tên); service chấp nhận thêm `deity2`/`deity3` (pantheon phụ ×0.5/×0.25) nhưng slash command chỉ expose `deity` |
 | `/preset switch slot:1\|2` | Đổi preset đang dùng (đồng bộ cả pantheon) |
 | `/enhance gear_id:<ID>` | +1…+10, Credux trừ cả khi thất bại |
 | `/socket equip rune_uid:<ID> gear_id:<ID> slot_num:1 lane:native\|opposite` · `unequip` · `unlock` | Gắn/tháo rune; slot 1 mỗi lane miễn phí, mở thêm theo seed |
@@ -152,7 +155,7 @@ pnpm build
 pnpm lint
 ```
 
-- 54 test / 6 file, chạy trên **PGlite** (PostgreSQL trong bộ nhớ, SQL thật)
+- 84 test / 12 file, chạy trên **PGlite** (PostgreSQL trong bộ nhớ, SQL thật)
   — không đọc `.env`, không chạm DB thật, RNG được mock để kiểm tra deterministic.
 - Phủ: rollback loot khi thiếu seed, quyền sở hữu item, preset/stat, boss fee
   + cooldown, summon pity/relic, casino settlement (kể cả phiên hết hạn),

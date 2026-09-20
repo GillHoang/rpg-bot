@@ -17,6 +17,9 @@ export const RESET_CANCEL_LABEL = 'Huỷ';
 /** Người khác bấm nút reset. */
 export const RESET_NOT_YOURS = 'Chỉ người gọi lệnh mới có thể xác nhận.';
 
+/** Caller/bấm nút không nằm trong OWNER_DISCORD_IDS. */
+export const RESET_NOT_OWNER = 'Lệnh này chỉ dành cho chủ bot.';
+
 export const RESET_CANCELLED = 'Đã huỷ — không xoá gì cả.';
 
 export const RESET_DONE = (users: number): string =>

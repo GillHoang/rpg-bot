@@ -10,9 +10,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # Chạy lại toàn bộ kiểm tra (lint → build → test) ngay trên runner VPS với
+  # đúng commit sắp deploy — fail ở đâu thì dừng ở đó, bot không bao giờ chạy
+  # code chưa qua kiểm tra.
+  ci-verify:
     runs-on: self-hosted
+    steps:
+      - name: Check out the commit being deployed
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
+      - name: Lint check
+        run: pnpm lint:check
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+  ship:
+    needs: ci-verify
+    runs-on: self-hosted
     steps:
       - name: Deploy RPG Bot
         run: |
@@ -27,7 +45,7 @@ jobs:
           echo ">>> Building Docker image"
           docker compose build
 
-          echo ">>> Starting bot"
+          echo ">>> Starting bot (entrypoint runs migrate → seed → deploy commands)"
           docker compose up -d
 
           echo ">>> Status"

@@ -26,7 +26,26 @@ beforeAll(async () => {
 afterAll(async () => { await pool.end(); });
 
 describe('ResetService', () => {
-	it('wipes player data but keeps seed catalogs and server config', async () => {
+	it('countAll() counts without touching data — preview is destructive-free', async () => {
+		const start = new StartService();
+		for (const id of ['reset-count-a', 'reset-count-b', 'reset-count-c']) {
+			const result = await start.start(id, id, 'Swordsman');
+			if (result.status !== 'ok') throw new Error(result.status);
+		}
+		const reset = new ResetService();
+		expect(await reset.countAll()).toBe(3);
+		// Counting must not have wiped anything.
+		expect(await db.select().from(s.users)).toHaveLength(3);
+
+		// Cancel path: player counts again after "cancelling" (no resetAll call).
+		expect(await reset.countAll()).toBe(3);
+
+		// Only the explicit reset call wipes.
+		expect(await reset.resetAll()).toEqual({ status: 'ok', deletedUsers: 3 });
+		expect(await db.select().from(s.users)).toHaveLength(0);
+	});
+
+	it('resetAll() deletes players but keeps seed catalogs and server config', async () => {
 		await db.insert(s.serverConfig).values({ guildId: 'g1', prefix: '!' });
 		const start = new StartService();
 		for (const id of ['reset-a', 'reset-b']) {

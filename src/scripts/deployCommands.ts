@@ -11,6 +11,10 @@ import { logger } from '../utils/logger.js';
  * - `pnpm deploy:commands -- --guild <guildId>` → chỉ trong 1 server thử
  *   nghiệm, đăng ký TOÀN BỘ lệnh kể cả /test để dev không phải chờ cache
  *   global (cập nhật tức thì, không ảnh hưởng người chơi thật).
+ *   Thiếu guildId → DỪNG với lỗi, tuyệt đối không rơi sang nhánh global
+ *   (global deploy là thao tác ảnh hưởng toàn bộ người chơi).
+ * - `DEPLOY_GUILD_ID=<guildId> pnpm deploy:commands` → guild deploy không
+ *   cần cờ (hữu ích trên VPS thử nghiệm).
  */
 const COMMAND_NAME_DEV_ONLY = 'test';
 
@@ -26,7 +30,16 @@ function guildIdFromArgv(): string | null {
 // Same single source of truth as the bot runtime — one list, two consumers.
 registerAllCommands();
 const registry = CommandRegistry.getInstance();
-const guildId = guildIdFromArgv();
+const flagGuildId = guildIdFromArgv();
+
+// Cờ `--guild` có mặt nhưng rỗng/giá trị rác → lỗi thay vì deploy global.
+if (flagGuildId !== null && !/^\d+$/.test(flagGuildId)) {
+	logger.error(
+		'--guild needs a numeric guild ID (e.g. pnpm deploy:commands -- --guild 1234567890) — aborting, not deploying globally.',
+	);
+	process.exit(1);
+}
+const guildId = flagGuildId ?? env.DEPLOY_GUILD_ID ?? null;
 
 try {
 	const body = registry

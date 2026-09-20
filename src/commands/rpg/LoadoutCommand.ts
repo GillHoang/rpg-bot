@@ -24,7 +24,7 @@ export class EquipCommand implements ICommand {
 				.setRequired(true)
 				.addChoices(...['weapon', 'armor', 'deity'].map((value) => ({ name: value, value }))),
 		)
-		.addStringOption((o) => o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true))
+		.addStringOption((o) => o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true).setAutocomplete(true))
 		.addIntegerOption((o) =>
 			o.setName('preset').setDescription(EQUIP_PRESET_OPTION_DESC).setMinValue(1).setMaxValue(2),
 		);
@@ -50,7 +50,11 @@ export class EquipCommand implements ICommand {
 			await interaction.respond(rows.map((d) => ({ name: DEITY_CHOICE_LABEL(d), value: String(d.id) })));
 			return;
 		}
-		const rows = await repo.searchGear(interaction.user.id, query);
+		// Lọc theo kind ngay trong query — vũ khí không lấn slot gợi ý của giáp.
+		const rows =
+			kind === 'armor'
+				? await repo.searchArmors(interaction.user.id, query)
+				: await repo.searchWeapons(interaction.user.id, query);
 		await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
 	}
 }

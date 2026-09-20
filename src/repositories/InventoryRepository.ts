@@ -1,5 +1,4 @@
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
-import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { db } from '../db/client.js';
 import {
 	userCharacter,
@@ -128,15 +127,15 @@ export class InventoryRepository {
 
 	// --- Autocomplete: tìm theo tên (hoặc ID) cho /equip, /enhance, /socket ---
 
-	async searchGear(id: string, query: string): Promise<GearSearchRow[]> {
+	/** Vũ khí khớp query — tách khỏi giáp để mỗi loại đủ 25 slot gợi ý. */
+	async searchWeapons(id: string, query: string): Promise<GearSearchRow[]> {
 		const [character] = await db
-			.select({ weapon: userCharacter.equippedWeaponId, armor: userCharacter.equippedArmorId })
+			.select({ weapon: userCharacter.equippedWeaponId })
 			.from(userCharacter)
 			.where(eq(userCharacter.discordId, id))
 			.limit(1);
 		const pattern = `%${query}%`;
-		const match = (name: AnyPgColumn, column: AnyPgColumn) => or(ilike(name, pattern), ilike(column, pattern));
-		const weapons = await db
+		const rows = await db
 			.select({
 				id: userWeapons.weaponId,
 				name: weaponRoster.name,
@@ -145,10 +144,21 @@ export class InventoryRepository {
 			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
-			.where(and(eq(userWeapons.discordId, id), match(weaponRoster.name, userWeapons.weaponId)))
+			.where(and(eq(userWeapons.discordId, id), or(ilike(weaponRoster.name, pattern), ilike(userWeapons.weaponId, pattern))))
 			.orderBy(userWeapons.weaponId)
 			.limit(25);
-		const armors = await db
+		return rows.map((w) => ({ ...w, plus: w.plus - 1, equipped: w.id === character?.weapon }));
+	}
+
+	/** Giáp khớp query — nhìn thấy ngay cả khi người chơi có rất nhiều vũ khí. */
+	async searchArmors(id: string, query: string): Promise<GearSearchRow[]> {
+		const [character] = await db
+			.select({ armor: userCharacter.equippedArmorId })
+			.from(userCharacter)
+			.where(eq(userCharacter.discordId, id))
+			.limit(1);
+		const pattern = `%${query}%`;
+		const rows = await db
 			.select({
 				id: userArmors.armorId,
 				name: armorRoster.name,
@@ -157,14 +167,10 @@ export class InventoryRepository {
 			})
 			.from(userArmors)
 			.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
-			.where(and(eq(userArmors.discordId, id), match(armorRoster.name, userArmors.armorId)))
+			.where(and(eq(userArmors.discordId, id), or(ilike(armorRoster.name, pattern), ilike(userArmors.armorId, pattern))))
 			.orderBy(userArmors.armorId)
 			.limit(25);
-		const rows: GearSearchRow[] = [
-			...weapons.map((w) => ({ ...w, plus: w.plus - 1, equipped: w.id === character?.weapon })),
-			...armors.map((a) => ({ ...a, plus: a.plus - 1, equipped: a.id === character?.armor })),
-		];
-		return rows.slice(0, 25);
+		return rows.map((a) => ({ ...a, plus: a.plus - 1, equipped: a.id === character?.armor }));
 	}
 
 	async searchDeities(id: string, query: string): Promise<DeitySearchRow[]> {

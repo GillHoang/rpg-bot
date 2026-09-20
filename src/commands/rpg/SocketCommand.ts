@@ -32,10 +32,10 @@ export class SocketCommand implements ICommand {
 				.setName('equip')
 				.setDescription(SOCKET_EQUIP_SUB_DESC)
 				.addStringOption((opt) =>
-					opt.setName('rune_uid').setDescription(SOCKET_RUNE_OPTION_DESC).setRequired(true),
+					opt.setName('rune_uid').setDescription(SOCKET_RUNE_OPTION_DESC).setRequired(true).setAutocomplete(true),
 				)
 				.addStringOption((opt) =>
-					opt.setName('gear_id').setDescription(SOCKET_GEAR_OPTION_DESC).setRequired(true),
+					opt.setName('gear_id').setDescription(SOCKET_GEAR_OPTION_DESC).setRequired(true).setAutocomplete(true),
 				)
 				.addIntegerOption((opt) =>
 					opt.setName('slot_num').setDescription(SOCKET_SLOT_OPTION_DESC).setMinValue(1).setRequired(true),
@@ -59,9 +59,9 @@ export class SocketCommand implements ICommand {
 			s
 				.setName('unlock')
 				.setDescription(SOCKET_UNLOCK_SUB_DESC)
-				.addStringOption((o) =>
-					o.setName('gear_id').setDescription(SOCKET_UNLOCK_GEAR_OPTION_DESC).setRequired(true),
-				),
+		.addStringOption((o) =>
+			o.setName('gear_id').setDescription(SOCKET_UNLOCK_GEAR_OPTION_DESC).setRequired(true).setAutocomplete(true),
+		),
 		);
 
 	constructor(private readonly socket = new SocketService()) {}
@@ -76,7 +76,16 @@ export class SocketCommand implements ICommand {
 			return;
 		}
 		if (focused === 'gear_id') {
-			const rows = await repo.searchGear(interaction.user.id, query);
+			const [weapons, armors] = await Promise.all([
+				repo.searchWeapons(interaction.user.id, query),
+				repo.searchArmors(interaction.user.id, query),
+			]);
+			// Xen kẽ vũ khí/giáp trong 25 slot — cả hai loại luôn xuất hiện.
+			const rows: typeof weapons = [];
+			for (let i = 0; rows.length < 25 && (i < weapons.length || i < armors.length); i++) {
+				if (i < weapons.length) rows.push(weapons[i]!);
+				if (i < armors.length && rows.length < 25) rows.push(armors[i]!);
+			}
 			await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
 		}
 	}

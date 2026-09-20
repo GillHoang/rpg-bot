@@ -44,15 +44,21 @@ const LOG_TABLES = [
  * lỗi, nhưng đây chính là thao tác "xoá sạch có chủ đích".
  */
 export class ResetService {
-	async resetAll(): Promise<ResetResult> {
+	/** Đếm người chơi sẽ bị xoá — CHỈ đếm, không đụng tới TRUNCATE. */
+	async countAll(): Promise<number> {
 		const [{ count }] = await db
 			.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM users`)
 			.then((r) => r.rows as { count: number }[]);
-		if (count === 0) return { status: 'nothing-to-reset' };
+		return count ?? 0;
+	}
 
+	async resetAll(): Promise<ResetResult> {
+		// Đếm trước khi xoá (TRUNCATE xoá luôn bằng chứng), sau đó xoá.
+		const deletedUsers = await this.countAll();
+		if (deletedUsers === 0) return { status: 'nothing-to-reset' };
 		await db.execute(sql.raw(`TRUNCATE TABLE users, ${LOG_TABLES.join(', ')} RESTART IDENTITY CASCADE;`));
-		logger.warn({ deletedUsers: count }, 'full-reset');
-		return { status: 'ok', deletedUsers: count };
+		logger.warn({ deletedUsers }, 'full-reset');
+		return { status: 'ok', deletedUsers };
 	}
 
 	/** Ghi dấu vết reset vào dev_logs (bảng này được chủ đích giữ lại). */

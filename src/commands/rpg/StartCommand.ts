@@ -6,12 +6,14 @@ import {
 	SlashCommandBuilder,
 	type ButtonInteraction,
 	type ChatInputCommandInteraction,
+	type InteractionCollector,
 	type InteractionUpdateOptions,
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { StartService } from '../../services/StartService.js';
 import { CLASSES, CLASS_NAMES, computeClassStats } from '../../config/classes.js';
 import { GRANT_BELIEF_SHARDS, GRANT_SILVER_CHESTS } from '../../config/starter.js';
+import { logger } from '../../utils/logger.js';
 import type { CombatClass } from '../../domain/entities/PlayerAccount.js';
 import {
 	START_AGREE_LABEL,
@@ -21,9 +23,11 @@ import {
 	START_CONFIRM_HEADER,
 	START_CONFIRM_LABEL,
 	START_CONFIRM_NOTE,
+	START_CREATE_FAILED,
 	START_DECLINE_LABEL,
 	START_DECLINED,
 	START_DESCRIPTION,
+	START_SEED_MISSING,
 	START_SUCCESS,
 	START_WELCOME,
 } from '../../text/start.js';
@@ -103,13 +107,15 @@ function confirmView(combatClass: CombatClass): InteractionUpdateOptions {
 export class StartCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('start').setDescription(START_DESCRIPTION);
 
+	/** Class người chơi vừa bấm chọn — sống theo flow, reset khi vào lại màn class. */
+	private pickedClass: CombatClass | null = null;
+
 	constructor(private readonly startService = new StartService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.reply({ content: START_WELCOME, components: welcomeView().components, ephemeral: true });
 		const message = await interaction.fetchReply();
 
-		let pickedClass: CombatClass | null = null;
 		const collector = message.createMessageComponentCollector({
 			componentType: ComponentType.Button,
 			filter: (button: ButtonInteraction) => button.user.id === interaction.user.id,
@@ -117,52 +123,11 @@ export class StartCommand implements ICommand {
 		});
 
 		collector.on('collect', async (button) => {
-			if (button.customId === startCustomId.agree) {
-				pickedClass = null;
-				await button.update(classesView());
-				return;
-			}
-			if (button.customId === startCustomId.decline) {
-				collector.stop('declined');
-				await button.update({ content: START_DECLINED, components: [] });
-				return;
-			}
-			const chosenFromButton = parseClassCustomId(button.customId);
-			if (chosenFromButton) {
-				pickedClass = chosenFromButton;
-				await button.update(confirmView(chosenFromButton));
-				return;
-			}
-			if (button.customId === startCustomId.back) {
-				pickedClass = null;
-				await button.update(classesView());
-				return;
-			}
-			if (button.customId === startCustomId.confirm && pickedClass) {
-				const chosen = pickedClass;
-				collector.stop('started');
-				const result = await this.startService.start(interaction.user.id, interaction.user.username, chosen);
-				if (result.status === 'already-has-character') {
-					await button.update({ content: START_ALREADY_DONE, components: [] });
-					return;
-				}
-				if (result.status === 'starter-gear-missing') {
-					await button.update({ content: START_DECLINED, components: [] });
-					return;
-				}
-				const cls = CLASSES[chosen];
-				await button.update({
-					content: START_SUCCESS(
-						cls.emoji,
-						chosen,
-						cls.passiveName,
-						GRANT_BELIEF_SHARDS.toLocaleString(),
-						GRANT_SILVER_CHESTS,
-						result.weaponId,
-						result.armorId,
-					),
-					components: [],
-				});
+			try {
+				await this.handleButton(button, collector);
+			} catch (error) {
+				// Lỗi ngoài luồng confirm (welcome/class/back) — không để unhandled rejection.
+				logger.error({ err: error, discordId: button.user.id }, 'start-button-failed');
 			}
 		});
 
@@ -172,4 +137,77 @@ export class StartCommand implements ICommand {
 			await interaction.editReply({ components: [] }).catch(() => undefined);
 		});
 	}
+
+	/** Định tuyến một cú bấm nút. Luồng confirm tự bắt lỗi; phần còn lại ném lên trên. */
+	private async handleButton(
+		button: ButtonInteraction,
+		collector: InteractionCollector<ButtonInteraction>,
+	): Promise<void> {
+		if (button.customId === startCustomId.agree) {
+			this.pickedClass = null;
+			await button.update(classesView());
+			return;
+		}
+		if (button.customId === startCustomId.decline) {
+			collector.stop('declined');
+			await button.update({ content: START_DECLINED, components: [] });
+			return;
+		}
+		const chosenFromButton = parseClassCustomId(button.customId);
+		if (chosenFromButton) {
+			this.pickedClass = chosenFromButton;
+			await button.update(confirmView(chosenFromButton));
+			return;
+		}
+		if (button.customId === startCustomId.back) {
+			this.pickedClass = null;
+			await button.update(classesView());
+			return;
+		}
+	if (button.customId !== startCustomId.confirm) return;
+	const chosen = this.pickedClass;
+	if (!chosen) return;
+		// Ack ngay để nút không kẹt "thinking" — kết quả update qua editReply sau.
+		await button.deferUpdate().catch(() => undefined);
+		try {
+			const result = await this.startService.start(button.user.id, button.user.username, chosen);
+			if (result.status === 'already-has-character') {
+				collector.stop('started');
+				await interactionSafeEdit(button, START_ALREADY_DONE);
+				return;
+			}
+			if (result.status === 'starter-gear-missing') {
+				// Không stop collector — giữ nút Xác nhận để thử lại sau khi seed xong.
+				await interactionSafeEdit(button, START_SEED_MISSING, confirmView(chosen).components);
+				return;
+			}
+			collector.stop('started');
+			const cls = CLASSES[chosen];
+			await interactionSafeEdit(
+				button,
+				START_SUCCESS(
+					cls.emoji,
+					chosen,
+					cls.passiveName,
+					GRANT_BELIEF_SHARDS.toLocaleString(),
+					GRANT_SILVER_CHESTS,
+					result.weaponId,
+					result.armorId,
+				),
+			);
+		} catch (error) {
+			// DB lỗi tạm thời — giữ nút Xác nhận, người chơi bấm lại là thử lại.
+			logger.error({ err: error, discordId: button.user.id }, 'start-confirm-failed');
+			await interactionSafeEdit(button, START_CREATE_FAILED, confirmView(chosen).components);
+		}
+	}
+}
+
+/** Update message gốc của flow /start qua reply của nút (đã deferUpdate). */
+async function interactionSafeEdit(
+	button: ButtonInteraction,
+	content: string,
+	components?: InteractionUpdateOptions['components'],
+): Promise<void> {
+	await button.editReply({ content, components }).catch(() => undefined);
 }
