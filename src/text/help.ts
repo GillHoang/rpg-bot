@@ -16,8 +16,7 @@ export const HELP_FOOTER =
 	'BETA — mọi con số, tỷ lệ và phần thưởng đều có thể thay đổi bất cứ lúc nào. Gõ /help để mở lại bảng này.';
 
 /** Cảnh báo beta ghim đầu mỗi trang. */
-export const HELP_BETA_NOTICE =
-	`${ICONS.help.beta} **Bot đang ở giai đoạn BETA** — toàn bộ cơ chế, con số và tỷ lệ bên dưới hoàn toàn **có thể thay đổi** mà không cần báo trước.`;
+export const HELP_BETA_NOTICE = `${ICONS.help.beta} **Bot đang ở giai đoạn BETA** — toàn bộ cơ chế, con số và tỷ lệ bên dưới hoàn toàn **có thể thay đổi** mà không cần báo trước.`;
 
 export interface HelpPage {
 	title: string;

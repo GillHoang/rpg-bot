@@ -32,10 +32,18 @@ export class SocketCommand implements ICommand {
 				.setName('equip')
 				.setDescription(SOCKET_EQUIP_SUB_DESC)
 				.addStringOption((opt) =>
-					opt.setName('rune_uid').setDescription(SOCKET_RUNE_OPTION_DESC).setRequired(true).setAutocomplete(true),
+					opt
+						.setName('rune_uid')
+						.setDescription(SOCKET_RUNE_OPTION_DESC)
+						.setRequired(true)
+						.setAutocomplete(true),
 				)
 				.addStringOption((opt) =>
-					opt.setName('gear_id').setDescription(SOCKET_GEAR_OPTION_DESC).setRequired(true).setAutocomplete(true),
+					opt
+						.setName('gear_id')
+						.setDescription(SOCKET_GEAR_OPTION_DESC)
+						.setRequired(true)
+						.setAutocomplete(true),
 				)
 				.addIntegerOption((opt) =>
 					opt.setName('slot_num').setDescription(SOCKET_SLOT_OPTION_DESC).setMinValue(1).setRequired(true),
@@ -59,9 +67,13 @@ export class SocketCommand implements ICommand {
 			s
 				.setName('unlock')
 				.setDescription(SOCKET_UNLOCK_SUB_DESC)
-		.addStringOption((o) =>
-			o.setName('gear_id').setDescription(SOCKET_UNLOCK_GEAR_OPTION_DESC).setRequired(true).setAutocomplete(true),
-		),
+				.addStringOption((o) =>
+					o
+						.setName('gear_id')
+						.setDescription(SOCKET_UNLOCK_GEAR_OPTION_DESC)
+						.setRequired(true)
+						.setAutocomplete(true),
+				),
 		);
 
 	constructor(private readonly socket = new SocketService()) {}

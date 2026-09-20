@@ -144,7 +144,12 @@ export class InventoryRepository {
 			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
-			.where(and(eq(userWeapons.discordId, id), or(ilike(weaponRoster.name, pattern), ilike(userWeapons.weaponId, pattern))))
+			.where(
+				and(
+					eq(userWeapons.discordId, id),
+					or(ilike(weaponRoster.name, pattern), ilike(userWeapons.weaponId, pattern)),
+				),
+			)
 			.orderBy(userWeapons.weaponId)
 			.limit(25);
 		return rows.map((w) => ({ ...w, plus: w.plus - 1, equipped: w.id === character?.weapon }));
@@ -167,7 +172,12 @@ export class InventoryRepository {
 			})
 			.from(userArmors)
 			.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
-			.where(and(eq(userArmors.discordId, id), or(ilike(armorRoster.name, pattern), ilike(userArmors.armorId, pattern))))
+			.where(
+				and(
+					eq(userArmors.discordId, id),
+					or(ilike(armorRoster.name, pattern), ilike(userArmors.armorId, pattern)),
+				),
+			)
 			.orderBy(userArmors.armorId)
 			.limit(25);
 		return rows.map((a) => ({ ...a, plus: a.plus - 1, equipped: a.id === character?.armor }));

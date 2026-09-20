@@ -164,9 +164,9 @@ export class StartCommand implements ICommand {
 			await button.update(classesView());
 			return;
 		}
-	if (button.customId !== startCustomId.confirm) return;
-	const chosen = this.pickedClass;
-	if (!chosen) return;
+		if (button.customId !== startCustomId.confirm) return;
+		const chosen = this.pickedClass;
+		if (!chosen) return;
 		// Ack ngay để nút không kẹt "thinking" — kết quả update qua editReply sau.
 		await button.deferUpdate().catch(() => undefined);
 		try {

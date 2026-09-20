@@ -30,12 +30,22 @@ import {
 	INVENTORY_PREV_LABEL,
 	INVENTORY_TITLE,
 } from '../../text/inventory.js';
-import { NOT_REGISTERED } from '../../text/common.js';
+import { GENERIC_ERROR, NOT_REGISTERED } from '../../text/common.js';
+import { logger } from '../../utils/logger.js';
 
 const PAGE_SIZE = 8; // khớp limit/offset trong InventoryRepository.list
 const CATEGORIES = ['bag', 'weapons', 'armors', 'runes'] as const;
 
-const pageCustomId = (category: string, page: number): string => `inventory:${category}:${page}`;
+/**
+ * Hai prefix RỜI nhau cho nút loại và nút trang. Dùng chung một scheme
+ * `inventory:<category>:<page>` thì nút "Rune" (inventory:runes:1) trùng
+ * custom_id với nút "Trước" khi đang ở trang 2 (inventory:runes:2-1) —
+ * Discord từ chối cả message (COMPONENT_CUSTOM_ID_DUPLICATED).
+ */
+const CATEGORY_PREFIX = 'inventory:cat:';
+const PAGE_PREFIX = 'inventory:page:';
+const categoryCustomId = (category: string): string => `${CATEGORY_PREFIX}${category}`;
+const pageCustomId = (category: string, page: number): string => `${PAGE_PREFIX}${category}:${page}`;
 
 interface InventoryView {
 	embed: EmbedBuilder;
@@ -65,7 +75,7 @@ async function buildView(
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
 			CATEGORIES.map((c) =>
 				new ButtonBuilder()
-					.setCustomId(pageCustomId(c, 1))
+					.setCustomId(categoryCustomId(c))
 					.setLabel(INVENTORY_CATEGORY_LABELS[c] ?? c)
 					.setStyle(c === category ? ButtonStyle.Primary : ButtonStyle.Secondary),
 			),
@@ -130,10 +140,30 @@ export class InventoryCommand implements ICommand {
 			time: INVENTORY_PAGER_TTL_MS,
 		});
 		collector.on('collect', async (button: ButtonInteraction) => {
-			const [, category, pageRaw] = button.customId.split(':');
-			if (category === 'indicator' || pageRaw === undefined) return;
-			const next = await buildView(repo, i.user.id, category, Number(pageRaw));
-			await button.update({ embeds: [next.embed], components: next.rows });
+			try {
+				if (button.customId.startsWith(CATEGORY_PREFIX)) {
+					const category = button.customId.slice(CATEGORY_PREFIX.length);
+					if (!CATEGORIES.includes(category as (typeof CATEGORIES)[number])) return;
+					const next = await buildView(repo, i.user.id, category, 1);
+					await button.update({ embeds: [next.embed], components: next.rows });
+					return;
+				}
+				if (button.customId.startsWith(PAGE_PREFIX)) {
+					const [, category, pageRaw] = button.customId.split(':');
+					if (!category || pageRaw === undefined || Number.isNaN(Number(pageRaw))) return;
+					const next = await buildView(repo, i.user.id, category, Number(pageRaw));
+					await button.update({ embeds: [next.embed], components: next.rows });
+					return;
+				}
+				// indicator (disabled) hoặc custom_id lạ — bỏ qua.
+			} catch (error) {
+				// Không để lỗi render/update thành unhandled rejection chết process.
+				logger.error(
+					{ err: error, discordId: button.user.id, customId: button.customId },
+					'inventory-page-failed',
+				);
+				await button.reply({ content: GENERIC_ERROR, ephemeral: true }).catch(() => undefined);
+			}
 		});
 		collector.on('end', async () => {
 			// Hết giờ — gỡ nút, giữ nguyên embed đang hiển thị.

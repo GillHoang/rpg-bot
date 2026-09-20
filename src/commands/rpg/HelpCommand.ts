@@ -10,6 +10,7 @@ import {
 	type Message,
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
+import { logger } from '../../utils/logger.js';
 import {
 	HELP_BETA_NOTICE,
 	HELP_DESCRIPTION,
@@ -78,10 +79,17 @@ export class HelpCommand implements ICommand {
 			time: HELP_PAGER_TTL_MS,
 		});
 		collector.on('collect', async (button: ButtonInteraction) => {
-			const [, action, pageRaw] = button.customId.split(':');
-			if (action === 'indicator' || pageRaw === undefined) return;
-			const page = Math.min(Math.max(Number(pageRaw) + (action === 'next' ? 1 : -1), 1), total);
-			await button.update({ embeds: [helpEmbed(page)], components: [pagerRow(page, total)] });
+			try {
+				const [, action, pageRaw] = button.customId.split(':');
+				if (action === 'indicator' || pageRaw === undefined || Number.isNaN(Number(pageRaw))) return;
+				const page = Math.min(Math.max(Number(pageRaw) + (action === 'next' ? 1 : -1), 1), total);
+				await button.update({ embeds: [helpEmbed(page)], components: [pagerRow(page, total)] });
+			} catch (error) {
+				logger.error({ err: error, discordId: button.user.id }, 'help-page-failed');
+				await button
+					.reply({ content: 'Đã có lỗi xảy ra khi thực thi lệnh này.', ephemeral: true })
+					.catch(() => undefined);
+			}
 		});
 		collector.on('end', async () => {
 			// Hết giờ — gỡ nút, giữ nguyên embed đang hiển thị.

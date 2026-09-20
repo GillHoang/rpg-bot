@@ -24,7 +24,9 @@ export class EquipCommand implements ICommand {
 				.setRequired(true)
 				.addChoices(...['weapon', 'armor', 'deity'].map((value) => ({ name: value, value }))),
 		)
-		.addStringOption((o) => o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true).setAutocomplete(true))
+		.addStringOption((o) =>
+			o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true).setAutocomplete(true),
+		)
 		.addIntegerOption((o) =>
 			o.setName('preset').setDescription(EQUIP_PRESET_OPTION_DESC).setMinValue(1).setMaxValue(2),
 		);
