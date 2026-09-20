@@ -1,7 +1,6 @@
 import { NullClassStrategy } from './NullClassStrategy.js';
-import { combatDisplayName } from '../CombatantState.js';
+import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit } from '../IClassStrategy.js';
-import { findDebuff } from '../CombatantState.js';
 import { COMBAT_KNIGHT_REGEN } from '../../../text/combat.js';
 
 const DAMAGE_REDUCTION = 0.25;

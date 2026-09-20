@@ -1,6 +1,6 @@
 import { rollChance } from '../../utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
-import { findDebuff } from './CombatantState.js';
+import { combatDisplayName, findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
 import { mitigate, rollVariance, rollCrit, hitMultiplier } from './DamageCalculator.js';
@@ -17,7 +17,6 @@ import {
 	COMBAT_TAGS,
 	COMBAT_UNABLE_TO_ACT,
 } from '../../text/combat.js';
-import { combatDisplayName } from './CombatantState.js';
 
 export type BattleOutcome = 'player_win' | 'enemy_win' | 'draw';
 
@@ -130,8 +129,21 @@ export class BattleEngine {
 			this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, rng, log);
 		}
 
-		if (player.hp <= 0 || enemy.hp <= 0) return;
+		this.closeRound(player, enemy, playerStrategy, enemyStrategy, round, rng, log, freshDebuffs);
+	}
 
+	/** End-of-round bookkeeping, skipped entirely once either side has fallen. */
+	private closeRound(
+		player: CombatantState,
+		enemy: CombatantState,
+		playerStrategy: IClassStrategy,
+		enemyStrategy: IClassStrategy,
+		round: number,
+		rng: () => number,
+		log: string[],
+		freshDebuffs: Set<Debuff>,
+	): void {
+		if (player.hp <= 0 || enemy.hp <= 0) return;
 		this.endOfRound(player, playerStrategy, round, rng, log, freshDebuffs);
 		if (player.hp <= 0) return;
 		this.endOfRound(enemy, enemyStrategy, round, rng, log, freshDebuffs);
@@ -181,30 +193,47 @@ export class BattleEngine {
 		log: string[],
 	): void {
 		const ctx: StrategyContext = { self: attacker, enemy: defender, round, rng, log: (m) => log.push(m) };
-		const immunities = attacker.immunityTags;
-		if (immunities)
-			attacker.debuffs = attacker.debuffs.filter(
-				(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
-			);
+		this.shakeOffExpiredDebuffs(attacker);
+		if (this.isDisabled(attacker, rng, log)) return;
+		this.strike(attacker, defender, atkStrategy, defStrategy, ctx);
+	}
 
+	/** Drop debuffs the attacker is immune to (venom immunity also covers burn-style poison). */
+	private shakeOffExpiredDebuffs(attacker: CombatantState): void {
+		const immunities = attacker.immunityTags;
+		if (!immunities) return;
+		attacker.debuffs = attacker.debuffs.filter(
+			(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
+		);
+	}
+
+	/** Hard CC (stun/paralyze) skips the turn; Dizzy consumes itself on a miss roll. */
+	private isDisabled(attacker: CombatantState, rng: () => number, log: string[]): boolean {
 		// Hard crowd-control: skip the action entirely.
 		if (findDebuff(attacker, 'stun') || findDebuff(attacker, 'paralyze')) {
 			log.push(COMBAT_UNABLE_TO_ACT(combatDisplayName(attacker)));
-			return;
+			return true;
 		}
-
 		// Dizzy: single-use miss chance on the next attack, consumed either way.
 		const dizzy = findDebuff(attacker, 'dizzy');
-		if (dizzy) {
-			attacker.debuffs = attacker.debuffs.filter((d) => d !== dizzy);
-			if (rollChance(dizzy.value, rng)) {
-				log.push(COMBAT_ATTACK_MISSES_DIZZY(combatDisplayName(attacker)));
-				return;
-			}
+		if (!dizzy) return false;
+		attacker.debuffs = attacker.debuffs.filter((d) => d !== dizzy);
+		if (rollChance(dizzy.value, rng)) {
+			log.push(COMBAT_ATTACK_MISSES_DIZZY(combatDisplayName(attacker)));
+			return true;
 		}
+		return false;
+	}
 
+	/** One attack plus the Archer-style immediate extra attack if the strategy triggered one. */
+	private strike(
+		attacker: CombatantState,
+		defender: CombatantState,
+		atkStrategy: IClassStrategy,
+		defStrategy: IClassStrategy,
+		ctx: StrategyContext,
+	): void {
 		const resolved = this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
-
 		if (resolved.triggerExtraAttack && defender.hp > 0) {
 			this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
 		}
@@ -299,34 +328,62 @@ export class BattleEngine {
 	): void {
 		if (side.hp <= 0) return;
 		const ctx: StrategyContext = { self: side, enemy: side, round, rng, log: (m) => log.push(m) };
-		const immunities = side.immunityTags;
-		if (immunities)
-			side.debuffs = side.debuffs.filter(
-				(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
-			);
-
-		// DOT ticks (bleed, burn, venom), reduced by the target's Warding rune (if any).
-		const wardingPct = (side.flags.warding_pct as number) ?? 0;
-		for (const debuff of side.debuffs) {
-			if (debuff.tag !== 'bleed' && debuff.tag !== 'burn' && debuff.tag !== 'venom') continue;
-			const tick = Math.floor(debuff.value * (1 - wardingPct));
-			if (tick > 0) {
-				side.hp = Math.max(0, side.hp - tick);
-				const dotTag = debuff.tag === 'bleed' ? COMBAT_TAGS.BLEED : debuff.tag === 'burn' ? COMBAT_TAGS.BURN : COMBAT_TAGS.VENM;
-				const label = debuff.tag === 'bleed' ? 'Chảy máu' : debuff.tag === 'burn' ? 'Bỏng' : 'Nhiễm độc';
-				log.push(COMBAT_DOT_TICK(dotTag, combatDisplayName(side), tick.toLocaleString(), label));
-			}
-			debuff.turnsLeft -= 1;
-		}
-		// Non-DOT status durations tick down too (stun/paralyze/atk_down/def_down/blight),
-		// except ones applied this same round — those start counting next round.
-		for (const debuff of side.debuffs) {
-			if (debuff.tag === 'bleed' || debuff.tag === 'burn' || debuff.tag === 'venom') continue;
-			if (!freshDebuffs.has(debuff)) continue;
-			debuff.turnsLeft -= 1;
-		}
+		this.shakeOffExpiredDebuffs(side);
+		this.tickDamageOverTime(side, log);
+		this.tickStatusDurations(side, freshDebuffs);
 		side.debuffs = side.debuffs.filter((d) => d.turnsLeft > 0);
 
 		if (side.hp > 0) strategy.onRoundEnd(ctx);
+	}
+
+	/** DOT ticks (bleed, burn, venom), reduced by the target's Warding rune (if any). */
+	private tickDamageOverTime(side: CombatantState, log: string[]): void {
+		const wardingPct = (side.flags.warding_pct as number) ?? 0;
+		for (const debuff of side.debuffs) {
+			if (!isDotTag(debuff.tag)) continue;
+			const tick = Math.floor(debuff.value * (1 - wardingPct));
+			if (tick <= 0) continue;
+			side.hp = Math.max(0, side.hp - tick);
+			log.push(COMBAT_DOT_TICK(dotTagOf(debuff.tag), combatDisplayName(side), tick.toLocaleString(), dotLabelOf(debuff.tag)));
+			debuff.turnsLeft -= 1;
+		}
+	}
+
+	/**
+	 * Non-DOT status durations tick down too (stun/paralyze/atk_down/def_down/blight),
+	 * except ones applied this same round — those start counting next round.
+	 */
+	private tickStatusDurations(side: CombatantState, freshDebuffs: Set<Debuff>): void {
+		for (const debuff of side.debuffs) {
+			if (isDotTag(debuff.tag) || !freshDebuffs.has(debuff)) continue;
+			debuff.turnsLeft -= 1;
+		}
+	}
+}
+
+const DOT_TAGS = ['bleed', 'burn', 'venom'] as const;
+type DotTag = (typeof DOT_TAGS)[number];
+
+const isDotTag = (tag: string): tag is DotTag => DOT_TAGS.includes(tag as DotTag);
+
+function dotTagOf(tag: DotTag): string {
+	switch (tag) {
+		case 'bleed':
+			return COMBAT_TAGS.BLEED;
+		case 'burn':
+			return COMBAT_TAGS.BURN;
+		default:
+			return COMBAT_TAGS.VENM;
+	}
+}
+
+function dotLabelOf(tag: DotTag): string {
+	switch (tag) {
+		case 'bleed':
+			return 'Chảy máu';
+		case 'burn':
+			return 'Bỏng';
+		default:
+			return 'Nhiễm độc';
 	}
 }

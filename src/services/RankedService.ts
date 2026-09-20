@@ -387,14 +387,14 @@ export class RankedService {
 		await tx.insert(rankedLogs).values({
 			playerId: discordId,
 			opponentId: opponentRow.discordId,
-			result: draw ? 'draw' : won ? 'win' : 'loss',
+			result: rankedLogResultOf(draw, won),
 			ratingBefore,
 			ratingAfter,
 		});
 		await tx.insert(rankedLogs).values({
 			playerId: opponentRow.discordId,
 			opponentId: discordId,
-			result: draw ? 'draw' : won ? 'loss' : 'win',
+			result: rankedLogResultOf(draw, !won),
 			ratingBefore: opponentRow.pvpRating,
 			ratingAfter: opponentRatingAfter,
 		});
@@ -468,4 +468,10 @@ export class RankedService {
 			assembled.blessings,
 		);
 	}
+}
+
+/** Giá trị cột result cho ranked_logs: hòa thắng/thua cho `won` của người chiến. */
+function rankedLogResultOf(draw: boolean, won: boolean): 'win' | 'loss' | 'draw' {
+	if (draw) return 'draw';
+	return won ? 'win' : 'loss';
 }

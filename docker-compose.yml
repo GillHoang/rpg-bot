@@ -1,0 +1,19 @@
+# Compose cho server đã có PostgreSQL Docker riêng.
+# Bot join network ngoài (external) của Postgres và kết nối bằng tên service đó.
+#
+# 1) Xem network của Postgres đang chạy:   docker inspect <postgres-container> --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+# 2) Điền tên network vào dưới + DATABASE_URL trong .env (host = tên container/service Postgres)
+# 3) docker compose up -d --build
+services:
+  bot:
+    build: .
+    image: credd-bot
+    container_name: credd-bot
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - credd-net   # ← đổi thành network nơi Postgres đang chạy
+
+networks:
+  credd-net:
+    external: true # đã tồn tại trên server (network của Postgres)

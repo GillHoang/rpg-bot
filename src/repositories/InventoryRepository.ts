@@ -29,14 +29,7 @@ export class InventoryRepository {
 
 	/** Số dòng của một category — dùng cho tổng trang khi phân trang. */
 	async count(id: string, category: string): Promise<number> {
-		const table =
-			category === 'weapons'
-				? userWeapons
-				: category === 'armors'
-					? userArmors
-					: category === 'runes'
-						? userRunes
-						: userDeities;
+		const table = categoryTable(category);
 		const [row] = await db
 			.select({ count: sql<number>`count(*)::int` })
 			.from(table)
@@ -222,4 +215,18 @@ export interface RuneSearchRow {
 	name: string;
 	tier: string;
 	socketedInto: string | null;
+}
+
+/** Bảng người chơi ứng với từng category kho (mặc định: deity). */
+function categoryTable(category: string) {
+	switch (category) {
+		case 'weapons':
+			return userWeapons;
+		case 'armors':
+			return userArmors;
+		case 'runes':
+			return userRunes;
+		default:
+			return userDeities;
+	}
 }

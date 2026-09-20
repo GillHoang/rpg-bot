@@ -72,12 +72,7 @@ const MAX_CELLS = 20;
 
 export function renderProgressBar(options: ProgressBarOptions): string {
 	const { current, max, cells = 10, color = 'blue', trimEmpty = false } = options;
-	if (!Number.isFinite(current) || !Number.isFinite(max)) {
-		throw new RangeError('current and max must be finite numbers');
-	}
-	if (!Number.isInteger(cells) || cells < MIN_CELLS || cells > MAX_CELLS) {
-		throw new RangeError(`cells must be an integer in [${MIN_CELLS}, ${MAX_CELLS}]`);
-	}
+	validate(current, max, cells);
 
 	const clamped = Math.max(0, Math.min(max, current));
 	const fraction = max > 0 ? clamped / max : 0;
@@ -88,13 +83,32 @@ export function renderProgressBar(options: ProgressBarOptions): string {
 	if (clamped < max && filled === cells) filled = cells - 1;
 
 	// The accent color marks a genuinely full bar; in-progress fills are yellow.
-	const filledSet =
-		filled === cells ? PROGRESS_BAR_EMOJIS.full[color] : PROGRESS_BAR_EMOJIS.partial.yellow;
+	const filledSet = filled === cells ? PROGRESS_BAR_EMOJIS.full[color] : PROGRESS_BAR_EMOJIS.partial.yellow;
 	const shown = trimEmpty ? Math.max(filled, 1) : cells;
+	return renderCells(filledSet, filled, shown);
+}
+
+function validate(current: number, max: number, cells: number): void {
+	if (!Number.isFinite(current) || !Number.isFinite(max)) {
+		throw new RangeError('current and max must be finite numbers');
+	}
+	if (!Number.isInteger(cells) || cells < MIN_CELLS || cells > MAX_CELLS) {
+		throw new RangeError(`cells must be an integer in [${MIN_CELLS}, ${MAX_CELLS}]`);
+	}
+}
+
+/** Cap + middle cells + cap: heads at cell 0, tails at the last shown cell. */
+function renderCells(filledSet: BarPieces, filled: number, shown: number): string {
 	const pieces: string[] = [];
 	for (let i = 0; i < shown; i++) {
-		const set = i < filled ? filledSet : PROGRESS_BAR_EMOJIS.empty;
-		pieces.push(i === 0 ? set.left : i === shown - 1 ? set.right : set.mid);
+		pieces.push(cellPiece(i, filled, shown, filledSet));
 	}
 	return pieces.join('');
+}
+
+function cellPiece(index: number, filled: number, shown: number, filledSet: BarPieces): string {
+	const set = index < filled ? filledSet : PROGRESS_BAR_EMOJIS.empty;
+	if (index === 0) return set.left;
+	if (index === shown - 1) return set.right;
+	return set.mid;
 }

@@ -61,9 +61,10 @@ export class ResetService {
 
 	/** Ghi dấu vết reset vào dev_logs (bảng này được chủ đích giữ lại). */
 	async audit(devId: string, deletedUsers: number): Promise<void> {
+		const detail = `reset ${deletedUsers} users`;
 		await db.execute(
 			sql`INSERT INTO dev_logs (dev_id, action_type, target_discord_id, amount_or_detail)
-				VALUES (${devId}, 'reset_full', ${devId}, ${`reset ${deletedUsers} users`})`,
+				VALUES (${devId}, 'reset_full', ${devId}, ${detail})`,
 		);
 	}
 }
