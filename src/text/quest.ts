@@ -1,5 +1,6 @@
 /** Text hệ quest (service + lệnh /quest) — sửa wording ngay tại đây. */
 import type { QuestType } from '../config/quests.js';
+import { ICONS } from './icons.js';
 
 // --- Lệnh ---
 export const QUEST_DESCRIPTION = 'Quest hằng ngày và hằng tuần';
@@ -30,12 +31,12 @@ export const WEEKLY_QUEST_LABELS: Record<QuestType, string> = {
 };
 
 // --- view ---
-export const QUEST_REGISTER_FIRST = 'Dùng /register trước.';
-export const QUEST_DAILY_HEADER = (day: string): string => `📜 **Daily quests (${day})**`;
-export const QUEST_DAILY_ALL_DONE = (relics: number): string => `\n✅ Đủ 3 daily — đã nhận +${relics} Sacred Relic.`;
-export const QUEST_WEEKLY_HEADER = (week: number): string => `\n\n🗓️ **Weekly quests (tuần ${week})**`;
-export const QUEST_GRAND_READY = '\n🎁 Đủ 3 weekly — dùng `/quest claim` nhận Weekly Grand!';
-export const QUEST_GRAND_CLAIMED = '\n✅ Weekly grand đã claim tuần này.';
+export const QUEST_REGISTER_FIRST = 'Gõ /start để đăng ký trước.';
+export const QUEST_DAILY_HEADER = (day: string): string => `${ICONS.quest.dailyHeader} **Daily quests (${day})**`;
+export const QUEST_DAILY_ALL_DONE = (relics: number): string => `\n${ICONS.status.completed} Đủ 3 daily — đã nhận +${relics} Sacred Relic.`;
+export const QUEST_WEEKLY_HEADER = (week: number): string => `\n\n${ICONS.quest.weeklyHeader} **Weekly quests (tuần ${week})**`;
+export const QUEST_GRAND_READY = '\n' + ICONS.quest.grand + ' Đủ 3 weekly — dùng `/quest claim` nhận Weekly Grand!';
+export const QUEST_GRAND_CLAIMED = '\n' + ICONS.status.completed + ' Weekly grand đã claim tuần này.';
 
 // --- format một dòng quest ---
 export const QUEST_BONUS_SHARDS = (bonus: number): string => `${bonus} shards`;
@@ -50,4 +51,4 @@ export const QUEST_REFRESH_DONE = 'Đã reroll daily quests — /quest để xem
 export const QUEST_CLAIM_NOT_READY = 'Chưa đủ 3 weekly quest.';
 export const QUEST_CLAIM_ALREADY = 'Weekly grand tuần này đã nhận rồi.';
 export const QUEST_CLAIM_OK = (creux: string, diamonds: number): string =>
-	`🎁 Weekly Grand! +${creux} Credux · +${diamonds} Diamond Chest.`;
+	`${ICONS.quest.grand} Weekly Grand! +${creux} Credux · +${diamonds} Diamond Chest.`;

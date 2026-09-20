@@ -12,6 +12,7 @@ import {
 	COMBAT_GUARD,
 	COMBAT_HIT,
 	COMBAT_ROUND_HEADER,
+	COMBAT_STRIKE_EMOJIS,
 	COMBAT_SUDDEN_DEATH_HEADER,
 	COMBAT_TAGS,
 	COMBAT_UNABLE_TO_ACT,
@@ -20,10 +21,22 @@ import { combatDisplayName } from './CombatantState.js';
 
 export type BattleOutcome = 'player_win' | 'enemy_win' | 'draw';
 
+/** Log lines of one round plus both sides' HP snapshot at the END of that round. */
+export interface BattleRoundLog {
+	round: number;
+	lines: string[];
+	playerHp: number;
+	playerMaxHp: number;
+	enemyHp: number;
+	enemyMaxHp: number;
+}
+
 export interface BattleResult {
 	outcome: BattleOutcome;
 	rounds: number;
 	log: string[];
+	/** Per-round view used by the paginated battle log (Components V2 pager). */
+	roundLogs: BattleRoundLog[];
 	playerHpRemaining: number;
 	enemyHpRemaining: number;
 }
@@ -57,20 +70,30 @@ export class BattleEngine {
 		overrides?: { playerStrategy?: IClassStrategy; enemyStrategy?: IClassStrategy },
 	): BattleResult {
 		const rng = createRng(seed);
-		const log: string[] = [];
+		const roundLogs: BattleRoundLog[] = [];
 		const playerStrategy = overrides?.playerStrategy ?? ClassStrategyRegistry.forClass(player.combatClass);
 		const enemyStrategy = overrides?.enemyStrategy ?? ClassStrategyRegistry.forClass(enemy.combatClass);
 
 		let round = 1;
 		for (; round <= MAX_ROUNDS; round++) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
-			this.playRound(player, enemy, playerStrategy, enemyStrategy, round, rng, log);
+			const lines: string[] = [];
+			this.playRound(player, enemy, playerStrategy, enemyStrategy, round, rng, lines);
+			roundLogs.push({
+				round,
+				lines,
+				playerHp: player.hp,
+				playerMaxHp: player.maxHp,
+				enemyHp: enemy.hp,
+				enemyMaxHp: enemy.maxHp,
+			});
 		}
 
 		return {
 			outcome: this.resolveOutcome(player, enemy),
 			rounds: Math.min(round, MAX_ROUNDS),
-			log,
+			log: roundLogs.flatMap((r) => r.lines),
+			roundLogs,
 			playerHpRemaining: player.hp,
 			enemyHpRemaining: enemy.hp,
 		};
@@ -239,6 +262,7 @@ export class BattleEngine {
 		ctx.log(
 			COMBAT_HIT(
 				crit ? COMBAT_TAGS.CRIT : COMBAT_TAGS.PHYS,
+				crit ? COMBAT_STRIKE_EMOJIS.crit : (attacker.attackEmoji ?? COMBAT_STRIKE_EMOJIS.bareHand),
 				combatDisplayName(attacker),
 				combatDisplayName(defender),
 				dealt.toLocaleString(),

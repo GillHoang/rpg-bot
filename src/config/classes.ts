@@ -1,5 +1,6 @@
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 import { CLASS_TEXT } from '../text/classes.js';
+import { ICONS } from '../text/icons.js';
 
 export const CLASS_NAMES: readonly CombatClass[] = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer'];
 
@@ -26,31 +27,31 @@ export interface ClassDefinition {
  */
 export const CLASSES: Record<CombatClass, ClassDefinition> = {
 	Swordsman: {
-		emoji: '⚔️',
+		emoji: ICONS.combatClass.swordsman,
 		...CLASS_TEXT.Swordsman,
 		base: { hp: 700, atk: 225, def: 225, crit: 5.0 },
 		scaling: { hp: 150, atk: 75, def: 75, crit: 0.7 },
 	},
 	Fighter: {
-		emoji: '👊',
+		emoji: ICONS.combatClass.fighter,
 		...CLASS_TEXT.Fighter,
 		base: { hp: 850, atk: 300, def: 150, crit: 1.0 },
 		scaling: { hp: 150, atk: 100, def: 50, crit: 0.5 },
 	},
 	Mage: {
-		emoji: '🔮',
+		emoji: ICONS.combatClass.mage,
 		...CLASS_TEXT.Mage,
 		base: { hp: 600, atk: 350, def: 100, crit: 1.0 },
 		scaling: { hp: 100, atk: 150, def: 50, crit: 0.5 },
 	},
 	Knight: {
-		emoji: '🛡️',
+		emoji: ICONS.combatClass.knight,
 		...CLASS_TEXT.Knight,
 		base: { hp: 1000, atk: 200, def: 300, crit: 5.0 },
 		scaling: { hp: 200, atk: 50, def: 80, crit: 0.0 },
 	},
 	Archer: {
-		emoji: '🏹',
+		emoji: ICONS.combatClass.archer,
 		...CLASS_TEXT.Archer,
 		base: { hp: 600, atk: 300, def: 150, crit: 5.0 },
 		scaling: { hp: 125, atk: 125, def: 50, crit: 0.7 },

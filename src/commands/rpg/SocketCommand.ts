@@ -1,6 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SocketService } from '../../services/SocketService.js';
+import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { GEAR_CHOICE_LABEL, RUNE_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
 	SOCKET_DESCRIPTION,
 	SOCKET_EQUIP_SUB_DESC,
@@ -63,6 +65,21 @@ export class SocketCommand implements ICommand {
 		);
 
 	constructor(private readonly socket = new SocketService()) {}
+
+	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+		const focused = interaction.options.getFocused(true).name;
+		const query = String(interaction.options.getFocused());
+		const repo = new InventoryRepository();
+		if (focused === 'rune_uid') {
+			const rows = await repo.searchRunes(interaction.user.id, query);
+			await interaction.respond(rows.map((r) => ({ name: RUNE_CHOICE_LABEL(r), value: r.uid })));
+			return;
+		}
+		if (focused === 'gear_id') {
+			const rows = await repo.searchGear(interaction.user.id, query);
+			await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
+		}
+	}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

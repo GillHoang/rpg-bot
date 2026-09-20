@@ -1,6 +1,8 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { EnhancementService } from '../../services/EnhancementService.js';
+import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { GEAR_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
 	ENHANCE_DESCRIPTION,
 	ENHANCE_FAILURE,
@@ -18,6 +20,12 @@ export class EnhanceCommand implements ICommand {
 		.addStringOption((opt) => opt.setName('gear_id').setDescription(ENHANCE_GEAR_OPTION_DESC).setRequired(true));
 
 	constructor(private readonly enhancement = new EnhancementService()) {}
+
+	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
+		if (interaction.options.getFocused(true).name !== 'gear_id') return;
+		const rows = await new InventoryRepository().searchGear(interaction.user.id, String(interaction.options.getFocused()));
+		await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
+	}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

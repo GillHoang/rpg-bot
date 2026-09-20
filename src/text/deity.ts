@@ -1,4 +1,5 @@
 import { CURRENCY } from './common.js';
+import { ICONS } from './icons.js';
 
 export const DEITY_DESCRIPTION = 'Quản lý Sigil và Ascension của deity';
 export const DEITY_SIGIL_SUB_DESC = 'Dùng essence để +1 Sigil cho deity';
@@ -14,7 +15,7 @@ export const DEITY_INSUFFICIENT_ESSENCE = (needed: number, have: number): string
 	`Không đủ essence. Cần ${needed}, hiện có ${have}.`;
 
 export const DEITY_SIGIL_SUCCESS = (sigils: number, max: number): string =>
-	`✨ Đã +1 Sigil. Hiện tại: ${sigils}/${max}.`;
+	`${ICONS.deity.sigil} Đã +1 Sigil. Hiện tại: ${sigils}/${max}.`;
 
 export const DEITY_ALREADY_ASCENDED = 'Deity này đã Ascend rồi.';
 
@@ -25,4 +26,4 @@ export const DEITY_INSUFFICIENT_RESOURCES = (neededEssence: number, neededCredux
 	`Không đủ tài nguyên. Cần ${neededEssence} essence + ${neededCredux} ${CURRENCY.credux}.`;
 
 export const DEITY_ASCEND_SUCCESS =
-	'🌟 **Ascension thành công!** Đã nhận trạng thái prestige. Chỉ số giữ ở mức 10/10 Sigil; chưa có bonus stat hoặc blessing.';
+	`${ICONS.deity.ascension} **Ascension thành công!** Đã nhận trạng thái prestige. Chỉ số giữ ở mức 10/10 Sigil; chưa có bonus stat hoặc blessing.`;

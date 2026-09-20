@@ -1,3 +1,4 @@
+import { ICONS } from './icons.js';
 export const SOCKET_DESCRIPTION = 'Gắn/tháo rune vào trang bị';
 
 export const SOCKET_EQUIP_SUB_DESC = 'Gắn rune vào 1 slot native của trang bị';
@@ -14,12 +15,12 @@ export const SOCKET_SLOT_OCCUPIED = 'Slot này đã có rune khác. Hãy tháo t
 export const SOCKET_LANE_MISMATCH = (expected: string, actual: string): string =>
 	`Sai lane: slot yêu cầu **${expected}**, rune này là **${actual}**.`;
 
-export const SOCKET_EQUIP_SUCCESS = '✅ Đã gắn rune vào trang bị.';
+export const SOCKET_EQUIP_SUCCESS = `${ICONS.status.success} Đã gắn rune vào trang bị.`;
 export const SOCKET_NOT_SOCKETED = 'Rune này chưa được gắn vào đâu cả.';
-export const SOCKET_UNEQUIP_SUCCESS = '✅ Đã tháo rune khỏi trang bị.';
+export const SOCKET_UNEQUIP_SUCCESS = `${ICONS.status.success} Đã tháo rune khỏi trang bị.`;
 
 // --- unlock ---
-export const SOCKET_UNLOCK_NO_REGISTER = 'Dùng /register trước.';
+export const SOCKET_UNLOCK_NO_REGISTER = 'Gõ /start để đăng ký trước.';
 export const SOCKET_UNLOCK_NOT_OWNED = 'Bạn không sở hữu gear này.';
 export const SOCKET_UNLOCK_LIMIT =
 	'Gear đã đạt giới hạn socket hoặc chưa có giá mở slot. Slot 1 native/opposite luôn miễn phí.';

@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 /**
@@ -7,6 +8,13 @@ import { defineConfig } from 'vitest/config';
  * injected for the whole suite — production keeps its fail-fast behaviour.
  */
 export default defineConfig({
+	// Mirror tsconfig's "@/*" paths so vitest can resolve alias imports (tsc
+	// alone reads tsconfig paths; vitest needs its own resolve.alias).
+	resolve: {
+		alias: {
+			'@': fileURLToPath(new URL('./src', import.meta.url)),
+		},
+	},
 	test: {
 		env: {
 			DISCORD_TOKEN: 'test-token',

@@ -13,8 +13,7 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { RegistrationService } from '../src/services/RegistrationService.js';
-import { CharacterCreationService } from '../src/services/CharacterCreationService.js';
+import { StartService } from '../src/services/StartService.js';
 import { SummonService } from '../src/services/SummonService.js';
 import { LootService } from '../src/services/LootService.js';
 import { LoadoutService } from '../src/services/LoadoutService.js';
@@ -64,8 +63,7 @@ afterAll(async () => { await pool.end(); });
 beforeEach(async () => {
 	vi.restoreAllMocks();
 	id = `test-${++sequence}`;
-	await new RegistrationService().register(id, id);
-	const c = await new CharacterCreationService().createCharacter(id, 'Knight');
+	const c = await new StartService().start(id, id, 'Knight');
 	if (c.status !== 'ok') throw new Error(c.status);
 });
 
@@ -141,8 +139,8 @@ describe('M7 quests + believer EXP', () => {
 	it('answers view/claim politely before registration instead of crashing on FK', async () => {
 		const ghost = `ghost-${++sequence}`;
 		const quests = new QuestService();
-		expect(await quests.view(ghost)).toContain('/register');
-		expect(await quests.claimWeeklyGrand(ghost)).toContain('/register');
+		expect(await quests.view(ghost)).toContain('/start');
+		expect(await quests.claimWeeklyGrand(ghost)).toContain('/start');
 		// Nothing was lazily generated for the unregistered id.
 		expect(await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, ghost))).toHaveLength(0);
 		expect(await db.select().from(s.weeklyQuests).where(eq(s.weeklyQuests.discordId, ghost))).toHaveLength(0);
@@ -164,8 +162,7 @@ describe('M7 quests + believer EXP', () => {
 describe('M7 duels', () => {
 	it('creates, accepts, pays the wager to the winner and logs everything', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new RegistrationService().register(id2, id2);
-		await new CharacterCreationService().createCharacter(id2, 'Mage');
+		await new StartService().start(id2, id2, 'Mage');
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id));
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id2));
 
@@ -206,8 +203,7 @@ describe('M7 duels', () => {
 
 	it('declines, expires and refunds nothing on pending wagers', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new RegistrationService().register(id2, id2);
-		await new CharacterCreationService().createCharacter(id2, 'Mage');
+		await new StartService().start(id2, id2, 'Mage');
 		const duels = new DuelService();
 
 		const created = await duels.create(id, id2, 0);
@@ -227,8 +223,7 @@ describe('M7 duels', () => {
 describe('M7 ranked', () => {
 	it('fights an async mirror match, moves Elo both ways and pays the weekly claim once', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new RegistrationService().register(id2, id2);
-		await new CharacterCreationService().createCharacter(id2, 'Mage');
+		await new StartService().start(id2, id2, 'Mage');
 
 		const ranked = new RankedService();
 		expect(await ranked.claim(id)).toEqual({ status: 'no-fights' });

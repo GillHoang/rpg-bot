@@ -42,6 +42,10 @@ export class DiscordBot {
 		});
 
 		this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
+			if (interaction.isAutocomplete()) {
+				await this.registry.dispatchAutocomplete(interaction);
+				return;
+			}
 			if (!interaction.isChatInputCommand()) return;
 			await this.registry.dispatch(interaction);
 		});

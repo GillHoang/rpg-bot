@@ -1,4 +1,4 @@
-import type { ChatInputCommandInteraction } from 'discord.js';
+import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from './ICommand.js';
 import { logger } from '../utils/logger.js';
 import { GENERIC_ERROR } from '../text/common.js';
@@ -60,6 +60,21 @@ export class CommandRegistry {
 					'Failed to send error reply — interaction likely expired',
 				);
 			}
+		}
+	}
+
+	/** Autocomplete must always be answered (empty on failure) or Discord keeps the option stuck. */
+	async dispatchAutocomplete(interaction: AutocompleteInteraction): Promise<void> {
+		const command = this.commands.get(interaction.commandName);
+		if (!command?.autocomplete) {
+			await interaction.respond([]).catch(() => undefined);
+			return;
+		}
+		try {
+			await command.autocomplete(interaction);
+		} catch (error) {
+			logger.error({ err: error, command: interaction.commandName }, 'Autocomplete failed');
+			await interaction.respond([]).catch(() => undefined);
 		}
 	}
 }

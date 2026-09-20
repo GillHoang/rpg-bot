@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
+import { sendBattleLog } from '../../render/BattleLogPager.js';
 import { RankedService, type RankedClaimResult } from '../../services/RankedService.js';
 import {
 	RANKED_ALREADY_CLAIMED,
@@ -9,8 +10,6 @@ import {
 	RANKED_DESCRIPTION,
 	RANKED_FIGHT_DESC,
 	RANKED_FOOTER,
-	RANKED_LOG_MAX_CHARS,
-	RANKED_LOG_TRUNCATE_PREFIX,
 	RANKED_MATCHUP,
 	RANKED_NO_CHARACTER,
 	RANKED_NO_FIGHTS,
@@ -88,18 +87,22 @@ export class RankedCommand implements ICommand {
 		let outcome = RANKED_OUTCOME_LOSE;
 		if (result.draw) outcome = RANKED_OUTCOME_DRAW;
 		else if (result.won) outcome = RANKED_OUTCOME_WIN;
-		let logText = result.battle.log.join('\n');
-		if (logText.length > RANKED_LOG_MAX_CHARS) {
-			logText = RANKED_LOG_TRUNCATE_PREFIX + logText.slice(-RANKED_LOG_MAX_CHARS);
-		}
-		await interaction.editReply(
-			RANKED_MATCHUP(result.opponentName, outcome) +
-				'\n' +
-				`Rating: **${result.ratingBefore} → ${result.ratingAfter}** (${result.delta >= 0 ? '+' : ''}${result.delta}) · ` +
-				`Bracket: ${result.bracketBefore} → **${result.bracketAfter}** · Peak ${result.peak}` +
-				(result.shieldUsed ? RANKED_SHIELD_NOTE : '') +
-				`\n${logText}\n` +
-				RANKED_FOOTER,
+
+		await sendBattleLog(
+			interaction,
+			{
+				battle: result.battle,
+				playerName: interaction.user.username,
+				enemyName: result.opponentName,
+				headerLines: [
+					RANKED_MATCHUP(result.opponentName, outcome),
+					`Rating: **${result.ratingBefore} → ${result.ratingAfter}** (${result.delta >= 0 ? '+' : ''}${result.delta}) · ` +
+						`Bracket: ${result.bracketBefore} → **${result.bracketAfter}** · Peak ${result.peak}` +
+						(result.shieldUsed ? RANKED_SHIELD_NOTE : ''),
+				],
+				footerLine: RANKED_FOOTER,
+			},
+			'edit',
 		);
 	}
 }

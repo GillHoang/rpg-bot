@@ -2,7 +2,7 @@
 
 // --- /open ---
 export const OPEN_BAD_COUNT = 'Chọn loại rương hợp lệ, số lượng 1–10.';
-export const OPEN_NO_REGISTER = 'Dùng /register trước.';
+export const OPEN_NO_REGISTER = 'Gõ /start để đăng ký trước.';
 export const OPEN_NO_CHESTS = 'Không đủ rương.';
 export const OPEN_RESULT = (count: number, label: string, creux: string, shards: number): string =>
 	`Mở ${count} ${label}: +${creux} Credux · +${shards} Shards`;

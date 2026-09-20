@@ -10,8 +10,8 @@
  * Mỗi file tương ứng một lệnh/khu vực. Không put logic vào đây — chỉ text.
  */
 export * from './common.js';
-export * from './register.js';
-export * from './create.js';
+export * from './start.js';
+export * from './reset.js';
 export * from './balance.js';
 export * from './daily.js';
 export * from './profile.js';

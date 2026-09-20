@@ -1,7 +1,7 @@
 /** Text loadout — service /equip·/preset và 2 lệnh — sửa wording ngay tại đây. */
 
 // --- Service equip/switch ---
-export const LOADOUT_NO_CHARACTER = 'Dùng /create trước.';
+export const LOADOUT_NO_CHARACTER = 'Gõ /start để tạo nhân vật trước.';
 export const LOADOUT_BAD_PRESET = 'Preset phải là 1 hoặc 2.';
 export const LOADOUT_PRESET_MISSING = 'Không tìm thấy preset.';
 export const LOADOUT_WEAPON_NOT_OWNED = 'Bạn không sở hữu vũ khí này.';

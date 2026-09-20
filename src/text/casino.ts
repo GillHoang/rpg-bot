@@ -1,4 +1,5 @@
 import { CURRENCY } from './common.js';
+import { ICONS } from './icons.js';
 
 export const CASINO_DESCRIPTION = 'Chơi 1 ván casino (Credux)';
 export const CASINO_GAME_OPTION_DESC = 'Trò chơi';
@@ -13,20 +14,20 @@ export const CASINO_GAME_LABELS = {
 	baccarat: 'Baccarat',
 } as const;
 
-export const CASINO_NOT_REGISTERED = 'Bạn chưa đăng ký. Dùng `/register` trước đã!';
+export const CASINO_NOT_REGISTERED = 'Bạn chưa đăng ký. Gõ `/start` để bắt đầu.';
 export const CASINO_INVALID_BET = (maxBet: string): string => `Tiền cược không hợp lệ (1-${maxBet}).`;
 export const CASINO_INSUFFICIENT_CREDUX = (have: string): string => `Không đủ ${CURRENCY.credux}. Hiện có ${have}.`;
 
-export const CASINO_WIN = '🎉 **Thắng!**';
-export const CASINO_PUSH = '🤝 **Hòa (push).**';
-export const CASINO_LOSE = '💸 **Thua.**';
+export const CASINO_WIN = `${ICONS.casino.win} **Thắng!**`;
+export const CASINO_PUSH = `${ICONS.casino.push} **Hòa (push).**`;
+export const CASINO_LOSE = `${ICONS.casino.lose} **Thua.**`;
 
 export const CASINO_RESULT_LINE = (verdict: string, result: string, delta: string, balance: string): string =>
 	`${verdict} Kết quả: \`${result}\`\n` + `Thay đổi: ${delta} ${CURRENCY.credux} · Số dư: ${balance}`;
 
 // --- Session (Blackjack/Crash) ---
 export const CASINO_SESSION_BAD_BET = (maxBet: number): string => `Cược từ 1 đến ${maxBet}.`;
-export const CASINO_SESSION_NO_REGISTER = 'Dùng /register trước.';
+export const CASINO_SESSION_NO_REGISTER = 'Gõ /start để đăng ký trước.';
 export const CASINO_SESSION_BUSY = 'Bạn đang có một ván chơi. Hoàn tất hoặc chờ hết 60 giây.';
 export const CASINO_SESSION_INSUFFICIENT = 'Không đủ Credux.';
 export const CASINO_SESSION_NOT_FOUND = 'Không tìm thấy phiên chơi của bạn.';

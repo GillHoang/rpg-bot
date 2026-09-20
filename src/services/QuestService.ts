@@ -35,6 +35,7 @@ import {
 	QUEST_WEEKLY_HEADER,
 	WEEKLY_QUEST_LABELS,
 } from '../text/quest.js';
+import { ICONS } from '../text/icons.js';
 
 export type QuestRow = typeof dailyQuests.$inferSelect;
 export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
@@ -114,7 +115,32 @@ export class QuestService {
 						eq(dailyQuests.completed, false),
 					),
 				);
-			await this.ensureDailyQuests(tx, discordId, day);
+			// Completed quests stay; reroll only tops the board back up to
+			// QUESTS_PER_CYCLE — ensureDailyQuests would see the kept rows and
+			// return early without replacing the deleted ones.
+			const kept = await tx
+				.select()
+				.from(dailyQuests)
+				.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
+			const missing = Math.max(0, QUESTS_PER_CYCLE - kept.length);
+			if (missing > 0) {
+				const rng = createRng(createSecureSeed());
+				const usedTypes = new Set(kept.map((q) => q.questType));
+				const pool = DAILY_POOL.filter((t) => !usedTypes.has(t.type));
+				await tx
+					.insert(dailyQuests)
+					.values(
+						this.rollTemplates(pool, rng, missing).map((t) => ({
+							discordId,
+							questType: t.type,
+							targetCount: t.target,
+							rewardCredux: randInt(rng, DAILY_REWARD.credux),
+							rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
+							questDate: day,
+						})),
+					)
+					.onConflictDoNothing();
+			}
 			await tx
 				.update(users)
 				.set({ questRefreshesToday: 1, lastQuestRefreshDate: day })
@@ -162,7 +188,7 @@ export class QuestService {
 		bonusKind: 'shards' | 'valor',
 		bonus: number,
 	): string {
-		const mark = quest.completed ? '✅' : `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
+		const mark = quest.completed ? ICONS.status.completed : `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
 		const bonusLabel = bonusKind === 'shards' ? QUEST_BONUS_SHARDS(bonus) : QUEST_BONUS_VALOR(bonus);
 		return `${mark} — ${label} (+${quest.rewardCredux.toLocaleString()} Credux, +${bonusLabel})`;
 	}
@@ -221,11 +247,15 @@ export class QuestService {
 			.where(and(eq(weeklyQuests.discordId, discordId), eq(weeklyQuests.questWeek, week)));
 	}
 
-	/** QUESTS_PER_CYCLE distinct templates per cycle — no duplicate types. */
-	private rollTemplates(pool: readonly QuestTemplate[], rng: () => number): QuestTemplate[] {
+	/** `count` distinct templates from `pool` — no duplicate types. */
+	private rollTemplates(
+		pool: readonly QuestTemplate[],
+		rng: () => number,
+		count: number = QUESTS_PER_CYCLE,
+	): QuestTemplate[] {
 		const remaining = [...pool];
 		const picked: QuestTemplate[] = [];
-		for (let i = 0; i < QUESTS_PER_CYCLE && remaining.length > 0; i++) {
+		for (let i = 0; i < count && remaining.length > 0; i++) {
 			const template = choose(remaining, rng);
 			remaining.splice(remaining.indexOf(template), 1);
 			picked.push(template);

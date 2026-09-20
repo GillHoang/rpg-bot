@@ -1,8 +1,7 @@
 import { CommandRegistry } from './CommandRegistry.js';
 import { BalanceCommand } from '../commands/economy/BalanceCommand.js';
 import { DailyCommand } from '../commands/economy/DailyCommand.js';
-import { RegisterCommand } from '../commands/rpg/RegisterCommand.js';
-import { CreateCharacterCommand } from '../commands/rpg/CreateCharacterCommand.js';
+import { StartCommand } from '../commands/rpg/StartCommand.js';
 import { RaidCommand } from '../commands/rpg/RaidCommand.js';
 import { SummonCommand } from '../commands/rpg/SummonCommand.js';
 import { EnhanceCommand } from '../commands/rpg/EnhanceCommand.js';
@@ -20,6 +19,8 @@ import { QuestCommand } from '../commands/rpg/QuestCommand.js';
 import { CosmeticCommand } from '../commands/rpg/CosmeticCommand.js';
 import { TitleCommand } from '../commands/rpg/TitleCommand.js';
 import { ClassCommand } from '../commands/rpg/ClassCommand.js';
+import { TestCommand } from '../commands/admin/TestCommand.js';
+import { ResetCommand } from '../commands/admin/ResetCommand.js';
 
 /**
  * Composition root — the ONLY place that knows the full list of commands.
@@ -30,8 +31,7 @@ import { ClassCommand } from '../commands/rpg/ClassCommand.js';
 export function registerAllCommands(): void {
 	const registry = CommandRegistry.getInstance();
 
-	registry.register(new RegisterCommand());
-	registry.register(new CreateCharacterCommand());
+	registry.register(new StartCommand());
 	registry.register(new BalanceCommand());
 	registry.register(new DailyCommand());
 	registry.register(new RaidCommand());
@@ -54,5 +54,7 @@ export function registerAllCommands(): void {
 	registry.register(new CosmeticCommand());
 	registry.register(new TitleCommand());
 	registry.register(new ClassCommand());
+	registry.register(new TestCommand());
+	registry.register(new ResetCommand());
 	// ...ported one module at a time per the migration roadmap.
 }

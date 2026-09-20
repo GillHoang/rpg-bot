@@ -198,7 +198,8 @@ export class RankedService {
 			};
 		});
 
-		if (result.status === 'ok') {
+		if (result.status === 'ok' && !result.draw) {
+			// A draw must not feed the win/loss quest + reputation subscribers.
 			this.events.emit(result.won ? 'battle.won' : 'battle.lost', { discordId, battleType: 'ranked' });
 			this.events.emit(result.won ? 'battle.lost' : 'battle.won', {
 				discordId: result.opponentId,
@@ -377,7 +378,8 @@ export class RankedService {
 				pvpRating: opponentRatingAfter,
 				pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
 				pvpDemotionShield: opponentChange.shield,
-				pvpWins: opponentRow.pvpWins + (!won ? 1 : 0),
+				// Draw = no W/L change for either fighter (mirrors the initiator).
+				pvpWins: opponentRow.pvpWins + (!won && !draw ? 1 : 0),
 				pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
 			})
 			.where(eq(userCharacter.discordId, opponentRow.discordId));
@@ -385,14 +387,14 @@ export class RankedService {
 		await tx.insert(rankedLogs).values({
 			playerId: discordId,
 			opponentId: opponentRow.discordId,
-			result: won ? 'win' : 'loss',
+			result: draw ? 'draw' : won ? 'win' : 'loss',
 			ratingBefore,
 			ratingAfter,
 		});
 		await tx.insert(rankedLogs).values({
 			playerId: opponentRow.discordId,
 			opponentId: discordId,
-			result: won ? 'loss' : 'win',
+			result: draw ? 'draw' : won ? 'loss' : 'win',
 			ratingBefore: opponentRow.pvpRating,
 			ratingAfter: opponentRatingAfter,
 		});

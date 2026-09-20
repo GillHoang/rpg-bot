@@ -14,7 +14,19 @@ export const INVENTORY_CATEGORY_OPTION_DESC = 'Loại vật phẩm';
 export const INVENTORY_PAGE_OPTION_DESC = 'Trang (8 vật phẩm/trang)';
 export const INVENTORY_TITLE = (category: string, page: number): string => `Inventory · ${category} · Trang ${page}`;
 export const INVENTORY_EMPTY_PAGE = 'Trang trống.';
-export const INVENTORY_FOOTER = '/equip · /enhance · /socket · Đổi page để xem tiếp';
+export const INVENTORY_FOOTER = '/equip · /enhance · /socket · Dùng nút bên dưới để chuyển loại/trang';
+
+// --- Nút phân trang /inventory ---
+export const INVENTORY_PAGER_TTL_MS = 180_000;
+export const INVENTORY_CATEGORY_LABELS: Record<string, string> = {
+	bag: 'Túi',
+	weapons: 'Vũ khí',
+	armors: 'Giáp',
+	runes: 'Rune',
+};
+export const INVENTORY_PREV_LABEL = 'Trước';
+export const INVENTORY_NEXT_LABEL = 'Sau';
+export const INVENTORY_PAGE_INDICATOR = (page: number, total: number): string => `Trang ${page}/${total}`;
 
 export const DEITIES_DESCRIPTION = 'Xem ID, Sigil và chỉ số deity';
 export const DEITIES_PAGE_OPTION_DESC = 'Trang';

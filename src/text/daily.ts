@@ -1,11 +1,12 @@
 import { CURRENCY } from './common.js';
+import { ICONS } from './icons.js';
 
 export const DAILY_DESCRIPTION = 'Nhận phần thưởng điểm danh hàng ngày';
 
 export const DAILY_ALREADY_CLAIMED = (day: number): string =>
-	`⏳ Bạn đã điểm danh hôm nay rồi (Ngày ${day}). Quay lại sau nửa đêm giờ Manila.`;
+	`${ICONS.daily.already} Bạn đã điểm danh hôm nay rồi (Ngày ${day}). Quay lại sau nửa đêm giờ Manila.`;
 
-export const DAILY_MILESTONE_LINE = (chestLabel: string): string => `\n🎁 Cột mốc: +1 ${chestLabel}`;
+export const DAILY_MILESTONE_LINE = (chestLabel: string): string => `\n${ICONS.reward.chest} Cột mốc: +1 ${chestLabel}`;
 
 export const DAILY_SUCCESS = (
 	day: number,
@@ -16,11 +17,11 @@ export const DAILY_SUCCESS = (
 	chestLabel: string,
 	milestoneLine: string,
 ): string =>
-	`📅 **Điểm Danh Hằng Ngày — Ngày ${day}**\n` +
+	`${ICONS.daily.header} **Điểm Danh Hằng Ngày — Ngày ${day}**\n` +
 	`Tháng: ${monthly}/30 · Chuỗi ngày: ${streak}\n\n` +
-	`💰 +${credux} ${CURRENCY.credux}\n` +
-	`🔮 +${shards} ${CURRENCY.beliefShards}\n` +
-	`🎁 +1 ${chestLabel}${milestoneLine}`;
+	`${ICONS.economy.wallet} +${credux} ${CURRENCY.credux}\n` +
+	`${ICONS.economy.shards} +${shards} ${CURRENCY.beliefShards}\n` +
+	`${ICONS.reward.chest} +1 ${chestLabel}${milestoneLine}`;
 
 /** Nhãn rương hiển thị cho DailyRewardTable (khớp key cột chest trong DB). */
 export const CHEST_LABELS = {

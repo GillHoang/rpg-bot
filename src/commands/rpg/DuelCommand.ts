@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { DuelService, DUEL_STAKE_MIN, type DuelAcceptResult } from '../../services/DuelService.js';
-import { RAID_LOG_TRUNCATE_PREFIX, RAID_MAX_LOG_CHARS, RAID_ROUND_SUMMARY } from '../../text/raid.js';
+import { sendBattleLog } from '../../render/BattleLogPager.js';
 import {
 	DUEL_ACCEPT_LABEL,
 	DUEL_BUSY,
@@ -104,6 +104,12 @@ export class DuelCommand implements ICommand {
 		});
 		collector.on('collect', async (button) => {
 			if (button.customId === `duel:decline:${created.duelId}`) {
+				// Only the two participants may decline — anyone else clicking must
+				// not stop the collector or kill the pending invite.
+				if (button.user.id !== interaction.user.id && button.user.id !== opponent.id) {
+					await button.reply({ content: DUEL_ONLY_OPPONENT_BUTTON, ephemeral: true });
+					return;
+				}
 				await button.deferUpdate();
 				const declined = await this.duels.decline(created.duelId, button.user.id);
 				collector.stop(declined ? 'declined' : 'stale');
@@ -118,12 +124,30 @@ export class DuelCommand implements ICommand {
 			collector.stop('accepted');
 		});
 		collector.on('end', async (_collected, reason) => {
-			if (reason === 'accepted') {
-				const result = await this.duels.accept(created.duelId, opponent.id);
-				await interaction.editReply({ components: [] });
-				await interaction.followUp(renderDuel(result));
+		if (reason === 'accepted') {
+			const result = await this.duels.accept(created.duelId, opponent.id);
+			await interaction.editReply({ components: [] });
+			if (result.status !== 'ok') {
+				await interaction.followUp(duelFailureLine(result));
 				return;
 			}
+			let outcomeLine = DUEL_DRAW;
+			if (!result.draw) {
+				outcomeLine = DUEL_WIN(result.winnerName ?? '');
+				if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
+			}
+			await sendBattleLog(
+				interaction,
+				{
+					battle: result.battle,
+					playerName: result.challengerName,
+					enemyName: result.opponentName,
+					headerLines: [outcomeLine],
+				},
+				'followUp',
+			);
+			return;
+		}
 			if (reason === 'declined') {
 				await interaction.editReply({ content: DUEL_DECLINED, components: [] });
 				return;
@@ -137,23 +161,17 @@ export class DuelCommand implements ICommand {
 	}
 }
 
-export function renderDuel(result: DuelAcceptResult): string {
-	if (result.status === 'not-found') return DUEL_NOT_FOUND;
-	if (result.status === 'not-opponent') return DUEL_ONLY_OPPONENT_BUTTON;
-	if (result.status === 'expired') return DUEL_EXPIRED_ACCEPT;
-	if (result.status === 'insufficient-funds') return DUEL_INSUFFICIENT_FUNDS_ACCEPT;
-
-	let outcomeLine = DUEL_DRAW;
-	if (!result.draw) {
-		outcomeLine = DUEL_WIN(result.winnerName ?? '');
-		if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
+function duelFailureLine(
+	result: Extract<DuelAcceptResult, { status: 'not-found' | 'not-opponent' | 'expired' | 'insufficient-funds' }>,
+): string {
+	switch (result.status) {
+		case 'not-found':
+			return DUEL_NOT_FOUND;
+		case 'not-opponent':
+			return DUEL_ONLY_OPPONENT_BUTTON;
+		case 'expired':
+			return DUEL_EXPIRED_ACCEPT;
+		default:
+			return DUEL_INSUFFICIENT_FUNDS_ACCEPT;
 	}
-	let logText = result.battle.log.join('\n');
-	if (logText.length > RAID_MAX_LOG_CHARS) logText = RAID_LOG_TRUNCATE_PREFIX + logText.slice(-RAID_MAX_LOG_CHARS);
-	return (
-		outcomeLine +
-		'\n' +
-		RAID_ROUND_SUMMARY(result.battle.rounds, result.battle.playerHpRemaining, result.battle.enemyHpRemaining) +
-		`\n${logText}`
-	);
 }

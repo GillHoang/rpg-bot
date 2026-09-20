@@ -37,11 +37,9 @@ export class PlayerAccountRepository implements Repository<PlayerAccount, string
 		);
 	}
 
-	// Account creation is a two-step, multi-table flow with its own guard
-	// rules (register -> create character, with a starter-gear grant in
-	// between) — see RegistrationService / CharacterCreationService, which
-	// own those transactions. This repository only reads/updates the
-	// already-created account.
+	// Account creation is a multi-table flow with its own guard rules —
+	// see StartService, which owns that transaction. This repository only
+	// reads/updates the already-created account.
 
 	async saveCredux(account: PlayerAccount): Promise<void> {
 		await this.saveCreduxWithExecutor(db, account);

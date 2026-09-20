@@ -13,8 +13,7 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { RegistrationService } from '../src/services/RegistrationService.js';
-import { CharacterCreationService } from '../src/services/CharacterCreationService.js';
+import { StartService } from '../src/services/StartService.js';
 import { LootService } from '../src/services/LootService.js';
 import { LoadoutService } from '../src/services/LoadoutService.js';
 import { SocketService } from '../src/services/SocketService.js';
@@ -60,8 +59,7 @@ afterAll(async () => { await pool.end(); });
 beforeEach(async () => {
 	vi.restoreAllMocks();
 	id = `test-${++sequence}`;
-	await new RegistrationService().register(id, id);
-	const c = await new CharacterCreationService().createCharacter(id, 'Knight');
+	const c = await new StartService().start(id, id, 'Knight');
 	if (c.status !== 'ok') throw new Error(c.status);
 	starter = c;
 });
@@ -70,7 +68,7 @@ describe('closed gameplay economy', () => {
 	it('creates starter resources, two presets and usable sockets exactly once', async () => {
 		expect((await bag()).silverChest).toBe(10);
 		expect((await bag()).beliefShards).toBe(1000);
-		expect(await new CharacterCreationService().createCharacter(id, 'Mage')).toEqual({ status: 'already-has-character' });
+		expect(await new StartService().start(id, id, 'Mage')).toEqual({ status: 'already-has-character' });
 		const weapons = await new InventoryRepository().list(id, 'weapons', 1);
 		expect(weapons[0]).toContain(starter.weaponId);
 		expect(await new InventoryRepository().list(id, 'weapons', 2)).toEqual([]);

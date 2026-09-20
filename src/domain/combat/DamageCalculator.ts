@@ -8,8 +8,10 @@ import { rollChance } from '../../utils/weightedRandom.js';
 /** A crit doubles the hit (before the additive damage-% rider). */
 export const CRIT_MULT = 2.0;
 
-/** §12: mitigation = 1 - DEF/(DEF+K); K=200 means DEF and ATK trade off gently. */
-const MITIGATION_K = 200;
+/** §12: mitigation = 1 - DEF/(DEF+K). K=1200: def phải gấp nhiều lần K mới
+ * chặn mạnh — ở K cũ (200), def 160 đã chặn 44% khiến mob lv1 đánh player
+ * chỉ trúng vài chục HP trong khi player one-shot ngược (bệnh "Pugot 6 HP"). */
+const MITIGATION_K = 1200;
 
 export const MAGE_OVERCHARGE_MULT = 4.0;
 export const MAGE_OVERCHARGE_HIGH_MULT = 5.0;

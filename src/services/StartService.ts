@@ -17,21 +17,18 @@ import {
 	GRANT_SILVER_CHESTS,
 } from '../config/starter.js';
 
-export type CreateCharacterResult =
-	| { status: 'not-registered' }
+export type StartResult =
 	| { status: 'already-has-character' }
 	| { status: 'starter-gear-missing' }
 	| { status: 'ok'; weaponId: string; armorId: string };
 
 /**
- * Facade over the multi-table transaction from commands/rpg/create.js's
- * handleConfirm: guard checks, starter gear grant, character row, default
- * presets, and the one-time creation grant (belief shards + silver chests).
- *
- * NOT ported yet (left for later milestones, see README roadmap):
- *  - class preview canvas card (M2, canvas rendering)
+ * Onboarding một chạm cho /start: đăng ký tài khoản (users → users_bag →
+ * pity_counters) VÀ tạo nhân vật + gear khởi đầu trong CÙNG một giao dịch —
+ * thay cho cặp /register + /create cũ. Người chơi không thể kẹt ở trạng thái
+ * "đã register nhưng chưa có nhân vật".
  */
-export class CharacterCreationService {
+export class StartService {
 	constructor(
 		private readonly users = new UserRepository(),
 		private readonly characters = new UserCharacterRepository(),
@@ -40,11 +37,11 @@ export class CharacterCreationService {
 		private readonly cosmetics = new CosmeticService(),
 	) {}
 
-	async createCharacter(discordId: string, combatClass: CombatClass): Promise<CreateCharacterResult> {
-		return db.transaction(async (tx): Promise<CreateCharacterResult> => {
+	async start(discordId: string, username: string, combatClass: CombatClass): Promise<StartResult> {
+		return db.transaction(async (tx): Promise<StartResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
 			if (!(await this.users.isRegistered(tx, discordId))) {
-				return { status: 'not-registered' };
+				await this.users.registerNew(tx, discordId, username);
 			}
 			if (await this.characters.hasCharacter(tx, discordId)) {
 				return { status: 'already-has-character' };
@@ -53,8 +50,8 @@ export class CharacterCreationService {
 			const weaponRosterId = await this.gear.findWeaponRosterIdByName(tx, STARTER_WEAPON_NAME);
 			const armorRosterId = await this.gear.findArmorRosterIdByName(tx, STARTER_ARMOR_NAME);
 			if (weaponRosterId == null || armorRosterId == null) {
-				// Mirrors create.js: a missing seeded roster row means the DB was
-				// never seeded, not a player-facing error to explain in detail.
+				// A missing seeded roster row means the DB was never seeded, not a
+				// player-facing error to explain in detail.
 				return { status: 'starter-gear-missing' };
 			}
 
@@ -84,7 +81,7 @@ export class CharacterCreationService {
 			await this.cosmetics.grantBaseInTx(tx, discordId);
 
 			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
-			if (!bag) throw new Error(`createCharacter: no users_bag row for ${discordId}`);
+			if (!bag) throw new Error(`start: no users_bag row for ${discordId}`);
 			await tx
 				.update(usersBag)
 				.set({
