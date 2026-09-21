@@ -23,6 +23,7 @@ import { HelpCommand } from '../commands/rpg/HelpCommand.js';
 import { TestCommand } from '../commands/admin/TestCommand.js';
 import { ResetCommand } from '../commands/admin/ResetCommand.js';
 import { PingCommand } from '../commands/admin/PingCommand.js';
+import { MenuCommand } from '../commands/rpg/MenuCommand.js';
 
 /**
  * Composition root — the ONLY place that knows the full list of commands.
@@ -33,6 +34,7 @@ import { PingCommand } from '../commands/admin/PingCommand.js';
 export function registerAllCommands(): void {
 	const registry = CommandRegistry.getInstance();
 
+	registry.register(new MenuCommand());
 	registry.register(new StartCommand());
 	registry.register(new BalanceCommand());
 	registry.register(new DailyCommand());

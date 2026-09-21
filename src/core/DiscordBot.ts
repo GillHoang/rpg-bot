@@ -4,6 +4,7 @@ import { Scheduler } from './Scheduler.js';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
 import { CasinoSessionService } from '../services/CasinoSessionService.js';
+import { menuRouter } from '../menu/menuRuntime.js';
 
 /**
  * Thin wrapper around discord.js Client. Owns only wiring/lifecycle;
@@ -39,9 +40,11 @@ export class DiscordBot {
 			void recover();
 			setInterval(() => void recover(), 15000).unref();
 			new Scheduler().start();
+			setInterval(() => menuRouter.sweep(), 60_000).unref();
 		});
 
 		this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
+			if (await menuRouter.handle(interaction)) return;
 			if (interaction.isAutocomplete()) {
 				await this.registry.dispatchAutocomplete(interaction);
 				return;

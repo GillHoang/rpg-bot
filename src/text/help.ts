@@ -53,7 +53,7 @@ export const HELP_PAGES: readonly HelpPage[] = [
 		].join('\n\n'),
 	},
 	{
-		title: 'Deity & Gacha',
+		title: 'Deity, triệu hồi & Gacha',
 		body: [
 			'Deity là nguồn chỉ số lớn nhất về cuối game:',
 			'**🔮 `/summon count:1–30`** — **100 Shards/lượt**. Tỷ lệ: Epic 64,5% · Mythic 34% · Legendary 1% · Supreme 0,5%. Pity 500 lượt: Legendary bảo đảm. Trúng trùng tự đổi thành **Essence** theo tier (Epic 1 · Mythic 2 · Legendary 5 · Supreme 10).',

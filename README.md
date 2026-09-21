@@ -76,6 +76,10 @@ scheduler trong bot chỉ quét dọn duel hết hạn và lock treo mỗi 30 gi
 
 ## Lệnh
 
+`/menu` mở bảng riêng tư với điều hướng khu vực, hướng dẫn và modal tìm kiếm.
+Giai đoạn 1 cung cấp khung giao diện; các thao tác chơi vẫn dùng lệnh bên dưới.
+Chi tiết phiên, hết hạn và kiểm thử: [Menu giai đoạn 1](docs/menu-phase-1.md).
+
 Nhóm kinh tế và tiến trình cơ bản:
 
 | Lệnh | Chức năng |
