@@ -2,7 +2,7 @@ import { REST, Routes } from 'discord.js';
 import { CommandRegistry } from '../core/CommandRegistry.js';
 import { registerAllCommands } from '../core/registerAllCommands.js';
 import { env } from '../config/env.js';
-import { logger } from '../utils/logger.js';
+import { logger, flushErrorWebhook } from '../utils/logger.js';
 import { parseCommandScope } from './commandScope.js';
 
 /**
@@ -38,5 +38,6 @@ try {
 	}
 } catch (error) {
 	logger.error({ err: error }, 'Failed to deploy commands');
+	await flushErrorWebhook();
 	process.exit(1);
 }

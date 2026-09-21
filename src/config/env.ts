@@ -6,6 +6,16 @@ const envSchema = z.object({
 	DISCORD_CLIENT_ID: z.string().min(1, 'DISCORD_CLIENT_ID is required'),
 	DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 	LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+	ERROR_WEBHOOK_URL: z.preprocess(
+		(value) => (value === '' ? undefined : value),
+		z
+			.string()
+			.regex(
+				/^https:\/\/(?:(?:canary|ptb)\.)?discord(?:app)?\.com\/api(?:\/v\d+)?\/webhooks\/\d+\/[\w-]+$/,
+				'Expected a Discord webhook URL',
+			)
+			.optional(),
+	),
 	/** Discord ID được phép dùng /reset — bắt buộc để lệnh này hoạt động. */
 	OWNER_DISCORD_IDS: z
 		.string()

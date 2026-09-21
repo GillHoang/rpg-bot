@@ -1,7 +1,7 @@
 import { DiscordBot } from './core/DiscordBot.js';
 import { registerAllCommands } from './core/registerAllCommands.js';
 import { subscribeDomainEvents } from './core/subscribeDomainEvents.js';
-import { logger } from './utils/logger.js';
+import { logger, flushErrorWebhook } from './utils/logger.js';
 import { createApplicationServices } from './application/createApplicationServices.js';
 import { CommandRegistry } from './core/CommandRegistry.js';
 
@@ -12,7 +12,7 @@ process.on('unhandledRejection', (reason) => {
 });
 process.on('uncaughtException', (err) => {
 	logger.fatal({ err }, 'Uncaught exception — exiting');
-	process.exit(1);
+	void flushErrorWebhook().finally(() => process.exit(1));
 });
 
 // Top-level await (ESM): bootstrap failures surface as a plain fatal log.
@@ -26,5 +26,6 @@ try {
 	await bot.start();
 } catch (error) {
 	logger.fatal({ err: error }, 'Fatal error during bootstrap');
+	await flushErrorWebhook();
 	process.exit(1);
 }

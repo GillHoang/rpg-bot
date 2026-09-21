@@ -31,6 +31,7 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 | `DISCORD_CLIENT_ID` | Application ID dùng để đăng ký slash commands |
 | `DATABASE_URL` | `postgres://user:password@localhost:5432/credd` |
 | `LOG_LEVEL` | Tuỳ chọn — `fatal`…`trace`, mặc định `info` |
+| `ERROR_WEBHOOK_URL` | Tuỳ chọn — URL webhook Discord nhận embed khi logger ghi `error`/`fatal` (bao gồm lỗi client/shard). Để trống để tắt. Embed có thông báo, stack trace, ngữ cảnh; giới hạn 4096 ký tự và che token/URL DB đã cấu hình. Giữ `LOG_LEVEL=info` hoặc `error` để nhận đủ lỗi; `fatal` lọc bỏ `error`. |
 | `OWNER_DISCORD_IDS` | Discord ID của chủ bot (phân tách bằng dấu `,`) — bắt buộc để dùng `/reset` |
 | `DEPLOY_GUILD_ID` | Tuỳ chọn — guild deploy mặc định cho `deploy:commands` trên server thử nghiệm |
 

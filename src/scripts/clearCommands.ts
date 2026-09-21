@@ -1,6 +1,6 @@
 import { REST, Routes } from 'discord.js';
 import { env } from '../config/env.js';
-import { logger } from '../utils/logger.js';
+import { logger, flushErrorWebhook } from '../utils/logger.js';
 import { parseCommandScope } from './commandScope.js';
 
 /** Clear only the selected scope. --all clears global plus the specified/default guild. */
@@ -17,5 +17,6 @@ try {
 	}
 } catch (error) {
 	logger.error({ err: error }, 'Failed to clear slash commands');
+	await flushErrorWebhook();
 	process.exit(1);
 }

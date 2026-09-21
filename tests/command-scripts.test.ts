@@ -16,7 +16,10 @@ vi.mock('discord.js', () => ({
 vi.mock('../src/config/env.js', () => ({
 	env: { DISCORD_TOKEN: 'fake', DISCORD_CLIENT_ID: '123', DEPLOY_GUILD_ID: '456' },
 }));
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), error: vi.fn() } }));
+vi.mock('../src/utils/logger.js', () => ({
+	logger: { info: vi.fn(), error: vi.fn() },
+	flushErrorWebhook: vi.fn(async () => {}),
+}));
 vi.mock('../src/core/registerAllCommands.js', () => ({ registerAllCommands: api.register }));
 vi.mock('../src/core/CommandRegistry.js', () => ({
 	CommandRegistry: {

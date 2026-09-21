@@ -34,6 +34,8 @@ export class DiscordBot {
 	}
 
 	private registerEventHandlers(): void {
+		this.client.on(Events.Error, (err) => logger.error({ err }, 'Discord client error'));
+		this.client.on(Events.ShardError, (err, shardId) => logger.error({ err, shardId }, 'Discord shard error'));
 		this.client.once(Events.ClientReady, (c) => {
 			logger.info(`Logged in as ${c.user.tag}`);
 			this.maintenance.start();
