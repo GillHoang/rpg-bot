@@ -1,9 +1,9 @@
-import { db } from '../db/client.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { SocketStateRepository } from '../repositories/SocketStateRepository.js';
 import { logger } from '../utils/logger.js';
 import { RuneRepository } from '../repositories/RuneRepository.js';
 import { GearRepository } from '../repositories/GearRepository.js';
-import { and, eq } from 'drizzle-orm';
-import { usersBag, userWeapons, userArmors, weaponRoster, armorRoster, socketUnlockCost } from '../db/schema.js';
 import { ESSENCE_FIELDS } from './LootService.js';
 import {
 	SOCKET_UNLOCK_COST_NEEDED,
@@ -23,6 +23,14 @@ export type SocketResult =
 
 export type UnsocketResult = { status: 'rune-not-owned' } | { status: 'not-socketed' } | { status: 'ok' };
 
+export interface SocketDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		SocketStateRepository,
+		'lockBag' | 'findWeaponTier' | 'findArmorTier' | 'findUnlockCost' | 'updateBag'
+	>;
+}
+
 /**
  * Facade for `/socket equip|unequip|unlock`. Ported from commands/rpg/socket.js's
  * locateSlot/writeSockets: the gear row's own `native_sockets` JSON array
@@ -31,11 +39,32 @@ export type UnsocketResult = { status: 'rune-not-owned' } | { status: 'not-socke
  * field for RuneRepository.findSocketedEffects). Both lanes have one free
  * slot; additional native slots use the seeded unlock costs.
  */
+
 export class SocketService {
+	private readonly persistence: PersistenceContext;
+	private readonly runes: Pick<RuneRepository, 'findOwned' | 'equip' | 'unequip'>;
+	private readonly gear: Pick<
+		GearRepository,
+		'findSocketInfo' | 'clearRuneFromAnyGear' | 'writeNativeSockets' | 'writeOppositeSockets'
+	>;
+	private readonly queries: Pick<
+		SocketStateRepository,
+		'lockBag' | 'findWeaponTier' | 'findArmorTier' | 'findUnlockCost' | 'updateBag'
+	>;
+
 	constructor(
-		private readonly runes = new RuneRepository(),
-		private readonly gear = new GearRepository(),
-	) {}
+		runes?: Pick<RuneRepository, 'findOwned' | 'equip' | 'unequip'>,
+		gear?: Pick<
+			GearRepository,
+			'findSocketInfo' | 'clearRuneFromAnyGear' | 'writeNativeSockets' | 'writeOppositeSockets'
+		>,
+		options: SocketDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.runes = runes ?? new RuneRepository();
+		this.gear = gear ?? new GearRepository();
+		this.queries = options.queries ?? new SocketStateRepository();
+	}
 
 	async equip(
 		discordId: string,
@@ -44,8 +73,8 @@ export class SocketService {
 		slotNum: number,
 		lane: 'native' | 'opposite' = 'native',
 	): Promise<SocketResult> {
-		return db.transaction(async (tx): Promise<SocketResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<SocketResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 
@@ -83,8 +112,8 @@ export class SocketService {
 	}
 
 	async unequip(discordId: string, runeUid: string): Promise<UnsocketResult> {
-		return db.transaction(async (tx): Promise<UnsocketResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<UnsocketResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const rune = await this.runes.findOwned(tx, discordId, runeUid);
 			if (!rune) return { status: 'rune-not-owned' };
 			if (!rune.socketedInto) return { status: 'not-socketed' };
@@ -97,37 +126,26 @@ export class SocketService {
 	}
 
 	async unlock(discordId: string, gearId: string): Promise<string> {
-		return db.transaction(async (tx) => {
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const [bag] = await this.queries.lockBag(tx, discordId);
 			if (!bag) return SOCKET_UNLOCK_NO_REGISTER;
 			const info = await this.gear.findSocketInfo(tx, discordId, gearId);
 			if (!info) return SOCKET_UNLOCK_NOT_OWNED;
 			const rows =
 				info.kind === 'weapon'
-					? await tx
-							.select({ tier: weaponRoster.tier })
-							.from(userWeapons)
-							.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
-							.where(eq(userWeapons.weaponId, gearId))
-					: await tx
-							.select({ tier: armorRoster.tier })
-							.from(userArmors)
-							.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
-							.where(eq(userArmors.armorId, gearId));
+					? await this.queries.findWeaponTier(tx, gearId)
+					: await this.queries.findArmorTier(tx, gearId);
 			const next = Math.max(1, info.nativeSockets.length) + 1;
-			const [cost] = await tx
-				.select()
-				.from(socketUnlockCost)
-				.where(and(eq(socketUnlockCost.tier, rows[0].tier), eq(socketUnlockCost.slotIndex, next)));
+			const [cost] = await this.queries.findUnlockCost(tx, rows[0].tier, next);
 			if (!cost) return SOCKET_UNLOCK_LIMIT;
 			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier)) throw new Error('Invalid socket essence tier');
 			const field = ESSENCE_FIELDS[cost.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < cost.creduxCost || bag[field] < cost.essenceCost)
 				return SOCKET_UNLOCK_COST_NEEDED(cost.creduxCost, cost.essenceCost, cost.essenceTier);
-			await tx
-				.update(usersBag)
-				.set({ credux: bag.credux - cost.creduxCost, [field]: bag[field] - cost.essenceCost })
-				.where(eq(usersBag.discordId, discordId));
+			await this.queries.updateBag(tx, discordId, {
+				credux: bag.credux - cost.creduxCost,
+				[field]: bag[field] - cost.essenceCost,
+			});
 			await this.gear.writeNativeSockets(tx, discordId, gearId, info.kind, [
 				...(info.nativeSockets.length ? info.nativeSockets : [null]),
 				null,

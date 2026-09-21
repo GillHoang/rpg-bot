@@ -31,7 +31,7 @@ export class RankedCommand implements ICommand {
 		.addSubcommand((s) => s.setName('claim').setDescription(RANKED_CLAIM_DESC))
 		.addSubcommand((s) => s.setName('stats').setDescription(RANKED_STATS_DESC));
 
-	constructor(private readonly ranked = new RankedService()) {}
+	constructor(private readonly ranked: Pick<RankedService, 'claim' | 'stats' | 'fight'> = new RankedService()) {}
 
 	private claimMessage(result: RankedClaimResult): string {
 		switch (result.status) {

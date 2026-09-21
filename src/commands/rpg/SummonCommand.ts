@@ -106,7 +106,7 @@ export class SummonCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly summon = new SummonService()) {}
+	constructor(private readonly summon: Pick<SummonService, 'run'> = new SummonService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Multi-pull transactions can exceed the 3s reply window — acknowledge first.

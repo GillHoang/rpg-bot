@@ -1,18 +1,16 @@
-import { and, desc, eq, gte, ne, sql } from 'drizzle-orm';
-import { db } from '../db/client.js';
-import { activeRankedFights, rankedLogs, rankedReward, seasons, users, usersBag, userCharacter } from '../db/schema.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { RankedRepository } from '../repositories/RankedRepository.js';
+import type { userCharacter } from '../db/schema.js';
+import type { Transaction } from '../db/client.js';
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { CosmeticService } from './CosmeticService.js';
-import { createCombatant } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
-import { ClassStrategyRegistry } from '../domain/combat/ClassStrategyRegistry.js';
-import { wrapWithRunes } from '../domain/combat/RuneStrategyDecorator.js';
-import { wrapWithBlessings } from '../domain/combat/DeityBlessingDecorator.js';
+import { PlayerCombatantFactory } from './combatantFactory.js';
 import { createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
 import { BRACKETS, RANKED, bracketFor, eloDelta, weekWindowAt, type Bracket } from '../config/ranked.js';
-import type { AssembledPlayer } from './StatAssemblyService.js';
 import {
 	RANKED_NOT_REGISTERED,
 	RANKED_SHIELD_OFF,
@@ -59,6 +57,31 @@ export type RankedClaimResult =
 			chests: string[];
 	  };
 
+export interface RankedDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		RankedRepository,
+		| 'findUser'
+		| 'lockCharacter'
+		| 'lockBag'
+		| 'createFightLock'
+		| 'deleteFightLock'
+		| 'findWeeklyFight'
+		| 'findWeeklyReward'
+		| 'updateBag'
+		| 'updateCharacter'
+		| 'findCharacter'
+		| 'insertLog'
+		| 'findOpponentInWindow'
+		| 'findRecentResults'
+		| 'findActiveSeason'
+		| 'countSeasons'
+		| 'insertSeason'
+	>;
+	engine?: Pick<BattleEngine, 'resolve'>;
+	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+}
+
 /**
  * Ranked PvP — async mirror match (M7): loadout hiện tại của một người chơi
  * ngẫu nhiên (rating chênh trong cửa sổ matchmaking) làm đối thủ; không cần
@@ -66,36 +89,66 @@ export type RankedClaimResult =
  * bracket lần rớt đầu tiên. Thưởng tuần claim theo bảng ranked_reward, điều
  * kiện ≥1 trận trong tuần ISO (Manila).
  */
+
 export class RankedService {
+	private readonly persistence: PersistenceContext;
+	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
+	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
+	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: Pick<
+		RankedRepository,
+		| 'findUser'
+		| 'lockCharacter'
+		| 'lockBag'
+		| 'createFightLock'
+		| 'deleteFightLock'
+		| 'findWeeklyFight'
+		| 'findWeeklyReward'
+		| 'updateBag'
+		| 'updateCharacter'
+		| 'findCharacter'
+		| 'insertLog'
+		| 'findOpponentInWindow'
+		| 'findRecentResults'
+		| 'findActiveSeason'
+		| 'countSeasons'
+		| 'insertSeason'
+	>;
+	private readonly engine: Pick<BattleEngine, 'resolve'>;
+	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+
 	constructor(
-		private readonly accounts = new PlayerAccountRepository(),
-		private readonly statAssembly = new StatAssemblyService(),
-		private readonly cosmetics = new CosmeticService(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>,
+		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
+		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
+		events?: Pick<EventBus, 'emit'>,
+		options: RankedDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.statAssembly =
+			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
+		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new RankedRepository();
+		this.engine = options.engine ?? new BattleEngine();
+		this.factory = options.factory ?? new PlayerCombatantFactory();
+	}
 
 	async fight(discordId: string): Promise<RankedFightResult> {
-		const result = await db.transaction(async (tx): Promise<RankedFightResult> => {
-			const [account] = await tx.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<RankedFightResult> => {
+			const [account] = await this.queries.findUser(tx, discordId);
 			if (!account) return { status: 'not-registered' };
-			const [me] = await tx
-				.select()
-				.from(userCharacter)
-				.where(eq(userCharacter.discordId, discordId))
-				.limit(1)
-				.for('update');
+			const [me] = await this.queries.lockCharacter(tx, discordId);
 			if (!me) return { status: 'no-character' };
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1).for('update');
+			await this.queries.lockBag(tx, discordId);
 
-			const [lock] = await tx
-				.insert(activeRankedFights)
-				.values({
-					discordId,
-					lockToken: crypto.randomUUID(),
-					expiresAt: new Date(Date.now() + RANKED.LOCK_SECONDS * 1000),
-				})
-				.onConflictDoNothing()
-				.returning();
+			const [lock] = await this.queries.createFightLock(tx, {
+				discordId,
+				lockToken: crypto.randomUUID(),
+				expiresAt: new Date(Date.now() + RANKED.LOCK_SECONDS * 1000),
+			});
 			if (!lock) return { status: 'busy' };
 
 			// Opponent: random registered player, nearest rating window first.
@@ -118,27 +171,13 @@ export class RankedService {
 				tx,
 			);
 
-			const battle = new BattleEngine().resolve(
-				createCombatant({
-					name: account.username,
-					combatClass: accountCombatClass(me.class),
-					hp: myAssembled.stats.hp,
-					atk: myAssembled.stats.atk,
-					def: myAssembled.stats.def,
-					crit: myAssembled.stats.crit,
-				}),
-				createCombatant({
-					name: opponentAccount.username,
-					combatClass: opponentAccount.combatClass,
-					hp: opponentAssembled.stats.hp,
-					atk: opponentAssembled.stats.atk,
-					def: opponentAssembled.stats.def,
-					crit: opponentAssembled.stats.crit,
-				}),
+			const battle = this.engine.resolve(
+				this.factory.createCombatant(account.username, accountCombatClass(me.class), myAssembled),
+				this.factory.createCombatant(opponentAccount.username, opponentAccount.combatClass, opponentAssembled),
 				createSecureSeed(),
 				{
-					playerStrategy: this.buildStrategy(accountCombatClass(me.class), myAssembled),
-					enemyStrategy: this.buildStrategy(opponentAccount.combatClass, opponentAssembled),
+					playerStrategy: this.factory.createStrategy(accountCombatClass(me.class), myAssembled),
+					enemyStrategy: this.factory.createStrategy(opponentAccount.combatClass, opponentAssembled),
 				},
 			);
 
@@ -179,7 +218,7 @@ export class RankedService {
 			});
 
 			await this.ensureActiveSeason(tx);
-			await tx.delete(activeRankedFights).where(eq(activeRankedFights.discordId, discordId));
+			await this.queries.deleteFightLock(tx, discordId);
 
 			return {
 				status: 'ok',
@@ -210,38 +249,20 @@ export class RankedService {
 	}
 
 	async claim(discordId: string): Promise<RankedClaimResult> {
-		return db.transaction(async (tx): Promise<RankedClaimResult> => {
-			const [me] = await tx
-				.select()
-				.from(userCharacter)
-				.where(eq(userCharacter.discordId, discordId))
-				.limit(1)
-				.for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<RankedClaimResult> => {
+			const [me] = await this.queries.lockCharacter(tx, discordId);
 			if (!me) return { status: 'not-registered' };
 			const { week, startsAt } = weekWindowAt();
 			if (me.lastWeeklyClaimWeek === week) return { status: 'already-claimed' };
 
-			const [fight] = await tx
-				.select({ id: rankedLogs.id })
-				.from(rankedLogs)
-				.where(and(eq(rankedLogs.playerId, discordId), gte(rankedLogs.timestamp, startsAt)))
-				.limit(1);
+			const [fight] = await this.queries.findWeeklyFight(tx, discordId, startsAt);
 			if (!fight) return { status: 'no-fights' };
 
 			const bracket = bracketFor(me.pvpRating);
-			const [reward] = await tx
-				.select()
-				.from(rankedReward)
-				.where(eq(rankedReward.bracket, bracket.name))
-				.limit(1);
+			const [reward] = await this.queries.findWeeklyReward(tx, bracket.name);
 			if (!reward) return { status: 'no-reward-row' };
 
-			const [bag] = await tx
-				.select()
-				.from(usersBag)
-				.where(eq(usersBag.discordId, discordId))
-				.limit(1)
-				.for('update');
+			const [bag] = await this.queries.lockBag(tx, discordId);
 			if (!bag) return { status: 'not-registered' };
 			const payload = reward.weeklyPayload as {
 				silverChest?: number;
@@ -263,11 +284,8 @@ export class RankedService {
 			if (payload.goldChest) chests.push(`+${payload.goldChest} Gold`);
 			if (payload.diamondChest) chests.push(`+${payload.diamondChest} Diamond`);
 			if (payload.genesisChest) chests.push(`+${payload.genesisChest} Genesis`);
-			await tx.update(usersBag).set(patch).where(eq(usersBag.discordId, discordId));
-			await tx
-				.update(userCharacter)
-				.set({ lastWeeklyClaimWeek: week })
-				.where(eq(userCharacter.discordId, discordId));
+			await this.queries.updateBag(tx, discordId, patch);
+			await this.queries.updateCharacter(tx, discordId, { lastWeeklyClaimWeek: week });
 
 			return {
 				status: 'ok',
@@ -280,7 +298,7 @@ export class RankedService {
 	}
 
 	async stats(discordId: string): Promise<string> {
-		const [me] = await db.select().from(userCharacter).where(eq(userCharacter.discordId, discordId)).limit(1);
+		const [me] = await this.queries.findCharacter(this.persistence.executor, discordId);
 		if (!me) return RANKED_NOT_REGISTERED;
 		const bracket = bracketFor(me.pvpRating);
 		const { week, endsAt } = weekWindowAt();
@@ -328,7 +346,7 @@ export class RankedService {
 
 	/** Persist both fighters' rating/record/log rows for one ranked fight. */
 	private async persistRankedOutcome(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		input: {
 			discordId: string;
 			me: typeof userCharacter.$inferSelect;
@@ -360,38 +378,32 @@ export class RankedService {
 			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
 		}
 
-		await tx
-			.update(userCharacter)
-			.set({
-				pvpRating: ratingAfter,
-				pvpPeak: Math.max(me.pvpPeak, ratingAfter),
-				// A fresh promotion re-arms the shield; falling without it breaks it.
-				pvpDemotionShield: meChange.shield,
-				// Ranked counts toward the PvP win/loss record too (draw = no change).
-				pvpWins: me.pvpWins + (won ? 1 : 0),
-				pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
-			})
-			.where(eq(userCharacter.discordId, discordId));
-		await tx
-			.update(userCharacter)
-			.set({
-				pvpRating: opponentRatingAfter,
-				pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
-				pvpDemotionShield: opponentChange.shield,
-				// Draw = no W/L change for either fighter (mirrors the initiator).
-				pvpWins: opponentRow.pvpWins + (!won && !draw ? 1 : 0),
-				pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
-			})
-			.where(eq(userCharacter.discordId, opponentRow.discordId));
+		await this.queries.updateCharacter(tx, discordId, {
+			pvpRating: ratingAfter,
+			pvpPeak: Math.max(me.pvpPeak, ratingAfter),
+			// A fresh promotion re-arms the shield; falling without it breaks it.
+			pvpDemotionShield: meChange.shield,
+			// Ranked counts toward the PvP win/loss record too (draw = no change).
+			pvpWins: me.pvpWins + (won ? 1 : 0),
+			pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
+		});
+		await this.queries.updateCharacter(tx, opponentRow.discordId, {
+			pvpRating: opponentRatingAfter,
+			pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
+			pvpDemotionShield: opponentChange.shield,
+			// Draw = no W/L change for either fighter (mirrors the initiator).
+			pvpWins: opponentRow.pvpWins + (!won && !draw ? 1 : 0),
+			pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
+		});
 
-		await tx.insert(rankedLogs).values({
+		await this.queries.insertLog(tx, {
 			playerId: discordId,
 			opponentId: opponentRow.discordId,
 			result: rankedLogResultOf(draw, won),
 			ratingBefore,
 			ratingAfter,
 		});
-		await tx.insert(rankedLogs).values({
+		await this.queries.insertLog(tx, {
 			playerId: opponentRow.discordId,
 			opponentId: discordId,
 			result: rankedLogResultOf(draw, !won),
@@ -400,48 +412,27 @@ export class RankedService {
 		});
 
 		const streak = await this.currentWinStreak(tx, discordId);
-		await tx
-			.update(userCharacter)
-			.set({ highestRankStreak: Math.max(me.highestRankStreak, streak) })
-			.where(eq(userCharacter.discordId, discordId));
+		await this.queries.updateCharacter(tx, discordId, {
+			highestRankStreak: Math.max(me.highestRankStreak, streak),
+		});
 	}
 
 	/** Opponent: a random non-banned registered player, widening the rating window until someone is found. */
 	private async pickOpponentRow(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		discordId: string,
 		rating: number,
 	): Promise<typeof userCharacter.$inferSelect | null> {
 		for (const window of [RANKED.WINDOW, RANKED.WINDOW * 3, Number.MAX_SAFE_INTEGER]) {
-			const [row] = await tx
-				.select()
-				.from(userCharacter)
-				.innerJoin(users, eq(users.discordId, userCharacter.discordId))
-				.where(
-					and(
-						ne(userCharacter.discordId, discordId),
-						eq(users.isBanned, false),
-						sql`abs(${userCharacter.pvpRating} - ${rating}) <= ${window}`,
-					),
-				)
-				.orderBy(sql`random()`)
-				.limit(1);
+			const [row] = await this.queries.findOpponentInWindow(tx, discordId, rating, window);
 			if (row) return row.user_character;
 		}
 		return null;
 	}
 
 	/** Win streak = consecutive wins at the tail of ranked_logs. */
-	private async currentWinStreak(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-		discordId: string,
-	): Promise<number> {
-		const logs = await tx
-			.select({ result: rankedLogs.result })
-			.from(rankedLogs)
-			.where(eq(rankedLogs.playerId, discordId))
-			.orderBy(desc(rankedLogs.id))
-			.limit(50);
+	private async currentWinStreak(tx: Transaction, discordId: string): Promise<number> {
+		const logs = await this.queries.findRecentResults(tx, discordId);
 		let streak = 0;
 		for (const log of logs) {
 			if (log.result !== 'win') break;
@@ -450,23 +441,16 @@ export class RankedService {
 		return streak;
 	}
 
-	private async ensureActiveSeason(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]): Promise<void> {
-		const [active] = await tx.select().from(seasons).where(eq(seasons.isActive, true)).limit(1);
+	private async ensureActiveSeason(tx: Transaction): Promise<void> {
+		const [active] = await this.queries.findActiveSeason(tx);
 		if (active) return;
-		const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(seasons);
-		await tx.insert(seasons).values({
+		const [{ count }] = await this.queries.countSeasons(tx);
+		await this.queries.insertSeason(tx, {
 			name: `Season ${count + 1}`,
 			startsAt: new Date(),
 			endsAt: new Date(Date.now() + 30 * 86_400_000),
 			isActive: true,
 		});
-	}
-
-	private buildStrategy(combatClass: CombatClass, assembled: AssembledPlayer) {
-		return wrapWithBlessings(
-			wrapWithRunes(ClassStrategyRegistry.forClass(combatClass), assembled.combatEffectRunes),
-			assembled.blessings,
-		);
 	}
 }
 

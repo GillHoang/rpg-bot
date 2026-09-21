@@ -1,10 +1,17 @@
 import { Client, Events, GatewayIntentBits, type Interaction } from 'discord.js';
 import { CommandRegistry } from './CommandRegistry.js';
-import { Scheduler } from './Scheduler.js';
+import { BotMaintenance } from './BotMaintenance.js';
 import { logger } from '../utils/logger.js';
 import { env } from '../config/env.js';
-import { CasinoSessionService } from '../services/CasinoSessionService.js';
 import { menuRouter } from '../menu/menuRuntime.js';
+import type { MenuRouter } from '../menu/MenuRouter.js';
+
+export interface DiscordBotDependencies {
+	client?: Client;
+	registry?: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
+	menu?: Pick<MenuRouter, 'handle'>;
+	maintenance?: Pick<BotMaintenance, 'start' | 'stop'>;
+}
 
 /**
  * Thin wrapper around discord.js Client. Owns only wiring/lifecycle;
@@ -14,37 +21,26 @@ import { menuRouter } from '../menu/menuRuntime.js';
  */
 export class DiscordBot {
 	private readonly client: Client;
-	private readonly registry = CommandRegistry.getInstance();
+	private readonly registry: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
+	private readonly menu: Pick<MenuRouter, 'handle'>;
+	private readonly maintenance: Pick<BotMaintenance, 'start' | 'stop'>;
 
-	constructor() {
-		this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
+	constructor(options: DiscordBotDependencies = {}) {
+		this.client = options.client ?? new Client({ intents: [GatewayIntentBits.Guilds] });
+		this.registry = options.registry ?? CommandRegistry.getInstance();
+		this.menu = options.menu ?? menuRouter;
+		this.maintenance = options.maintenance ?? new BotMaintenance();
 		this.registerEventHandlers();
 	}
 
 	private registerEventHandlers(): void {
 		this.client.once(Events.ClientReady, (c) => {
 			logger.info(`Logged in as ${c.user.tag}`);
-			const sessions = new CasinoSessionService();
-			let recovering = false;
-			const recover = async () => {
-				if (recovering) return;
-				recovering = true;
-				try {
-					await sessions.recoverExpired();
-				} catch (error) {
-					logger.error({ error }, 'Casino expiry recovery failed');
-				} finally {
-					recovering = false;
-				}
-			};
-			void recover();
-			setInterval(() => void recover(), 15000).unref();
-			new Scheduler().start();
-			setInterval(() => menuRouter.sweep(), 60_000).unref();
+			this.maintenance.start();
 		});
 
 		this.client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-			if (await menuRouter.handle(interaction)) return;
+			if (await this.menu.handle(interaction)) return;
 			if (interaction.isAutocomplete()) {
 				await this.registry.dispatchAutocomplete(interaction);
 				return;
@@ -56,5 +52,10 @@ export class DiscordBot {
 
 	async start(): Promise<void> {
 		await this.client.login(env.DISCORD_TOKEN);
+	}
+
+	async stop(): Promise<void> {
+		this.maintenance.stop();
+		await this.client.destroy();
 	}
 }

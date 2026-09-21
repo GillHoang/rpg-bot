@@ -1,0 +1,43 @@
+import type { CombatClass } from '../domain/entities/PlayerAccount.js';
+import { createCombatant, type CombatantState } from '../domain/combat/CombatantState.js';
+import { ClassStrategyRegistry } from '../domain/combat/ClassStrategyRegistry.js';
+import { wrapWithRunes } from '../domain/combat/RuneStrategyDecorator.js';
+import { wrapWithBlessings } from '../domain/combat/DeityBlessingDecorator.js';
+import type { IClassStrategy } from '../domain/combat/IClassStrategy.js';
+import type { AssembledPlayer } from './StatAssemblyService.js';
+
+export interface IPlayerCombatantFactory {
+	createCombatant(name: string, combatClass: CombatClass, assembled: AssembledPlayer): CombatantState;
+	createStrategy(combatClass: CombatClass, assembled: AssembledPlayer): IClassStrategy;
+}
+
+/** Factory composing fresh battle state with ordered Strategy/Decorator behavior. */
+export class PlayerCombatantFactory implements IPlayerCombatantFactory {
+	/** Copy assembled player stats into fresh, battle-local mutable state. */
+	createCombatant(name: string, combatClass: CombatClass, assembled: AssembledPlayer): CombatantState {
+		return createCombatant({
+			name,
+			combatClass,
+			hp: assembled.stats.hp,
+			atk: assembled.stats.atk,
+			def: assembled.stats.def,
+			crit: assembled.stats.crit,
+		});
+	}
+
+	/** Preserve the shared class strategy, with fresh rune then blessing wrappers. */
+	createStrategy(combatClass: CombatClass, assembled: AssembledPlayer): IClassStrategy {
+		return wrapWithBlessings(
+			wrapWithRunes(ClassStrategyRegistry.forClass(combatClass), assembled.combatEffectRunes),
+			assembled.blessings,
+		);
+	}
+}
+
+const defaultFactory = new PlayerCombatantFactory();
+
+/** Compatibility functions; service composition injects the factory interface. */
+export const createPlayerCombatant: IPlayerCombatantFactory['createCombatant'] = (...args) =>
+	defaultFactory.createCombatant(...args);
+export const createPlayerStrategy: IPlayerCombatantFactory['createStrategy'] = (...args) =>
+	defaultFactory.createStrategy(...args);

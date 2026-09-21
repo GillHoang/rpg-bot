@@ -1,7 +1,8 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../db/client.js';
-import { usersBag, gameLogs } from '../db/schema.js';
-import { DeityRepository } from '../repositories/DeityRepository.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { AscensionRepository } from '../repositories/AscensionRepository.js';
+import type { usersBag } from '../db/schema.js';
+import { DeityService } from './DeityService.js';
 import { TIER_ESSENCE_FIELD } from '../config/gachaRates.js';
 import { nextSigilCost, ascensionCost, MAX_SIGILS } from '../config/ascension.js';
 
@@ -18,18 +19,42 @@ export type AscendResult =
 	| { status: 'insufficient-resources'; neededEssence: number; neededCredux: number }
 	| { status: 'ok' };
 
+export interface AscensionDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		AscensionRepository,
+		| 'lockBag'
+		| 'findBag'
+		| 'updateSigilBalance'
+		| 'insertSigilLog'
+		| 'updateAscensionBalances'
+		| 'insertAscensionLog'
+	>;
+}
+
 /**
  * Facade for the Sigil/Ascension system, ported from config/ascension.js.
  * This REPLACES the legacy deity-enhancement system (engine/
  * deityEnhancement.js, "+10 levels, double stats") which is not ported —
  * per the original's own comment, Ascension supersedes it entirely.
  */
+
 export class AscensionService {
-	constructor(private readonly deities = new DeityRepository()) {}
+	private readonly persistence: PersistenceContext;
+	private readonly deities: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'>;
+	private readonly queries: NonNullable<AscensionDependencies['queries']>;
+	constructor(
+		deities: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'> | undefined = undefined,
+		options: AscensionDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.deities = deities ?? new DeityService();
+		this.queries = options.queries ?? new AscensionRepository();
+	}
 
 	async addSigil(discordId: string, userDeityId: number): Promise<SigilResult> {
-		return db.transaction(async (tx): Promise<SigilResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<SigilResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const progress = await this.deities.findOwnedProgress(tx, discordId, userDeityId);
 			if (progress?.userDeityId == null) return { status: 'not-owned' };
 
@@ -37,16 +62,15 @@ export class AscensionService {
 			if (!next) return { status: 'maxed' };
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			const [bag] = await this.queries.findBag(tx, discordId);
 			if (!bag) throw new Error(`addSigil: no users_bag row for ${discordId}`);
 			const have = bag[field];
 			if (have < next.essence) return { status: 'insufficient-essence', needed: next.essence, have };
 
-			await tx
-				.update(usersBag)
-				.set({ [field]: have - next.essence } as Partial<typeof usersBag.$inferInsert>)
-				.where(eq(usersBag.discordId, discordId));
-			await tx.insert(gameLogs).values({
+			await this.queries.updateSigilBalance(tx, discordId, { [field]: have - next.essence } as Partial<
+				typeof usersBag.$inferInsert
+			>);
+			await this.queries.insertSigilLog(tx, {
 				discordId,
 				action: 'Sigil',
 				itemType: field,
@@ -61,8 +85,8 @@ export class AscensionService {
 	}
 
 	async ascend(discordId: string, userDeityId: number): Promise<AscendResult> {
-		return db.transaction(async (tx): Promise<AscendResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<AscendResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const progress = await this.deities.findOwnedProgress(tx, discordId, userDeityId);
 			if (!progress) return { status: 'not-owned' };
 			if (progress.ascended) return { status: 'already-ascended' };
@@ -72,20 +96,18 @@ export class AscensionService {
 			if (!cost) return { status: 'not-owned' };
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			const [bag] = await this.queries.findBag(tx, discordId);
 			if (!bag) throw new Error(`ascend: no users_bag row for ${discordId}`);
 			const essenceHave = bag[field];
 			if (essenceHave < cost.essence || bag.credux < cost.credux) {
 				return { status: 'insufficient-resources', neededEssence: cost.essence, neededCredux: cost.credux };
 			}
 
-			await tx
-				.update(usersBag)
-				.set({ credux: bag.credux - cost.credux, [field]: essenceHave - cost.essence } as Partial<
-					typeof usersBag.$inferInsert
-				>)
-				.where(eq(usersBag.discordId, discordId));
-			await tx.insert(gameLogs).values({
+			await this.queries.updateAscensionBalances(tx, discordId, {
+				credux: bag.credux - cost.credux,
+				[field]: essenceHave - cost.essence,
+			} as Partial<typeof usersBag.$inferInsert>);
+			await this.queries.insertAscensionLog(tx, {
 				discordId,
 				action: 'Ascension',
 				previousCredux: bag.credux,

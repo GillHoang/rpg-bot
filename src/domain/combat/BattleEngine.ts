@@ -1,22 +1,14 @@
 import { rollChance } from '../../utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
-import { combatDisplayName, findDebuff } from './CombatantState.js';
-import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
+import type { IClassStrategy, StrategyContext } from './IClassStrategy.js';
 import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
-import { mitigate, rollVariance, rollCrit, hitMultiplier } from './DamageCalculator.js';
 import { createRng } from './Rng.js';
-import {
-	COMBAT_ATTACK_MISSES_DIZZY,
-	COMBAT_DEFEATED_SUFFIX,
-	COMBAT_DOT_TICK,
-	COMBAT_GUARD,
-	COMBAT_HIT,
-	COMBAT_ROUND_HEADER,
-	COMBAT_STRIKE_EMOJIS,
-	COMBAT_SUDDEN_DEATH_HEADER,
-	COMBAT_TAGS,
-	COMBAT_UNABLE_TO_ACT,
-} from '../../text/combat.js';
+import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
+import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
+import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
+import { COMBAT_ROUND_HEADER, COMBAT_SUDDEN_DEATH_HEADER } from '../../text/combat.js';
+
+export { SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
 
 export type BattleOutcome = 'player_win' | 'enemy_win' | 'draw';
 
@@ -40,17 +32,6 @@ export interface BattleResult {
 	enemyHpRemaining: number;
 }
 
-/** Rounds 1–30 are normal; 31–40 sudden death: all damage × 2^(round−30). */
-export const SUDDEN_DEATH_START = 30;
-const MAX_ROUNDS = 40;
-
-/** Damage amplifier once sudden death kicks in (round ≤ 30 → ×1). */
-export function suddenDeathMultiplier(round: number): number {
-	if (round <= SUDDEN_DEATH_START) return 1;
-	return 2 ** (round - SUDDEN_DEATH_START);
-}
-
-/** Context dùng chung xuyên suốt một trận — tránh hàm nào cũng nhận 7-8 tham số lặp lại. */
 /**
  * Context dùng chung xuyên suốt một trận — tránh hàm nào cũng nhận 7-8 tham
  * số lặp lại (player/enemy/strategy/rng/log đi cùng nhau khắp engine).
@@ -62,8 +43,8 @@ interface RoundContext {
 	enemyStrategy: IClassStrategy;
 	rng: () => number;
 	log: string[];
-	/** Debuffs applied during the CURRENT round — they must not tick at this round's end. */
-	freshDebuffs: Set<Debuff>;
+	/** Debuffs present before turns; newly applied statuses start counting next round. */
+	existingDebuffs: Set<Debuff>;
 }
 
 /**
@@ -78,6 +59,11 @@ interface RoundContext {
  * initiative roll (Tailwind bias flag) are part of the core loop.
  */
 export class BattleEngine {
+	constructor(
+		private readonly attacks: IBattleAttackResolver = new BattleAttackResolver(),
+		private readonly statuses: ICombatStatusEffects = new CombatStatusEffectProcessor(),
+	) {}
+
 	resolve(
 		player: CombatantState,
 		enemy: CombatantState,
@@ -95,7 +81,7 @@ export class BattleEngine {
 			enemyStrategy,
 			rng,
 			log: [],
-			freshDebuffs: new Set(),
+			existingDebuffs: new Set(),
 		};
 
 		let round = 1;
@@ -131,10 +117,10 @@ export class BattleEngine {
 		playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 		enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
 
-		// Debuffs pushed during THIS round must not tick down at this round's
+		// Debuffs pushed during the turns must not tick down at this round's
 		// end — a 1-turn debuff would otherwise expire before ever taking
 		// effect on the holder's next turn.
-		ctx.freshDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
+		ctx.existingDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
 
 		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(ctx)) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
@@ -197,129 +183,9 @@ export class BattleEngine {
 			rng: battle.rng,
 			log: (m) => battle.log.push(m),
 		};
-		this.shakeOffExpiredDebuffs(attacker);
-		if (this.isDisabled(attacker, battle.rng, battle.log)) return;
-		this.strike(attacker, defender, atkStrategy, defStrategy, ctx);
-	}
-
-	/** Drop debuffs the attacker is immune to (venom immunity also covers burn-style poison). */
-	private shakeOffExpiredDebuffs(attacker: CombatantState): void {
-		const immunities = attacker.immunityTags;
-		if (!immunities) return;
-		attacker.debuffs = attacker.debuffs.filter(
-			(d) => !immunities.includes(d.tag) && !(d.tag === 'venom' && immunities.includes('poison')),
-		);
-	}
-
-	/** Hard CC (stun/paralyze) skips the turn; Dizzy consumes itself on a miss roll. */
-	private isDisabled(attacker: CombatantState, rng: () => number, log: string[]): boolean {
-		// Hard crowd-control: skip the action entirely.
-		if (findDebuff(attacker, 'stun') || findDebuff(attacker, 'paralyze')) {
-			log.push(COMBAT_UNABLE_TO_ACT(combatDisplayName(attacker)));
-			return true;
-		}
-		// Dizzy: single-use miss chance on the next attack, consumed either way.
-		const dizzy = findDebuff(attacker, 'dizzy');
-		if (!dizzy) return false;
-		attacker.debuffs = attacker.debuffs.filter((d) => d !== dizzy);
-		if (rollChance(dizzy.value, rng)) {
-			log.push(COMBAT_ATTACK_MISSES_DIZZY(combatDisplayName(attacker)));
-			return true;
-		}
-		return false;
-	}
-
-	/** One attack plus the Archer-style immediate extra attack if the strategy triggered one. */
-	private strike(
-		attacker: CombatantState,
-		defender: CombatantState,
-		atkStrategy: IClassStrategy,
-		defStrategy: IClassStrategy,
-		ctx: StrategyContext,
-	): void {
-		const resolved = this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
-		if (resolved.triggerExtraAttack && defender.hp > 0) {
-			this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
-		}
-	}
-
-	private performAttack(
-		attacker: CombatantState,
-		defender: CombatantState,
-		atkStrategy: IClassStrategy,
-		defStrategy: IClassStrategy,
-		ctx: StrategyContext,
-	): ResolvedHit {
-		const hit: OutgoingHit = {
-			damagePctBonus: 0,
-			armorPierceFraction: 0,
-			forcedMultiplier: null,
-			suppressCrit: false,
-		};
-		atkStrategy.prepareOutgoingHit(ctx, hit);
-
-		const incoming: IncomingHit = { reductionFraction: 0 };
-		const defCtx: StrategyContext = {
-			self: defender,
-			enemy: attacker,
-			round: ctx.round,
-			rng: ctx.rng,
-			log: ctx.log,
-		};
-		defStrategy.prepareIncomingHit(defCtx, incoming);
-
-		const atkDownPct = Math.min(
-			1,
-			(findDebuff(attacker, 'atk_down')?.value ?? 0) + (findDebuff(attacker, 'blight')?.value ?? 0),
-		);
-		const defDownPct = findDebuff(defender, 'def_down')?.value ?? 0;
-
-		const effAtk = attacker.atk * (1 - atkDownPct);
-		const effDef = defender.def * (1 - defDownPct) * (1 - hit.armorPierceFraction);
-
-		const variance = rollVariance(ctx.rng);
-		const crit = !hit.suppressCrit && rollCrit(ctx.rng, attacker.crit);
-
-		let amount: number;
-		if (hit.forcedMultiplier != null) {
-			amount = mitigate(effAtk, effDef) * variance * hit.forcedMultiplier;
-		} else {
-			amount = mitigate(effAtk, effDef) * variance * hitMultiplier(crit, hit.damagePctBonus);
-		}
-		amount *= 1 - incoming.reductionFraction;
-		amount *= suddenDeathMultiplier(ctx.round);
-
-		const dealt = Math.max(0, Math.floor(amount));
-		defender.hp = Math.max(0, defender.hp - dealt);
-
-		ctx.log(
-			COMBAT_HIT(
-				crit ? COMBAT_TAGS.CRIT : COMBAT_TAGS.PHYS,
-				crit ? COMBAT_STRIKE_EMOJIS.crit : (attacker.attackEmoji ?? COMBAT_STRIKE_EMOJIS.bareHand),
-				combatDisplayName(attacker),
-				combatDisplayName(defender),
-				dealt.toLocaleString(),
-				defender.hp <= 0 ? COMBAT_DEFEATED_SUFFIX(combatDisplayName(defender)) : '',
-			),
-		);
-		if (incoming.reductionFraction > 0) {
-			ctx.log(COMBAT_GUARD(combatDisplayName(defender), Math.round(incoming.reductionFraction * 100)));
-		}
-
-		const resolved: ResolvedHit = { damageDealt: dealt, crit, triggerExtraAttack: false };
-		atkStrategy.onHitLanded(ctx, resolved);
-
-		if (defender.hp > 0) {
-			const defTakenCtx: StrategyContext = {
-				self: defender,
-				enemy: attacker,
-				round: ctx.round,
-				rng: ctx.rng,
-				log: ctx.log,
-			};
-			defStrategy.onDamageTaken(defTakenCtx, resolved);
-		}
-		return resolved;
+		this.statuses.removeImmuneDebuffs(attacker);
+		if (this.statuses.isTurnDisabled(attacker, battle.rng, battle.log)) return;
+		this.attacks.executeStrike(attacker, defender, atkStrategy, defStrategy, ctx);
 	}
 
 	private endOfRound(side: CombatantState, strategy: IClassStrategy, round: number, battle: RoundContext): void {
@@ -331,69 +197,8 @@ export class BattleEngine {
 			rng: battle.rng,
 			log: (m) => battle.log.push(m),
 		};
-		this.shakeOffExpiredDebuffs(side);
-		this.tickDamageOverTime(side, battle.log);
-		this.tickStatusDurations(side, battle.freshDebuffs);
-		side.debuffs = side.debuffs.filter((d) => d.turnsLeft > 0);
+		this.statuses.applyEndOfRoundEffects(side, battle.existingDebuffs, battle.log);
 
 		if (side.hp > 0) strategy.onRoundEnd(ctx);
-	}
-
-	/** DOT ticks (bleed, burn, venom), reduced by the target's Warding rune (if any). */
-	private tickDamageOverTime(side: CombatantState, log: string[]): void {
-		const wardingPct = (side.flags.warding_pct as number) ?? 0;
-		for (const debuff of side.debuffs) {
-			if (!isDotTag(debuff.tag)) continue;
-			const tick = Math.floor(debuff.value * (1 - wardingPct));
-			if (tick <= 0) continue;
-			side.hp = Math.max(0, side.hp - tick);
-			log.push(
-				COMBAT_DOT_TICK(
-					dotTagOf(debuff.tag),
-					combatDisplayName(side),
-					tick.toLocaleString(),
-					dotLabelOf(debuff.tag),
-				),
-			);
-			debuff.turnsLeft -= 1;
-		}
-	}
-
-	/**
-	 * Non-DOT status durations tick down too (stun/paralyze/atk_down/def_down/blight),
-	 * except ones applied this same round — those start counting next round.
-	 */
-	private tickStatusDurations(side: CombatantState, freshDebuffs: Set<Debuff>): void {
-		for (const debuff of side.debuffs) {
-			if (isDotTag(debuff.tag) || !freshDebuffs.has(debuff)) continue;
-			debuff.turnsLeft -= 1;
-		}
-	}
-}
-
-const DOT_TAGS = ['bleed', 'burn', 'venom'] as const;
-type DotTag = (typeof DOT_TAGS)[number];
-
-const isDotTag = (tag: string): tag is DotTag => DOT_TAGS.includes(tag as DotTag);
-
-function dotTagOf(tag: DotTag): string {
-	switch (tag) {
-		case 'bleed':
-			return COMBAT_TAGS.BLEED;
-		case 'burn':
-			return COMBAT_TAGS.BURN;
-		default:
-			return COMBAT_TAGS.VENM;
-	}
-}
-
-function dotLabelOf(tag: DotTag): string {
-	switch (tag) {
-		case 'bleed':
-			return 'Chảy máu';
-		case 'burn':
-			return 'Bỏng';
-		default:
-			return 'Nhiễm độc';
 	}
 }

@@ -1,6 +1,8 @@
-import { and, eq } from 'drizzle-orm';
-import { db, type Executor } from '../db/client.js';
-import { dailyQuestCompletionRewards, dailyQuests, users, usersBag, weeklyGrand, weeklyQuests } from '../db/schema.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { QuestRepository } from '../repositories/QuestRepository.js';
+import type { Executor } from '../db/client.js';
+import type { dailyQuests, weeklyQuests } from '../db/schema.js';
 import {
 	DAILY_ALL_COMPLETE_RELICS,
 	DAILY_POOL,
@@ -49,6 +51,33 @@ export interface QuestSnapshot {
 	grandReady: boolean;
 }
 
+export interface QuestDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		QuestRepository,
+		| 'findWeeklyGrand'
+		| 'lockBag'
+		| 'lockUser'
+		| 'deleteIncompleteDailyQuests'
+		| 'listDailyQuests'
+		| 'insertDailyQuests'
+		| 'updateRefreshState'
+		| 'lockRewardBag'
+		| 'insertWeeklyGrand'
+		| 'updateWeeklyGrandBalances'
+		| 'listWeeklyQuests'
+		| 'insertWeeklyQuests'
+		| 'lockDailyQuest'
+		| 'updateDailyProgress'
+		| 'updateDailyRewardBalances'
+		| 'insertDailyCompletionReward'
+		| 'updateCompletionRelics'
+		| 'lockWeeklyQuest'
+		| 'updateWeeklyProgress'
+		| 'updateWeeklyRewardBalances'
+	>;
+}
+
 /**
  * Quest daily/weekly (M7): sinh lazily theo ngày/ISO-week Manila — không cần
  * cron, quest xuất hiện đúng lúc người chơi chạm vào hệ thống. Progress đến
@@ -56,12 +85,23 @@ export interface QuestSnapshot {
  * Đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand claim được.
  * Toàn bộ wording nằm ở src/text/quest.ts.
  */
+
 export class QuestService {
-	constructor(private readonly reputation = new ReputationService()) {}
+	private readonly persistence: PersistenceContext;
+	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
+	private readonly queries: NonNullable<QuestDependencies['queries']>;
+	constructor(
+		reputation: Pick<ReputationService, 'awardInTx'> | undefined = undefined,
+		options: QuestDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence });
+		this.queries = options.queries ?? new QuestRepository();
+	}
 
 	/** Event-subscriber entry — opens its own transaction. */
 	async progress(discordId: string, questType: QuestType): Promise<void> {
-		await db.transaction(async (tx) => this.progressInTx(tx, discordId, questType));
+		await this.persistence.unitOfWork.run(async (tx) => this.progressInTx(tx, discordId, questType));
 	}
 
 	async progressInTx(tx: Executor, discordId: string, questType: QuestType, now = new Date()): Promise<void> {
@@ -99,17 +139,14 @@ export class QuestService {
 	}
 
 	async snapshot(discordId: string): Promise<QuestSnapshot | null> {
-		return db.transaction(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return null;
 			const day = DailyCycle.keyAt();
 			const { week } = weekWindowAt();
 			const dailies = await this.ensureDailyQuests(tx, discordId, day);
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
-			const [grand] = await tx
-				.select()
-				.from(weeklyGrand)
-				.where(and(eq(weeklyGrand.discordId, discordId), eq(weeklyGrand.questWeek, week)));
+			const [grand] = await this.queries.findWeeklyGrand(tx, discordId, week);
 			return {
 				day,
 				week,
@@ -125,91 +162,63 @@ export class QuestService {
 
 	/** Serialize lazy generation and reward writes with daily/raid's bag-first lock. */
 	private async lockPlayer(tx: Executor, discordId: string) {
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		const [bag] = await this.queries.lockBag(tx, discordId);
 		if (!bag) return null;
 		// Keep FK key-share locks compatible (e.g. a title grant holding character).
-		const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('no key update');
+		const [user] = await this.queries.lockUser(tx, discordId);
 		return user ?? null;
 	}
 
 	async refresh(discordId: string, expectedDay?: string): Promise<string> {
-		return db.transaction(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
 			const day = DailyCycle.keyAt();
 			if (expectedDay && expectedDay !== day) return 'Đã sang ngày mới. Hãy xem lại nhiệm vụ trước khi đổi.';
 			if (user.lastQuestRefreshDate === day) return QUEST_REFRESH_LIMIT;
-			await tx
-				.delete(dailyQuests)
-				.where(
-					and(
-						eq(dailyQuests.discordId, discordId),
-						eq(dailyQuests.questDate, day),
-						eq(dailyQuests.completed, false),
-					),
-				);
+			await this.queries.deleteIncompleteDailyQuests(tx, discordId, day);
 			// Completed quests stay; reroll only tops the board back up to
 			// QUESTS_PER_CYCLE — ensureDailyQuests would see the kept rows and
 			// return early without replacing the deleted ones.
-			const kept = await tx
-				.select()
-				.from(dailyQuests)
-				.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
+			const kept = await this.queries.listDailyQuests(tx, discordId, day);
 			const missing = Math.max(0, QUESTS_PER_CYCLE - kept.length);
 			if (missing > 0) {
 				const rng = createRng(createSecureSeed());
 				const usedTypes = new Set(kept.map((q) => q.questType));
 				const pool = DAILY_POOL.filter((t) => !usedTypes.has(t.type));
-				await tx
-					.insert(dailyQuests)
-					.values(
-						this.rollTemplates(pool, rng, missing).map((t) => ({
-							discordId,
-							questType: t.type,
-							targetCount: t.target,
-							rewardCredux: randInt(rng, DAILY_REWARD.credux),
-							rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
-							questDate: day,
-						})),
-					)
-					.onConflictDoNothing();
+				await this.queries.insertDailyQuests(
+					tx,
+					this.rollTemplates(pool, rng, missing).map((t) => ({
+						discordId,
+						questType: t.type,
+						targetCount: t.target,
+						rewardCredux: randInt(rng, DAILY_REWARD.credux),
+						rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
+						questDate: day,
+					})),
+				);
 			}
-			await tx
-				.update(users)
-				.set({ questRefreshesToday: 1, lastQuestRefreshDate: day })
-				.where(eq(users.discordId, discordId));
+			await this.queries.updateRefreshState(tx, discordId, { questRefreshesToday: 1, lastQuestRefreshDate: day });
 			return QUEST_REFRESH_DONE;
 		});
 	}
 
 	async claimWeeklyGrand(discordId: string): Promise<string> {
-		return db.transaction(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
 			const { week } = weekWindowAt();
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return QUEST_CLAIM_NOT_READY;
-			const [bag] = await tx
-				.select()
-				.from(usersBag)
-				.where(eq(usersBag.discordId, discordId))
-				.limit(1)
-				.for('update');
+			const [bag] = await this.queries.lockRewardBag(tx, discordId);
 			if (!bag) return QUEST_REGISTER_FIRST;
-			const [grand] = await tx
-				.insert(weeklyGrand)
-				.values({ discordId, questWeek: week, claimed: true })
-				.onConflictDoNothing()
-				.returning();
+			const [grand] = await this.queries.insertWeeklyGrand(tx, { discordId, questWeek: week, claimed: true });
 			if (!grand) return QUEST_CLAIM_ALREADY;
-			await tx
-				.update(usersBag)
-				.set({
-					diamondChest: bag.diamondChest + WEEKLY_GRAND.diamondChest,
-					credux: bag.credux + WEEKLY_GRAND.credux,
-					lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
-				})
-				.where(eq(usersBag.discordId, discordId));
+			await this.queries.updateWeeklyGrandBalances(tx, discordId, {
+				diamondChest: bag.diamondChest + WEEKLY_GRAND.diamondChest,
+				credux: bag.credux + WEEKLY_GRAND.credux,
+				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
+			});
 			await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
 			return QUEST_CLAIM_OK(WEEKLY_GRAND.credux.toLocaleString(), WEEKLY_GRAND.diamondChest);
 		});
@@ -229,57 +238,41 @@ export class QuestService {
 	}
 
 	private async ensureDailyQuests(tx: Executor, discordId: string, day: string): Promise<QuestRow[]> {
-		const existing = await tx
-			.select()
-			.from(dailyQuests)
-			.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
+		const existing = await this.queries.listDailyQuests(tx, discordId, day);
 		if (existing.length > 0) return existing;
 		const rng = createRng(createSecureSeed());
 		// Callers hold the player's bag/user locks: a cycle is generated once,
 		// even when two menus open simultaneously and roll different templates.
-		await tx
-			.insert(dailyQuests)
-			.values(
-				this.rollTemplates(DAILY_POOL, rng).map((t) => ({
-					discordId,
-					questType: t.type,
-					targetCount: t.target,
-					rewardCredux: randInt(rng, DAILY_REWARD.credux),
-					rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
-					questDate: day,
-				})),
-			)
-			.onConflictDoNothing();
-		return tx
-			.select()
-			.from(dailyQuests)
-			.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
+		await this.queries.insertDailyQuests(
+			tx,
+			this.rollTemplates(DAILY_POOL, rng).map((t) => ({
+				discordId,
+				questType: t.type,
+				targetCount: t.target,
+				rewardCredux: randInt(rng, DAILY_REWARD.credux),
+				rewardBeliefShards: randInt(rng, DAILY_REWARD.shards),
+				questDate: day,
+			})),
+		);
+		return this.queries.listDailyQuests(tx, discordId, day);
 	}
 
 	private async ensureWeeklyQuests(tx: Executor, discordId: string, week: number): Promise<WeeklyQuestRow[]> {
-		const existing = await tx
-			.select()
-			.from(weeklyQuests)
-			.where(and(eq(weeklyQuests.discordId, discordId), eq(weeklyQuests.questWeek, week)));
+		const existing = await this.queries.listWeeklyQuests(tx, discordId, week);
 		if (existing.length > 0) return existing;
 		const rng = createRng(createSecureSeed());
-		await tx
-			.insert(weeklyQuests)
-			.values(
-				this.rollTemplates(WEEKLY_POOL, rng).map((t) => ({
-					discordId,
-					questType: t.type,
-					targetCount: t.target,
-					rewardCredux: randInt(rng, WEEKLY_REWARD.credux),
-					rewardValor: randInt(rng, WEEKLY_REWARD.valor),
-					questWeek: week,
-				})),
-			)
-			.onConflictDoNothing();
-		return tx
-			.select()
-			.from(weeklyQuests)
-			.where(and(eq(weeklyQuests.discordId, discordId), eq(weeklyQuests.questWeek, week)));
+		await this.queries.insertWeeklyQuests(
+			tx,
+			this.rollTemplates(WEEKLY_POOL, rng).map((t) => ({
+				discordId,
+				questType: t.type,
+				targetCount: t.target,
+				rewardCredux: randInt(rng, WEEKLY_REWARD.credux),
+				rewardValor: randInt(rng, WEEKLY_REWARD.valor),
+				questWeek: week,
+			})),
+		);
+		return this.queries.listWeeklyQuests(tx, discordId, week);
 	}
 
 	/** `count` distinct templates from `pool` — no duplicate types. */
@@ -307,51 +300,33 @@ export class QuestService {
 	): Promise<void> {
 		// Row lock: two concurrent progress events for the same quest must not
 		// read the same counter (read–modify–write would drop one increment).
-		const [quest] = await tx
-			.select()
-			.from(dailyQuests)
-			.where(
-				and(
-					eq(dailyQuests.discordId, discordId),
-					eq(dailyQuests.questDate, day),
-					eq(dailyQuests.questType, questType),
-				),
-			)
-			.limit(1)
-			.for('update');
+		const [quest] = await this.queries.lockDailyQuest(tx, discordId, day, questType);
 		if (!quest || quest.completed) return;
 		const count = quest.currentCount + 1;
 		const completed = count >= quest.targetCount;
-		await tx.update(dailyQuests).set({ currentCount: count, completed }).where(eq(dailyQuests.id, quest.id));
+		await this.queries.updateDailyProgress(tx, quest.id, { currentCount: count, completed });
 		if (!completed) return;
 
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1).for('update');
+		const [bag] = await this.queries.lockRewardBag(tx, discordId);
 		if (!bag) return;
-		await tx
-			.update(usersBag)
-			.set({
-				credux: bag.credux + quest.rewardCredux,
-				beliefShards: bag.beliefShards + quest.rewardBeliefShards,
-				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + quest.rewardCredux,
-			})
-			.where(eq(usersBag.discordId, discordId));
+		await this.queries.updateDailyRewardBalances(tx, discordId, {
+			credux: bag.credux + quest.rewardCredux,
+			beliefShards: bag.beliefShards + quest.rewardBeliefShards,
+			lifetimeCreduxEarned: bag.lifetimeCreduxEarned + quest.rewardCredux,
+		});
 		await this.reputation.awardInTx(tx, discordId, 'quest_complete', now);
 
-		const rows = await tx
-			.select()
-			.from(dailyQuests)
-			.where(and(eq(dailyQuests.discordId, discordId), eq(dailyQuests.questDate, day)));
+		const rows = await this.queries.listDailyQuests(tx, discordId, day);
 		if (rows.length > 0 && rows.every((q) => q.completed)) {
-			const [granted] = await tx
-				.insert(dailyQuestCompletionRewards)
-				.values({ discordId, questDate: day, sacredRelics: DAILY_ALL_COMPLETE_RELICS })
-				.onConflictDoNothing()
-				.returning();
+			const [granted] = await this.queries.insertDailyCompletionReward(tx, {
+				discordId,
+				questDate: day,
+				sacredRelics: DAILY_ALL_COMPLETE_RELICS,
+			});
 			if (granted) {
-				await tx
-					.update(usersBag)
-					.set({ sacredRelics: bag.sacredRelics + DAILY_ALL_COMPLETE_RELICS })
-					.where(eq(usersBag.discordId, discordId));
+				await this.queries.updateCompletionRelics(tx, discordId, {
+					sacredRelics: bag.sacredRelics + DAILY_ALL_COMPLETE_RELICS,
+				});
 			}
 		}
 	}
@@ -364,34 +339,20 @@ export class QuestService {
 		now: Date,
 	): Promise<void> {
 		// Row lock — same lost-update protection as bumpDaily.
-		const [quest] = await tx
-			.select()
-			.from(weeklyQuests)
-			.where(
-				and(
-					eq(weeklyQuests.discordId, discordId),
-					eq(weeklyQuests.questWeek, week),
-					eq(weeklyQuests.questType, questType),
-				),
-			)
-			.limit(1)
-			.for('update');
+		const [quest] = await this.queries.lockWeeklyQuest(tx, discordId, week, questType);
 		if (!quest || quest.completed) return;
 		const count = quest.currentCount + 1;
 		const completed = count >= quest.targetCount;
-		await tx.update(weeklyQuests).set({ currentCount: count, completed }).where(eq(weeklyQuests.id, quest.id));
+		await this.queries.updateWeeklyProgress(tx, quest.id, { currentCount: count, completed });
 		if (!completed) return;
 
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1).for('update');
+		const [bag] = await this.queries.lockRewardBag(tx, discordId);
 		if (!bag) return;
-		await tx
-			.update(usersBag)
-			.set({
-				credux: bag.credux + quest.rewardCredux,
-				valorMedals: bag.valorMedals + quest.rewardValor,
-				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + quest.rewardCredux,
-			})
-			.where(eq(usersBag.discordId, discordId));
+		await this.queries.updateWeeklyRewardBalances(tx, discordId, {
+			credux: bag.credux + quest.rewardCredux,
+			valorMedals: bag.valorMedals + quest.rewardValor,
+			lifetimeCreduxEarned: bag.lifetimeCreduxEarned + quest.rewardCredux,
+		});
 		await this.reputation.awardInTx(tx, discordId, 'quest_complete', now);
 	}
 }

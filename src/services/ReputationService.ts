@@ -1,6 +1,8 @@
-import { eq } from 'drizzle-orm';
-import { db, type Executor } from '../db/client.js';
-import { userCharacter } from '../db/schema.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { ReputationRepository } from '../repositories/ReputationRepository.js';
+import type { Executor } from '../db/client.js';
+
 import {
 	BELIEVER_DAILY_CAP,
 	BELIEVER_EXP_SOURCES,
@@ -15,15 +17,30 @@ export interface BelieverAwardResult {
 	newLevel: number | null;
 }
 
+export interface ReputationDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<ReputationRepository, 'lockCharacter' | 'updateProgress'>;
+	cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>;
+}
+
 /**
  * Believer EXP (hệ reputation của bản gốc): EXP từ hành vi hằng ngày, cap
  * theo ngày Manila, level-up nội bộ. Dùng được cả trong tx (duel/ranked/
  * quest cộng cùng giao dịch thưởng) lẫn ngoài tx (event subscriber).
  */
+
 export class ReputationService {
+	private readonly persistence: PersistenceContext;
+	private readonly queries: NonNullable<ReputationDependencies['queries']>;
+	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
+	constructor(options: ReputationDependencies = {}) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.queries = options.queries ?? new ReputationRepository();
+		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
+	}
 	/** Event-driven path — opens its own transaction. */
 	async award(discordId: string, source: BelieverExpSource): Promise<BelieverAwardResult> {
-		return db.transaction((tx) => this.awardInTx(tx, discordId, source));
+		return this.persistence.unitOfWork.run((tx) => this.awardInTx(tx, discordId, source));
 	}
 
 	async awardInTx(
@@ -34,12 +51,7 @@ export class ReputationService {
 	): Promise<BelieverAwardResult> {
 		const amount = BELIEVER_EXP_SOURCES[source];
 		const today = DailyCycle.keyAt(now);
-		const [character] = await tx
-			.select()
-			.from(userCharacter)
-			.where(eq(userCharacter.discordId, discordId))
-			.limit(1)
-			.for('update');
+		const [character] = await this.queries.lockCharacter(tx, discordId);
 		if (!character) return { granted: 0, newLevel: null };
 
 		const resetNeeded = character.reputationExpResetDate !== today;
@@ -57,18 +69,15 @@ export class ReputationService {
 		}
 		if (newLevel != null && believerLevel >= 10) {
 			// Believer level 10 — title Devout Believer (idempotent grant).
-			await new CosmeticService().grantTitleInTx(tx, discordId, 'devout_believer');
+			await this.cosmetics.grantTitleInTx(tx, discordId, 'devout_believer');
 		}
 
-		await tx
-			.update(userCharacter)
-			.set({
-				believerExp,
-				believerLevel,
-				reputationExpToday: alreadyToday + granted,
-				reputationExpResetDate: today,
-			})
-			.where(eq(userCharacter.discordId, discordId));
+		await this.queries.updateProgress(tx, discordId, {
+			believerExp,
+			believerLevel,
+			reputationExpToday: alreadyToday + granted,
+			reputationExpResetDate: today,
+		});
 		return { granted, newLevel };
 	}
 }

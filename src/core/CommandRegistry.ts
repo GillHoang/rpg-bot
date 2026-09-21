@@ -4,7 +4,7 @@ import { logger } from '../utils/logger.js';
 import { GENERIC_ERROR } from '../text/common.js';
 
 /**
- * Singleton registry mapping command name -> ICommand instance.
+ * Application registry mapping command name -> ICommand instance.
  * Kept deliberately dumb: it does not know *how* commands work, only
  * that they satisfy ICommand. Adding a new command never means touching
  * this file's logic, only calling `.register()` once at bootstrap.
@@ -12,8 +12,6 @@ import { GENERIC_ERROR } from '../text/common.js';
 export class CommandRegistry {
 	private static instance: CommandRegistry | null = null;
 	private readonly commands = new Map<string, ICommand>();
-
-	private constructor() {}
 
 	static getInstance(): CommandRegistry {
 		CommandRegistry.instance ??= new CommandRegistry();

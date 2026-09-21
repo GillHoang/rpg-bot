@@ -10,11 +10,11 @@ import { logger } from '../utils/logger.js';
  * applies core progression in its reward transaction and marks the event so
  * these observers skip it. Call once at bootstrap.
  */
-export function subscribeDomainEvents(): void {
-	const bus = EventBus.getInstance();
-	const quests = new QuestService();
-	const reputation = new ReputationService();
-
+export function subscribeDomainEvents(
+	bus: Pick<EventBus, 'on'> = EventBus.getInstance(),
+	quests: Pick<QuestService, 'progress'> = new QuestService(),
+	reputation: Pick<ReputationService, 'award'> = new ReputationService(),
+): void {
 	const run = (what: string, task: Promise<unknown>): void => {
 		void task.catch((error) => logger.error({ error, what }, 'Domain event subscriber failed'));
 	};

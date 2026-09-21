@@ -1,6 +1,7 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../db/client.js';
-import { usersBag } from '../db/schema.js';
+import { LootGrantService } from './LootGrantService.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { LootInventoryRepository } from '../repositories/LootInventoryRepository.js';
 import { LootRepository } from '../repositories/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../config/chestLoot.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
@@ -36,15 +37,37 @@ export const ESSENCE_FIELDS = {
 	supreme: 'supremeEssence',
 } as const;
 
+export interface LootDependencies {
+	grants?: Pick<LootGrantService, 'rune' | 'gear'>;
+	persistence?: PersistenceContext;
+	queries?: Pick<LootInventoryRepository, 'updateBag'>;
+}
+
+type LootSource = Pick<LootRepository, 'lockBag' | 'log' | 'bags'> & Partial<Pick<LootGrantService, 'rune' | 'gear'>>;
+
 export class LootService {
-	constructor(
-		private readonly repo = new LootRepository(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+	private readonly grants: Pick<LootGrantService, 'rune' | 'gear'>;
+	private readonly persistence: PersistenceContext;
+	private readonly repo: Pick<LootRepository, 'lockBag' | 'log' | 'bags'>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: Pick<LootInventoryRepository, 'updateBag'>;
+
+	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {}) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.repo = repo ?? new LootRepository();
+		// Preserve earlier positional collaborators that supplied both storage and grants.
+		this.grants =
+			options.grants ??
+			(repo?.rune && repo.gear
+				? { rune: repo.rune.bind(repo), gear: repo.gear.bind(repo) }
+				: new LootGrantService());
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new LootInventoryRepository();
+	}
 	async open(id: string, key: ChestKey, count: number): Promise<string> {
 		if (!Object.hasOwn(CHESTS, key) || !Number.isInteger(count) || count < 1 || count > 10) return OPEN_BAD_COUNT;
 		let opened = false;
-		const message = await db.transaction(async (tx) => {
+		const message = await this.persistence.unitOfWork.run(async (tx) => {
 			const bag = await this.repo.lockBag(tx, id);
 			if (!bag) return OPEN_NO_REGISTER;
 			const table = CHESTS[key];
@@ -78,24 +101,21 @@ export class LootService {
 					relics[roll.relic] += 1;
 					items.push(OPEN_ITEM_RELIC(roll.relic));
 				}
-				if (roll.runeTier) items.push(await this.repo.rune(tx, id, rng, { tier: roll.runeTier }));
-				if (roll.gearTier) items.push(await this.repo.gear(tx, id, roll.gearTier, rng));
+				if (roll.runeTier) items.push(await this.grants.rune(tx, id, rng, { tier: roll.runeTier }));
+				if (roll.gearTier) items.push(await this.grants.gear(tx, id, roll.gearTier, rng));
 			}
-			await tx
-				.update(usersBag)
-				.set({
-					[table.column]: bag[table.column] - count,
-					credux: bag.credux + creux,
-					beliefShards: bag.beliefShards + shards,
-					lifetimeCreduxEarned: bag.lifetimeCreduxEarned + creux,
-					...essence,
-					lesserRuneBag: bag.lesserRuneBag + runeBags.lesserRuneBag,
-					greaterRuneBag: bag.greaterRuneBag + runeBags.greaterRuneBag,
-					divineRuneBag: bag.divineRuneBag + runeBags.divineRuneBag,
-					sacredRelics: bag.sacredRelics + relics.sacredRelics,
-					supremeRelics: bag.supremeRelics + relics.supremeRelics,
-				})
-				.where(eq(usersBag.discordId, id));
+			await this.queries.updateBag(tx, id, {
+				[table.column]: bag[table.column] - count,
+				credux: bag.credux + creux,
+				beliefShards: bag.beliefShards + shards,
+				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + creux,
+				...essence,
+				lesserRuneBag: bag.lesserRuneBag + runeBags.lesserRuneBag,
+				greaterRuneBag: bag.greaterRuneBag + runeBags.greaterRuneBag,
+				divineRuneBag: bag.divineRuneBag + runeBags.divineRuneBag,
+				sacredRelics: bag.sacredRelics + relics.sacredRelics,
+				supremeRelics: bag.supremeRelics + relics.supremeRelics,
+			});
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
 			return (
 				OPEN_RESULT(count, table.label, creux.toLocaleString(), shards) +
@@ -111,7 +131,7 @@ export class LootService {
 	async openRuneBag(id: string, bagKey: string): Promise<string> {
 		const field = { lb: 'lesserRuneBag', gb: 'greaterRuneBag', db: 'divineRuneBag' } as const;
 		if (!Object.hasOwn(field, bagKey)) return RUNE_BAG_BAD_KEY;
-		return db.transaction(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx) => {
 			const bag = await this.repo.lockBag(tx, id);
 			if (!bag) return OPEN_NO_REGISTER;
 			const key = field[bagKey as keyof typeof field];
@@ -124,18 +144,15 @@ export class LootService {
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
 				throw new Error(RUNE_POOL_INVALID);
-			const item = await this.repo.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
-			await tx
-				.update(usersBag)
-				.set({ [key]: bag[key] - 1 })
-				.where(eq(usersBag.discordId, id));
+			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
+			await this.queries.updateBag(tx, id, { [key]: bag[key] - 1 });
 			return RUNE_BAG_OPENED(bagKey, item) + RUNE_BAG_HINT;
 		});
 	}
 
 	async shop(id: string, key?: string): Promise<string> {
 		if (!key) {
-			const bags = await this.repo.bags(db);
+			const bags = await this.repo.bags(this.persistence.executor);
 			return (
 				bags
 					.map(
@@ -147,7 +164,7 @@ export class LootService {
 					.join('\n\n') + RUNES_SHOP_FOOTER
 			);
 		}
-		return db.transaction(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx) => {
 			const bag = await this.repo.lockBag(tx, id);
 			if (!bag) return OPEN_NO_REGISTER;
 			const offer = (await this.repo.bags(tx)).find((b) => b.bagKey === key);
@@ -161,11 +178,11 @@ export class LootService {
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
 				throw new Error(RUNE_POOL_INVALID);
-			const item = await this.repo.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
-			await tx
-				.update(usersBag)
-				.set({ credux: bag.credux - offer.creduxCost, [field]: bag[field] - offer.essenceCost })
-				.where(eq(usersBag.discordId, id));
+			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
+			await this.queries.updateBag(tx, id, {
+				credux: bag.credux - offer.creduxCost,
+				[field]: bag[field] - offer.essenceCost,
+			});
 			await this.repo.log(tx, id, `Rune bag ${key}`, bag.credux, bag.credux - offer.creduxCost);
 			return RUNE_RECEIVED(item) + RUNE_RECEIVED_HINT;
 		});

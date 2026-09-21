@@ -16,6 +16,9 @@ export default defineConfig({
 		},
 	},
 	test: {
+		// PGlite suites each boot PostgreSQL in WASM (some boot two instances).
+		// Bound CPU/memory contention so setup and queries stay within their timeouts.
+		maxWorkers: 2,
 		env: {
 			DISCORD_TOKEN: 'test-token',
 			DISCORD_CLIENT_ID: 'test-client-id',

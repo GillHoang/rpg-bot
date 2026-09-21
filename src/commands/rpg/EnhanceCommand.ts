@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { EnhancementService } from '../../services/EnhancementService.js';
-import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { InventoryService } from '../../services/InventoryService.js';
 import { GEAR_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
 	ENHANCE_DESCRIPTION,
@@ -21,12 +21,15 @@ export class EnhanceCommand implements ICommand {
 			opt.setName('gear_id').setDescription(ENHANCE_GEAR_OPTION_DESC).setRequired(true).setAutocomplete(true),
 		);
 
-	constructor(private readonly enhancement = new EnhancementService()) {}
+	constructor(
+		private readonly enhancement: Pick<EnhancementService, 'attempt'> = new EnhancementService(),
+		private readonly inventory: Pick<InventoryService, 'searchWeapons' | 'searchArmors'> = new InventoryService(),
+	) {}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
 		if (interaction.options.getFocused(true).name !== 'gear_id') return;
 		const query = String(interaction.options.getFocused());
-		const repo = new InventoryRepository();
+		const repo = this.inventory;
 		const [weapons, armors] = await Promise.all([
 			repo.searchWeapons(interaction.user.id, query),
 			repo.searchArmors(interaction.user.id, query),

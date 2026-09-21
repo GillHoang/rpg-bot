@@ -1,9 +1,11 @@
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { SummonRepository } from '../repositories/SummonRepository.js';
 import { randomUUID } from 'node:crypto';
-import { eq, and } from 'drizzle-orm';
-import { db, type Executor } from '../db/client.js';
-import { usersBag, pityCounters, userCharacter, userPresets, gameLogs, summonRewardGrants } from '../db/schema.js';
+import type { Executor } from '../db/client.js';
+import type { usersBag, userPresets } from '../db/schema.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
-import { DeityRepository, type DeityRosterRow } from '../repositories/DeityRepository.js';
+import { DeityService, type DeityRosterRow } from './DeityService.js';
 import {
 	resolveRoll,
 	SHARDS_PER_PULL,
@@ -45,6 +47,26 @@ export type SummonResult =
 	| { status: 'no-deities-seeded'; tier: DeityTier }
 	| { status: 'ok'; pulls: SummonPullResult[]; finalPity: number; shardsSpent: number };
 
+export interface SummonDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		SummonRepository,
+		| 'lockBag'
+		| 'findPity'
+		| 'lockCharacter'
+		| 'findPreset'
+		| 'insertShardLog'
+		| 'upsertPity'
+		| 'updateActiveDeity'
+		| 'updatePresetDeity'
+		| 'updateRelicBalance'
+		| 'insertRelicGrant'
+		| 'updateShardBalance'
+		| 'insertEssenceLog'
+		| 'updateEssenceBalances'
+	>;
+}
+
 /**
  * Facade for `/summon`. Ported from engine/summonEngine.js's runSummon —
  * the "crd summon" (belief-shard) path only; relic-forced-tier pulls and
@@ -57,19 +79,33 @@ export type SummonResult =
  * character's *currently active* preset (activePresetSlot) rather than
  * the full loadout object the original assembles.
  */
+
 export class SummonService {
+	private readonly persistence: PersistenceContext;
+	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
+	private readonly deities: Pick<DeityService, 'ownedDeityIds' | 'pickRandomAvailableForTier' | 'insertNew'>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: NonNullable<SummonDependencies['queries']>;
 	constructor(
-		private readonly characters = new UserCharacterRepository(),
-		private readonly deities = new DeityRepository(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		characters: Pick<UserCharacterRepository, 'hasCharacter'> | undefined = undefined,
+		deities:
+			Pick<DeityService, 'ownedDeityIds' | 'pickRandomAvailableForTier' | 'insertNew'> | undefined = undefined,
+		events: Pick<EventBus, 'emit'> | undefined = undefined,
+		options: SummonDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.characters = characters ?? new UserCharacterRepository();
+		this.deities = deities ?? new DeityService();
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new SummonRepository();
+	}
 
 	async run(discordId: string, count: number, relic?: RelicKind): Promise<SummonResult> {
 		if (!Number.isInteger(count) || count < 1 || count > MAX_PULLS) {
 			return { status: 'invalid-count' };
 		}
 
-		const result = await db.transaction(async (tx) => this.runInTx(tx, discordId, count, relic));
+		const result = await this.persistence.unitOfWork.run(async (tx) => this.runInTx(tx, discordId, count, relic));
 
 		if (result.status === 'ok') {
 			this.events.emit('summon.done', { discordId, count });
@@ -92,7 +128,7 @@ export class SummonService {
 			// can't exist without a user row (FK), so one check suffices.
 			return { status: 'no-character' };
 		}
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1).for('update');
+		const [bag] = await this.queries.lockBag(tx, discordId);
 		if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
 
 		const funds = this.checkFunds(bag, count, relic);
@@ -100,7 +136,7 @@ export class SummonService {
 		const relicField = relic ? RELIC_FIELD[relic] : null;
 		const cost = relic ? 0 : SHARDS_PER_PULL * count;
 
-		const [pityRow] = await tx.select().from(pityCounters).where(eq(pityCounters.discordId, discordId)).limit(1);
+		const [pityRow] = await this.queries.findPity(tx, discordId);
 		const pityBefore = pityRow?.pityCount ?? 0;
 		const rng = createRng(createSecureSeed());
 		const planned = await this.planPulls(tx, count, relic, rng, pityBefore);
@@ -110,18 +146,9 @@ export class SummonService {
 		// committed state where the player got a deity without paying.
 		await this.debit(tx, discordId, bag, count, relic, relicField, cost);
 		const owned = await this.deities.ownedDeityIds(tx, discordId);
-		const [character] = await tx
-			.select()
-			.from(userCharacter)
-			.where(eq(userCharacter.discordId, discordId))
-			.limit(1)
-			.for('update');
+		const [character] = await this.queries.lockCharacter(tx, discordId);
 		if (!character) throw new Error(`run: no user_character row for ${discordId}`);
-		const [activePreset] = await tx
-			.select()
-			.from(userPresets)
-			.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, character.activePresetSlot)))
-			.limit(1);
+		const [activePreset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
 
 		const { pulls, essenceDelta, pendingActiveDeityId } = await this.grantPlanned(
 			tx,
@@ -133,27 +160,20 @@ export class SummonService {
 		);
 		await this.creditEssence(tx, discordId, bag, essenceDelta);
 		if (!relic) {
-			await tx.insert(gameLogs).values({
+			await this.queries.insertShardLog(tx, {
 				discordId,
 				action: 'Deity Pull',
 				previousBeliefShards: bag.beliefShards,
 				updatedBeliefShards: bag.beliefShards - cost,
 			});
-			await tx
-				.insert(pityCounters)
-				.values({ discordId, pityCount: planned.pityAfter })
-				.onConflictDoUpdate({ target: pityCounters.discordId, set: { pityCount: planned.pityAfter } });
+			await this.queries.upsertPity(tx, planned.pityAfter, { discordId, pityCount: planned.pityAfter });
 		}
 
 		if (pendingActiveDeityId != null && activePreset) {
-			await tx
-				.update(userCharacter)
-				.set({ activeDeityId: pendingActiveDeityId })
-				.where(eq(userCharacter.discordId, discordId));
-			await tx
-				.update(userPresets)
-				.set({ equippedDeity1Id: pendingActiveDeityId })
-				.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, activePreset.slot)));
+			await this.queries.updateActiveDeity(tx, discordId, { activeDeityId: pendingActiveDeityId });
+			await this.queries.updatePresetDeity(tx, discordId, activePreset.slot, {
+				equippedDeity1Id: pendingActiveDeityId,
+			});
 		}
 
 		return { status: 'ok', pulls, finalPity: planned.pityAfter, shardsSpent: cost };
@@ -217,12 +237,9 @@ export class SummonService {
 		cost: number,
 	): Promise<void> {
 		if (relic && relicField) {
-			await tx
-				.update(usersBag)
-				.set({ [relicField]: bag[relicField] - count })
-				.where(eq(usersBag.discordId, discordId));
+			await this.queries.updateRelicBalance(tx, discordId, { [relicField]: bag[relicField] - count });
 			for (let i = 0; i < count; i++) {
-				await tx.insert(summonRewardGrants).values({
+				await this.queries.insertRelicGrant(tx, {
 					// UUID suffix: two pulls in the same millisecond must not collide.
 					rewardKey: `${discordId}:${DailyCycle.keyAt()}:${i}:${randomUUID()}`,
 					discordId,
@@ -231,10 +248,7 @@ export class SummonService {
 			}
 			return;
 		}
-		await tx
-			.update(usersBag)
-			.set({ beliefShards: bag.beliefShards - cost })
-			.where(eq(usersBag.discordId, discordId));
+		await this.queries.updateShardBalance(tx, discordId, { beliefShards: bag.beliefShards - cost });
 	}
 
 	private async grantPlanned(
@@ -299,7 +313,7 @@ export class SummonService {
 			const before = bag[field];
 			const after = before + essenceDelta[tier];
 			patch[field] = after;
-			await tx.insert(gameLogs).values({
+			await this.queries.insertEssenceLog(tx, {
 				discordId,
 				action: 'Deity Pull',
 				itemType: field,
@@ -308,10 +322,7 @@ export class SummonService {
 			});
 		}
 		if (Object.keys(patch).length > 0) {
-			await tx
-				.update(usersBag)
-				.set(patch as Partial<typeof usersBag.$inferInsert>)
-				.where(eq(usersBag.discordId, discordId));
+			await this.queries.updateEssenceBalances(tx, discordId, patch as Partial<typeof usersBag.$inferInsert>);
 		}
 	}
 }

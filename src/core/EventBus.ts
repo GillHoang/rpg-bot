@@ -24,15 +24,16 @@ export interface DomainEvents {
 type Listener<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void | Promise<void>;
 
 /**
- * Observer pattern: a Singleton pub/sub bus. Combat/economy code fires
+ * Observer pattern: an application-scoped pub/sub bus. Combat/economy code fires
  * events ("what happened") without knowing who cares ("who reacts").
- * Quest/achievement/vote-reward modules subscribe independently.
+ * Quest/achievement/vote-reward modules subscribe independently. getInstance()
+ * retains the default bus for callers outside the composed application.
  */
 export class EventBus {
 	private static instance: EventBus | null = null;
 	private readonly emitter = new EventEmitter();
 
-	private constructor() {
+	constructor() {
 		this.emitter.setMaxListeners(50);
 	}
 

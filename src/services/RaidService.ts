@@ -1,15 +1,16 @@
-import { db } from '../db/client.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { RaidRepository } from '../repositories/RaidRepository.js';
+import type { Transaction } from '../db/client.js';
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
 import type { PlayerAccount } from '../domain/entities/PlayerAccount.js';
-import { MonsterRepository } from '../repositories/MonsterRepository.js';
+import { MonsterEncounterService } from './MonsterEncounterService.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
-import { RaidRewardRepository, type RaidRewardResult } from '../repositories/RaidRewardRepository.js';
+import { RaidRewardService, type RaidRewardResult } from './RaidRewardService.js';
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { createCombatant } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
-import { ClassStrategyRegistry } from '../domain/combat/ClassStrategyRegistry.js';
-import { wrapWithRunes } from '../domain/combat/RuneStrategyDecorator.js';
-import { wrapWithBlessings } from '../domain/combat/DeityBlessingDecorator.js';
+import { PlayerCombatantFactory } from './combatantFactory.js';
 import { scaleExpForMobLevel } from '../config/expScaling.js';
 import {
 	RAID_LOOT_REGULAR,
@@ -22,13 +23,11 @@ import {
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
 import { CosmeticService } from './CosmeticService.js';
-import { and, eq } from 'drizzle-orm';
-import { users, usersBag, userCharacter, menuActionReceipts } from '../db/schema.js';
-import { applyGameplayProgress } from './gameplayProgress.js';
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
 import { MonsterStrategy } from '../domain/combat/classes/MonsterStrategy.js';
-import { LootRepository } from '../repositories/LootRepository.js';
+import { LootGrantService } from './LootGrantService.js';
 
 export type RaidResult =
 	| { status: 'already-processed' }
@@ -49,6 +48,25 @@ export type RaidResult =
 			progress: RaidRewardResult;
 	  };
 
+export interface RaidDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		RaidRepository,
+		| 'lockBag'
+		| 'lockCharacter'
+		| 'findReceipt'
+		| 'insertReceipt'
+		| 'updateCharacter'
+		| 'lockUser'
+		| 'updateUser'
+		| 'updateBag'
+	>;
+	engine?: Pick<BattleEngine, 'resolve'>;
+	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
+	loot?: Pick<LootGrantService, 'gear'>;
+}
+
 /**
  * Facade for `/raid hunt|boss`. Locks bag then character, builds stats and
  * resolves the battle in one transaction with entry fee/cooldown/rewards.
@@ -58,44 +76,73 @@ export type RaidResult =
  * active deity + rune stat-%, see its own doc comment for exactly what's
  * still simplified vs the original statAssembly.js).
  */
+
 export class RaidService {
+	private readonly persistence: PersistenceContext;
+	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
+	private readonly monsters: Pick<MonsterEncounterService, 'pickForLevel'>;
+	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
+	private readonly rewards: Pick<RaidRewardService, 'grant' | 'currentWinStreak'>;
+	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
+	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: Pick<
+		RaidRepository,
+		| 'lockBag'
+		| 'lockCharacter'
+		| 'findReceipt'
+		| 'insertReceipt'
+		| 'updateCharacter'
+		| 'lockUser'
+		| 'updateUser'
+		| 'updateBag'
+	>;
+	private readonly engine: Pick<BattleEngine, 'resolve'>;
+	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
+	private readonly loot: Pick<LootGrantService, 'gear'>;
+
 	constructor(
-		private readonly accounts = new PlayerAccountRepository(),
-		private readonly monsters = new MonsterRepository(),
-		private readonly characters = new UserCharacterRepository(),
-		private readonly rewards = new RaidRewardRepository(),
-		private readonly statAssembly = new StatAssemblyService(),
-		private readonly cosmetics = new CosmeticService(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>,
+		monsters?: Pick<MonsterEncounterService, 'pickForLevel'>,
+		characters?: Pick<UserCharacterRepository, 'hasCharacter'>,
+		rewards?: Pick<RaidRewardService, 'grant' | 'currentWinStreak'>,
+		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
+		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
+		events?: Pick<EventBus, 'emit'>,
+		options: RaidDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.monsters = monsters ?? new MonsterEncounterService();
+		this.characters = characters ?? new UserCharacterRepository();
+		this.rewards = rewards ?? new RaidRewardService();
+		this.statAssembly =
+			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
+		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new RaidRepository();
+		this.engine = options.engine ?? new BattleEngine();
+		this.factory = options.factory ?? new PlayerCombatantFactory();
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
+		this.loot = options.loot ?? new LootGrantService();
+	}
 
 	async run(
 		discordId: string,
 		boss = false,
 		options: { requestId?: string; atomicProgress?: boolean; expectedDay?: string } = {},
 	): Promise<RaidResult> {
-		const result = await db.transaction(async (tx): Promise<RaidResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<RaidResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const now = new Date();
 			const day = DailyCycle.keyAt(now);
-			const [character] = await tx
-				.select()
-				.from(userCharacter)
-				.where(eq(userCharacter.discordId, discordId))
-				.for('update');
+			const [character] = await this.queries.lockCharacter(tx, discordId);
 			const account = await this.accounts.findByIdWithExecutor(tx, discordId);
 			if (!account) return { status: 'not-registered' };
 			if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
 			if (options.requestId) {
-				const [receipt] = await tx
-					.select()
-					.from(menuActionReceipts)
-					.where(
-						and(
-							eq(menuActionReceipts.discordId, discordId),
-							eq(menuActionReceipts.requestId, options.requestId),
-						),
-					);
+				const [receipt] = await this.queries.findReceipt(tx, discordId, options.requestId);
 				if (receipt) return { status: 'already-processed' };
 			}
 			if (boss && options.expectedDay && options.expectedDay !== day) {
@@ -111,20 +158,8 @@ export class RaidService {
 			}
 
 			const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
-			const player = createCombatant({
-				name: account.username,
-				combatClass: account.combatClass,
-				hp: assembled.stats.hp,
-				atk: assembled.stats.atk,
-				def: assembled.stats.def,
-				crit: assembled.stats.crit,
-			});
-
-			const baseStrategy = ClassStrategyRegistry.forClass(account.combatClass);
-			const playerStrategy = wrapWithBlessings(
-				wrapWithRunes(baseStrategy, assembled.combatEffectRunes),
-				assembled.blessings,
-			);
+			const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
+			const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
 
 			const monster = createCombatant({
 				name: monsterStats.name,
@@ -136,7 +171,7 @@ export class RaidService {
 			});
 
 			monster.immunityTags = monsterStats.immunityTags;
-			const battle = new BattleEngine().resolve(player, monster, createSecureSeed(), {
+			const battle = this.engine.resolve(player, monster, createSecureSeed(), {
 				playerStrategy,
 				enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
 			});
@@ -183,11 +218,13 @@ export class RaidService {
 			});
 			await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
 			const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
-			if (won && options.atomicProgress) await applyGameplayProgress(tx, discordId, 'raid_win', now);
+			if (won && options.atomicProgress) await this.progress.apply(tx, discordId, 'raid_win', now);
 			if (options.requestId)
-				await tx
-					.insert(menuActionReceipts)
-					.values({ discordId, requestId: options.requestId, kind: boss ? 'boss' : 'hunt' });
+				await this.queries.insertReceipt(tx, {
+					discordId,
+					requestId: options.requestId,
+					kind: boss ? 'boss' : 'hunt',
+				});
 			return {
 				status: 'ok',
 				battle,
@@ -226,7 +263,7 @@ export class RaidService {
 
 	/** Win streak from the raid_logs tail that grant() just appended to; only the record streak is persisted. */
 	private async updateRaidStreak(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		discordId: string,
 		highestRaidStreak: number,
 		won: boolean,
@@ -234,10 +271,7 @@ export class RaidService {
 		if (!won) return;
 		const streak = await this.rewards.currentWinStreak(tx, discordId);
 		if (streak > highestRaidStreak) {
-			await tx
-				.update(userCharacter)
-				.set({ highestRaidStreak: streak })
-				.where(eq(userCharacter.discordId, discordId));
+			await this.queries.updateCharacter(tx, discordId, { highestRaidStreak: streak });
 		}
 		if (streak >= 10) {
 			// Chuỗi thắng raid 10 — title Unstoppable (idempotent).
@@ -247,7 +281,7 @@ export class RaidService {
 
 	/** Boss-only extras: the Bakunawa Slayer title and the 30% Mythic gear drop. */
 	private async grantRaidExtras(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		discordId: string,
 		lootRng: () => number,
 		won: boolean,
@@ -256,29 +290,26 @@ export class RaidService {
 		if (!won || !boss) return null;
 		await this.cosmetics.grantTitleInTx(tx, discordId, 'boss_slayer');
 		if (rollRaidChest(lootRng, BOSS_ENTRY.gearChance)) {
-			return new LootRepository().gear(tx, discordId, 'Mythic', lootRng);
+			return this.loot.gear(tx, discordId, 'Mythic', lootRng);
 		}
 		return null;
 	}
 
 	/** Boss entry gate: level, once-per-Manila-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
 	private async bossGate(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		discordId: string,
 		account: PlayerAccount,
 		day: string,
 	): Promise<RaidResult | null> {
 		if (account.combatLevel < BOSS_ENTRY.minLevel)
 			return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
-		const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
+		const [user] = await this.queries.lockUser(tx, discordId);
 		if (user.lastBossAttackDate === day) return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
 		if (account.credux < BOSS_ENTRY.credux)
 			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()) };
-		await tx.update(users).set({ lastBossAttackDate: day }).where(eq(users.discordId, discordId));
-		await tx
-			.update(usersBag)
-			.set({ credux: account.credux - BOSS_ENTRY.credux })
-			.where(eq(usersBag.discordId, discordId));
+		await this.queries.updateUser(tx, discordId, { lastBossAttackDate: day });
+		await this.queries.updateBag(tx, discordId, { credux: account.credux - BOSS_ENTRY.credux });
 		return null;
 	}
 }

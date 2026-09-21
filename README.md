@@ -137,14 +137,18 @@ Hành trình người chơi và dòng tài nguyên (kiếm → tiêu) được t
 
 ## Kiến trúc
 
+Các thư mục dưới `src/`:
+
 ```
 commands/    Discord layer — mỗi slash command 1 class ICommand tự chứa
-services/    Facade điều phối: 1 use-case = 1 transaction, khóa bag/character
+services/    Điều phối nghiệp vụ và transaction, khóa bag/character
              trước khi đọc–ghi để bảo vệ read–modify–write
-repositories/ Nơi duy nhất viết drizzle query cho từng bảng
+repositories/ Truy cập dữ liệu theo bảng; service cũng có query trong transaction
 domain/      Engine thuần: combat (BattleEngine, Strategy theo class,
              Decorator rune + deity blessing), casino (Strategy 4 game
              một-lượt + session Blackjack/Crash)
+menu/        Router/session cho /menu, điều phối gameplay và dựng panel
+render/      Canvas, component và phân trang inventory/log chiến đấu
 config/      Toàn bộ balance số liệu (loot, gacha, ranked, quest, blessings…)
 core/        CommandRegistry (Singleton), EventBus (Observer), Scheduler
 seed/data/   Dữ liệu seed sửa được — upsert, không xoá dữ liệu chơi
@@ -158,6 +162,18 @@ Nguyên tắc nổi bật:
   (`battle.won`, `summon.done`, `chest.opened`…), không import quest code.
 - **Decorator combat**: rune và deity blessing bọc quanh class strategy,
   chain được, engine và 5 class gốc không biết chúng tồn tại.
+- **Phân chia combat**: [BattleEngine](src/domain/combat/BattleEngine.ts) giữ
+  API và điều phối hiệp; [BattleAttack](src/domain/combat/BattleAttack.ts)
+  xử lý đòn đánh, [CombatStatusEffects](src/domain/combat/CombatStatusEffects.ts)
+  xử lý trạng thái, [combatRules](src/domain/combat/combatRules.ts) giữ giới hạn
+  hiệp và hệ số sudden-death.
+- **Khởi tạo nhân vật chiến đấu**: raid, duel và ranked dùng chung
+  [combatantFactory](src/services/combatantFactory.ts), sao chép stat vào trạng
+  thái riêng cho từng trận và bọc strategy theo thứ tự class → rune → blessing.
+- **Trình bày tách khỏi điều phối**: `MenuGameplayService` đọc dữ liệu và gọi
+  nghiệp vụ; [gameplayPanels](src/menu/gameplayPanels.ts) dựng panel/log từ
+  snapshot. [InventoryPager](src/render/InventoryPager.ts) dựng view và phân
+  tích ID nút; `InventoryCommand` xử lý interaction và vòng đời collector.
 - **Seeded RNG bắt buộc**: mọi lựa chọn weighted dùng `wrand` qua
   `src/utils/weightedRandom.ts` với RNG từ `domain/combat/Rng.ts` (seed
   entropy cao từ crypto) — không `Math.random()`; cùng seed replay được.
@@ -178,6 +194,14 @@ pnpm build    # compile + kiểm tra import của dist
 
 - Test nghiệp vụ DB chạy trên **PGlite** (PostgreSQL trong bộ nhớ, SQL thật)
   — không đọc `.env`, không chạm DB thật, RNG được mock để kiểm tra deterministic.
+  [Helper DB](tests/helpers/database.ts) tạo DB riêng cho từng suite và áp mọi
+  migration theo thứ tự trong journal đã commit.
+- [Characterization combat](tests/combat-characterization.test.ts) so hash
+  kết quả, toàn bộ log và trạng thái hai bên của 276 trận có seed cố định với
+  snapshot trước refactor. [Test factory](tests/combatant-factory.test.ts)
+  kiểm tra thứ tự decorator và trạng thái riêng từng trận;
+  [test inventory](tests/inventory-pager.test.ts) dùng ID từ nút đã render để
+  kiểm tra chuyển trang/loại đồ, ID sai, ownership và hết hạn collector.
 - Phủ: rollback loot khi thiếu seed, quyền sở hữu item, preset/stat, boss fee
   + cooldown, summon pity/relic, casino settlement (kể cả phiên hết hạn),
   duel cược/wager log, ranked Elo/claim-1-lần, quest lazy generation, cap
@@ -208,3 +232,11 @@ pnpm build    # compile + kiểm tra import của dist
   weapon/armor theo roster, portrait canvas.
 - [docs/port-history.md](docs/port-history.md) — lịch sử port trước gameflow,
   giữ làm tham khảo kiến trúc, không phải hướng dẫn chạy hiện tại.
+
+## Kiến trúc OOP/SOLID
+
+`src/application/createApplicationServices.ts` khởi tạo một bộ service dùng chung cho commands, menu, event và tác vụ nền. Các lớp nhận dependency qua constructor với contract chỉ gồm những method cần dùng. `PersistenceContext` và `DrizzleUnitOfWork` giữ ranh giới giao dịch rõ ràng; truy vấn SQL nằm trong repository.
+
+Combat dùng Strategy/Decorator và các policy attack/status có thể thay thế. Inventory, deity, monster selection và reward calculation được tách khỏi truy vấn DB. `BotMaintenance`/`Scheduler` quản lý start/stop và vòng đời timer. Hàm tính toán thuần và cấu hình vẫn giữ dạng hàm/dữ liệu.
+
+Constructor mặc định và các export repository cũ được giữ để tương thích. Chi tiết kiến trúc, giới hạn và kết quả kiểm tra: [OOP/SOLID refactor](docs/oop-solid-plan.md).

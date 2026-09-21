@@ -1,7 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
 import type { Executor } from '../db/client.js';
-import { userWeapons, userArmors, tickets } from '../db/schema.js';
+import { GearIdentityRepository } from '../repositories/GearIdentityRepository.js';
 
 const ALPHABET = '0123456789abcdefghijklmnopqrstuvwxyz';
 
@@ -23,22 +22,26 @@ function randomId(): string {
  * awaited while still running within the caller's transaction.
  */
 export class GearIdGenerator {
-	constructor(private readonly executor: Executor) {}
+	constructor(
+		private readonly executor: Executor,
+		private readonly identity: Pick<
+			GearIdentityRepository,
+			'hasWeapon' | 'hasArmor' | 'hasTicket'
+		> = new GearIdentityRepository(),
+		private readonly createId: () => string = randomId,
+	) {}
 
 	async generateUniqueGearId(): Promise<string> {
 		for (let attempt = 0; attempt < 10; attempt++) {
-			const id = randomId();
+			const id = this.createId();
 			if (await this.isFree(id)) return id;
 		}
 		throw new Error('Failed to generate a unique gear id after 10 attempts');
 	}
 
 	private async isFree(id: string): Promise<boolean> {
-		const [weaponHit] = await this.executor.select().from(userWeapons).where(eq(userWeapons.weaponId, id)).limit(1);
-		if (weaponHit) return false;
-		const [armorHit] = await this.executor.select().from(userArmors).where(eq(userArmors.armorId, id)).limit(1);
-		if (armorHit) return false;
-		const [ticketHit] = await this.executor.select().from(tickets).where(eq(tickets.ticketId, id)).limit(1);
-		return !ticketHit;
+		if (await this.identity.hasWeapon(this.executor, id)) return false;
+		if (await this.identity.hasArmor(this.executor, id)) return false;
+		return !(await this.identity.hasTicket(this.executor, id));
 	}
 }

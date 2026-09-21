@@ -25,7 +25,7 @@ export class RaidCommand implements ICommand {
 			s.setName('boss').setDescription('Bakunawa: cấp 10, phí 10.000 Credux, 1 lần/ngày (00:00 Manila)'),
 		);
 
-	constructor(private readonly raid = new RaidService()) {}
+	constructor(private readonly raid: Pick<RaidService, 'run'> = new RaidService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.

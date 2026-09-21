@@ -40,7 +40,7 @@ export class ResetCommand implements ICommand {
 		.setDescription(RESET_DESCRIPTION)
 		.setDefaultMemberPermissions(0); // ẩn khỏieveryone — gate thật là OWNER_DISCORD_IDS
 
-	constructor(private readonly reset = new ResetService()) {}
+	constructor(private readonly reset: Pick<ResetService, 'countAll' | 'resetAll' | 'audit'> = new ResetService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply({ ephemeral: true });

@@ -11,7 +11,9 @@ export class QuestCommand implements ICommand {
 		.addSubcommand((s) => s.setName('refresh').setDescription(QUEST_REFRESH_DESC))
 		.addSubcommand((s) => s.setName('claim').setDescription(QUEST_CLAIM_DESC));
 
-	constructor(private readonly quests = new QuestService()) {}
+	constructor(
+		private readonly quests: Pick<QuestService, 'refresh' | 'claimWeeklyGrand' | 'view'> = new QuestService(),
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

@@ -1,7 +1,9 @@
-import { eq } from 'drizzle-orm';
-import { db } from '../db/client.js';
+import type { Executor } from '../db/client.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { AccountLifecycleRepository } from '../repositories/AccountLifecycleRepository.js';
 import { logger } from '../utils/logger.js';
-import { usersBag } from '../db/schema.js';
+
 import { UserRepository } from '../repositories/UserRepository.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
 import { GearRepository } from '../repositories/GearRepository.js';
@@ -23,24 +25,57 @@ export type StartResult =
 	| { status: 'starter-gear-missing' }
 	| { status: 'ok'; weaponId: string; armorId: string };
 
+export interface StartDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<AccountLifecycleRepository, 'lockBag' | 'findBag' | 'updateStarterBalances'>;
+	createGearIdGenerator?: (executor: Executor) => Pick<GearIdGenerator, 'generateUniqueGearId'>;
+}
+
 /**
  * Onboarding một chạm cho /start: đăng ký tài khoản (users → users_bag →
  * pity_counters) VÀ tạo nhân vật + gear khởi đầu trong CÙNG một giao dịch —
  * thay cho cặp /register + /create cũ. Người chơi không thể kẹt ở trạng thái
  * "đã register nhưng chưa có nhân vật".
  */
+
 export class StartService {
+	private readonly persistence: PersistenceContext;
+	private readonly users: Pick<UserRepository, 'isRegistered' | 'registerNew'>;
+	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter' | 'insert'>;
+	private readonly gear: Pick<
+		GearRepository,
+		'findWeaponRosterIdByName' | 'findArmorRosterIdByName' | 'grantWeapon' | 'grantArmor'
+	>;
+	private readonly presets: Pick<PresetRepository, 'createDefaultPresets'>;
+	private readonly cosmetics: Pick<CosmeticService, 'grantBaseInTx'>;
+	private readonly queries: NonNullable<StartDependencies['queries']>;
+	private readonly createGearIdGenerator: (executor: Executor) => Pick<GearIdGenerator, 'generateUniqueGearId'>;
 	constructor(
-		private readonly users = new UserRepository(),
-		private readonly characters = new UserCharacterRepository(),
-		private readonly gear = new GearRepository(),
-		private readonly presets = new PresetRepository(),
-		private readonly cosmetics = new CosmeticService(),
-	) {}
+		users: Pick<UserRepository, 'isRegistered' | 'registerNew'> | undefined = undefined,
+		characters: Pick<UserCharacterRepository, 'hasCharacter' | 'insert'> | undefined = undefined,
+		gear:
+			| Pick<
+					GearRepository,
+					'findWeaponRosterIdByName' | 'findArmorRosterIdByName' | 'grantWeapon' | 'grantArmor'
+			  >
+			| undefined = undefined,
+		presets: Pick<PresetRepository, 'createDefaultPresets'> | undefined = undefined,
+		cosmetics: Pick<CosmeticService, 'grantBaseInTx'> | undefined = undefined,
+		options: StartDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.users = users ?? new UserRepository();
+		this.characters = characters ?? new UserCharacterRepository();
+		this.gear = gear ?? new GearRepository();
+		this.presets = presets ?? new PresetRepository();
+		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.queries = options.queries ?? new AccountLifecycleRepository();
+		this.createGearIdGenerator = options.createGearIdGenerator ?? ((executor) => new GearIdGenerator(executor));
+	}
 
 	async start(discordId: string, username: string, combatClass: CombatClass): Promise<StartResult> {
-		return db.transaction(async (tx): Promise<StartResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		return this.persistence.unitOfWork.run(async (tx): Promise<StartResult> => {
+			await this.queries.lockBag(tx, discordId);
 			if (await this.characters.hasCharacter(tx, discordId)) {
 				return { status: 'already-has-character' };
 			}
@@ -57,9 +92,9 @@ export class StartService {
 				await this.users.registerNew(tx, discordId, username);
 			}
 			// Registration may have waited for another first-time /start or menu.
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+			await this.queries.lockBag(tx, discordId);
 			if (await this.characters.hasCharacter(tx, discordId)) return { status: 'already-has-character' };
-			const idGen = new GearIdGenerator(tx);
+			const idGen = this.createGearIdGenerator(tx);
 
 			const weaponId = await idGen.generateUniqueGearId();
 			await this.gear.grantWeapon(tx, {
@@ -84,15 +119,12 @@ export class StartService {
 			// M7 cosmetics: base skins auto-granted and equipped per category.
 			await this.cosmetics.grantBaseInTx(tx, discordId);
 
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
+			const [bag] = await this.queries.findBag(tx, discordId);
 			if (!bag) throw new Error(`start: no users_bag row for ${discordId}`);
-			await tx
-				.update(usersBag)
-				.set({
-					beliefShards: bag.beliefShards + GRANT_BELIEF_SHARDS,
-					silverChest: bag.silverChest + GRANT_SILVER_CHESTS,
-				})
-				.where(eq(usersBag.discordId, discordId));
+			await this.queries.updateStarterBalances(tx, discordId, {
+				beliefShards: bag.beliefShards + GRANT_BELIEF_SHARDS,
+				silverChest: bag.silverChest + GRANT_SILVER_CHESTS,
+			});
 
 			logger.info({ user: discordId, username, combatClass, weaponId, armorId }, 'onboarding-start');
 			return { status: 'ok', weaponId, armorId };

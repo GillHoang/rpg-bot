@@ -43,7 +43,7 @@ export class ClassCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly classChange = new ClassChangeService()) {}
+	constructor(private readonly classChange: Pick<ClassChangeService, 'change'> = new ClassChangeService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

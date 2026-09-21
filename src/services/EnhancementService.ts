@@ -1,11 +1,11 @@
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { EnhancementStateRepository } from '../repositories/EnhancementStateRepository.js';
 import { rollChance } from '../utils/weightedRandom.js';
-import { db } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import { EnhancementRepository } from '../repositories/EnhancementRepository.js';
 import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../config/enhancement.js';
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
-import { eq } from 'drizzle-orm';
-import { usersBag } from '../db/schema.js';
 import { EventBus } from '../core/EventBus.js';
 
 export type EnhanceResult =
@@ -15,21 +15,44 @@ export type EnhanceResult =
 	| { status: 'success'; newLevel: number; cost: number }
 	| { status: 'failure'; cost: number };
 
+export interface EnhancementDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<EnhancementStateRepository, 'lockBag'>;
+}
+
 /**
  * Facade for `/enhance`. Ported from engine/enhancement.js's pure math +
  * commands/rpg/enhance.js's "Credux is spent on both success AND
  * failure" rule (§7). One attempt per call — the original's confirm-UI
  * loop is just repeated calls to this same use-case.
  */
+
 export class EnhancementService {
+	private readonly persistence: PersistenceContext;
+	private readonly repo: Pick<
+		EnhancementRepository,
+		'findGear' | 'getCredux' | 'spendCredux' | 'applyWeaponSuccess' | 'applyArmorSuccess'
+	>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: Pick<EnhancementStateRepository, 'lockBag'>;
+
 	constructor(
-		private readonly repo = new EnhancementRepository(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		repo?: Pick<
+			EnhancementRepository,
+			'findGear' | 'getCredux' | 'spendCredux' | 'applyWeaponSuccess' | 'applyArmorSuccess'
+		>,
+		events?: Pick<EventBus, 'emit'>,
+		options: EnhancementDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.repo = repo ?? new EnhancementRepository();
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new EnhancementStateRepository();
+	}
 
 	async attempt(discordId: string, gearId: string): Promise<EnhanceResult> {
-		const result = await db.transaction(async (tx): Promise<EnhanceResult> => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<EnhanceResult> => {
+			await this.queries.lockBag(tx, discordId);
 			const gear = await this.repo.findGear(tx, discordId, gearId);
 			if (!gear) return { status: 'not-found' };
 

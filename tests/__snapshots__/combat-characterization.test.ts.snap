@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for Archer 1`] = `"551495b1d3c2e6d2241860f0b18611a1867f9b222f1f094b0b43db3526364cd0"`;
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for Fighter 1`] = `"c09bc9c3dcb572a6b4d29744e78b7556e5764d6f5c0514f6ce0b0350a32701d6"`;
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for Knight 1`] = `"2ff3fd88c7bced3dbea26999c41bcc391ee74d82872f9fea11f51fab4044420b"`;
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for Mage 1`] = `"b65ad1c758683a80ac3847e4941f22a3d8bf0223967ad7d7ba8205b944632d1f"`;
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for Swordsman 1`] = `"3712e9cbbb1f0f5e22768928aa948656105b415881eb98defeb6add2c06613f4"`;
+
+exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for null 1`] = `"5c4c159b2f3f5b36e53b81ba54eef6430deac901f06793018adc1f79898fdcd1"`;
+
+exports[`combat behavior before responsibility extraction > preserves rune/blessing chains, monster hooks, immunities and status durations 1`] = `"5dd9af69ec4aae43cfd1341cfce1821a2a1aa878cb619e13a2f7cd1a4efa4449"`;
+
+exports[`combat behavior before responsibility extraction > preserves sudden death, round-limit ties and pre-defeated combatants 1`] = `"4f82e1545da8b3b4af02bf63e0babb494c2f831dbcdb745a5b87eda536d2e50e"`;

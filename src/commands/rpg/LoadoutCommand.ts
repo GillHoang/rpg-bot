@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { LoadoutService } from '../../services/LoadoutService.js';
-import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { InventoryService } from '../../services/InventoryService.js';
 import { DEITY_CHOICE_LABEL, GEAR_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
 	EQUIP_DESCRIPTION,
@@ -14,6 +14,14 @@ import {
 } from '../../text/loadout.js';
 
 export class EquipCommand implements ICommand {
+	constructor(
+		private readonly loadout: Pick<LoadoutService, 'equip'> = new LoadoutService(),
+		private readonly inventory: Pick<
+			InventoryService,
+			'searchDeities' | 'searchArmors' | 'searchWeapons'
+		> = new InventoryService(),
+	) {}
+
 	readonly data = new SlashCommandBuilder()
 		.setName('equip')
 		.setDescription(EQUIP_DESCRIPTION)
@@ -33,7 +41,7 @@ export class EquipCommand implements ICommand {
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
 		await i.editReply(
-			await new LoadoutService().equip(
+			await this.loadout.equip(
 				i.user.id,
 				i.options.getString('kind', true),
 				i.options.getString('id', true),
@@ -46,7 +54,7 @@ export class EquipCommand implements ICommand {
 		if (interaction.options.getFocused(true).name !== 'id') return;
 		const query = String(interaction.options.getFocused());
 		const kind = interaction.options.getString('kind');
-		const repo = new InventoryRepository();
+		const repo = this.inventory;
 		if (kind === 'deity') {
 			const rows = await repo.searchDeities(interaction.user.id, query);
 			await interaction.respond(rows.map((d) => ({ name: DEITY_CHOICE_LABEL(d), value: String(d.id) })));
@@ -61,6 +69,8 @@ export class EquipCommand implements ICommand {
 	}
 }
 export class PresetCommand implements ICommand {
+	constructor(private readonly loadout: Pick<LoadoutService, 'switch'> = new LoadoutService()) {}
+
 	readonly data = new SlashCommandBuilder()
 		.setName('preset')
 		.setDescription(PRESET_DESCRIPTION)
@@ -79,6 +89,6 @@ export class PresetCommand implements ICommand {
 		);
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
-		await i.editReply(await new LoadoutService().switch(i.user.id, i.options.getInteger('slot', true)));
+		await i.editReply(await this.loadout.switch(i.user.id, i.options.getInteger('slot', true)));
 	}
 }

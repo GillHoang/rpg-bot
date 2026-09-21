@@ -1,9 +1,11 @@
-import { db } from '../db/client.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+
 import { DailyRepository } from '../repositories/DailyRepository.js';
 import { DailyRewardTable } from '../domain/economy/DailyRewardTable.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { EventBus } from '../core/EventBus.js';
-import { applyGameplayProgress } from './gameplayProgress.js';
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 
 export type ClaimDailyResult =
 	| { status: 'not-registered' }
@@ -19,20 +21,44 @@ export type ClaimDailyResult =
 			milestoneChestLabel: string | null;
 	  };
 
+export interface DailyDependencies {
+	persistence?: PersistenceContext;
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
+}
+
 /**
  * Facade over the daily-attendance claim transaction, ported from
  * commands/economy/daily.js's claimDaily. Two counters: monthlyStreak
  * (rolling 1-30 reward cycle) and overallStreak (consecutive-day streak,
  * used for milestone chests and the player-facing "Day N" label).
  */
+
 export class DailyService {
+	private readonly persistence: PersistenceContext;
+	private readonly repo: Pick<
+		DailyRepository,
+		'hasBag' | 'getDailyState' | 'applyReward' | 'updateStreak' | 'logCurrencyChange' | 'logChestChange'
+	>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	constructor(
-		private readonly repo = new DailyRepository(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		repo:
+			| Pick<
+					DailyRepository,
+					'hasBag' | 'getDailyState' | 'applyReward' | 'updateStreak' | 'logCurrencyChange' | 'logChestChange'
+			  >
+			| undefined = undefined,
+		events: Pick<EventBus, 'emit'> | undefined = undefined,
+		options: DailyDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.repo = repo ?? new DailyRepository();
+		this.events = events ?? EventBus.getInstance();
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
+	}
 
 	async claim(discordId: string, now: Date = new Date(), atomicProgress = false): Promise<ClaimDailyResult> {
-		const result = await db.transaction(async (tx): Promise<ClaimDailyResult> => {
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ClaimDailyResult> => {
 			if (!(await this.repo.hasBag(tx, discordId))) return { status: 'not-registered' };
 
 			const state = await this.repo.getDailyState(tx, discordId);
@@ -98,7 +124,7 @@ export class DailyService {
 				);
 			}
 
-			if (atomicProgress) await applyGameplayProgress(tx, discordId, 'daily', claimTime);
+			if (atomicProgress) await this.progress.apply(tx, discordId, 'daily', claimTime);
 			return {
 				status: 'ok',
 				day: overall,

@@ -1,7 +1,13 @@
-import { db } from '../db/client.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
 import { EventBus } from '../core/EventBus.js';
 import type { PlayerAccount } from '../domain/entities/PlayerAccount.js';
+
+export interface EconomyDependencies {
+	persistence?: PersistenceContext;
+}
 
 /**
  * Facade: commands call one clean method (`getOrCreateAccount`,
@@ -9,11 +15,25 @@ import type { PlayerAccount } from '../domain/entities/PlayerAccount.js';
  * themselves. Keeps command classes thin — their job is Discord I/O,
  * not business logic.
  */
+
 export class EconomyService {
+	private readonly persistence: PersistenceContext;
+	private readonly accounts: Pick<
+		PlayerAccountRepository,
+		'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor'
+	>;
+	private readonly events: Pick<EventBus, 'emit'>;
 	constructor(
-		private readonly accounts = new PlayerAccountRepository(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		accounts:
+			| Pick<PlayerAccountRepository, 'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor'>
+			| undefined = undefined,
+		events: Pick<EventBus, 'emit'> | undefined = undefined,
+		options: EconomyDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.events = events ?? EventBus.getInstance();
+	}
 
 	async getAccount(discordId: string): Promise<PlayerAccount | null> {
 		return this.accounts.findById(discordId);
@@ -22,7 +42,7 @@ export class EconomyService {
 	async grantCurrency(discordId: string, amount: number, source: string): Promise<PlayerAccount> {
 		// Read-modify-write must be one transaction or concurrent grants lose
 		// updates. `earn()` itself rejects amount <= 0 / non-integer.
-		const account = await db.transaction(async (tx) => {
+		const account = await this.persistence.unitOfWork.run(async (tx) => {
 			const acc = await this.accounts.findByIdWithExecutor(tx, discordId);
 			if (!acc) throw new Error(`No account for ${discordId}; register first`);
 			acc.earn(amount);

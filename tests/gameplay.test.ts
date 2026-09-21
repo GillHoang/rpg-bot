@@ -1,15 +1,12 @@
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { eq } from 'drizzle-orm';
 
 // Real PostgreSQL SQL/transactions in an isolated in-memory database. No .env,
 // Discord token, network connection or production database is read by this suite.
 vi.mock('../src/db/client.js', async () => {
-	const { PGlite } = await import('@electric-sql/pglite');
-	const { drizzle } = await import('drizzle-orm/pglite');
-	const schema = await import('../src/db/schema.js');
-	const client = new PGlite();
-	return { db: drizzle(client, { schema }), pool: { end: () => client.close() }, testClient: client };
+	const { createTestDatabase } = await import('./helpers/database.js');
+	return createTestDatabase();
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
@@ -25,7 +22,7 @@ import { AscensionService } from '../src/services/AscensionService.js';
 import { EnhancementService } from '../src/services/EnhancementService.js';
 import { StatAssemblyService } from '../src/services/StatAssemblyService.js';
 import { InventoryRepository } from '../src/repositories/InventoryRepository.js';
-import { LootRepository } from '../src/repositories/LootRepository.js';
+import { LootGrantService } from '../src/services/LootGrantService.js';
 import { MonsterRepository } from '../src/repositories/MonsterRepository.js';
 import { WEAPON_SEED } from '../src/seed/data/weapons.js';
 import { ARMOR_SEED } from '../src/seed/data/armors.js';
@@ -43,8 +40,8 @@ let starter: { weaponId: string; armorId: string };
 const bag = async () => (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, id)))[0];
 
 beforeAll(async () => {
-	const { testClient } = await import('../src/db/client.js') as unknown as { testClient: { exec(sql: string): Promise<unknown> } };
-	await testClient.exec(await readFile(new URL('../src/db/migrations/0000_nasty_molecule_man.sql', import.meta.url), 'utf8'));
+	const { testClient } = await import('../src/db/client.js') as unknown as TestDatabase;
+	await migrateTestDatabase(testClient);
 	await db.insert(s.weaponRoster).values(WEAPON_SEED);
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
 	await db.insert(s.runeRoster).values(RUNE_SEED.map((r, i) => ({ ...r, runeId: i + 1 })));
@@ -88,7 +85,7 @@ describe('closed gameplay economy', () => {
 	it('rolls back currency, chest and earlier items if a later reward cannot be granted', async () => {
 		const before = await bag();
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
-		vi.spyOn(LootRepository.prototype, 'gear').mockRejectedValue(new Error('missing roster'));
+		vi.spyOn(LootGrantService.prototype, 'gear').mockRejectedValue(new Error('missing roster'));
 		await expect(new LootService().open(id, 'silver', 1)).rejects.toThrow('missing roster');
 		expect(await bag()).toEqual(before);
 		expect(await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).toHaveLength(0);

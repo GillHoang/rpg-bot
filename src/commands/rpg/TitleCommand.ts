@@ -17,7 +17,9 @@ export class TitleCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly cosmetics = new CosmeticService()) {}
+	constructor(
+		private readonly cosmetics: Pick<CosmeticService, 'equipTitle' | 'listTitles'> = new CosmeticService(),
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

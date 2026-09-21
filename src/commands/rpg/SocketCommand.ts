@@ -1,7 +1,7 @@
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SocketService } from '../../services/SocketService.js';
-import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { InventoryService } from '../../services/InventoryService.js';
 import { GEAR_CHOICE_LABEL, RUNE_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
 	SOCKET_DESCRIPTION,
@@ -76,12 +76,18 @@ export class SocketCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly socket = new SocketService()) {}
+	constructor(
+		private readonly socket: Pick<SocketService, 'unlock' | 'equip' | 'unequip'> = new SocketService(),
+		private readonly inventory: Pick<
+			InventoryService,
+			'searchWeapons' | 'searchArmors' | 'searchRunes'
+		> = new InventoryService(),
+	) {}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
 		const focused = interaction.options.getFocused(true).name;
 		const query = String(interaction.options.getFocused());
-		const repo = new InventoryRepository();
+		const repo = this.inventory;
 		if (focused === 'rune_uid') {
 			const rows = await repo.searchRunes(interaction.user.id, query);
 			await interaction.respond(rows.map((r) => ({ name: RUNE_CHOICE_LABEL(r), value: r.uid })));

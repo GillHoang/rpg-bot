@@ -3,13 +3,16 @@ import type { ICommand } from '../../core/ICommand.js';
 import { EconomyService } from '../../services/EconomyService.js';
 import { BALANCE_DESCRIPTION, BALANCE_SUCCESS } from '../../text/balance.js';
 import { NO_CHARACTER } from '../../text/common.js';
-import { InventoryRepository } from '../../repositories/InventoryRepository.js';
+import { InventoryService } from '../../services/InventoryService.js';
 import { bagSummary } from '../../text/inventory.js';
 
 export class BalanceCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('balance').setDescription(BALANCE_DESCRIPTION);
 
-	constructor(private readonly economy = new EconomyService()) {}
+	constructor(
+		private readonly economy: Pick<EconomyService, 'getAccount'> = new EconomyService(),
+		private readonly inventory: Pick<InventoryService, 'bag'> = new InventoryService(),
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
@@ -20,7 +23,7 @@ export class BalanceCommand implements ICommand {
 			return;
 		}
 
-		const bag = await new InventoryRepository().bag(interaction.user.id);
+		const bag = await this.inventory.bag(interaction.user.id);
 		await interaction.editReply(
 			BALANCE_SUCCESS(account.username, account.credux) + (bag ? '\n' + bagSummary(bag) : ''),
 		);

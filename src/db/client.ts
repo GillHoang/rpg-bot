@@ -14,9 +14,12 @@ export const pool = new Pool({ connectionString: env.DATABASE_URL, max: 10 });
 
 export const db = drizzle(pool, { schema });
 
+/** Transaction handle supplied by the shared database. */
+export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /**
  * Shape shared by `db` itself and the `tx` handle drizzle passes into
  * `db.transaction(async tx => ...)`. Repository methods take this instead
  * of `typeof db` so the same method works standalone or inside a transaction.
  */
-export type Executor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Executor = typeof db | Transaction;

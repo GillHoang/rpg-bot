@@ -29,7 +29,7 @@ export class PvpCommand implements ICommand {
 				}),
 		);
 
-	constructor(private readonly shop = new PvpShopService()) {}
+	constructor(private readonly shop: Pick<PvpShopService, 'list' | 'buy'> = new PvpShopService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

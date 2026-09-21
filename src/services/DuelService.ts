@@ -1,24 +1,16 @@
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { DuelRepository } from '../repositories/DuelRepository.js';
+import type { activeDuels, usersBag, userCharacter } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { and, eq, lte, sql } from 'drizzle-orm';
-import { db } from '../db/client.js';
-import {
-	activeDuelParticipants,
-	activeDuels,
-	pvpLogs,
-	users,
-	usersBag,
-	userCharacter,
-	wagerLogs,
-} from '../db/schema.js';
+import type { Transaction } from '../db/client.js';
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
 import { StatAssemblyService, type AssembledPlayer } from './StatAssemblyService.js';
 import { CosmeticService } from './CosmeticService.js';
-import { createCombatant } from '../domain/combat/CombatantState.js';
+import type { CombatantState } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
-import { ClassStrategyRegistry } from '../domain/combat/ClassStrategyRegistry.js';
-import { wrapWithRunes } from '../domain/combat/RuneStrategyDecorator.js';
-import { wrapWithBlessings } from '../domain/combat/DeityBlessingDecorator.js';
+import { PlayerCombatantFactory } from './combatantFactory.js';
 import { createSecureSeed } from '../domain/combat/Rng.js';
 import type { IClassStrategy } from '../domain/combat/IClassStrategy.js';
 import { EventBus } from '../core/EventBus.js';
@@ -58,6 +50,30 @@ type DuelRow = typeof activeDuels.$inferSelect;
 type BagRow = typeof usersBag.$inferSelect;
 type CharacterRow = typeof userCharacter.$inferSelect;
 
+export interface DuelDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		DuelRepository,
+		| 'createDuel'
+		| 'createParticipants'
+		| 'findUser'
+		| 'findParticipant'
+		| 'findBalance'
+		| 'deleteDuel'
+		| 'lockDuel'
+		| 'lockBag'
+		| 'lockCharacter'
+		| 'debitStake'
+		| 'updateBag'
+		| 'updateCharacter'
+		| 'insertPvpLog'
+		| 'insertWagerLog'
+		| 'deleteExpiredDuels'
+	>;
+	engine?: Pick<BattleEngine, 'resolve'>;
+	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+}
+
 /**
  * Casual/wager duel (bảng active_duels + active_duel_participants, M7).
  * Challenge → đối thủ Accept/Decline qua nút trên message (60s). Cược bị
@@ -66,21 +82,61 @@ type CharacterRow = typeof userCharacter.$inferSelect;
  * StatAssembly + rune + blessing của mỗi người; quest/believer EXP đi qua
  * EventBus sau khi commit. Wording nằm ở src/text/duel.ts.
  */
+
 export class DuelService {
+	private readonly persistence: PersistenceContext;
+	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
+	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
+	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
+	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
+	private readonly events: Pick<EventBus, 'emit'>;
+	private readonly queries: Pick<
+		DuelRepository,
+		| 'createDuel'
+		| 'createParticipants'
+		| 'findUser'
+		| 'findParticipant'
+		| 'findBalance'
+		| 'deleteDuel'
+		| 'lockDuel'
+		| 'lockBag'
+		| 'lockCharacter'
+		| 'debitStake'
+		| 'updateBag'
+		| 'updateCharacter'
+		| 'insertPvpLog'
+		| 'insertWagerLog'
+		| 'deleteExpiredDuels'
+	>;
+	private readonly engine: Pick<BattleEngine, 'resolve'>;
+	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
+
 	constructor(
-		private readonly accounts = new PlayerAccountRepository(),
-		private readonly characters = new UserCharacterRepository(),
-		private readonly statAssembly = new StatAssemblyService(),
-		private readonly cosmetics = new CosmeticService(),
-		private readonly events = EventBus.getInstance(),
-	) {}
+		accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>,
+		characters?: Pick<UserCharacterRepository, 'hasCharacter'>,
+		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
+		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
+		events?: Pick<EventBus, 'emit'>,
+		options: DuelDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.characters = characters ?? new UserCharacterRepository();
+		this.statAssembly =
+			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
+		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.events = events ?? EventBus.getInstance();
+		this.queries = options.queries ?? new DuelRepository();
+		this.engine = options.engine ?? new BattleEngine();
+		this.factory = options.factory ?? new PlayerCombatantFactory();
+	}
 
 	async create(challengerId: string, opponentId: string, stake: number): Promise<DuelCreateResult> {
 		if (!Number.isSafeInteger(stake) || stake < 0 || (stake > 0 && stake < DUEL_STAKE_MIN))
 			return { status: 'invalid-stake' };
 		if (challengerId === opponentId) return { status: 'self' };
 
-		return db.transaction(async (tx): Promise<DuelCreateResult> => {
+		return this.persistence.unitOfWork.run(async (tx): Promise<DuelCreateResult> => {
 			for (const who of ['challenger', 'opponent'] as const) {
 				const id = who === 'challenger' ? challengerId : opponentId;
 				const blocked = await this.participantGuard(tx, id, who);
@@ -92,7 +148,7 @@ export class DuelService {
 			const duelId = randomUUID();
 			const lockToken = randomUUID();
 			const expiresAt = new Date(Date.now() + DUEL_EXPIRES_SECONDS * 1000);
-			await tx.insert(activeDuels).values({
+			await this.queries.createDuel(tx, {
 				duelId,
 				lockToken,
 				challengerId,
@@ -102,7 +158,7 @@ export class DuelService {
 				status: 'pending',
 				expiresAt,
 			});
-			await tx.insert(activeDuelParticipants).values([
+			await this.queries.createParticipants(tx, [
 				{ discordId: challengerId, duelId, lockToken, role: 'challenger', expiresAt },
 				{ discordId: opponentId, duelId, lockToken, role: 'opponent', expiresAt },
 			]);
@@ -111,34 +167,21 @@ export class DuelService {
 	}
 
 	private async participantGuard(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		id: string,
 		who: 'challenger' | 'opponent',
 	): Promise<DuelCreateResult | null> {
-		const [user] = await tx.select().from(users).where(eq(users.discordId, id)).limit(1);
+		const [user] = await this.queries.findUser(tx, id);
 		if (!user) return { status: 'not-registered', who };
 		if (!(await this.characters.hasCharacter(tx, id))) return { status: 'no-character', who };
-		const [participant] = await tx
-			.select()
-			.from(activeDuelParticipants)
-			.where(eq(activeDuelParticipants.discordId, id))
-			.limit(1);
+		const [participant] = await this.queries.findParticipant(tx, id);
 		if (participant && participant.expiresAt > new Date()) return { status: 'busy', who };
 		return null;
 	}
 
-	private async bothCanAfford(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-		a: string,
-		b: string,
-		stake: number,
-	): Promise<boolean> {
+	private async bothCanAfford(tx: Transaction, a: string, b: string, stake: number): Promise<boolean> {
 		const creux = async (id: string) => {
-			const [bag] = await tx
-				.select({ creux: usersBag.credux })
-				.from(usersBag)
-				.where(eq(usersBag.discordId, id))
-				.limit(1);
+			const [bag] = await this.queries.findBalance(tx, id);
 			return bag?.creux ?? null;
 		};
 		const aBalance = await creux(a);
@@ -148,7 +191,7 @@ export class DuelService {
 	}
 
 	async accept(duelId: string, acceptorId: string): Promise<DuelAcceptResult> {
-		const result = await db.transaction(async (tx): Promise<DuelAcceptResult> => {
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<DuelAcceptResult> => {
 			const loaded = await this.loadAcceptableDuel(tx, duelId, acceptorId);
 			if ('error' in loaded) return loaded.error;
 			const duel = loaded.duel;
@@ -162,7 +205,7 @@ export class DuelService {
 
 			if (stake > 0) await this.debitBoth(tx, duel.challengerId, duel.opponentId, stake);
 
-			const battle = new BattleEngine().resolve(
+			const battle = this.engine.resolve(
 				duelists.challenger.combatant,
 				duelists.opponent.combatant,
 				createSecureSeed(),
@@ -171,7 +214,7 @@ export class DuelService {
 
 			await this.settle(tx, { duel, bags, duelists, battle });
 			// Consume the duel: participants cascade with this delete.
-			await tx.delete(activeDuels).where(eq(activeDuels.duelId, duel.duelId));
+			await this.queries.deleteDuel(tx, duel.duelId);
 			return {
 				status: 'ok',
 				battle,
@@ -199,11 +242,11 @@ export class DuelService {
 	}
 
 	private async loadAcceptableDuel(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		duelId: string,
 		acceptorId: string,
 	): Promise<{ duel: DuelRow } | { error: DuelAcceptResult }> {
-		const [duel] = await tx.select().from(activeDuels).where(eq(activeDuels.duelId, duelId)).limit(1).for('update');
+		const [duel] = await this.queries.lockDuel(tx, duelId);
 		if (duel?.status !== 'pending') return { error: { status: 'not-found' } };
 		if (duel.expiresAt <= new Date()) return { error: { status: 'expired' } };
 		if (acceptorId !== duel.opponentId) return { error: { status: 'not-opponent' } };
@@ -211,23 +254,13 @@ export class DuelService {
 	}
 
 	private async lockBags(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		challengerId: string,
 		opponentId: string,
 		stake: number,
 	): Promise<{ challengerBag: BagRow; opponentBag: BagRow } | { error: DuelAcceptResult }> {
-		const [challengerBag] = await tx
-			.select()
-			.from(usersBag)
-			.where(eq(usersBag.discordId, challengerId))
-			.limit(1)
-			.for('update');
-		const [opponentBag] = await tx
-			.select()
-			.from(usersBag)
-			.where(eq(usersBag.discordId, opponentId))
-			.limit(1)
-			.for('update');
+		const [challengerBag] = await this.queries.lockBag(tx, challengerId);
+		const [opponentBag] = await this.queries.lockBag(tx, opponentId);
 		if (!challengerBag || !opponentBag) return { error: { status: 'not-found' } };
 		if (stake > 0 && (challengerBag.credux < stake || opponentBag.credux < stake))
 			return { error: { status: 'insufficient-funds' } };
@@ -235,7 +268,7 @@ export class DuelService {
 	}
 
 	private async buildDuelists(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		challengerId: string,
 		opponentId: string,
 	): Promise<
@@ -251,50 +284,24 @@ export class DuelService {
 		return { challenger, opponent };
 	}
 
-	private async buildDuelist(tx: Parameters<Parameters<typeof db.transaction>[0]>[0], discordId: string) {
-		const [character] = await tx
-			.select()
-			.from(userCharacter)
-			.where(eq(userCharacter.discordId, discordId))
-			.limit(1)
-			.for('update');
+	private async buildDuelist(tx: Transaction, discordId: string) {
+		const [character] = await this.queries.lockCharacter(tx, discordId);
 		if (!character) return null;
 		const account = await this.accounts.findByIdWithExecutor(tx, discordId);
 		if (!account) return null;
 		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
-		const combatant = createCombatant({
-			name: account.username,
-			combatClass: account.combatClass,
-			hp: assembled.stats.hp,
-			atk: assembled.stats.atk,
-			def: assembled.stats.def,
-			crit: assembled.stats.crit,
-		});
-		const strategy = wrapWithBlessings(
-			wrapWithRunes(ClassStrategyRegistry.forClass(account.combatClass), assembled.combatEffectRunes),
-			assembled.blessings,
-		);
+		const combatant = this.factory.createCombatant(account.username, account.combatClass, assembled);
+		const strategy = this.factory.createStrategy(account.combatClass, assembled);
 		return { account, assembled, combatant, strategy, character };
 	}
 
-	private async debitBoth(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-		challengerId: string,
-		opponentId: string,
-		stake: number,
-	): Promise<void> {
-		await tx
-			.update(usersBag)
-			.set({ credux: sql`${usersBag.credux} - ${stake}` })
-			.where(eq(usersBag.discordId, challengerId));
-		await tx
-			.update(usersBag)
-			.set({ credux: sql`${usersBag.credux} - ${stake}` })
-			.where(eq(usersBag.discordId, opponentId));
+	private async debitBoth(tx: Transaction, challengerId: string, opponentId: string, stake: number): Promise<void> {
+		await this.queries.debitStake(tx, challengerId, stake);
+		await this.queries.debitStake(tx, opponentId, stake);
 	}
 
 	private async settle(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		input: {
 			duel: DuelRow;
 			bags: { challengerBag: BagRow; opponentBag: BagRow };
@@ -319,24 +326,15 @@ export class DuelService {
 		if (stake > 0) {
 			// Bags were debited `stake` each; the winner now takes the whole pot
 			// (their own stake back plus the loser's).
-			await tx
-				.update(usersBag)
-				.set({ credux: winnerBag.credux + stake })
-				.where(eq(usersBag.discordId, winnerId));
+			await this.queries.updateBag(tx, winnerId, { credux: winnerBag.credux + stake });
 		}
-		await tx
-			.update(userCharacter)
-			.set({ pvpWins: winner.character.pvpWins + 1 })
-			.where(eq(userCharacter.discordId, winnerId));
+		await this.queries.updateCharacter(tx, winnerId, { pvpWins: winner.character.pvpWins + 1 });
 		if (winner.character.pvpWins === 0) {
 			// First-ever duel win → First Blood title (idempotent grant).
 			await this.cosmetics.grantTitleInTx(tx, winnerId, 'first_blood');
 		}
-		await tx
-			.update(userCharacter)
-			.set({ pvpLosses: loser.character.pvpLosses + 1 })
-			.where(eq(userCharacter.discordId, loserId));
-		await tx.insert(pvpLogs).values({
+		await this.queries.updateCharacter(tx, loserId, { pvpLosses: loser.character.pvpLosses + 1 });
+		await this.queries.insertPvpLog(tx, {
 			duelId: duel.duelId,
 			challengerId: duel.challengerId,
 			opponentId: duel.opponentId,
@@ -345,7 +343,7 @@ export class DuelService {
 			opponentDamage: duelists.challenger.assembled.stats.hp - battle.playerHpRemaining,
 		});
 		if (stake > 0) {
-			await tx.insert(wagerLogs).values({
+			await this.queries.insertWagerLog(tx, {
 				challengerId: duel.challengerId,
 				opponentId: duel.opponentId,
 				winnerId,
@@ -356,44 +354,30 @@ export class DuelService {
 
 	/** Nobody died-died: refund both stakes (bags were debited at accept). */
 	private async refundWager(
-		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+		tx: Transaction,
 		duel: DuelRow,
 		bags: { challengerBag: BagRow; opponentBag: BagRow },
 		stake: number,
 	): Promise<void> {
 		if (stake <= 0) return;
-		await tx
-			.update(usersBag)
-			.set({ credux: bags.challengerBag.credux })
-			.where(eq(usersBag.discordId, duel.challengerId));
-		await tx
-			.update(usersBag)
-			.set({ credux: bags.opponentBag.credux })
-			.where(eq(usersBag.discordId, duel.opponentId));
+		await this.queries.updateBag(tx, duel.challengerId, { credux: bags.challengerBag.credux });
+		await this.queries.updateBag(tx, duel.opponentId, { credux: bags.opponentBag.credux });
 	}
 
 	async decline(duelId: string, userId: string): Promise<boolean> {
-		return db.transaction(async (tx) => {
-			const [duel] = await tx
-				.select()
-				.from(activeDuels)
-				.where(eq(activeDuels.duelId, duelId))
-				.limit(1)
-				.for('update');
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const [duel] = await this.queries.lockDuel(tx, duelId);
 			if (duel?.status !== 'pending') return false;
 			if (userId !== duel.challengerId && userId !== duel.opponentId) return false;
-			await tx.delete(activeDuels).where(eq(activeDuels.duelId, duelId));
+			await this.queries.deleteDuel(tx, duelId);
 			return true;
 		});
 	}
 
 	/** Scheduler sweep — drop expired pending duels (participants cascade). */
 	async expireStale(now: Date = new Date()): Promise<number> {
-		return db.transaction(async (tx) => {
-			const rows = await tx
-				.delete(activeDuels)
-				.where(and(eq(activeDuels.status, 'pending'), lte(activeDuels.expiresAt, now)))
-				.returning({ duelId: activeDuels.duelId });
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const rows = await this.queries.deleteExpiredDuels(tx, now);
 			return rows.length;
 		});
 	}
@@ -402,7 +386,7 @@ export class DuelService {
 interface Duelist {
 	account: { username: string; combatClass: CombatClass; combatLevel: number };
 	assembled: AssembledPlayer;
-	combatant: ReturnType<typeof createCombatant>;
+	combatant: CombatantState;
 	strategy: IClassStrategy;
 	character: CharacterRow;
 }

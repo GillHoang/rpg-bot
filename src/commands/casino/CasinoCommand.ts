@@ -3,7 +3,7 @@ import type { ICommand } from '../../core/ICommand.js';
 import { CasinoService } from '../../services/CasinoService.js';
 import { MAX_BET } from '../../config/casinoPayouts.js';
 import type { StatelessCasinoGameKey } from '../../domain/casino/CasinoGameRegistry.js';
-import { interactiveCasino } from './interactiveCasino.js';
+import { InteractiveCasinoController } from './interactiveCasino.js';
 import {
 	CASINO_BET_OPTION_DESC,
 	CASINO_CHOICE_OPTION_DESC,
@@ -29,13 +29,16 @@ export class CasinoCommand implements ICommand {
 		.addSubcommand((s) => casinoOptions(s, 'blackjack', 'Blackjack: Hit/Stand, hết hạn 60 giây'))
 		.addSubcommand((s) => casinoOptions(s, 'crash', 'Crash: Push/Cash Out, hết hạn 60 giây'));
 
-	constructor(private readonly casino = new CasinoService()) {}
+	constructor(
+		private readonly casino: Pick<CasinoService, 'play'> = new CasinoService(),
+		private readonly interactive: Pick<InteractiveCasinoController, 'execute'> = new InteractiveCasinoController(),
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		const game = interaction.options.getSubcommand(true);
 		const bet = interaction.options.getInteger('bet', true);
 		if (game === 'blackjack' || game === 'crash') {
-			await interactiveCasino(interaction, game, bet);
+			await this.interactive.execute(interaction, game, bet);
 			return;
 		}
 		await interaction.deferReply();

@@ -20,7 +20,10 @@ type MenuInteraction = ButtonInteraction | StringSelectMenuInteraction | ModalSu
 
 export class MenuRouter {
 	constructor(
-		private readonly sessions = new MenuSessionStore(),
+		private readonly sessions: Pick<
+			MenuSessionStore,
+			'create' | 'bind' | 'acquire' | 'release' | 'touch' | 'delete' | 'sweep'
+		> = new MenuSessionStore(),
 		private readonly gameplay?: MenuGameplay,
 	) {}
 

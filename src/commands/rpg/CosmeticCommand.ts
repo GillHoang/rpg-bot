@@ -22,7 +22,9 @@ export class CosmeticCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly cosmetics = new CosmeticService()) {}
+	constructor(
+		private readonly cosmetics: Pick<CosmeticService, 'equipCosmetic' | 'listCosmetics'> = new CosmeticService(),
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

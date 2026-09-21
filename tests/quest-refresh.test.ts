@@ -1,15 +1,12 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFile } from 'node:fs/promises';
+import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { and, eq } from 'drizzle-orm';
 
 // Real PostgreSQL SQL/transactions in an isolated in-memory database. No .env,
 // Discord token, network connection or production database is read by this suite.
 vi.mock('../src/db/client.js', async () => {
-	const { PGlite } = await import('@electric-sql/pglite');
-	const { drizzle } = await import('drizzle-orm/pglite');
-	const schema = await import('../src/db/schema.js');
-	const client = new PGlite();
-	return { db: drizzle(client, { schema }), pool: { end: () => client.close() }, testClient: client };
+	const { createTestDatabase } = await import('./helpers/database.js');
+	return createTestDatabase();
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
@@ -23,12 +20,8 @@ let id: string;
 let sequence = 0;
 
 beforeAll(async () => {
-	const { testClient } = (await import('../src/db/client.js')) as unknown as {
-		testClient: { exec(sql: string): Promise<unknown> };
-	};
-	await testClient.exec(
-		await readFile(new URL('../src/db/migrations/0000_nasty_molecule_man.sql', import.meta.url), 'utf8'),
-	);
+	const { testClient } = await import('../src/db/client.js') as unknown as TestDatabase;
+	await migrateTestDatabase(testClient);
 }, 30000);
 afterAll(async () => {
 	await pool.end();

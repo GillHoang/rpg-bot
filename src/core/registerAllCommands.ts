@@ -24,6 +24,10 @@ import { TestCommand } from '../commands/admin/TestCommand.js';
 import { ResetCommand } from '../commands/admin/ResetCommand.js';
 import { PingCommand } from '../commands/admin/PingCommand.js';
 import { MenuCommand } from '../commands/rpg/MenuCommand.js';
+import { InteractiveCasinoController } from '../commands/casino/interactiveCasino.js';
+import { createApplicationServices, type ApplicationServices } from '../application/createApplicationServices.js';
+import { EventBus } from './EventBus.js';
+import { menuRouter } from '../menu/menuRuntime.js';
 
 /**
  * Composition root — the ONLY place that knows the full list of commands.
@@ -31,36 +35,36 @@ import { MenuCommand } from '../commands/rpg/MenuCommand.js';
  * newly ported command can never be registered at runtime but forgotten
  * in the Discord API (or vice versa). Adding a command = add one line here.
  */
-export function registerAllCommands(): void {
-	const registry = CommandRegistry.getInstance();
-
-	registry.register(new MenuCommand());
-	registry.register(new StartCommand());
-	registry.register(new BalanceCommand());
-	registry.register(new DailyCommand());
-	registry.register(new RaidCommand());
-	registry.register(new SummonCommand());
-	registry.register(new EnhanceCommand());
-	registry.register(new SocketCommand());
-	registry.register(new CasinoCommand());
-	registry.register(new ProfileCommand());
-	registry.register(new DeityCommand());
-	registry.register(new InventoryCommand());
-	registry.register(new DeitiesCommand());
-	registry.register(new OpenCommand());
-	registry.register(new RunesCommand());
-	registry.register(new EquipCommand());
-	registry.register(new PresetCommand());
-	registry.register(new DuelCommand());
-	registry.register(new RankedCommand());
-	registry.register(new PvpCommand());
-	registry.register(new QuestCommand());
-	registry.register(new CosmeticCommand());
-	registry.register(new TitleCommand());
-	registry.register(new ClassCommand());
+export function registerAllCommands(
+	services: ApplicationServices = createApplicationServices({ events: EventBus.getInstance(), menu: menuRouter }),
+	registry: Pick<CommandRegistry, 'register'> = CommandRegistry.getInstance(),
+): void {
+	registry.register(new MenuCommand(services.menu));
+	registry.register(new StartCommand(services.start));
+	registry.register(new BalanceCommand(services.economy, services.inventory));
+	registry.register(new DailyCommand(services.daily));
+	registry.register(new RaidCommand(services.raid));
+	registry.register(new SummonCommand(services.summon));
+	registry.register(new EnhanceCommand(services.enhancement, services.inventory));
+	registry.register(new SocketCommand(services.socket, services.inventory));
+	registry.register(new CasinoCommand(services.casino, new InteractiveCasinoController(services.casinoSessions)));
+	registry.register(new ProfileCommand(services.profile));
+	registry.register(new DeityCommand(services.ascension));
+	registry.register(new InventoryCommand(services.inventory));
+	registry.register(new DeitiesCommand(services.inventory));
+	registry.register(new OpenCommand(services.loot));
+	registry.register(new RunesCommand(services.loot));
+	registry.register(new EquipCommand(services.loadout, services.inventory));
+	registry.register(new PresetCommand(services.loadout));
+	registry.register(new DuelCommand(services.duel));
+	registry.register(new RankedCommand(services.ranked));
+	registry.register(new PvpCommand(services.pvpShop));
+	registry.register(new QuestCommand(services.quests));
+	registry.register(new CosmeticCommand(services.cosmetics));
+	registry.register(new TitleCommand(services.cosmetics));
+	registry.register(new ClassCommand(services.classChange));
 	registry.register(new HelpCommand());
 	registry.register(new TestCommand());
-	registry.register(new ResetCommand());
-	registry.register(new PingCommand());
-	// ...ported one module at a time per the migration roadmap.
+	registry.register(new ResetCommand(services.reset));
+	registry.register(new PingCommand(services.health));
 }

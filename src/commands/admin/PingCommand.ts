@@ -1,7 +1,6 @@
-import { sql } from 'drizzle-orm';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
-import { db } from '../../db/client.js';
+import { HealthService } from '../../services/HealthService.js';
 import { PING_DB_ERROR, PING_DB_LABEL, PING_DESCRIPTION, PING_REST_LABEL, PING_WS_LABEL } from '../../text/ping.js';
 
 /** Một số đo latency, round về ms nguyên. */
@@ -18,6 +17,8 @@ interface Latency {
  *  - PostgreSQL: SELECT 1 đi-đến-đáp-là.
  */
 export class PingCommand implements ICommand {
+	constructor(private readonly health: Pick<HealthService, 'checkDatabase'> = new HealthService()) {}
+
 	readonly data = new SlashCommandBuilder().setName('ping').setDescription(PING_DESCRIPTION);
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -40,7 +41,7 @@ export class PingCommand implements ICommand {
 	private async measureDb(): Promise<Latency> {
 		const start = Date.now();
 		try {
-			await db.execute(sql`SELECT 1`);
+			await this.health.checkDatabase();
 			return { ms: Date.now() - start };
 		} catch {
 			return { ms: Date.now() - start, error: PING_DB_ERROR };

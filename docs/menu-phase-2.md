@@ -14,7 +14,7 @@
 Trang chủ tham khảo form Components V2 người dùng cung cấp: viền vàng, tóm tắt nhân vật cạnh avatar Discord, thanh EXP và nhóm nút **Thông tin / Hoạt động / Tài sản** có đường phân cách. Chỉ dùng emoji và dữ liệu CREDD; không phụ thuộc banner/URL CDN tạm thời của bot mẫu. Nút Tài sản mở hướng dẫn lệnh hiện có trong lúc chờ giai đoạn kế tiếp. Trang con giữ select chuyển khu vực và nút Trang chủ.
 
 `MenuRouter` xử lý ownership, message, revision, lock và ACK; chỉ chấp nhận gameplay action đang có trên màn hình và không bị disabled. Giá trị class được kiểm tra server-side.
-`MenuGameplayService` gọi service trực tiếp, dựng dữ liệu màn hình; không giả lập slash interaction. Runtime nạp service khi sử dụng; router có thể inject service để test.
+[`MenuGameplayService`](../src/menu/MenuGameplayService.ts) đọc dữ liệu và gọi service trực tiếp; không giả lập slash interaction. [`gameplayPanels.ts`](../src/menu/gameplayPanels.ts) dựng panel và phân trang log từ snapshot được truyền vào, không truy cập DB hay thực hiện nghiệp vụ. Runtime nạp service khi sử dụng; router có thể inject service để test.
 `MenuSessionStore` giữ snapshot giao diện và trận gần nhất, không giữ token hay quyền quyết định số dư. Điều hướng gameplay xoá lịch sử cũ; nút Huỷ trở về trang tương ứng.
 Thông tin trên trang là snapshot; Làm mới đọc lại DB. Hai menu của cùng người chơi có thể hiển thị khác thời điểm nhưng service luôn xác thực trạng thái hiện tại khi ghi.
 
@@ -35,10 +35,10 @@ Migration `0001_dazzling_maelstrom.sql` chỉ thêm `menu_action_receipts` và F
 Trên VPS, chạy `npm run db:migrate` trước `npm run build` và khởi động lại bot. Không cần đăng ký lại `/menu` nếu giai đoạn 1 đã được triển khai.
 
 Kiểm tra tự động: `npm run build`, `npm run lint:check`, `npm test -- --maxWorkers=2`.
-Test dùng Discord builder thật và PostgreSQL trong bộ nhớ (PGlite), không cần bot token hoặc DB thật.
+Test dùng Discord builder thật và PostgreSQL trong bộ nhớ (PGlite), không cần bot token hoặc DB thật. [Helper DB dùng chung](../tests/helpers/database.ts) tạo DB riêng cho từng suite và áp toàn bộ migration theo journal.
 Các test bao phủ vòng chơi `/menu`, payload, giả mạo action, nút cũ, claim lặp, receipt qua nhiều service instance, rollback daily/boss và lỗi gửi Discord sau commit.
 
-Kết quả kiểm tra toàn bộ: 163 test / 22 file đạt; lint và build đạt (171 module được kiểm tra import). PGlite không mô phỏng đầy đủ tranh chấp khoá giữa nhiều kết nối PostgreSQL; kiểm tra tải nhiều kết nối và giao diện Discord thật vẫn cần môi trường thử nghiệm.
+Kết quả khi hoàn tất giai đoạn 2, trước đợt refactor: 163 test / 22 file đạt; lint và build đạt (171 module được kiểm tra import). Phạm vi kiểm thử hiện tại được mô tả trong [README](../README.md#kiểm-thử). PGlite không mô phỏng đầy đủ tranh chấp khoá giữa nhiều kết nối PostgreSQL; kiểm tra tải nhiều kết nối và giao diện Discord thật vẫn cần môi trường thử nghiệm.
 
 Checklist guild thử nghiệm (chưa chạy live):
 

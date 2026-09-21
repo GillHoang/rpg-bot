@@ -1,11 +1,13 @@
-import { eq, and } from 'drizzle-orm';
-import { db, type Executor } from '../db/client.js';
-import { userCharacter, userPresets } from '../db/schema.js';
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { PlayerLoadoutQueryRepository } from '../repositories/PlayerLoadoutQueryRepository.js';
+import type { Executor } from '../db/client.js';
+import type { userPresets } from '../db/schema.js';
 import { computeClassStats } from '../config/classes.js';
 import { STAT_EFFECT_KEYS, type RuneEffectKey } from '../config/runes.js';
 import { blessingStrength, PANTHEON_SLOT_WEIGHT, resonanceBonus, type BlessingKey } from '../config/blessings.js';
 import { GearRepository } from '../repositories/GearRepository.js';
-import { DeityRepository } from '../repositories/DeityRepository.js';
+import { DeityService } from './DeityService.js';
 import { RuneRepository, type SocketedRuneEffect } from '../repositories/RuneRepository.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 
@@ -49,6 +51,11 @@ interface PantheonEntry {
 	};
 }
 
+export interface StatAssemblyDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<PlayerLoadoutQueryRepository, 'findCharacter' | 'findPreset'>;
+}
+
 /**
  * Ported from engine/statAssembly.js's buildPlayerFighter/assemblePlayerStats,
  * extended with the M7 pantheon:
@@ -61,22 +68,35 @@ interface PantheonEntry {
  * armor sockets are SUMMED FIRST, then applied as one multiplier — NOT
  * compounded per-rune.
  *
- * DeityRepository computes current Sigil stats at read time. Ascension is
+ * DeityService computes current Sigil stats at read time. Ascension is
  * prestige only. Blessings come from the pantheon lead (slot 1) only;
  * strength = 0.5 + 0.05×sigils for scalable blessings, 1 for binary.
  */
+
 export class StatAssemblyService {
+	private readonly persistence: PersistenceContext;
+	private readonly gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'>;
+	private readonly deities: Pick<DeityService, 'findUserDeityAssemblyInfo'>;
+	private readonly runes: Pick<RuneRepository, 'findSocketedEffects'>;
+	private readonly queries: NonNullable<StatAssemblyDependencies['queries']>;
 	constructor(
-		private readonly gear = new GearRepository(),
-		private readonly deities = new DeityRepository(),
-		private readonly runes = new RuneRepository(),
-	) {}
+		gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'> | undefined = undefined,
+		deities: Pick<DeityService, 'findUserDeityAssemblyInfo'> | undefined = undefined,
+		runes: Pick<RuneRepository, 'findSocketedEffects'> | undefined = undefined,
+		options: StatAssemblyDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.gear = gear ?? new GearRepository();
+		this.deities = deities ?? new DeityService();
+		this.runes = runes ?? new RuneRepository();
+		this.queries = options.queries ?? new PlayerLoadoutQueryRepository();
+	}
 
 	async assemble(
 		discordId: string,
 		combatClass: CombatClass,
 		level: number,
-		executor: Executor = db,
+		executor: Executor = this.persistence.executor,
 	): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
 		const preset = await this.activePreset(executor, discordId);
@@ -109,17 +129,9 @@ export class StatAssemblyService {
 	}
 
 	private async activePreset(executor: Executor, discordId: string) {
-		const [character] = await executor
-			.select()
-			.from(userCharacter)
-			.where(eq(userCharacter.discordId, discordId))
-			.limit(1);
+		const [character] = await this.queries.findCharacter(executor, discordId);
 		if (!character) return null;
-		const [preset] = await executor
-			.select()
-			.from(userPresets)
-			.where(and(eq(userPresets.discordId, discordId), eq(userPresets.slot, character.activePresetSlot)))
-			.limit(1);
+		const [preset] = await this.queries.findPreset(executor, discordId, character.activePresetSlot);
 		return preset ?? null;
 	}
 

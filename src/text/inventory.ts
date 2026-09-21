@@ -34,7 +34,7 @@ export const DEITIES_TITLE = (page: number): string => `Deities · Trang ${page}
 export const DEITIES_EMPTY_PAGE = 'Chưa có deity ở trang này. Dùng /summon.';
 export const DEITIES_FOOTER = '/equip kind:deity · /deity sigil · /deity ascend (prestige)';
 
-// --- Dòng render từng vật phẩm trong list (InventoryRepository) ---
+// --- Dòng render từng vật phẩm trong list (InventoryService) ---
 export interface GearListEntry {
 	name: string;
 	tier: string;

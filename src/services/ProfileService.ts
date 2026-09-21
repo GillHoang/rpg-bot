@@ -1,40 +1,57 @@
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { ProfileQueryRepository } from '../repositories/ProfileQueryRepository.js';
 import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository.js';
 import { UserCharacterRepository } from '../repositories/UserCharacterRepository.js';
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { expRequiredForLevel } from '../config/combatExp.js';
-import { db } from '../db/client.js';
-import { titleCatalog, userCharacter } from '../db/schema.js';
-import { eq } from 'drizzle-orm';
+
 import type { ProfileCardData } from '../render/ProfileCardRenderer.js';
 
 export type ProfileResult =
 	{ status: 'not-registered' } | { status: 'no-character' } | { status: 'ok'; data: ProfileCardData };
 
+export interface ProfileDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<ProfileQueryRepository, 'findCharacter' | 'findTitleDisplay'>;
+}
+
 export class ProfileService {
+	private readonly persistence: PersistenceContext;
+	private readonly accounts: Pick<PlayerAccountRepository, 'findById'>;
+	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
+	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
+	private readonly queries: NonNullable<ProfileDependencies['queries']>;
 	constructor(
-		private readonly accounts = new PlayerAccountRepository(),
-		private readonly characters = new UserCharacterRepository(),
-		private readonly statAssembly = new StatAssemblyService(),
-	) {}
+		accounts: Pick<PlayerAccountRepository, 'findById'> | undefined = undefined,
+		characters: Pick<UserCharacterRepository, 'hasCharacter'> | undefined = undefined,
+		statAssembly: Pick<StatAssemblyService, 'assemble'> | undefined = undefined,
+		options: ProfileDependencies = {},
+	) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.characters = characters ?? new UserCharacterRepository();
+		this.statAssembly =
+			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
+		this.queries = options.queries ?? new ProfileQueryRepository();
+	}
 
 	async get(discordId: string): Promise<ProfileResult> {
 		const account = await this.accounts.findById(discordId);
 		if (!account) return { status: 'not-registered' };
-		if (!(await this.characters.hasCharacter(db, discordId))) return { status: 'no-character' };
+		if (!(await this.characters.hasCharacter(this.persistence.executor, discordId)))
+			return { status: 'no-character' };
 
-		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel);
-		const [character] = await db
-			.select()
-			.from(userCharacter)
-			.where(eq(userCharacter.discordId, discordId))
-			.limit(1);
+		const assembled = await this.statAssembly.assemble(
+			discordId,
+			account.combatClass,
+			account.combatLevel,
+			this.persistence.executor,
+		);
+		const [character] = await this.queries.findCharacter(this.persistence.executor, discordId);
 		let title: string | null = null;
 		if (character?.equippedTitleId) {
-			const [row] = await db
-				.select({ display: titleCatalog.display })
-				.from(titleCatalog)
-				.where(eq(titleCatalog.titleId, character.equippedTitleId))
-				.limit(1);
+			const [row] = await this.queries.findTitleDisplay(this.persistence.executor, character.equippedTitleId);
 			title = row?.display ?? null;
 		}
 

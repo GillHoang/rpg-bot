@@ -1,7 +1,9 @@
+import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
+import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
+import { CasinoSessionRepository } from '../repositories/CasinoSessionRepository.js';
+import type { activeCasinoSessions } from '../db/schema.js';
 import { randomUUID } from 'node:crypto';
-import { and, eq, lte } from 'drizzle-orm';
-import { db, type Executor } from '../db/client.js';
-import { activeCasinoSessions, usersBag, casinoLogs } from '../db/schema.js';
+import type { Executor } from '../db/client.js';
 import { createSecureSeed } from '../domain/combat/Rng.js';
 import {
 	replayGame,
@@ -22,50 +24,71 @@ import {
 export type SessionView =
 	| { status: 'ok'; sessionId: string; game: InteractiveGame; done: boolean; text: string; revision: number }
 	| { status: 'error'; text: string };
+export interface CasinoSessionDependencies {
+	persistence?: PersistenceContext;
+	queries?: Pick<
+		CasinoSessionRepository,
+		| 'lockBag'
+		| 'findActiveSessions'
+		| 'createSession'
+		| 'updateBag'
+		| 'lockOwnedSession'
+		| 'updateSession'
+		| 'findBag'
+		| 'insertLog'
+		| 'findExpiredSessions'
+	>;
+}
+
 export class CasinoSessionService {
+	private readonly persistence: PersistenceContext;
+	private readonly queries: Pick<
+		CasinoSessionRepository,
+		| 'lockBag'
+		| 'findActiveSessions'
+		| 'createSession'
+		| 'updateBag'
+		| 'lockOwnedSession'
+		| 'updateSession'
+		| 'findBag'
+		| 'insertLog'
+		| 'findExpiredSessions'
+	>;
+
+	constructor(options: CasinoSessionDependencies = {}) {
+		this.persistence = options.persistence ?? defaultPersistence;
+		this.queries = options.queries ?? new CasinoSessionRepository();
+	}
 	async start(id: string, game: InteractiveGame, bet: number): Promise<SessionView> {
 		if (!Number.isSafeInteger(bet) || bet <= 0 || bet > MAX_BET)
 			return { status: 'error', text: CASINO_SESSION_BAD_BET(MAX_BET) };
-		return db.transaction(async (tx) => {
-			const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, id)).for('update');
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const [bag] = await this.queries.lockBag(tx, id);
 			if (!bag) return { status: 'error', text: CASINO_SESSION_NO_REGISTER };
-			const active = await tx
-				.select()
-				.from(activeCasinoSessions)
-				.where(and(eq(activeCasinoSessions.discordId, id), eq(activeCasinoSessions.status, 'active')));
+			const active = await this.queries.findActiveSessions(tx, id);
 			if (active.length) return { status: 'error', text: CASINO_SESSION_BUSY };
 			if (bag.credux < bet) return { status: 'error', text: CASINO_SESSION_INSUFFICIENT };
 			const sessionId = randomUUID();
 			const stored: StoredGame = { seed: createSecureSeed(), actions: [] };
-			const [session] = await tx
-				.insert(activeCasinoSessions)
-				.values({
-					sessionId,
-					discordId: id,
-					game,
-					status: 'active',
-					betAmount: bet,
-					balanceBefore: bag.credux,
-					balanceAfterDebit: bag.credux - bet,
-					stateJson: stored,
-					expiresAt: new Date(Date.now() + 60000),
-				})
-				.returning();
-			await tx
-				.update(usersBag)
-				.set({ credux: bag.credux - bet })
-				.where(eq(usersBag.discordId, id));
+			const [session] = await this.queries.createSession(tx, {
+				sessionId,
+				discordId: id,
+				game,
+				status: 'active',
+				betAmount: bet,
+				balanceBefore: bag.credux,
+				balanceAfterDebit: bag.credux - bet,
+				stateJson: stored,
+				expiresAt: new Date(Date.now() + 60000),
+			});
+			await this.queries.updateBag(tx, id, { credux: bag.credux - bet });
 			return this.resolve(tx, session, stored);
 		});
 	}
 	async act(id: string, sessionId: string, action: CasinoAction, expectedRevision?: number): Promise<SessionView> {
-		return db.transaction(async (tx) => {
-			await tx.select().from(usersBag).where(eq(usersBag.discordId, id)).for('update');
-			const [session] = await tx
-				.select()
-				.from(activeCasinoSessions)
-				.where(and(eq(activeCasinoSessions.sessionId, sessionId), eq(activeCasinoSessions.discordId, id)))
-				.for('update');
+		return this.persistence.unitOfWork.run(async (tx) => {
+			await this.queries.lockBag(tx, id);
+			const [session] = await this.queries.lockOwnedSession(tx, sessionId, id);
 			if (!session) return { status: 'error', text: CASINO_SESSION_NOT_FOUND };
 			const stored = session.stateJson as StoredGame;
 			if (session.status !== 'active')
@@ -97,10 +120,7 @@ export class CasinoSessionService {
 		const game = s.game as InteractiveGame;
 		const view = replayGame(game, s.betAmount, stored);
 		if (!view.done) {
-			await tx
-				.update(activeCasinoSessions)
-				.set({ stateJson: stored, updatedAt: new Date() })
-				.where(eq(activeCasinoSessions.sessionId, s.sessionId));
+			await this.queries.updateSession(tx, s.sessionId, { stateJson: stored, updatedAt: new Date() });
 			return {
 				status: 'ok',
 				sessionId: s.sessionId,
@@ -110,20 +130,17 @@ export class CasinoSessionService {
 				text: view.text + '\nTự Stand / Cash Out sau 60 giây tính từ khi mở ván. Tiền cược đã trừ.',
 			};
 		}
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, s.discordId));
+		const [bag] = await this.queries.findBag(tx, s.discordId);
 		const after = bag.credux + view.payout;
-		await tx.update(usersBag).set({ credux: after }).where(eq(usersBag.discordId, s.discordId));
-		await tx
-			.update(activeCasinoSessions)
-			.set({
-				stateJson: stored,
-				status: 'settled',
-				payout: view.payout,
-				balanceAfter: after,
-				updatedAt: new Date(),
-			})
-			.where(eq(activeCasinoSessions.sessionId, s.sessionId));
-		await tx.insert(casinoLogs).values({
+		await this.queries.updateBag(tx, s.discordId, { credux: after });
+		await this.queries.updateSession(tx, s.sessionId, {
+			stateJson: stored,
+			status: 'settled',
+			payout: view.payout,
+			balanceAfter: after,
+			updatedAt: new Date(),
+		});
+		await this.queries.insertLog(tx, {
 			discordId: s.discordId,
 			game,
 			betAmount: s.betAmount,
@@ -143,10 +160,7 @@ export class CasinoSessionService {
 		};
 	}
 	async recoverExpired(): Promise<void> {
-		const expired = await db
-			.select()
-			.from(activeCasinoSessions)
-			.where(and(eq(activeCasinoSessions.status, 'active'), lte(activeCasinoSessions.expiresAt, new Date())));
+		const expired = await this.queries.findExpiredSessions(this.persistence.executor, new Date());
 		for (const s of expired) await this.act(s.discordId, s.sessionId, 'timeout');
 	}
 }

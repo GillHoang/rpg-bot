@@ -5,13 +5,14 @@ import { PlayerAccount, type CombatClass } from '../domain/entities/PlayerAccoun
 import type { Repository } from './Repository.js';
 
 /**
- * Repository pattern: the only place in the codebase allowed to write
- * drizzle queries against `users` / `user_character` / `users_bag`.
- * Services and commands only ever talk to PlayerAccount objects.
+ * Maps persisted account state to the domain entity. The supplied executor
+ * keeps standalone reads and explicit transaction reads independently testable.
  */
 export class PlayerAccountRepository implements Repository<PlayerAccount, string> {
+	constructor(private readonly executor: Executor = db) {}
+
 	async findById(discordId: string): Promise<PlayerAccount | null> {
-		return this.findByIdWithExecutor(db, discordId);
+		return this.findByIdWithExecutor(this.executor, discordId);
 	}
 
 	async findByIdWithExecutor(executor: Executor, discordId: string): Promise<PlayerAccount | null> {
@@ -42,7 +43,7 @@ export class PlayerAccountRepository implements Repository<PlayerAccount, string
 	// reads/updates the already-created account.
 
 	async saveCredux(account: PlayerAccount): Promise<void> {
-		await this.saveCreduxWithExecutor(db, account);
+		await this.saveCreduxWithExecutor(this.executor, account);
 	}
 
 	async saveCreduxWithExecutor(executor: Executor, account: PlayerAccount): Promise<void> {
