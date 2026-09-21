@@ -52,11 +52,7 @@ export class MenuGameplayService implements MenuGameplay {
 		this.start = start ?? new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
 		this.daily = daily ?? new DailyService(undefined, undefined, { persistence });
 		this.quests = quests ?? new QuestService(undefined, { persistence });
-		this.raid =
-			raid ??
-			new RaidService(undefined, undefined, undefined, undefined, undefined, undefined, undefined, {
-				persistence,
-			});
+		this.raid = raid ?? new RaidService({ persistence });
 	}
 
 	async render(session: MenuSession): Promise<GamePanel | undefined> {
@@ -108,24 +104,8 @@ export class MenuGameplayService implements MenuGameplay {
 				return { kind: 'profile' };
 			case 'quests':
 				return { kind: 'quests' };
-			case 'daily': {
-				const r = await this.daily.claim(id, new Date(), true);
-				session.notice =
-					r.status === 'ok'
-						? DAILY_SUCCESS(
-								r.day,
-								r.monthly,
-								r.overall,
-								n(r.credux),
-								r.shards,
-								r.chestLabel,
-								r.milestoneChestLabel ? DAILY_MILESTONE_LINE(r.milestoneChestLabel) : '',
-							)
-						: r.status === 'already-claimed'
-							? DAILY_ALREADY_CLAIMED(r.overall)
-							: 'Hãy tạo nhân vật trước.';
-				return { kind: 'home' };
-			}
+			case 'daily':
+				return this.claimDaily(session);
 			case 'claim':
 				session.notice = await this.quests.claimWeeklyGrand(id);
 				return { kind: 'quests' };
@@ -133,30 +113,9 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'boss':
 				return { kind: 'confirm', operation: action, day: DailyCycle.keyAt() };
 			case 'cancel':
-				return session.screen.kind === 'confirm' && session.screen.operation === 'reroll'
-					? { kind: 'quests' }
-					: session.screen.kind === 'confirm' && session.screen.operation === 'boss'
-						? { kind: 'battle' }
-						: { kind: 'home' };
-			case 'confirm': {
-				const s = session.screen;
-				if (s.kind !== 'confirm') throw new Error('Confirmation missing');
-				if (s.operation === 'start') {
-					const r = await this.start.start(id, username, s.combatClass);
-					session.notice =
-						r.status === 'ok'
-							? 'Đã tạo nhân vật và nhận quà khởi đầu! Chọn Nhận daily hoặc Săn quái để chơi.'
-							: r.status === 'already-has-character'
-								? 'Bạn đã có nhân vật.'
-								: 'Dữ liệu trang bị khởi đầu chưa sẵn sàng. Hãy thử lại sau.';
-					return { kind: 'home' };
-				}
-				if (s.operation === 'reroll') {
-					session.notice = await this.quests.refresh(id, s.day);
-					return { kind: 'quests' };
-				}
-				return this.fight(session, true, s.day);
-			}
+				return this.cancelConfirmation(session.screen);
+			case 'confirm':
+				return this.confirm(session, username);
 			case 'hunt':
 				return this.fight(session, false);
 			case 'result':
@@ -182,6 +141,44 @@ export class MenuGameplayService implements MenuGameplay {
 		}
 	}
 
+	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
+		const r = await this.daily.claim(session.ownerId, new Date(), true);
+		if (r.status === 'ok') {
+			const milestone = r.milestoneChestLabel ? DAILY_MILESTONE_LINE(r.milestoneChestLabel) : '';
+			session.notice = DAILY_SUCCESS(r.day, r.monthly, r.overall, n(r.credux), r.shards, r.chestLabel, milestone);
+		} else if (r.status === 'already-claimed') {
+			session.notice = DAILY_ALREADY_CLAIMED(r.overall);
+		} else {
+			session.notice = 'Hãy tạo nhân vật trước.';
+		}
+		return { kind: 'home' };
+	}
+
+	private cancelConfirmation(screen: MenuScreen): MenuScreen {
+		if (screen.kind !== 'confirm') return { kind: 'home' };
+		if (screen.operation === 'reroll') return { kind: 'quests' };
+		if (screen.operation === 'boss') return { kind: 'battle' };
+		return { kind: 'home' };
+	}
+
+	private async confirm(session: MenuSession, username: string): Promise<MenuScreen> {
+		const s = session.screen;
+		if (s.kind !== 'confirm') throw new Error('Confirmation missing');
+		if (s.operation === 'start') {
+			const r = await this.start.start(session.ownerId, username, s.combatClass);
+			if (r.status === 'ok')
+				session.notice = 'Đã tạo nhân vật và nhận quà khởi đầu! Chọn Nhận daily hoặc Săn quái để chơi.';
+			else if (r.status === 'already-has-character') session.notice = 'Bạn đã có nhân vật.';
+			else session.notice = 'Dữ liệu trang bị khởi đầu chưa sẵn sàng. Hãy thử lại sau.';
+			return { kind: 'home' };
+		}
+		if (s.operation === 'reroll') {
+			session.notice = await this.quests.refresh(session.ownerId, s.day);
+			return { kind: 'quests' };
+		}
+		return this.fight(session, true, s.day);
+	}
+
 	private async fight(session: MenuSession, boss: boolean, expectedDay?: string): Promise<MenuScreen> {
 		const r = await this.raid.run(session.ownerId, boss, {
 			requestId: `${session.id}:${session.revision}`,
@@ -192,14 +189,11 @@ export class MenuGameplayService implements MenuGameplay {
 			session.battle = { ...r, boss };
 			return { kind: 'result' };
 		}
-		session.notice =
-			r.status === 'boss-locked'
-				? r.message
-				: r.status === 'already-processed'
-					? 'Trận đấu đã được xử lý; không nhận thưởng lần hai.'
-					: r.status === 'no-monsters-seeded'
-						? 'Chưa có quái phù hợp. Hãy thử lại sau.'
-						: 'Hãy tạo nhân vật trước.';
+		if (r.status === 'boss-locked') session.notice = r.message;
+		else if (r.status === 'already-processed')
+			session.notice = 'Trận đấu đã được xử lý; không nhận thưởng lần hai.';
+		else if (r.status === 'no-monsters-seeded') session.notice = 'Chưa có quái phù hợp. Hãy thử lại sau.';
+		else session.notice = 'Hãy tạo nhân vật trước.';
 		return { kind: 'battle' };
 	}
 }

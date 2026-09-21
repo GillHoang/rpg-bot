@@ -81,16 +81,20 @@ export function createApplicationServices(options: ApplicationOptions = {}) {
 	const daily = new DailyService(undefined, events, { persistence, progress });
 	const economy = new EconomyService(accounts, events, { persistence });
 	const profile = new ProfileService(accounts, characters, statAssembly, { persistence });
-	const raid = new RaidService(
+	const raid = new RaidService({
 		accounts,
-		new MonsterEncounterService(),
+		monsters: new MonsterEncounterService(),
 		characters,
-		new RaidRewardService(),
+		rewards: new RaidRewardService(),
 		statAssembly,
 		cosmetics,
 		events,
-		{ persistence, engine, factory, progress, loot: grants },
-	);
+		persistence,
+		engine,
+		factory,
+		progress,
+		loot: grants,
+	});
 	const duel = new DuelService(accounts, characters, statAssembly, cosmetics, events, {
 		persistence,
 		engine,

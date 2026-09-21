@@ -214,7 +214,8 @@ describe('service cohort B dependency and transaction boundaries', () => {
 		const queries = new RaidRepository();
 		const lockBag = vi.spyOn(queries, 'lockBag');
 		const lockCharacter = vi.spyOn(queries, 'lockCharacter');
-		const raids = new RaidService(undefined, undefined, undefined, undefined, undefined, undefined, events, {
+		const raids = new RaidService({
+			events,
 			persistence,
 			queries,
 			engine: { resolve: () => win },
@@ -237,7 +238,8 @@ describe('service cohort B dependency and transaction boundaries', () => {
 	it('rolls back raid rewards and receipt writes when the injected progress step rejects', async () => {
 		const before = await bag();
 		const apply = vi.fn().mockRejectedValue(new Error('progress rejected'));
-		const raids = new RaidService(undefined, undefined, undefined, undefined, undefined, undefined, events, {
+		const raids = new RaidService({
+			events,
 			persistence,
 			engine: { resolve: () => win },
 			progress: { apply },

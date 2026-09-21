@@ -48,7 +48,21 @@ export type RaidResult =
 			progress: RaidRewardResult;
 	  };
 
+export interface RaidRunOptions {
+	requestId?: string;
+	atomicProgress?: boolean;
+	expectedDay?: string;
+}
+
 export interface RaidDependencies {
+	accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
+	monsters?: Pick<MonsterEncounterService, 'pickForLevel'>;
+	characters?: Pick<UserCharacterRepository, 'hasCharacter'>;
+	rewards?: Pick<RaidRewardService, 'grant' | 'currentWinStreak'>;
+	statAssembly?: Pick<StatAssemblyService, 'assemble'>;
+	cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>;
+	events?: Pick<EventBus, 'emit'>;
+
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		RaidRepository,
@@ -65,6 +79,36 @@ export interface RaidDependencies {
 	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	loot?: Pick<LootGrantService, 'gear'>;
+}
+
+function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, mobType: string, combatLevel: number) {
+	let table: typeof RAID_LOOT_BOSS | typeof RAID_LOOT_ELITE | typeof RAID_LOOT_REGULAR = RAID_LOOT_REGULAR;
+	let chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest' = 'silverChest';
+	let chestName = 'Silver Chest';
+	if (boss) {
+		table = RAID_LOOT_BOSS;
+		chestField = 'bossTreasureChest';
+		chestName = 'Boss Treasure Chest';
+	} else if (mobType === 'elite') {
+		table = RAID_LOOT_ELITE;
+		chestField = 'goldChest';
+		chestName = 'Gold Chest';
+	}
+	let credux = 0;
+	let shards = 0;
+	let baseExp: number;
+	let gotChest = false;
+
+	if (won) {
+		credux = randInt(lootRng, table.win.creduxRange);
+		baseExp = randInt(lootRng, table.win.expRange);
+		shards = randInt(lootRng, table.win.shardsRange);
+		gotChest = rollRaidChest(lootRng, table.win.chestChance);
+	} else {
+		baseExp = table.loss.exp;
+	}
+	const expGained = scaleExpForMobLevel(baseExp, combatLevel);
+	return { credux, shards, expGained, gotChest, chestField, chestName };
 }
 
 /**
@@ -102,25 +146,17 @@ export class RaidService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly loot: Pick<LootGrantService, 'gear'>;
 
-	constructor(
-		accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>,
-		monsters?: Pick<MonsterEncounterService, 'pickForLevel'>,
-		characters?: Pick<UserCharacterRepository, 'hasCharacter'>,
-		rewards?: Pick<RaidRewardService, 'grant' | 'currentWinStreak'>,
-		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
-		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
-		events?: Pick<EventBus, 'emit'>,
-		options: RaidDependencies = {},
-	) {
+	constructor(options: RaidDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
-		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
-		this.monsters = monsters ?? new MonsterEncounterService();
-		this.characters = characters ?? new UserCharacterRepository();
-		this.rewards = rewards ?? new RaidRewardService();
+		this.accounts = options.accounts ?? new PlayerAccountRepository(this.persistence.executor);
+		this.monsters = options.monsters ?? new MonsterEncounterService();
+		this.characters = options.characters ?? new UserCharacterRepository();
+		this.rewards = options.rewards ?? new RaidRewardService();
 		this.statAssembly =
-			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
-		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = events ?? EventBus.getInstance();
+			options.statAssembly ??
+			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
+		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.events = options.events ?? EventBus.getInstance();
 		this.queries = options.queries ?? new RaidRepository();
 		this.engine = options.engine ?? new BattleEngine();
 		this.factory = options.factory ?? new PlayerCombatantFactory();
@@ -128,116 +164,8 @@ export class RaidService {
 		this.loot = options.loot ?? new LootGrantService();
 	}
 
-	async run(
-		discordId: string,
-		boss = false,
-		options: { requestId?: string; atomicProgress?: boolean; expectedDay?: string } = {},
-	): Promise<RaidResult> {
-		const result = await this.persistence.unitOfWork.run(async (tx): Promise<RaidResult> => {
-			await this.queries.lockBag(tx, discordId);
-			const now = new Date();
-			const day = DailyCycle.keyAt(now);
-			const [character] = await this.queries.lockCharacter(tx, discordId);
-			const account = await this.accounts.findByIdWithExecutor(tx, discordId);
-			if (!account) return { status: 'not-registered' };
-			if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
-			if (options.requestId) {
-				const [receipt] = await this.queries.findReceipt(tx, discordId, options.requestId);
-				if (receipt) return { status: 'already-processed' };
-			}
-			if (boss && options.expectedDay && options.expectedDay !== day) {
-				return { status: 'boss-locked', message: 'Đã sang ngày mới. Hãy xác nhận lại lượt đánh boss.' };
-			}
-
-			const lootRng = createRng(createSecureSeed());
-			const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
-			if (!monsterStats) return { status: 'no-monsters-seeded' };
-			if (boss) {
-				const gate = await this.bossGate(tx, discordId, account, day);
-				if (gate) return gate;
-			}
-
-			const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
-			const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
-			const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
-
-			const monster = createCombatant({
-				name: monsterStats.name,
-				combatClass: null,
-				hp: monsterStats.hp,
-				atk: monsterStats.atk,
-				def: monsterStats.def,
-				crit: monsterStats.crit,
-			});
-
-			monster.immunityTags = monsterStats.immunityTags;
-			const battle = this.engine.resolve(player, monster, createSecureSeed(), {
-				playerStrategy,
-				enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
-			});
-			const won = battle.outcome === 'player_win';
-
-			let table: typeof RAID_LOOT_BOSS | typeof RAID_LOOT_ELITE | typeof RAID_LOOT_REGULAR = RAID_LOOT_REGULAR;
-			let chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest' = 'silverChest';
-			let chestName = 'Silver Chest';
-			if (boss) {
-				table = RAID_LOOT_BOSS;
-				chestField = 'bossTreasureChest';
-				chestName = 'Boss Treasure Chest';
-			} else if (monsterStats.mobType === 'elite') {
-				table = RAID_LOOT_ELITE;
-				chestField = 'goldChest';
-				chestName = 'Gold Chest';
-			}
-			let credux = 0;
-			let shards = 0;
-			let baseExp: number;
-			let gotChest = false;
-
-			if (won) {
-				credux = randInt(lootRng, table.win.creduxRange);
-				baseExp = randInt(lootRng, table.win.expRange);
-				shards = randInt(lootRng, table.win.shardsRange);
-				gotChest = rollRaidChest(lootRng, table.win.chestChance);
-			} else {
-				baseExp = table.loss.exp;
-			}
-			const expGained = scaleExpForMobLevel(baseExp, account.combatLevel);
-
-			const progress = await this.rewards.grant(tx, discordId, {
-				expGain: expGained,
-				credux,
-				shards,
-				grantChest: gotChest,
-				chestField,
-				boss,
-				battleType: boss ? 'boss' : 'raid',
-				enemyName: monsterStats.name,
-				enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
-				won,
-			});
-			await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
-			const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
-			if (won && options.atomicProgress) await this.progress.apply(tx, discordId, 'raid_win', now);
-			if (options.requestId)
-				await this.queries.insertReceipt(tx, {
-					discordId,
-					requestId: options.requestId,
-					kind: boss ? 'boss' : 'hunt',
-				});
-			return {
-				status: 'ok',
-				battle,
-				monsterName: `${monsterStats.name} [${monsterStats.mobType}]`,
-				credux,
-				shards,
-				expGained,
-				gotChest,
-				chestName,
-				gearDrop,
-				progress,
-			};
-		});
+	async run(discordId: string, boss = false, options: RaidRunOptions = {}): Promise<RaidResult> {
+		const result = await this.persistence.unitOfWork.run((tx) => this.runBattle(tx, discordId, boss, options));
 		if (result.status !== 'ok') return result;
 		const { credux, progress } = result;
 		const won = result.battle.outcome === 'player_win';
@@ -259,6 +187,110 @@ export class RaidService {
 		if (progress.leveledUp) this.events.emit('level.up', { discordId, newLevel: progress.newLevel });
 
 		return result;
+	}
+
+	private async runBattle(
+		tx: Transaction,
+		discordId: string,
+		boss: boolean,
+		options: RaidRunOptions,
+	): Promise<RaidResult> {
+		await this.queries.lockBag(tx, discordId);
+		const now = new Date();
+		const day = DailyCycle.keyAt(now);
+		const [character] = await this.queries.lockCharacter(tx, discordId);
+		const account = await this.accounts.findByIdWithExecutor(tx, discordId);
+		if (!account) return { status: 'not-registered' };
+		if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
+		const invalidAttempt = await this.validateAttempt(tx, discordId, boss, day, options);
+		if (invalidAttempt) return invalidAttempt;
+
+		const lootRng = createRng(createSecureSeed());
+		const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
+		if (!monsterStats) return { status: 'no-monsters-seeded' };
+		if (boss) {
+			const gate = await this.bossGate(tx, discordId, account, day);
+			if (gate) return gate;
+		}
+
+		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
+		const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
+		const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
+
+		const monster = createCombatant({
+			name: monsterStats.name,
+			combatClass: null,
+			hp: monsterStats.hp,
+			atk: monsterStats.atk,
+			def: monsterStats.def,
+			crit: monsterStats.crit,
+		});
+
+		monster.immunityTags = monsterStats.immunityTags;
+		const battle = this.engine.resolve(player, monster, createSecureSeed(), {
+			playerStrategy,
+			enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
+		});
+		const won = battle.outcome === 'player_win';
+
+		const { credux, shards, expGained, gotChest, chestField, chestName } = rollBattleRewards(
+			lootRng,
+			won,
+			boss,
+			monsterStats.mobType,
+			account.combatLevel,
+		);
+
+		const progress = await this.rewards.grant(tx, discordId, {
+			expGain: expGained,
+			credux,
+			shards,
+			grantChest: gotChest,
+			chestField,
+			boss,
+			battleType: boss ? 'boss' : 'raid',
+			enemyName: monsterStats.name,
+			enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
+			won,
+		});
+		await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
+		const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
+		if (won && options.atomicProgress) await this.progress.apply(tx, discordId, 'raid_win', now);
+		if (options.requestId)
+			await this.queries.insertReceipt(tx, {
+				discordId,
+				requestId: options.requestId,
+				kind: boss ? 'boss' : 'hunt',
+			});
+		return {
+			status: 'ok',
+			battle,
+			monsterName: `${monsterStats.name} [${monsterStats.mobType}]`,
+			credux,
+			shards,
+			expGained,
+			gotChest,
+			chestName,
+			gearDrop,
+			progress,
+		};
+	}
+
+	private async validateAttempt(
+		tx: Transaction,
+		discordId: string,
+		boss: boolean,
+		day: string,
+		options: RaidRunOptions,
+	): Promise<RaidResult | null> {
+		if (options.requestId) {
+			const [receipt] = await this.queries.findReceipt(tx, discordId, options.requestId);
+			if (receipt) return { status: 'already-processed' };
+		}
+		if (boss && options.expectedDay && options.expectedDay !== day) {
+			return { status: 'boss-locked', message: 'Đã sang ngày mới. Hãy xác nhận lại lượt đánh boss.' };
+		}
+		return null;
 	}
 
 	/** Win streak from the raid_logs tail that grant() just appended to; only the record streak is persisted. */

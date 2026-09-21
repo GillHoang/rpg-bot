@@ -15,6 +15,7 @@ import {
 } from 'discord.js';
 import { HELP_PAGES } from '../text/help.js';
 import { MENU_SECTIONS, MENU_TEXT } from '../text/menu.js';
+import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
 import { CLASS_NAMES } from '../config/classes.js';
@@ -51,9 +52,7 @@ export function recoveryView(text: string) {
 	};
 }
 
-export function menuView(session: MenuSession) {
-	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
-	const container = new ContainerBuilder().setAccentColor(0xf1c232);
+function viewContent(session: MenuSession) {
 	const screen = session.screen;
 	let title: string = MENU_TEXT.home;
 	let body: string = MENU_TEXT.welcome;
@@ -75,26 +74,23 @@ export function menuView(session: MenuSession) {
 	}
 	if (session.gamePanel) ({ title, body } = session.gamePanel);
 	if (session.notice) body = `${session.notice}\n\n${body}`;
-	container.addTextDisplayComponents((t) => t.setContent(`## CREDD · ${title}`));
-	// Reserve room within the V2 message text budget for the title/footer.
-	if (session.gamePanel?.withAvatar && session.avatarUrl) {
-		container.addSectionComponents(
-			new SectionBuilder()
-				.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)))
-				.setThumbnailAccessory(
-					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription('Avatar nhân vật'),
-				),
-		);
-	} else container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
-	if (session.gamePanel?.classes)
-		container.addActionRowComponents(
-			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				new StringSelectMenuBuilder()
-					.setCustomId(id('class'))
-					.setPlaceholder('Chọn class để xem trước')
-					.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
-			),
-		);
+	return { title, body, topics };
+}
+
+function gameplayButton(session: MenuSession, button: GamePanel['buttons'][number], emoji?: string) {
+	let style = ButtonStyle.Secondary;
+	if (button.danger) style = ButtonStyle.Danger;
+	else if (['confirm', 'profile', 'hunt'].includes(button.action)) style = ButtonStyle.Primary;
+	const component = new ButtonBuilder()
+		.setCustomId(menuId(session.id, session.revision, button.action))
+		.setLabel(button.label)
+		.setDisabled(!!button.disabled)
+		.setStyle(style);
+	if (emoji) component.setEmoji(emoji);
+	return component;
+}
+
+function addGameplayButtons(container: ContainerBuilder, session: MenuSession): void {
 	const buttons = session.gamePanel?.buttons ?? [];
 	const groups = session.gamePanel?.grouped ? [...new Set(buttons.map((b) => b.group))] : [undefined];
 	const emoji: Partial<Record<MenuAction, string>> = {
@@ -119,24 +115,38 @@ export function menuView(session: MenuSession) {
 		for (let i = 0; i < groupedButtons.length; i += 5)
 			container.addActionRowComponents(
 				new ActionRowBuilder<ButtonBuilder>().addComponents(
-					groupedButtons.slice(i, i + 5).map((b) => {
-						const component = new ButtonBuilder()
-							.setCustomId(id(b.action))
-							.setLabel(b.label)
-							.setDisabled(!!b.disabled)
-							.setStyle(
-								b.danger
-									? ButtonStyle.Danger
-									: ['confirm', 'profile', 'hunt'].includes(b.action)
-										? ButtonStyle.Primary
-										: ButtonStyle.Secondary,
-							);
-						if (emoji[b.action]) component.setEmoji(emoji[b.action]!);
-						return component;
-					}),
+					groupedButtons.slice(i, i + 5).map((b) => gameplayButton(session, b, emoji[b.action])),
 				),
 			);
 	}
+}
+
+export function menuView(session: MenuSession) {
+	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
+	const container = new ContainerBuilder().setAccentColor(0xf1c232);
+	const screen = session.screen;
+	const { title, body, topics } = viewContent(session);
+	container.addTextDisplayComponents((t) => t.setContent(`## CREDD · ${title}`));
+	// Reserve room within the V2 message text budget for the title/footer.
+	if (session.gamePanel?.withAvatar && session.avatarUrl) {
+		container.addSectionComponents(
+			new SectionBuilder()
+				.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)))
+				.setThumbnailAccessory(
+					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription('Avatar nhân vật'),
+				),
+		);
+	} else container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
+	if (session.gamePanel?.classes)
+		container.addActionRowComponents(
+			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+				new StringSelectMenuBuilder()
+					.setCustomId(id('class'))
+					.setPlaceholder('Chọn class để xem trước')
+					.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
+			),
+		);
+	addGameplayButtons(container, session);
 	if (!session.gamePanel?.grouped)
 		container.addActionRowComponents(
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(

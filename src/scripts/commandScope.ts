@@ -3,8 +3,7 @@ export interface CommandScope {
 	guildId: string | null;
 }
 
-/** Parse before making any Discord API request. Explicit flags override the environment. */
-export function parseCommandScope(args: string[], defaultGuildId?: string, allowAll = false): CommandScope {
+function readScopeFlags(args: string[], allowAll: boolean) {
 	let guildId: string | undefined;
 	let global = false;
 	let all = false;
@@ -12,10 +11,8 @@ export function parseCommandScope(args: string[], defaultGuildId?: string, allow
 		const arg = args[index]!;
 		if (arg === '--') continue;
 		if (arg === '--guild' || arg.startsWith('--guild=')) {
-			if (guildId !== undefined) throw new Error('Specify --guild only once.');
 			const value = arg === '--guild' ? args[++index] : arg.slice('--guild='.length);
-			if (!value || !/^\d+$/.test(value)) throw new Error('--guild requires a numeric guild ID.');
-			guildId = value;
+			guildId = readGuildId(value, guildId);
 		} else if (arg === '--global' && !global) {
 			global = true;
 		} else if (arg === '--all' && allowAll && !all) {
@@ -24,6 +21,18 @@ export function parseCommandScope(args: string[], defaultGuildId?: string, allow
 			throw new Error(`Unknown or repeated argument: ${arg}`);
 		}
 	}
+	return { guildId, global, all };
+}
+
+function readGuildId(value: string | undefined, previous: string | undefined): string {
+	if (previous !== undefined) throw new Error('Specify --guild only once.');
+	if (!value || !/^\d+$/.test(value)) throw new Error('--guild requires a numeric guild ID.');
+	return value;
+}
+
+/** Parse before making any Discord API request. Explicit flags override the environment. */
+export function parseCommandScope(args: string[], defaultGuildId?: string, allowAll = false): CommandScope {
+	const { guildId, global, all } = readScopeFlags(args, allowAll);
 	if (global && (guildId !== undefined || all)) throw new Error('--global cannot be combined with --guild or --all.');
 	if (global) return { global: true, guildId: null };
 	const resolvedGuild = guildId ?? defaultGuildId;

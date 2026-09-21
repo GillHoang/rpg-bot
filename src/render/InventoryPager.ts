@@ -28,7 +28,7 @@ const pageCustomId = (category: string, page: number): string => `${PAGE_PREFIX}
 export type InventoryCategory = (typeof INVENTORY_CATEGORIES)[number];
 
 export function isInventoryCategory(value: string | null): value is InventoryCategory {
-	return INVENTORY_CATEGORIES.some((category) => category === value);
+	return value !== null && (INVENTORY_CATEGORIES as readonly string[]).includes(value);
 }
 
 /** Only accept actionable, complete IDs; category changes always reset to page 1. */

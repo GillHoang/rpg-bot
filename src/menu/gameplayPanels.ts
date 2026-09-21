@@ -69,18 +69,18 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 			.map((row) => {
 				const label = MENU_QUEST_LABELS[row.questType as QuestType];
 				const bonus = 'rewardValor' in row ? `${row.rewardValor} Valor` : `${row.rewardBeliefShards} shards`;
-				return `${row.completed ? '✅' : `${row.currentCount}/${row.targetCount}`} ${label} · ${n(row.rewardCredux)} Credux + ${bonus}`;
+				const progress = row.completed ? '✅' : `${row.currentCount}/${row.targetCount}`;
+				return `${progress} ${label} · ${n(row.rewardCredux)} Credux + ${bonus}`;
 			})
 			.join('\n');
+	let grandStatus = 'Hoàn thành 3 nhiệm vụ tuần để nhận thưởng tuần.';
+	if (q.grandClaimed) grandStatus = 'Đã nhận thưởng tuần.';
+	else if (q.grandReady) grandStatus = 'Thưởng tuần sẵn sàng!';
 	return {
 		title: 'Daily & nhiệm vụ',
 		body:
 			`**Ngày ${q.day}**\n${rows(false)}\n\n**Tuần ${q.week}**\n${rows(true)}\n\n` +
-			(q.grandClaimed
-				? 'Đã nhận thưởng tuần.'
-				: q.grandReady
-					? 'Thưởng tuần sẵn sàng!'
-					: 'Hoàn thành 3 nhiệm vụ tuần để nhận thưởng tuần.') +
+			grandStatus +
 			'\nThưởng từng quest tự nhận khi hoàn thành. Các tính năng kho đồ, triệu hồi và PvP sẽ được nối menu ở giai đoạn tiếp theo.',
 		buttons: [
 			dailyButton,
@@ -94,18 +94,16 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 export function battleLobbyPanel(p: ProfileCardData, bossDone: boolean, hasBattle: boolean): GamePanel {
 	const hunt = button('hunt', 'Săn quái');
 	const quests = button('quests', 'Nhiệm vụ');
+	let bossStatus = 'Bạn có thể đánh boss.';
+	if (bossDone) bossStatus = 'Đã đánh boss hôm nay.';
+	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = 'Chưa đủ cấp đánh boss.';
+	else if (p.credux < BOSS_ENTRY.credux) bossStatus = 'Chưa đủ Credux vào boss.';
 	return {
 		title: 'Săn quái & boss',
 		body:
 			`Cấp ${p.level} · ${n(p.credux)} Credux\nSăn quái miễn phí.\n` +
 			`Boss: cấp ${BOSS_ENTRY.minLevel}, phí ${n(BOSS_ENTRY.credux)} Credux, 1 lượt/ngày.\n` +
-			(bossDone
-				? 'Đã đánh boss hôm nay.'
-				: p.level < BOSS_ENTRY.minLevel
-					? 'Chưa đủ cấp đánh boss.'
-					: p.credux < BOSS_ENTRY.credux
-						? 'Chưa đủ Credux vào boss.'
-						: 'Bạn có thể đánh boss.') +
+			bossStatus +
 			'\nReset 00:00 Manila (23:00 Việt Nam).',
 		buttons: [
 			hunt,
@@ -146,6 +144,9 @@ export function homePanel(
 	const { dailyDone, bossDone, overallStreak } = status;
 	const summary = profileSummary(p);
 	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
+	let bossStatus = 'còn lượt hôm nay';
+	if (bossDone) bossStatus = 'đã đánh hôm nay';
+	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = `mở ở cấp ${BOSS_ENTRY.minLevel}`;
 	return {
 		title: 'Trang chủ',
 		withAvatar: true,
@@ -155,7 +156,7 @@ export function homePanel(
 			`\nDaily: ${dailyDone ? 'đã nhận' : 'sẵn sàng'} · Chuỗi ${overallStreak} ngày\n` +
 			`Quest hoàn thành: ngày ${q?.dailies.filter((x) => x.completed).length ?? 0}/${q?.dailies.length ?? 0} · tuần ${q?.weeklies.filter((x) => x.completed).length ?? 0}/${q?.weeklies.length ?? 0}\n` +
 			(q?.grandReady ? 'Thưởng tuần sẵn sàng trong Nhiệm vụ!\n' : '') +
-			`Boss: ${bossDone ? 'đã đánh hôm nay' : p.level < BOSS_ENTRY.minLevel ? `mở ở cấp ${BOSS_ENTRY.minLevel}` : 'còn lượt hôm nay'}\nReset 00:00 Manila (23:00 Việt Nam).`,
+			`Boss: ${bossStatus}\nReset 00:00 Manila (23:00 Việt Nam).`,
 		buttons: [
 			...[button('profile', 'Nhân vật'), button('help', 'Hướng dẫn'), button('search', 'Tìm hướng dẫn')].map(
 				(b) => ({ ...b, group: 'Thông tin' }),
@@ -215,10 +216,13 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			],
 		};
 	}
+	let outcome = 'Hoà';
+	if (r.battle.outcome === 'player_win') outcome = 'Chiến thắng';
+	else if (r.battle.outcome === 'enemy_win') outcome = 'Thất bại';
 	return {
 		title: 'Kết quả trận đấu',
 		body:
-			`${r.battle.outcome === 'player_win' ? 'Chiến thắng' : r.battle.outcome === 'enemy_win' ? 'Thất bại' : 'Hoà'} · ${escapeMarkdown(r.monsterName)}\n` +
+			`${outcome} · ${escapeMarkdown(r.monsterName)}\n` +
 			`${r.battle.rounds} hiệp · HP còn ${r.battle.playerHpRemaining}\n+${n(r.expGained)} EXP · +${n(r.credux)} Credux · +${n(r.shards)} shards\n` +
 			(r.gotChest ? `+1 ${r.chestName}\n` : '') +
 			(r.gearDrop ? `${r.gearDrop}\n` : '') +
