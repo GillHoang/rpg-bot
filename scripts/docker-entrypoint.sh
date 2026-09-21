@@ -10,7 +10,7 @@ echo "[entrypoint] seeding catalogs (idempotent upsert)..."
 node dist/seed/seed.js
 
 echo "[entrypoint] deploying slash commands..."
-npm run undeploy:commands:guild 1544564663281385512
+node dist/scripts/deployCommands.js
 
 echo "[entrypoint] starting bot..."
 exec node dist/index.js
