@@ -26,9 +26,14 @@ export class ReputationService {
 		return db.transaction((tx) => this.awardInTx(tx, discordId, source));
 	}
 
-	async awardInTx(tx: Executor, discordId: string, source: BelieverExpSource): Promise<BelieverAwardResult> {
+	async awardInTx(
+		tx: Executor,
+		discordId: string,
+		source: BelieverExpSource,
+		now = new Date(),
+	): Promise<BelieverAwardResult> {
 		const amount = BELIEVER_EXP_SOURCES[source];
-		const today = DailyCycle.keyAt();
+		const today = DailyCycle.keyAt(now);
 		const [character] = await tx
 			.select()
 			.from(userCharacter)

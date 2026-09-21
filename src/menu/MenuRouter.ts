@@ -10,20 +10,27 @@ import {
 import { logger } from '../utils/logger.js';
 import { MENU_SECTIONS, MENU_TEXT, type MenuSection } from '../text/menu.js';
 import { MenuCapacityError, MenuSessionStore, type MenuScreen, type MenuSession } from './MenuSessionStore.js';
-import { MENU_OPEN_ID, MENU_PREFIX, parseMenuId } from './menuIds.js';
+import { GAME_ACTIONS, MENU_OPEN_ID, MENU_PREFIX, parseMenuId } from './menuIds.js';
+import type { MenuGameplay } from './MenuGameplay.js';
+import { CLASS_NAMES } from '../config/classes.js';
 import { helpMatches, menuView, recoveryView, searchModal } from './menuViews.js';
 import { HELP_PAGES } from '../text/help.js';
 
 type MenuInteraction = ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction;
 
 export class MenuRouter {
-	constructor(private readonly sessions = new MenuSessionStore()) {}
+	constructor(
+		private readonly sessions = new MenuSessionStore(),
+		private readonly gameplay?: MenuGameplay,
+	) {}
 
 	async open(interaction: ChatInputCommandInteraction | ButtonInteraction): Promise<void> {
 		let session: MenuSession | undefined;
 		try {
 			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 			session = this.sessions.create(interaction.user.id);
+			session.avatarUrl = interaction.user.displayAvatarURL?.({ size: 256 });
+			session.gamePanel = await this.gameplay?.render(session);
 			const message = await interaction.editReply(menuView(session));
 			this.sessions.bind(session, message.id);
 		} catch (error) {
@@ -61,6 +68,33 @@ export class MenuRouter {
 		}
 		const session = result.session;
 		try {
+			if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) {
+				const classSelect =
+					parsed.action === 'class' &&
+					interaction.isStringSelectMenu() &&
+					session.gamePanel?.classes &&
+					interaction.values.length === 1 &&
+					CLASS_NAMES.some((c) => c === interaction.values[0]);
+				const button =
+					interaction.isButton() &&
+					session.gamePanel?.buttons.some((b) => b.action === parsed.action && !b.disabled);
+				if (!this.gameplay || (!classSelect && !button)) {
+					await this.notice(interaction, MENU_TEXT.invalid);
+					return true;
+				}
+				await interaction.deferUpdate();
+				session.notice = undefined;
+				const next = await this.gameplay.act(
+					session,
+					parsed.action,
+					interaction.user.username,
+					interaction.isStringSelectMenu() ? interaction.values[0] : undefined,
+				);
+				// Do not carry old confirmations through a gameplay action.
+				await this.navigate(interaction, session, next, []);
+				return true;
+			}
+			session.notice = undefined;
 			if (interaction.isModalSubmit()) {
 				if (
 					parsed.action !== 'find' ||
@@ -163,6 +197,7 @@ export class MenuRouter {
 					? session.history
 					: [...session.history, session.screen].slice(-12)),
 		};
+		next.gamePanel = await this.gameplay?.render(next);
 		await interaction.editReply(menuView(next));
 		Object.assign(session, next);
 		this.sessions.touch(session);

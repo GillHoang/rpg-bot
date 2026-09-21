@@ -9,7 +9,7 @@ import { logger } from '../utils/logger.js';
  * file that everything imported from.
  */
 export interface DomainEvents {
-	'battle.won': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' };
+	'battle.won': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss'; progressApplied?: boolean };
 	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' };
 	'currency.earned': { discordId: string; currency: string; amount: number; source: string };
 	'level.up': { discordId: string; newLevel: number };
@@ -18,7 +18,7 @@ export interface DomainEvents {
 	'gear.enhanced': { discordId: string; success: boolean };
 	'chest.opened': { discordId: string; chest: string; count: number };
 	'casino.played': { discordId: string; game: string };
-	'daily.claimed': { discordId: string; streak: number };
+	'daily.claimed': { discordId: string; streak: number; progressApplied?: boolean };
 }
 
 type Listener<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void | Promise<void>;

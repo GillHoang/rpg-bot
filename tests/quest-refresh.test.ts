@@ -13,7 +13,8 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { StartService } from '../src/services/StartService.js';
+import { UserRepository } from '../src/repositories/UserRepository.js';
+import { QUEST_REFRESH_DONE } from '../src/text/quest.js';
 import { QuestService } from '../src/services/QuestService.js';
 import { DailyCycle } from '../src/utils/dailyCycle.js';
 import * as rngModule from '../src/domain/combat/Rng.js';
@@ -22,16 +23,23 @@ let id: string;
 let sequence = 0;
 
 beforeAll(async () => {
-	const { testClient } = await import('../src/db/client.js') as unknown as { testClient: { exec(sql: string): Promise<unknown> } };
-	await testClient.exec(await readFile(new URL('../src/db/migrations/0000_nasty_molecule_man.sql', import.meta.url), 'utf8'));
+	const { testClient } = (await import('../src/db/client.js')) as unknown as {
+		testClient: { exec(sql: string): Promise<unknown> };
+	};
+	await testClient.exec(
+		await readFile(new URL('../src/db/migrations/0000_nasty_molecule_man.sql', import.meta.url), 'utf8'),
+	);
 }, 30000);
-afterAll(async () => { await pool.end(); });
+afterAll(async () => {
+	await pool.end();
+});
 beforeEach(async () => {
 	vi.restoreAllMocks();
 	// Deterministic rolls: rng() → 0 always picks the first pool template.
 	vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
 	id = `test-refresh-${++sequence}`;
-	await new StartService().start(id, id, 'Knight');
+	// Quest tests need a registered account, not onboarding with missing seed.
+	await db.transaction((tx) => new UserRepository().registerNew(tx, id, id));
 });
 
 describe('QuestService.refresh', () => {
@@ -66,7 +74,7 @@ describe('QuestService.refresh', () => {
 	it('allows one refresh per day only', async () => {
 		const quests = new QuestService();
 		await quests.view(id);
-		expect(await quests.refresh(id)).toContain('reroll');
+		expect(await quests.refresh(id)).toBe(QUEST_REFRESH_DONE);
 		expect(await quests.refresh(id)).toContain('Đã refresh daily hôm nay');
 	});
 });

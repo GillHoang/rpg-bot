@@ -41,9 +41,6 @@ export class StartService {
 	async start(discordId: string, username: string, combatClass: CombatClass): Promise<StartResult> {
 		return db.transaction(async (tx): Promise<StartResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
-			if (!(await this.users.isRegistered(tx, discordId))) {
-				await this.users.registerNew(tx, discordId, username);
-			}
 			if (await this.characters.hasCharacter(tx, discordId)) {
 				return { status: 'already-has-character' };
 			}
@@ -56,6 +53,12 @@ export class StartService {
 				return { status: 'starter-gear-missing' };
 			}
 
+			if (!(await this.users.isRegistered(tx, discordId))) {
+				await this.users.registerNew(tx, discordId, username);
+			}
+			// Registration may have waited for another first-time /start or menu.
+			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+			if (await this.characters.hasCharacter(tx, discordId)) return { status: 'already-has-character' };
 			const idGen = new GearIdGenerator(tx);
 
 			const weaponId = await idGen.generateUniqueGearId();

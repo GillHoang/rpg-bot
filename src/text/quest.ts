@@ -47,7 +47,7 @@ export const QUEST_CREDUX_PART = (creux: string): string => `(+${creux} Credux, 
 
 // --- refresh ---
 export const QUEST_REFRESH_LIMIT = 'Đã refresh daily hôm nay. Reset lúc 00:00 Asia/Manila.';
-export const QUEST_REFRESH_DONE = 'Đã reroll daily quests — /quest để xem bộ mới.';
+export const QUEST_REFRESH_DONE = 'Đã đổi các nhiệm vụ ngày chưa hoàn thành.';
 
 // --- claim weekly grand ---
 export const QUEST_CLAIM_NOT_READY = 'Chưa đủ 3 weekly quest.';

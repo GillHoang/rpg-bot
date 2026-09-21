@@ -6,10 +6,9 @@ import type { BelieverExpSource } from '../config/reputation.js';
 import { logger } from '../utils/logger.js';
 
 /**
- * Single wiring point for the observer side of the EventBus: quest progress
- * và believer EXP là subscriber thuần — combat/economy services chỉ emit,
- * không import quest code (tránh lặp lại sai lầm battleEngine.js 2500 dòng
- * của bản gốc). Gọi đúng một lần lúc bootstrap.
+ * Wiring for legacy asynchronous quest/reputation observers. Menu daily/raid
+ * applies core progression in its reward transaction and marks the event so
+ * these observers skip it. Call once at bootstrap.
  */
 export function subscribeDomainEvents(): void {
 	const bus = EventBus.getInstance();
@@ -34,10 +33,12 @@ export function subscribeDomainEvents(): void {
 	};
 
 	bus.on('battle.won', (event) => {
+		if (event.progressApplied) return;
 		run('battle.won quest', quests.progress(event.discordId, battleQuestType[event.battleType]));
 		run('battle.won exp', reputation.award(event.discordId, battleExpSource[event.battleType]));
 	});
 	bus.on('daily.claimed', (event) => {
+		if (event.progressApplied) return;
 		run('daily.claimed quest', quests.progress(event.discordId, 'daily'));
 		run('daily.claimed exp', reputation.award(event.discordId, 'daily'));
 	});

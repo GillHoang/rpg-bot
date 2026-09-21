@@ -1,7 +1,49 @@
 export const MENU_PREFIX = 'menu:';
 export const MENU_OPEN_ID = 'menu:v1:open';
-export type MenuAction = 'section' | 'help' | 'topic' | 'search' | 'find' | 'home' | 'back' | 'refresh' | 'close';
-const ACTIONS: readonly string[] = ['section', 'help', 'topic', 'search', 'find', 'home', 'back', 'refresh', 'close'];
+export const GAME_ACTIONS = [
+	'battle',
+	'inventory',
+	'deity',
+	'shop',
+	'casino',
+	'class',
+	'profile',
+	'daily',
+	'quests',
+	'reroll',
+	'claim',
+	'hunt',
+	'boss',
+	'confirm',
+	'cancel',
+	'log',
+	'prev',
+	'next',
+	'result',
+] as const;
+export type MenuAction =
+	| 'section'
+	| 'help'
+	| 'topic'
+	| 'search'
+	| 'find'
+	| 'home'
+	| 'back'
+	| 'refresh'
+	| 'close'
+	| (typeof GAME_ACTIONS)[number];
+const ACTIONS: readonly string[] = [
+	'section',
+	'help',
+	'topic',
+	'search',
+	'find',
+	'home',
+	'back',
+	'refresh',
+	'close',
+	...GAME_ACTIONS,
+];
 
 export function menuId(id: string, revision: number, action: MenuAction, nonce?: string): string {
 	return `menu:v1:${id}:${revision}:${action}${nonce ? `:${nonce}` : ''}`;

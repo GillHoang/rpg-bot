@@ -9,7 +9,7 @@ export const MENU_TEXT = {
 	open: 'Mở menu mới',
 	chooseSection: 'Chọn khu vực',
 	chooseTopic: 'Chọn chủ đề để đọc',
-	welcome: 'Chọn khu vực bên dưới để xem hướng dẫn và các lệnh đang có. Bạn mới chơi? Bắt đầu bằng `/start`.',
+	welcome: 'Chọn khu vực bên dưới để bắt đầu chơi hoặc xem hướng dẫn.',
 	helpIntro: 'Chọn chủ đề hoặc tìm theo từ khoá, ví dụ: rune, daily, triệu hồi.',
 	searchLabel: 'Bạn muốn tìm hiểu điều gì?',
 	searchPlaceholder: 'Ví dụ: rune, daily, triệu hồi',
@@ -26,7 +26,7 @@ export const MENU_TEXT = {
 	footer: 'Menu riêng tư • Hết hạn sau 10 phút không hoạt động.',
 } as const;
 
-/** Read-only destinations until their gameplay handlers are implemented. */
+/** Fallback descriptions; phase-2 destinations load their gameplay panels. */
 export const MENU_SECTIONS = {
 	character: {
 		title: 'Nhân vật',
@@ -59,3 +59,14 @@ export const MENU_SECTIONS = {
 } as const;
 
 export type MenuSection = keyof typeof MENU_SECTIONS;
+
+export const MENU_QUEST_LABELS = {
+	raid_win: 'Thắng săn quái/boss',
+	summon: 'Triệu hồi',
+	enhance: 'Nâng trang bị',
+	open_chest: 'Mở rương',
+	casino: 'Chơi casino',
+	daily: 'Nhận daily',
+	duel_win: 'Thắng duel',
+	ranked: 'Đấu ranked',
+} as const;

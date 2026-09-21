@@ -76,9 +76,12 @@ scheduler trong bot chỉ quét dọn duel hết hạn và lock treo mỗi 30 gi
 
 ## Lệnh
 
-`/menu` mở bảng riêng tư với điều hướng khu vực, hướng dẫn và modal tìm kiếm.
-Giai đoạn 1 cung cấp khung giao diện; các thao tác chơi vẫn dùng lệnh bên dưới.
-Chi tiết phiên, hết hạn và kiểm thử: [Menu giai đoạn 1](docs/menu-phase-1.md).
+`/menu` mở bảng riêng tư: tạo nhân vật, xem tổng quan, nhận daily, xem/đổi quest,
+nhận thưởng tuần, săn quái, xác nhận đánh boss và đọc log từng hiệp bằng nút/select.
+Hướng dẫn có modal tìm kiếm. Kho đồ, deity, PvP, casino và shop vẫn dùng lệnh bên dưới.
+Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) · [Menu giai đoạn 2](docs/menu-phase-2.md).
+Khi nâng cấp lên giai đoạn 2, chạy `npm run db:migrate` trước khi khởi động bot
+để tạo bảng chống xử lý lại trận đấu `menu_action_receipts`.
 
 Nhóm kinh tế và tiến trình cơ bản:
 

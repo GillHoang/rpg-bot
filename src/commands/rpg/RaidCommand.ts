@@ -32,6 +32,10 @@ export class RaidCommand implements ICommand {
 		await interaction.deferReply();
 		const boss = interaction.options.getSubcommand(false) === 'boss';
 		const result = await this.raid.run(interaction.user.id, boss);
+		if (result.status === 'already-processed') {
+			await interaction.editReply('Trận đấu này đã được xử lý.');
+			return;
+		}
 		if (result.status === 'boss-locked') {
 			await interaction.editReply(result.message);
 			return;

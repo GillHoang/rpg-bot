@@ -6,6 +6,8 @@ import {
 	LabelBuilder,
 	MessageFlags,
 	ModalBuilder,
+	SectionBuilder,
+	ThumbnailBuilder,
 	StringSelectMenuBuilder,
 	TextInputBuilder,
 	TextInputStyle,
@@ -15,6 +17,7 @@ import { HELP_PAGES } from '../text/help.js';
 import { MENU_SECTIONS, MENU_TEXT } from '../text/menu.js';
 import type { MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
+import { CLASS_NAMES } from '../config/classes.js';
 
 function normalize(value: string): string {
 	return value
@@ -50,7 +53,7 @@ export function recoveryView(text: string) {
 
 export function menuView(session: MenuSession) {
 	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
-	const container = new ContainerBuilder().setAccentColor(0x5865f2);
+	const container = new ContainerBuilder().setAccentColor(0xf1c232);
 	const screen = session.screen;
 	let title: string = MENU_TEXT.home;
 	let body: string = MENU_TEXT.welcome;
@@ -70,23 +73,85 @@ export function menuView(session: MenuSession) {
 		topics = helpMatches(screen.query);
 		body = topics.length ? MENU_TEXT.chooseTopic : MENU_TEXT.noResults;
 	}
+	if (session.gamePanel) ({ title, body } = session.gamePanel);
+	if (session.notice) body = `${session.notice}\n\n${body}`;
 	container.addTextDisplayComponents((t) => t.setContent(`## CREDD · ${title}`));
 	// Reserve room within the V2 message text budget for the title/footer.
-	container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
-	container.addActionRowComponents(
-		new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-			new StringSelectMenuBuilder()
-				.setCustomId(id('section'))
-				.setPlaceholder(MENU_TEXT.chooseSection)
-				.addOptions(
-					Object.entries(MENU_SECTIONS).map(([value, section]) => ({
-						label: section.title,
-						value,
-						default: screen.kind === 'section' && screen.section === value,
-					})),
+	if (session.gamePanel?.withAvatar && session.avatarUrl) {
+		container.addSectionComponents(
+			new SectionBuilder()
+				.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)))
+				.setThumbnailAccessory(
+					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription('Avatar nhân vật'),
 				),
-		),
-	);
+		);
+	} else container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
+	if (session.gamePanel?.classes)
+		container.addActionRowComponents(
+			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+				new StringSelectMenuBuilder()
+					.setCustomId(id('class'))
+					.setPlaceholder('Chọn class để xem trước')
+					.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
+			),
+		);
+	const buttons = session.gamePanel?.buttons ?? [];
+	const groups = session.gamePanel?.grouped ? [...new Set(buttons.map((b) => b.group))] : [undefined];
+	const emoji: Partial<Record<MenuAction, string>> = {
+		profile: '👤',
+		help: '📖',
+		search: '🔎',
+		daily: '🎁',
+		hunt: '⚔️',
+		boss: '🐉',
+		quests: '📜',
+		inventory: '🎒',
+		deity: '✨',
+		shop: '🛒',
+		casino: '🎲',
+	};
+	for (const group of groups) {
+		if (group) {
+			container.addSeparatorComponents((s) => s.setDivider(true));
+			container.addTextDisplayComponents((t) => t.setContent(`### ${group}`));
+		}
+		const groupedButtons = group ? buttons.filter((b) => b.group === group) : buttons;
+		for (let i = 0; i < groupedButtons.length; i += 5)
+			container.addActionRowComponents(
+				new ActionRowBuilder<ButtonBuilder>().addComponents(
+					groupedButtons.slice(i, i + 5).map((b) => {
+						const component = new ButtonBuilder()
+							.setCustomId(id(b.action))
+							.setLabel(b.label)
+							.setDisabled(!!b.disabled)
+							.setStyle(
+								b.danger
+									? ButtonStyle.Danger
+									: ['confirm', 'profile', 'hunt'].includes(b.action)
+										? ButtonStyle.Primary
+										: ButtonStyle.Secondary,
+							);
+						if (emoji[b.action]) component.setEmoji(emoji[b.action]!);
+						return component;
+					}),
+				),
+			);
+	}
+	if (!session.gamePanel?.grouped)
+		container.addActionRowComponents(
+			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+				new StringSelectMenuBuilder()
+					.setCustomId(id('section'))
+					.setPlaceholder(MENU_TEXT.chooseSection)
+					.addOptions(
+						Object.entries(MENU_SECTIONS).map(([value, section]) => ({
+							label: section.title,
+							value,
+							default: screen.kind === 'section' && screen.section === value,
+						})),
+					),
+			),
+		);
 	if (topics.length) {
 		container.addActionRowComponents(
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -99,12 +164,17 @@ export function menuView(session: MenuSession) {
 			),
 		);
 	}
-	container.addActionRowComponents(
-		new ActionRowBuilder<ButtonBuilder>().addComponents(
-			new ButtonBuilder().setCustomId(id('help')).setLabel(MENU_TEXT.help).setStyle(ButtonStyle.Primary),
-			new ButtonBuilder().setCustomId(id('search')).setLabel(MENU_TEXT.search).setStyle(ButtonStyle.Secondary),
-		),
-	);
+	if (!session.gamePanel?.grouped)
+		container.addActionRowComponents(
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder().setCustomId(id('help')).setLabel(MENU_TEXT.help).setStyle(ButtonStyle.Primary),
+				new ButtonBuilder()
+					.setCustomId(id('search'))
+					.setLabel(MENU_TEXT.search)
+					.setStyle(ButtonStyle.Secondary),
+			),
+		);
+	container.addSeparatorComponents((s) => s.setDivider(true));
 	container.addActionRowComponents(
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()

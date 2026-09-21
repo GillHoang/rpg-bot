@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import type { MenuSection } from '../text/menu.js';
+import type { GamePanel, GameplayScreen, MenuBattle } from './MenuGameplay.js';
 
 export type MenuScreen =
+	| GameplayScreen
 	| { kind: 'home' }
 	| { kind: 'section'; section: MenuSection }
 	| { kind: 'help' }
@@ -18,6 +20,10 @@ export interface MenuSession {
 	expiresAt: number;
 	busy: boolean;
 	pendingModal: string | null;
+	gamePanel?: GamePanel;
+	battle?: MenuBattle;
+	notice?: string;
+	avatarUrl?: string;
 }
 
 type Acquisition =
@@ -28,7 +34,7 @@ type Acquisition =
 
 export class MenuCapacityError extends Error {}
 
-/** UI state only. No money, game state, interaction tokens, or DB connections live here. */
+/** UI snapshots only; all authoritative gameplay state remains in the DB. */
 export class MenuSessionStore {
 	private readonly sessions = new Map<string, MenuSession>();
 

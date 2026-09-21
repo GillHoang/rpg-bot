@@ -3,6 +3,7 @@ import { DailyRepository } from '../repositories/DailyRepository.js';
 import { DailyRewardTable } from '../domain/economy/DailyRewardTable.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { EventBus } from '../core/EventBus.js';
+import { applyGameplayProgress } from './gameplayProgress.js';
 
 export type ClaimDailyResult =
 	| { status: 'not-registered' }
@@ -30,15 +31,17 @@ export class DailyService {
 		private readonly events = EventBus.getInstance(),
 	) {}
 
-	async claim(discordId: string, now: Date = new Date()): Promise<ClaimDailyResult> {
+	async claim(discordId: string, now: Date = new Date(), atomicProgress = false): Promise<ClaimDailyResult> {
 		const result = await db.transaction(async (tx): Promise<ClaimDailyResult> => {
 			if (!(await this.repo.hasBag(tx, discordId))) return { status: 'not-registered' };
 
 			const state = await this.repo.getDailyState(tx, discordId);
 			if (!state) return { status: 'not-registered' };
 
-			const todayKey = DailyCycle.keyAt(now);
-			const yesterdayKey = DailyCycle.yesterdayKeyAt(now);
+			// Menu actions may wait on another transaction across the daily reset.
+			const claimTime = atomicProgress ? new Date() : now;
+			const todayKey = DailyCycle.keyAt(claimTime);
+			const yesterdayKey = DailyCycle.yesterdayKeyAt(claimTime);
 
 			if (state.lastDailyClaimDate === todayKey) {
 				return { status: 'already-claimed', overall: state.overallStreak };
@@ -95,6 +98,7 @@ export class DailyService {
 				);
 			}
 
+			if (atomicProgress) await applyGameplayProgress(tx, discordId, 'daily', claimTime);
 			return {
 				status: 'ok',
 				day: overall,
@@ -108,7 +112,7 @@ export class DailyService {
 		});
 
 		if (result.status === 'ok') {
-			this.events.emit('daily.claimed', { discordId, streak: result.overall });
+			this.events.emit('daily.claimed', { discordId, streak: result.overall, progressApplied: atomicProgress });
 		}
 		return result;
 	}

@@ -4,6 +4,20 @@
 import { pgTable, text, integer, real, primaryKey, unique, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
+// Written in the same transaction as menu raid rewards. No interaction tokens stored.
+export const menuActionReceipts = pgTable(
+	'menu_action_receipts',
+	{
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
+		requestId: text('request_id').notNull(),
+		kind: text('kind').notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+	},
+	(table) => [primaryKey({ columns: [table.discordId, table.requestId] })],
+);
+
 // active_battles — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((battle_type)::text = ANY ((ARRAY['raid'::character varying, 'boss'::character varying])::text[])))
 export const activeBattles = pgTable(

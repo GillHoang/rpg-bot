@@ -22,14 +22,16 @@ import {
 import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
 import { CosmeticService } from './CosmeticService.js';
-import { eq } from 'drizzle-orm';
-import { users, usersBag, userCharacter } from '../db/schema.js';
+import { and, eq } from 'drizzle-orm';
+import { users, usersBag, userCharacter, menuActionReceipts } from '../db/schema.js';
+import { applyGameplayProgress } from './gameplayProgress.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
 import { MonsterStrategy } from '../domain/combat/classes/MonsterStrategy.js';
 import { LootRepository } from '../repositories/LootRepository.js';
 
 export type RaidResult =
+	| { status: 'already-processed' }
 	| { status: 'not-registered' }
 	| { status: 'no-character' }
 	| { status: 'no-monsters-seeded' }
@@ -67,9 +69,15 @@ export class RaidService {
 		private readonly events = EventBus.getInstance(),
 	) {}
 
-	async run(discordId: string, boss = false): Promise<RaidResult> {
+	async run(
+		discordId: string,
+		boss = false,
+		options: { requestId?: string; atomicProgress?: boolean; expectedDay?: string } = {},
+	): Promise<RaidResult> {
 		const result = await db.transaction(async (tx): Promise<RaidResult> => {
 			await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).for('update');
+			const now = new Date();
+			const day = DailyCycle.keyAt(now);
 			const [character] = await tx
 				.select()
 				.from(userCharacter)
@@ -78,12 +86,27 @@ export class RaidService {
 			const account = await this.accounts.findByIdWithExecutor(tx, discordId);
 			if (!account) return { status: 'not-registered' };
 			if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
+			if (options.requestId) {
+				const [receipt] = await tx
+					.select()
+					.from(menuActionReceipts)
+					.where(
+						and(
+							eq(menuActionReceipts.discordId, discordId),
+							eq(menuActionReceipts.requestId, options.requestId),
+						),
+					);
+				if (receipt) return { status: 'already-processed' };
+			}
+			if (boss && options.expectedDay && options.expectedDay !== day) {
+				return { status: 'boss-locked', message: 'Đã sang ngày mới. Hãy xác nhận lại lượt đánh boss.' };
+			}
 
 			const lootRng = createRng(createSecureSeed());
 			const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
 			if (!monsterStats) return { status: 'no-monsters-seeded' };
 			if (boss) {
-				const gate = await this.bossGate(tx, discordId, account);
+				const gate = await this.bossGate(tx, discordId, account, day);
 				if (gate) return gate;
 			}
 
@@ -160,6 +183,11 @@ export class RaidService {
 			});
 			await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
 			const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
+			if (won && options.atomicProgress) await applyGameplayProgress(tx, discordId, 'raid_win', now);
+			if (options.requestId)
+				await tx
+					.insert(menuActionReceipts)
+					.values({ discordId, requestId: options.requestId, kind: boss ? 'boss' : 'hunt' });
 			return {
 				status: 'ok',
 				battle,
@@ -177,7 +205,13 @@ export class RaidService {
 		const { credux, progress } = result;
 		const won = result.battle.outcome === 'player_win';
 
-		this.events.emit(won ? 'battle.won' : 'battle.lost', { discordId, battleType: boss ? 'boss' : 'raid' });
+		if (won)
+			this.events.emit('battle.won', {
+				discordId,
+				battleType: boss ? 'boss' : 'raid',
+				progressApplied: options.atomicProgress,
+			});
+		else this.events.emit('battle.lost', { discordId, battleType: boss ? 'boss' : 'raid' });
 		if (credux > 0)
 			this.events.emit('currency.earned', {
 				discordId,
@@ -232,15 +266,15 @@ export class RaidService {
 		tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
 		discordId: string,
 		account: PlayerAccount,
+		day: string,
 	): Promise<RaidResult | null> {
 		if (account.combatLevel < BOSS_ENTRY.minLevel)
 			return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
 		const [user] = await tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
-		if (user.lastBossAttackDate === DailyCycle.keyAt())
-			return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
+		if (user.lastBossAttackDate === day) return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
 		if (account.credux < BOSS_ENTRY.credux)
 			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()) };
-		await tx.update(users).set({ lastBossAttackDate: DailyCycle.keyAt() }).where(eq(users.discordId, discordId));
+		await tx.update(users).set({ lastBossAttackDate: day }).where(eq(users.discordId, discordId));
 		await tx
 			.update(usersBag)
 			.set({ credux: account.credux - BOSS_ENTRY.credux })

@@ -20,8 +20,8 @@ export class UserRepository {
 	 * grant happens at character creation, not here.
 	 */
 	async registerNew(executor: Executor, discordId: string, username: string): Promise<void> {
-		await executor.insert(users).values({ discordId, username });
-		await executor.insert(usersBag).values({ discordId });
-		await executor.insert(pityCounters).values({ discordId });
+		await executor.insert(users).values({ discordId, username }).onConflictDoNothing();
+		await executor.insert(usersBag).values({ discordId }).onConflictDoNothing();
+		await executor.insert(pityCounters).values({ discordId }).onConflictDoNothing();
 	}
 }
