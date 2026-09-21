@@ -44,14 +44,16 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Deploy RPG Bot
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -e
 
           cd /opt/apps/rpg-bot
 
-          echo ">>> Pulling latest code"
-          git fetch origin main
-          git reset --hard origin/main
+          echo ">>> Fetching verified commit $DEPLOY_SHA"
+          git fetch origin "$DEPLOY_SHA"
+          git reset --hard "$DEPLOY_SHA"
 
           echo ">>> Building Docker image"
           docker compose build

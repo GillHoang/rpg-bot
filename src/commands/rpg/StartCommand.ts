@@ -42,6 +42,12 @@ import {
 
 const FLOW_TTL_MS = 10 * 60_000;
 
+interface StartFlow {
+	pickedClass: CombatClass | null;
+	busy: boolean;
+	ended: boolean;
+}
+
 const startCustomId = {
 	agree: 'start:agree',
 	decline: 'start:decline',
@@ -107,12 +113,10 @@ function confirmView(combatClass: CombatClass): InteractionUpdateOptions {
 export class StartCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('start').setDescription(START_DESCRIPTION);
 
-	/** Class người chơi vừa bấm chọn — sống theo flow, reset khi vào lại màn class. */
-	private pickedClass: CombatClass | null = null;
-
 	constructor(private readonly startService = new StartService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
+		const flow: StartFlow = { pickedClass: null, busy: false, ended: false };
 		await interaction.reply({ content: START_WELCOME, components: welcomeView().components, ephemeral: true });
 		const message = await interaction.fetchReply();
 
@@ -123,15 +127,24 @@ export class StartCommand implements ICommand {
 		});
 
 		collector.on('collect', async (button) => {
+			if (flow.ended) return;
+			if (flow.busy) {
+				await button.deferUpdate().catch(() => undefined);
+				return;
+			}
+			flow.busy = true;
 			try {
-				await this.handleButton(button, collector);
+				await this.handleButton(button, collector, flow);
 			} catch (error) {
 				// Lỗi ngoài luồng confirm (welcome/class/back) — không để unhandled rejection.
 				logger.error({ err: error, discordId: button.user.id }, 'start-button-failed');
+			} finally {
+				flow.busy = false;
 			}
 		});
 
 		collector.on('end', async (_collected, reason) => {
+			flow.ended = true;
 			if (reason === 'declined' || reason === 'started') return;
 			// Hết giờ — gỡ nút, giữ nguyên nội dung đang hiển thị.
 			await interaction.editReply({ components: [] }).catch(() => undefined);
@@ -142,9 +155,10 @@ export class StartCommand implements ICommand {
 	private async handleButton(
 		button: ButtonInteraction,
 		collector: InteractionCollector<ButtonInteraction>,
+		flow: StartFlow,
 	): Promise<void> {
 		if (button.customId === startCustomId.agree) {
-			this.pickedClass = null;
+			flow.pickedClass = null;
 			await button.update(classesView());
 			return;
 		}
@@ -155,20 +169,20 @@ export class StartCommand implements ICommand {
 		}
 		const chosenFromButton = parseClassCustomId(button.customId);
 		if (chosenFromButton) {
-			this.pickedClass = chosenFromButton;
+			flow.pickedClass = chosenFromButton;
 			await button.update(confirmView(chosenFromButton));
 			return;
 		}
 		if (button.customId === startCustomId.back) {
-			this.pickedClass = null;
+			flow.pickedClass = null;
 			await button.update(classesView());
 			return;
 		}
 		if (button.customId !== startCustomId.confirm) return;
-		const chosen = this.pickedClass;
+		const chosen = flow.pickedClass;
 		if (!chosen) return;
 		// Ack ngay để nút không kẹt "thinking" — kết quả update qua editReply sau.
-		await button.deferUpdate().catch(() => undefined);
+		await button.deferUpdate();
 		try {
 			const result = await this.startService.start(button.user.id, button.user.username, chosen);
 			if (result.status === 'already-has-character') {
@@ -178,7 +192,7 @@ export class StartCommand implements ICommand {
 			}
 			if (result.status === 'starter-gear-missing') {
 				// Không stop collector — giữ nút Xác nhận để thử lại sau khi seed xong.
-				await interactionSafeEdit(button, START_SEED_MISSING, confirmView(chosen).components);
+				await interactionSafeEdit(button, START_SEED_MISSING, flow.ended ? [] : confirmView(chosen).components);
 				return;
 			}
 			collector.stop('started');
@@ -198,7 +212,7 @@ export class StartCommand implements ICommand {
 		} catch (error) {
 			// DB lỗi tạm thời — giữ nút Xác nhận, người chơi bấm lại là thử lại.
 			logger.error({ err: error, discordId: button.user.id }, 'start-confirm-failed');
-			await interactionSafeEdit(button, START_CREATE_FAILED, confirmView(chosen).components);
+			await interactionSafeEdit(button, START_CREATE_FAILED, flow.ended ? [] : confirmView(chosen).components);
 		}
 	}
 }
@@ -209,5 +223,5 @@ async function interactionSafeEdit(
 	content: string,
 	components?: InteractionUpdateOptions['components'],
 ): Promise<void> {
-	await button.editReply({ content, components }).catch(() => undefined);
+	await button.editReply({ content, components: components ?? [] }).catch(() => undefined);
 }

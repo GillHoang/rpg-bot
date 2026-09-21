@@ -3,6 +3,7 @@ import { CommandRegistry } from '../core/CommandRegistry.js';
 import { registerAllCommands } from '../core/registerAllCommands.js';
 import { env } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { parseCommandScope } from './commandScope.js';
 
 /**
  * Đăng ký slash command lên Discord API.
@@ -18,30 +19,10 @@ import { logger } from '../utils/logger.js';
  */
 const COMMAND_NAME_DEV_ONLY = 'test';
 
-function guildIdFromArgv(): string | null {
-	const args = process.argv.slice(2);
-	const inline = args.find((a) => a.startsWith('--guild='));
-	if (inline) return inline.split('=')[1] || null;
-	const index = args.indexOf('--guild');
-	if (index !== -1) return args[index + 1] ?? null;
-	return null;
-}
-
-// Same single source of truth as the bot runtime — one list, two consumers.
-registerAllCommands();
-const registry = CommandRegistry.getInstance();
-const flagGuildId = guildIdFromArgv();
-
-// Cờ `--guild` có mặt nhưng rỗng/giá trị rác → lỗi thay vì deploy global.
-if (flagGuildId !== null && !/^\d+$/.test(flagGuildId)) {
-	logger.error(
-		'--guild needs a numeric guild ID (e.g. pnpm deploy:commands -- --guild 1234567890) — aborting, not deploying globally.',
-	);
-	process.exit(1);
-}
-const guildId = flagGuildId ?? env.DEPLOY_GUILD_ID ?? null;
-
 try {
+	const { guildId } = parseCommandScope(process.argv.slice(2), env.DEPLOY_GUILD_ID);
+	registerAllCommands();
+	const registry = CommandRegistry.getInstance();
 	const body = registry
 		.getAll()
 		.filter((c) => guildId !== null || c.data.name !== COMMAND_NAME_DEV_ONLY)

@@ -50,11 +50,16 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
    Dọn bộ slash command đã đăng ký (global + guild tuỳ chọn):
 
    ```sh
-   pnpm undeploy:commands                       # xoá global
-   pnpm undeploy:commands -- --guild <guildId>  # xoá thêm cả guild
+   pnpm undeploy:commands -- --global           # chỉ xoá global
+   pnpm undeploy:commands -- --guild <guildId>  # chỉ xoá guild chỉ định
+   pnpm undeploy:commands -- --all --guild <guildId> # xoá global + guild này
    ```
 
-   Sau khi clear, mọi lệnh biến mất cho tới khi chạy lại `pnpm deploy:commands`
+   Không truyền cờ: dùng guild trong `DEPLOY_GUILD_ID`, nếu không có thì dùng global.
+   `--guild` thiếu ID hoặc cờ không hợp lệ sẽ dừng trước khi gọi Discord.
+   `deploy:commands -- --global` luôn chọn global dù có `DEPLOY_GUILD_ID`.
+
+   Sau khi clear, lệnh trong phạm vi đã chọn biến mất cho tới khi chạy lại `pnpm deploy:commands`
    (hoặc khởi động lại bot — entrypoint tự deploy).
 
 3. **Khi cập nhật bot từ phiên bản cũ**, các bước chạy lại đã có trong
@@ -160,12 +165,11 @@ Nguyên tắc nổi bật:
 ## Kiểm thử
 
 ```sh
-pnpm test
-pnpm build
-pnpm lint
+pnpm check    # lint + typecheck + test
+pnpm build    # compile + kiểm tra import của dist
 ```
 
-- 84 test / 12 file, chạy trên **PGlite** (PostgreSQL trong bộ nhớ, SQL thật)
+- Test nghiệp vụ DB chạy trên **PGlite** (PostgreSQL trong bộ nhớ, SQL thật)
   — không đọc `.env`, không chạm DB thật, RNG được mock để kiểm tra deterministic.
 - Phủ: rollback loot khi thiếu seed, quyền sở hữu item, preset/stat, boss fee
   + cooldown, summon pity/relic, casino settlement (kể cả phiên hết hạn),

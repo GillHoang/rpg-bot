@@ -20,7 +20,9 @@
     "lint": "eslint src",
     "lint:check": "eslint src",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check": "pnpm lint:check && pnpm typecheck && pnpm test"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",
