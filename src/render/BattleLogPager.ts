@@ -77,7 +77,7 @@ function hpBlock(round: BattleRoundLog | undefined, playerName: string, enemyNam
 export function buildBattleLogPage(
 	options: BattleLogPagerOptions,
 	pageIndex: number,
-	{ locked = false }: { locked?: boolean } = {},
+	{ locked = false, navigation = true }: { locked?: boolean; navigation?: boolean } = {},
 ): { components: [ContainerBuilder]; flags: number } {
 	const { battle } = options;
 	const total = Math.max(battle.roundLogs.length, 1);
@@ -97,7 +97,7 @@ export function buildBattleLogPage(
 		container.addTextDisplayComponents((t) => t.setContent(footer));
 	}
 
-	if (total > 1) {
+	if (navigation && total > 1) {
 		const atStart = locked || index === 0;
 		const atEnd = locked || index === total - 1;
 		container.addActionRowComponents(

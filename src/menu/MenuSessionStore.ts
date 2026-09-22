@@ -24,6 +24,7 @@ export interface MenuSession {
 	battle?: MenuBattle;
 	notice?: string;
 	avatarUrl?: string;
+	playerName?: string;
 	/** The original menu opens independent panels instead of replacing itself. */
 	launcher?: boolean;
 }

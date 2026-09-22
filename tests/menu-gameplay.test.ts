@@ -235,7 +235,13 @@ describe('phase 2 menu', () => {
 		expect(JSON.stringify(view)).toContain('Đã nhận daily');
 		await click('quests');
 		await click('hunt');
-		expect(JSON.stringify(view)).toContain('Kết quả trận đấu');
+		expect(JSON.stringify(view)).toContain('HP');
+		expect(JSON.stringify(view)).not.toContain('Chọn khu vực');
+		expect(JSON.stringify(view)).not.toContain('Menu riêng tư');
+		const battlePayload = JSON.parse(JSON.stringify(view));
+		expect(battlePayload.components[0].type).toBe(17);
+		expect(battlePayload.components[1].type).toBe(1);
+		expect(battlePayload.components[0].components.every((c: { type: number }) => c.type !== 1)).toBe(true);
 		await click('log');
 		expect(JSON.stringify(view)).toContain('Hiệp 1');
 		await click('result');

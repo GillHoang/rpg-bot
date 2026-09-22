@@ -19,6 +19,8 @@ import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
 import { CLASS_NAMES } from '../config/classes.js';
+import { buildBattleLogPage } from '../render/BattleLogPager.js';
+import { raidBattleOptions } from '../render/raidBattleOptions.js';
 
 function normalize(value: string): string {
 	return value
@@ -122,6 +124,41 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 }
 
 export function menuView(session: MenuSession) {
+	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
+		const battle = session.battle;
+		const container =
+			session.screen.kind === 'result'
+				? buildBattleLogPage(
+						raidBattleOptions(battle, battle.boss, session.playerName ?? 'Bạn'),
+						battle.battle.roundLogs.length - 1,
+						{ navigation: false },
+					).components[0]
+				: new ContainerBuilder()
+						.setAccentColor(0x5865f2)
+						.addTextDisplayComponents((t) =>
+							t.setContent(`## ${session.gamePanel?.title}\n${session.gamePanel?.body}`),
+						);
+		const buttons = session.gamePanel?.buttons ?? [];
+		const rows: ActionRowBuilder<ButtonBuilder>[] = [];
+		for (let index = 0; index < buttons.length; index += 5) {
+			rows.push(
+				new ActionRowBuilder<ButtonBuilder>().addComponents(
+					buttons.slice(index, index + 5).map((button) => gameplayButton(session, button)),
+				),
+			);
+		}
+		rows.push(
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }),
+				gameplayButton(session, { action: 'refresh', label: MENU_TEXT.refresh }),
+			),
+		);
+		return {
+			components: [container, ...rows],
+			flags: MessageFlags.IsComponentsV2 as const,
+			allowedMentions: { parse: [] as [] },
+		};
+	}
 	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
 	const container = new ContainerBuilder().setAccentColor(0xf1c232);
 	const screen = session.screen;

@@ -125,6 +125,7 @@ export class MenuRouter {
 		}
 		await this.acknowledge(interaction, session);
 		session.notice = undefined;
+		session.playerName = interaction.user.username;
 		const next = await this.gameplay.act(
 			session,
 			action,
