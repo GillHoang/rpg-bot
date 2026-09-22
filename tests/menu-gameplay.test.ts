@@ -211,7 +211,7 @@ describe('phase 2 menu', () => {
 		const click = async (name: string, value?: string) => {
 			const f = fixture(value ? 'select' : 'button', action(view, name), value ? [value] : []);
 			await router.handle(f.interaction);
-			expect(f.raw.deferUpdate).toHaveBeenCalledOnce();
+			expect(f.raw.deferUpdate.mock.calls.length + f.raw.deferReply.mock.calls.length).toBe(1);
 			expect(f.raw.editReply).toHaveBeenCalledOnce();
 			view = f.raw.editReply.mock.calls[0][0];
 			checkPayload(view);

@@ -32,6 +32,7 @@ export class MenuRouter {
 		try {
 			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 			session = this.sessions.create(interaction.user.id);
+			session.launcher = true;
 			session.avatarUrl = interaction.user.displayAvatarURL?.({ size: 256 });
 			session.gamePanel = await this.gameplay?.render(session);
 			const message = await interaction.editReply(menuView(session));
@@ -69,8 +70,19 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT[result.status]);
 			return true;
 		}
-		const session = result.session;
+		const source = result.session;
+		let session = source;
 		try {
+			if (source.launcher && parsed.action !== 'search' && parsed.action !== 'close') {
+				session = this.sessions.create(source.ownerId);
+				Object.assign(session, {
+					screen: source.screen,
+					gamePanel: source.gamePanel,
+					avatarUrl: source.avatarUrl,
+					pendingModal: source.pendingModal,
+				});
+				source.pendingModal = null;
+			}
 			if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) {
 				await this.handleGameplay(interaction, session, parsed.action);
 			} else {
@@ -82,10 +94,14 @@ export class MenuRouter {
 		} catch (error) {
 			// HTTP failures can be ambiguous. Retire the session, never replay an action.
 			this.sessions.delete(session.id);
+			if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) this.sessions.delete(source.id);
 			logger.error({ err: error, sessionId: session.id, action: parsed.action }, 'Menu interaction failed');
 			await this.notice(interaction, MENU_TEXT.failed);
 		} finally {
+			if (session !== source && !session.messageId) this.sessions.delete(session.id);
 			this.sessions.release(session);
+			this.sessions.touch(source);
+			this.sessions.release(source);
 		}
 		return true;
 	}
@@ -107,7 +123,7 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		await interaction.deferUpdate();
+		await this.acknowledge(interaction, session);
 		session.notice = undefined;
 		const next = await this.gameplay.act(
 			session,
@@ -139,7 +155,7 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalidSearch);
 			return;
 		}
-		await interaction.deferUpdate();
+		await this.acknowledge(interaction, session);
 		await this.navigate(interaction, session, { kind: 'search', query });
 	}
 
@@ -160,7 +176,7 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		await interaction.deferUpdate();
+		await this.acknowledge(interaction, session);
 		await this.navigate(interaction, session, next);
 	}
 
@@ -181,7 +197,7 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		await interaction.deferUpdate();
+		await this.acknowledge(interaction, session);
 		if (action === 'close') {
 			this.sessions.delete(session.id);
 			await interaction.editReply(recoveryView(MENU_TEXT.closed));
@@ -211,6 +227,11 @@ export class MenuRouter {
 		this.sessions.sweep();
 	}
 
+	private async acknowledge(interaction: MenuInteraction, session: MenuSession): Promise<void> {
+		if (!session.messageId || session.launcher) await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		else await interaction.deferUpdate();
+	}
+
 	private async navigate(
 		interaction: MenuInteraction,
 		session: MenuSession,
@@ -229,8 +250,9 @@ export class MenuRouter {
 					: [...session.history, session.screen].slice(-12)),
 		};
 		next.gamePanel = await this.gameplay?.render(next);
-		await interaction.editReply(menuView(next));
+		const message = await interaction.editReply(menuView(next));
 		Object.assign(session, next);
+		if (!session.messageId) this.sessions.bind(session, message.id);
 		this.sessions.touch(session);
 	}
 

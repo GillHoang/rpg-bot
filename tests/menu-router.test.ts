@@ -72,6 +72,23 @@ async function opened(router: MenuRouter, user = 'alice', message = 'm1') {
 }
 
 describe('menu router', () => {
+	it('keeps the launcher reusable and binds each reply to its own message', async () => {
+		const router = new MenuRouter();
+		const root = await opened(router);
+		for (let index = 0; index < 7; index++) {
+			const click = fixture('button', action(root.view, 'help'));
+			click.raw.editReply.mockResolvedValueOnce({ id: `child-${index}` });
+			await router.handle(click.interaction);
+			expect(click.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+			expect(click.raw.deferUpdate).not.toHaveBeenCalled();
+			const view = click.raw.editReply.mock.calls[0]![0];
+			expect(parseMenuId(action(view, 'home'))!.id).not.toBe(parseMenuId(action(root.view, 'help'))!.id);
+			const topic = fixture('select', action(view, 'topic'), 'alice', `child-${index}`);
+			topic.raw.values = ['0'];
+			await router.handle(topic.interaction);
+			expect(topic.raw.deferUpdate).toHaveBeenCalledOnce();
+		}
+	});
 	it('opens an ephemeral V2 menu through /menu and leaves legacy interactions alone', async () => {
 		const router = new MenuRouter();
 		const f = await opened(router);
@@ -98,7 +115,9 @@ describe('menu router', () => {
 		const help = fixture('button', action(second.view, 'help'), b, 'two');
 		await router.handle(help.interaction);
 		expect(help.raw.editReply).toHaveBeenCalledOnce();
-		const stale = fixture('button', action(first.view, 'refresh'), a, 'one');
+		const childView = select.raw.editReply.mock.calls[0]![0];
+		await router.handle(fixture('button', action(childView, 'refresh'), a, 'one').interaction);
+		const stale = fixture('button', action(childView, 'refresh'), a, 'one');
 		await router.handle(stale.interaction);
 		expect(JSON.stringify(stale.raw.reply.mock.calls)).toContain(MENU_TEXT.stale);
 		expect(stale.raw.editReply).not.toHaveBeenCalled();
@@ -118,7 +137,7 @@ describe('menu router', () => {
 		}
 	});
 
-	it('navigates sections, back, and home on the same message', async () => {
+	it('navigates sections, back, and home within the new panel', async () => {
 		const router = new MenuRouter(),
 			f = await opened(router);
 		const help = fixture('button', action(f.view, 'help'));
@@ -144,7 +163,8 @@ describe('menu router', () => {
 		const modalId = json(button.raw.showModal.mock.calls[0]![0]).custom_id as string;
 		const modal = fixture('modal', modalId);
 		await router.handle(modal.interaction);
-		expect(modal.raw.deferUpdate).toHaveBeenCalledOnce();
+		expect(modal.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+		expect(modal.raw.deferUpdate).not.toHaveBeenCalled();
 		expect(ids(modal.raw.editReply.mock.calls[0]![0]).some((id) => parseMenuId(id)?.action === 'topic')).toBe(true);
 		const replay = fixture('modal', modalId);
 		await router.handle(replay.interaction);
@@ -252,7 +272,7 @@ describe('menu router', () => {
 		expect(old.raw.editReply).not.toHaveBeenCalled();
 	});
 
-	it('retires the session after a failed edit and never retries the operation', async () => {
+	it('retires a failed panel while keeping the launcher available', async () => {
 		const router = new MenuRouter(),
 			f = await opened(router);
 		const broken = fixture('button', action(f.view, 'help'));
@@ -262,14 +282,15 @@ describe('menu router', () => {
 		expect(JSON.stringify(broken.raw.followUp.mock.calls)).toContain(MENU_TEXT.failed);
 		const retry = fixture('button', action(f.view, 'help'));
 		await router.handle(retry.interaction);
-		expect(retry.raw.editReply).not.toHaveBeenCalled();
+		expect(retry.raw.deferReply).toHaveBeenCalledOnce();
+		expect(retry.raw.editReply).toHaveBeenCalledOnce();
 	});
 
 	it('does not render after failed acknowledgement and tolerates failed recovery replies', async () => {
 		const router = new MenuRouter(),
 			f = await opened(router);
 		const broken = fixture('button', action(f.view, 'help'));
-		broken.raw.deferUpdate.mockRejectedValueOnce(new Error('expired'));
+		broken.raw.deferReply.mockRejectedValueOnce(new Error('expired'));
 		broken.raw.reply.mockRejectedValueOnce(new Error('expired'));
 		await expect(router.handle(broken.interaction)).resolves.toBe(true);
 		expect(broken.raw.editReply).not.toHaveBeenCalled();
