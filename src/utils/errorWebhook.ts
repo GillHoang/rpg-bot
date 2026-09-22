@@ -14,7 +14,8 @@ export class ErrorWebhook {
 			const record = JSON.parse(line) as Record<string, unknown>;
 			if (Number(record.level) < 50) return;
 			const { level, time, msg, ...context } = record;
-			const description = this.redact(`${String(msg ?? 'Unknown error')}\n\n${JSON.stringify(context, null, 2)}`);
+			const message = typeof msg === 'string' ? msg : JSON.stringify(msg ?? 'Unknown error');
+			const description = this.redact(`${message}\n\n${JSON.stringify(context, null, 2)}`);
 			const payload: WebhookMessageCreateOptions = {
 				allowedMentions: { parse: [] },
 				embeds: [
@@ -43,7 +44,7 @@ export class ErrorWebhook {
 		let timer: ReturnType<typeof setTimeout> | undefined;
 		try {
 			await Promise.race([
-				Promise.all([...this.pending]),
+				Promise.all(this.pending),
 				new Promise<void>((resolve) => {
 					timer = setTimeout(resolve, timeoutMs);
 				}),

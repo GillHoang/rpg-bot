@@ -3,6 +3,19 @@ import { describe, expect, it, vi } from 'vitest';
 import { ErrorWebhook } from '../src/utils/errorWebhook.js';
 
 describe('error webhook', () => {
+	it.each([
+		[{ reason: 'failed', token: 'private' }, '{"reason":"failed","token":"[REDACTED]"}'],
+		[null, 'Unknown error'],
+		[42, '42'],
+	])('formats structured and non-string messages: %j', async (msg, expected) => {
+		const send = vi.fn(async (_payload: unknown) => {});
+		const webhook = new ErrorWebhook(send);
+		webhook.write(JSON.stringify({ level: 50, time: Date.now(), msg }));
+		await webhook.flush();
+		const payload = send.mock.calls[0][0] as { embeds: { description: string }[] };
+		expect(payload.embeds[0].description).toContain(expected);
+		expect(payload.embeds[0].description).not.toContain('[object Object]');
+	});
 	it('forwards errors and fatal logs with stack/context, redacts secrets and skips info', async () => {
 		const send = vi.fn(async () => {});
 		const webhook = new ErrorWebhook(send, ['bot-secret']);

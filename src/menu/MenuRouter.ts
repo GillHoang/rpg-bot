@@ -73,29 +73,8 @@ export class MenuRouter {
 		const source = result.session;
 		let session = source;
 		try {
-			const questConfirmation = source.screen.kind === 'confirm' && source.screen.operation === 'reroll';
-			const updateInPlace =
-				['daily', 'quests', 'claim', 'reroll'].includes(parsed.action) ||
-				(questConfirmation && ['confirm', 'cancel'].includes(parsed.action)) ||
-				(source.screen.kind !== 'home' && ['home', 'back', 'refresh'].includes(parsed.action));
-			if (source.launcher && !updateInPlace && !['search', 'close'].includes(parsed.action)) {
-				session = this.sessions.create(source.ownerId);
-				Object.assign(session, {
-					screen: source.screen,
-					gamePanel: source.gamePanel,
-					avatarUrl: source.avatarUrl,
-					pendingModal: source.pendingModal,
-				});
-				source.pendingModal = null;
-			}
-			if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) {
-				await this.handleGameplay(interaction, session, parsed.action);
-			} else {
-				session.notice = undefined;
-				if (interaction.isModalSubmit()) await this.handleSearch(interaction, session, parsed);
-				else if (interaction.isStringSelectMenu()) await this.handleSelect(interaction, session, parsed.action);
-				else await this.handleButton(interaction, session, parsed.action);
-			}
+			session = this.selectSession(source, parsed.action);
+			await this.dispatch(interaction, session, parsed);
 		} catch (error) {
 			// HTTP failures can be ambiguous. Retire the session, never replay an action.
 			this.sessions.delete(session.id);
@@ -109,6 +88,46 @@ export class MenuRouter {
 			this.sessions.release(source);
 		}
 		return true;
+	}
+
+	private selectSession(source: MenuSession, action: MenuAction): MenuSession {
+		if (!source.launcher || this.updatesInPlace(source, action) || ['search', 'close'].includes(action))
+			return source;
+		const session = this.sessions.create(source.ownerId);
+		Object.assign(session, {
+			screen: source.screen,
+			gamePanel: source.gamePanel,
+			avatarUrl: source.avatarUrl,
+			pendingModal: source.pendingModal,
+		});
+		source.pendingModal = null;
+		return session;
+	}
+
+	private updatesInPlace(source: MenuSession, action: MenuAction): boolean {
+		if (['daily', 'quests', 'claim', 'reroll'].includes(action)) return true;
+		if (
+			source.screen.kind === 'confirm' &&
+			source.screen.operation === 'reroll' &&
+			['confirm', 'cancel'].includes(action)
+		)
+			return true;
+		return source.screen.kind !== 'home' && ['home', 'back', 'refresh'].includes(action);
+	}
+
+	private async dispatch(
+		interaction: MenuInteraction,
+		session: MenuSession,
+		parsed: NonNullable<ReturnType<typeof parseMenuId>>,
+	): Promise<void> {
+		if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) {
+			await this.handleGameplay(interaction, session, parsed.action);
+			return;
+		}
+		session.notice = undefined;
+		if (interaction.isModalSubmit()) await this.handleSearch(interaction, session, parsed);
+		else if (interaction.isStringSelectMenu()) await this.handleSelect(interaction, session, parsed.action);
+		else await this.handleButton(interaction, session, parsed.action);
 	}
 
 	private async handleGameplay(

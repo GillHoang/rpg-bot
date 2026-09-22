@@ -124,31 +124,24 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'first':
 			case 'last':
 			case 'prev':
-			case 'next': {
-				if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
-					throw new Error('No battle log');
-				const currentPage =
-					session.screen.kind === 'log'
-						? session.screen.page
-						: Math.max(0, session.battle.battle.roundLogs.length - 1);
-				return {
-					kind: 'log',
-					page: Math.max(
-						0,
-						Math.min(
-							session.battle.battle.roundLogs.length - 1,
-							action === 'first'
-								? 0
-								: action === 'last'
-									? session.battle.battle.roundLogs.length - 1
-									: currentPage + (action === 'next' ? 1 : -1),
-						),
-					),
-				};
-			}
+			case 'next':
+				return this.navigateBattleLog(session, action);
 			default:
 				throw new Error('Unknown gameplay action');
 		}
+	}
+
+	private navigateBattleLog(session: MenuSession, action: 'first' | 'last' | 'prev' | 'next'): MenuScreen {
+		if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
+			throw new Error('No battle log');
+		const lastPage = Math.max(0, session.battle.battle.roundLogs.length - 1);
+		const currentPage = session.screen.kind === 'log' ? session.screen.page : lastPage;
+		let page = currentPage;
+		if (action === 'first') page = 0;
+		else if (action === 'last') page = lastPage;
+		else if (action === 'next') page += 1;
+		else page -= 1;
+		return { kind: 'log', page: Math.max(0, Math.min(lastPage, page)) };
 	}
 
 	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
