@@ -139,9 +139,11 @@ export function menuView(session: MenuSession) {
 				},
 			},
 		).components[0];
+		if (session.notice) container.addTextDisplayComponents((t) => t.setContent(session.notice!));
 		const rows = [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }),
+				...(!battle.boss ? [gameplayButton(session, { action: 'hunt', label: 'Đánh lại (15s)' }, '⚔️')] : []),
 			),
 		];
 		return {

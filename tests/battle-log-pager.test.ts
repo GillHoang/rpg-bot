@@ -1,15 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { MessageFlags } from 'discord.js';
+import { describe, expect, it, vi } from 'vitest';
+import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction } from 'discord.js';
 import { BattleEngine, type BattleResult } from '../src/domain/combat/BattleEngine.js';
 import { createCombatant } from '../src/domain/combat/CombatantState.js';
 import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import { buildBattleLogPage } from '../src/render/BattleLogPager.js';
+import { buildBattleLogPage, sendBattleLog } from '../src/render/BattleLogPager.js';
 import { COMBAT_STRIKE_EMOJIS } from '../src/text/combat.js';
 
 const strategy = { playerStrategy: new NullClassStrategy(), enemyStrategy: new NullClassStrategy() };
 
 describe('BattleEngine round logs', () => {
-	it('snapshots both sides\' HP at the end of every round and flattens back to log', () => {
+	it("snapshots both sides' HP at the end of every round and flattens back to log", () => {
 		const player = createCombatant({ name: 'P', combatClass: null, hp: 1_000, atk: 100, def: 10, crit: 0 });
 		const enemy = createCombatant({ name: 'E', combatClass: null, hp: 300, atk: 5, def: 0, crit: 0 });
 		const result = new BattleEngine().resolve(player, enemy, 7, strategy);
@@ -123,6 +123,46 @@ function pageJson(battle: BattleResult, index: number, locked = false): PageJson
 }
 
 describe('battle log pager (Components V2)', () => {
+	it('restricts replay to the owner and enforces 15 seconds between battles', async () => {
+		const now = vi.spyOn(Date, 'now').mockReturnValue(0);
+		try {
+			let collect!: (button: ButtonInteraction) => Promise<void>;
+			const collector = {
+				on: vi.fn((event, callback) => {
+					if (event === 'collect') collect = callback;
+				}),
+			};
+			const message = { createMessageComponentCollector: () => collector };
+			const options = { battle: fakeBattle, playerName: 'Gill', enemyName: 'Mob', headerLines: ['header'] };
+			const run = vi.fn().mockResolvedValue(options);
+			await sendBattleLog(
+				{ editReply: vi.fn().mockResolvedValue(message) } as unknown as ChatInputCommandInteraction,
+				{ ...options, replay: { ownerId: 'owner', cooldownMs: 15000, run } },
+			);
+			const button = {
+				customId: 'battlelog:replay',
+				user: { id: 'owner' },
+				reply: vi.fn(),
+				deferUpdate: vi.fn(),
+				editReply: vi.fn(),
+				followUp: vi.fn(),
+			};
+			await collect(button as unknown as ButtonInteraction);
+			expect(run).not.toHaveBeenCalled();
+			now.mockReturnValue(15000);
+			await collect({ ...button, user: { id: 'other' } } as unknown as ButtonInteraction);
+			expect(run).not.toHaveBeenCalled();
+			await collect(button as unknown as ButtonInteraction);
+			expect(run).toHaveBeenCalledTimes(1);
+			await collect(button as unknown as ButtonInteraction);
+			expect(run).toHaveBeenCalledTimes(1);
+			now.mockReturnValue(30000);
+			await collect(button as unknown as ButtonInteraction);
+			expect(run).toHaveBeenCalledTimes(2);
+		} finally {
+			now.mockRestore();
+		}
+	});
 	it('opens with disabled next/last on the last page and yellow-over-gray bars', () => {
 		const page = pageJson(fakeBattle, 1);
 		expect(page.flags).toBe(MessageFlags.IsComponentsV2);

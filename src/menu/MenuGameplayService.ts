@@ -183,12 +183,17 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 
 	private async fight(session: MenuSession, boss: boolean, expectedDay?: string): Promise<MenuScreen> {
+		if (!boss && Date.now() < (session.huntReadyAt ?? 0)) {
+			session.notice = `Chờ ${Math.ceil((session.huntReadyAt! - Date.now()) / 1000)} giây nữa để đánh lại.`;
+			return session.screen;
+		}
 		const r = await this.raid.run(session.ownerId, boss, {
 			requestId: `${session.id}:${session.revision}`,
 			atomicProgress: true,
 			expectedDay,
 		});
 		if (r.status === 'ok') {
+			if (!boss) session.huntReadyAt = Date.now() + 15_000;
 			session.battle = { ...r, boss };
 			return { kind: 'result' };
 		}

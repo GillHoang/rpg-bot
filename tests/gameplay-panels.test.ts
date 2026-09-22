@@ -108,7 +108,9 @@ describe('pure gameplay panels', () => {
 		expect(panel.title).toBe('Nhân vật');
 		expect(panel.withAvatar).toBe(true);
 		expect(panel.body).toContain('**\\*Hero\\***');
-		expect(panel.body).toContain('EXP ▰▰▰▰▰▱▱▱▱▱ `500/1.000`');
+		expect(panel.body).toContain('EXP <a:linee2:');
+		expect(panel.body).toContain(' `500/1.000`');
+		expect(panel.body).not.toMatch(/[▰▱]/);
 		expect(panel.body).toContain('HP 1.000 · ATK 200 · DEF 300 · Crit 5.0%');
 		expect(panel.body).toContain('Tín đồ cấp 1 · EXP 0 · PvP 0\nChưa trang bị danh hiệu.');
 		expect(action(panel, 'daily')).toEqual({ action: 'daily', label: 'Đã nhận daily', disabled: true });

@@ -6,15 +6,12 @@ import type { QuestType } from '../config/quests.js';
 import type { ProfileCardData } from '../render/ProfileCardRenderer.js';
 import type { QuestSnapshot } from '../services/QuestService.js';
 import { MENU_QUEST_LABELS } from '../text/menu.js';
+import { renderProgressBar } from '../utils/progressBar.js';
 import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { MenuAction } from './menuIds.js';
 
 const n = (value: number) => value.toLocaleString('vi-VN');
-function expBar(value: number, total: number): string {
-	const filled = Math.min(10, Math.max(0, Math.floor((value / Math.max(1, total)) * 10)));
-	return '▰'.repeat(filled) + '▱'.repeat(10 - filled);
-}
 const button = (action: MenuAction, label: string, disabled = false): GamePanel['buttons'][number] => ({
 	action,
 	label,
@@ -117,7 +114,7 @@ export function battleLobbyPanel(p: ProfileCardData, bossDone: boolean, hasBattl
 function profileSummary(p: ProfileCardData): string {
 	return (
 		`**${escapeMarkdown(p.username)}**\n${CLASSES[p.combatClass].emoji} **${p.combatClass} · Cấp ${p.level}**\n` +
-		`EXP ${expBar(p.exp, p.expToNext)} \`${n(p.exp)}/${n(p.expToNext)}\`\n` +
+		`EXP ${renderProgressBar({ current: p.exp, max: p.expToNext })} \`${n(p.exp)}/${n(p.expToNext)}\`\n` +
 		`💰 **${n(p.credux)}** Credux · 💎 **${n(p.beliefShards)}** shards\n`
 	);
 }
@@ -214,6 +211,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 				button('prev', 'Trang trước', page === 0),
 				button('next', 'Trang sau', page >= pages.length - 1),
 				button('last', 'Cuối', page >= pages.length - 1),
+				...(!r.boss ? [button('hunt', 'Đánh lại (15s)')] : []),
 			],
 		};
 	}

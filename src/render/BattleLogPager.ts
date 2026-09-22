@@ -31,6 +31,7 @@ export interface BattleLogPagerOptions {
 	headerLines: string[];
 	/** Optional line pinned to the bottom of every page. */
 	footerLine?: string;
+	replay?: { ownerId: string; cooldownMs: number; run: () => Promise<BattleLogPagerOptions | string> };
 }
 
 const PAGE_CUSTOM_IDS = {
@@ -135,6 +136,17 @@ export function buildBattleLogPage(
 		);
 	}
 
+	if (options.replay) {
+		container.addActionRowComponents(
+			new ActionRowBuilder<ButtonBuilder>().addComponents(
+				new ButtonBuilder()
+					.setCustomId('battlelog:replay')
+					.setLabel(`Đánh lại (${options.replay.cooldownMs / 1000}s)`)
+					.setStyle(ButtonStyle.Success)
+					.setDisabled(locked),
+			),
+		);
+	}
 	return { components: [container], flags: MessageFlags.IsComponentsV2 };
 }
 
@@ -148,9 +160,12 @@ export async function sendBattleLog(
 	options: BattleLogPagerOptions,
 	mode: 'edit' | 'followUp' = 'edit',
 ): Promise<void> {
-	const total = Math.max(options.battle.roundLogs.length, 1);
+	let total = Math.max(options.battle.roundLogs.length, 1);
 	let current = total - 1;
-	const payload = () => buildBattleLogPage(options, current);
+	let replayReadyAt = Date.now() + (options.replay?.cooldownMs ?? 0);
+	let replaying = false;
+	let expired = false;
+	const payload = () => buildBattleLogPage(options, current, { locked: expired });
 
 	let message: Message;
 	if (mode === 'edit') message = await interaction.editReply(payload());
@@ -161,6 +176,51 @@ export async function sendBattleLog(
 		time: BATTLE_LOG_PAGER_TTL_MS,
 	});
 	collector.on('collect', async (button: ButtonInteraction) => {
+		if (button.customId === 'battlelog:replay' && options.replay) {
+			const replay = options.replay;
+			if (button.user.id !== replay.ownerId) {
+				await button.reply({
+					content: 'Chỉ người gọi lệnh mới có thể đánh lại.',
+					flags: MessageFlags.Ephemeral,
+				});
+				return;
+			}
+			if (expired || replaying || Date.now() < replayReadyAt) {
+				await button.reply({
+					content: expired
+						? 'Nút đã hết hạn. Hãy dùng /raid hunt.'
+						: replaying
+							? 'Trận đấu đang được xử lý.'
+							: `Chờ ${Math.ceil((replayReadyAt - Date.now()) / 1000)} giây nữa để đánh lại.`,
+					flags: MessageFlags.Ephemeral,
+				});
+				return;
+			}
+			replaying = true;
+			try {
+				await button.deferUpdate();
+				const result = await replay.run();
+				if (typeof result === 'string') {
+					await button.followUp({ content: result, flags: MessageFlags.Ephemeral });
+				} else {
+					options = { ...result, replay };
+					total = Math.max(options.battle.roundLogs.length, 1);
+					current = total - 1;
+					await button.editReply(payload());
+				}
+			} catch {
+				await button
+					.followUp({
+						content: 'Không thể đánh lại lúc này. Hãy thử lại sau.',
+						flags: MessageFlags.Ephemeral,
+					})
+					.catch(() => undefined);
+			} finally {
+				replayReadyAt = Date.now() + replay.cooldownMs;
+				replaying = false;
+			}
+			return;
+		}
 		switch (button.customId) {
 			case PAGE_CUSTOM_IDS.first:
 				current = 0;
@@ -180,6 +240,7 @@ export async function sendBattleLog(
 		await button.update(payload());
 	});
 	collector.on('end', async () => {
+		expired = true;
 		// Expired — lock the buttons on whichever page is showing.
 		await message
 			.edit({ components: buildBattleLogPage(options, current, { locked: true }).components })

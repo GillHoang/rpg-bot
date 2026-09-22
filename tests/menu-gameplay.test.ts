@@ -270,8 +270,11 @@ describe('phase 2 menu', () => {
 		expect(battlePayload.components[0].type).toBe(17);
 		expect(battlePayload.components[1].type).toBe(1);
 		expect(battlePayload.components).toHaveLength(2);
-		expect(battlePayload.components[1].components).toHaveLength(1);
+		expect(battlePayload.components[1].components).toHaveLength(2);
 		expect(parseMenuId(battlePayload.components[1].components[0].custom_id)?.action).toBe('home');
+		await click('hunt');
+		expect(JSON.stringify(view)).toContain('giây nữa để đánh lại');
+		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(1);
 		const journal = JSON.stringify(view);
 		if (!journal.includes('Hiệp 1/')) {
 			await click('first');

@@ -22,6 +22,7 @@ export interface MenuSession {
 	pendingModal: string | null;
 	gamePanel?: GamePanel;
 	battle?: MenuBattle;
+	huntReadyAt?: number;
 	notice?: string;
 	avatarUrl?: string;
 	playerName?: string;

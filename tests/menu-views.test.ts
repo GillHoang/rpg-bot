@@ -53,8 +53,10 @@ describe('menu payloads', () => {
 			expect(withoutIds(actual)).toEqual(withoutIds(expected));
 			const payload = JSON.parse(JSON.stringify(menuView(session)));
 			expect(payload.components).toHaveLength(2);
-			expect(payload.components[1].components).toHaveLength(1);
+			expect(payload.components[1].components).toHaveLength(2);
 			expect(parseMenuId(payload.components[1].components[0].custom_id)?.action).toBe('home');
+			expect(parseMenuId(payload.components[1].components[1].custom_id)?.action).toBe('hunt');
+			expect(payload.components[1].components[1].label).toBe('Đánh lại (15s)');
 		}
 	});
 	it('serializes real V2 views within Discord limits with unique component IDs', () => {

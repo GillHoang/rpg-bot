@@ -44,6 +44,22 @@ export class RaidCommand implements ICommand {
 			return;
 		}
 
-		await sendBattleLog(interaction, raidBattleOptions(result, boss, interaction.user.username), 'edit');
+		const options = raidBattleOptions(result, boss, interaction.user.username);
+		if (!boss) {
+			options.replay = {
+				ownerId: interaction.user.id,
+				cooldownMs: 15_000,
+				run: async () => {
+					const next = await this.raid.run(interaction.user.id, false);
+					if (next.status === 'ok') return raidBattleOptions(next, false, interaction.user.username);
+					if (next.status === 'not-registered') return NOT_REGISTERED;
+					if (next.status === 'no-character') return NO_CHARACTER;
+					if (next.status === 'no-monsters-seeded') return RAID_NO_MONSTERS_SEEDED;
+					if (next.status === 'boss-locked') return next.message;
+					return 'Trận đấu này đã được xử lý.';
+				},
+			};
+		}
+		await sendBattleLog(interaction, options, 'edit');
 	}
 }
