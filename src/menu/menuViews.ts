@@ -126,33 +126,24 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 export function menuView(session: MenuSession) {
 	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
 		const battle = session.battle;
-		const container =
-			session.screen.kind === 'result'
-				? buildBattleLogPage(
-						raidBattleOptions(battle, battle.boss, session.playerName ?? 'Bạn'),
-						battle.battle.roundLogs.length - 1,
-						{ navigation: false },
-					).components[0]
-				: new ContainerBuilder()
-						.setAccentColor(0x5865f2)
-						.addTextDisplayComponents((t) =>
-							t.setContent(`## ${session.gamePanel?.title}\n${session.gamePanel?.body}`),
-						);
-		const buttons = session.gamePanel?.buttons ?? [];
-		const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-		for (let index = 0; index < buttons.length; index += 5) {
-			rows.push(
-				new ActionRowBuilder<ButtonBuilder>().addComponents(
-					buttons.slice(index, index + 5).map((button) => gameplayButton(session, button)),
-				),
-			);
-		}
-		rows.push(
+		const container = buildBattleLogPage(
+			raidBattleOptions(battle, battle.boss, session.playerName ?? 'Bạn'),
+			session.screen.kind === 'log' ? session.screen.page : battle.battle.roundLogs.length - 1,
+			{
+				navigation: true,
+				customIds: {
+					first: menuId(session.id, session.revision, 'first'),
+					prev: menuId(session.id, session.revision, 'prev'),
+					next: menuId(session.id, session.revision, 'next'),
+					last: menuId(session.id, session.revision, 'last'),
+				},
+			},
+		).components[0];
+		const rows = [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }),
-				gameplayButton(session, { action: 'refresh', label: MENU_TEXT.refresh }),
 			),
-		);
+		];
 		return {
 			components: [container, ...rows],
 			flags: MessageFlags.IsComponentsV2 as const,

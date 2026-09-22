@@ -192,7 +192,7 @@ describe('pure gameplay panels', () => {
 		expect(panel.body).toBe(
 			'Chiến thắng · \\*Boss\\*\n1 hiệp · HP còn 10\n+2.000 EXP · +1.000 Credux · +100 shards\n+1 Silver Chest\nSword\nLên cấp 9 → 10!\nPhí vào boss: −10.000 Credux.\n',
 		);
-		expect(panel.buttons.map(({ action }) => action)).toEqual(['log', 'hunt', 'quests']);
+		expect(panel.buttons.map(({ action }) => action)).toEqual(['first', 'prev', 'next', 'last']);
 		for (const [outcome, label] of [
 			['enemy_win', 'Thất bại'],
 			['draw', 'Hoà'],
@@ -228,8 +228,8 @@ describe('pure gameplay panels', () => {
 		expect(pages.every((page) => page.length <= 2800)).toBe(true);
 		const first = battlePanel({ battle: logged, screen: { kind: 'log', page: -1 } });
 		const last = battlePanel({ battle: logged, screen: { kind: 'log', page: 99 } });
-		expect(first.title).toBe('Nhật ký · 1/3');
-		expect(last.title).toBe('Nhật ký · 3/3');
+		expect(first.title).toBe('Nhật ký · 1/1');
+		expect(last.title).toBe('Nhật ký · 1/1');
 		expect(action(first, 'prev')?.disabled).toBe(true);
 		expect(action(last, 'next')?.disabled).toBe(true);
 		const empty = battlePanel({ battle, screen: { kind: 'log', page: 0 } });

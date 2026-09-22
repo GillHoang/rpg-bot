@@ -73,7 +73,12 @@ export class MenuRouter {
 		const source = result.session;
 		let session = source;
 		try {
-			if (source.launcher && parsed.action !== 'search' && parsed.action !== 'close') {
+			const questConfirmation = source.screen.kind === 'confirm' && source.screen.operation === 'reroll';
+			const updateInPlace =
+				['daily', 'quests', 'claim', 'reroll'].includes(parsed.action) ||
+				(questConfirmation && ['confirm', 'cancel'].includes(parsed.action)) ||
+				(source.screen.kind !== 'home' && ['home', 'back', 'refresh'].includes(parsed.action));
+			if (source.launcher && !updateInPlace && !['search', 'close'].includes(parsed.action)) {
 				session = this.sessions.create(source.ownerId);
 				Object.assign(session, {
 					screen: source.screen,
@@ -123,7 +128,8 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		await this.acknowledge(interaction, session);
+		if (['daily', 'quests', 'claim', 'reroll'].includes(action)) await interaction.deferUpdate();
+		else await this.acknowledge(interaction, session);
 		session.notice = undefined;
 		session.playerName = interaction.user.username;
 		const next = await this.gameplay.act(
@@ -229,7 +235,8 @@ export class MenuRouter {
 	}
 
 	private async acknowledge(interaction: MenuInteraction, session: MenuSession): Promise<void> {
-		if (!session.messageId || session.launcher) await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		if (!session.messageId || (session.launcher && session.screen.kind === 'home'))
+			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		else await interaction.deferUpdate();
 	}
 
@@ -251,7 +258,8 @@ export class MenuRouter {
 					: [...session.history, session.screen].slice(-12)),
 		};
 		next.gamePanel = await this.gameplay?.render(next);
-		const message = await interaction.editReply(menuView(next));
+		const view = menuView(next);
+		const message = await interaction.editReply(view);
 		Object.assign(session, next);
 		if (!session.messageId) this.sessions.bind(session, message.id);
 		this.sessions.touch(session);

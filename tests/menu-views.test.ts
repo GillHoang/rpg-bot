@@ -5,8 +5,58 @@ import { MENU_SECTIONS, type MenuSection } from '../src/text/menu.js';
 import { MenuSessionStore, type MenuScreen } from '../src/menu/MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/menu/menuIds.js';
 import { helpMatches, menuView, recoveryView, searchModal } from '../src/menu/menuViews.js';
+import { buildBattleLogPage } from '../src/render/BattleLogPager.js';
+import { raidBattleOptions } from '../src/render/raidBattleOptions.js';
+import { battlePanel } from '../src/menu/gameplayPanels.js';
 
 describe('menu payloads', () => {
+	it('renders every journal round identically to raid hunt, including pager controls', () => {
+		const session = new MenuSessionStore().create('alice');
+		session.playerName = 'Alice';
+		session.battle = {
+			status: 'ok',
+			boss: false,
+			monsterName: 'Mob',
+			credux: 10,
+			shards: 1,
+			expGained: 100,
+			gotChest: false,
+			chestName: '',
+			gearDrop: null,
+			progress: { previousLevel: 1, newLevel: 1, leveledUp: false },
+			battle: {
+				outcome: 'player_win',
+				rounds: 3,
+				log: [],
+				playerHpRemaining: 70,
+				enemyHpRemaining: 0,
+				roundLogs: [1, 2, 3].map((round) => ({
+					round,
+					lines: [`Round ${round}`],
+					playerHp: 100 - round * 10,
+					playerMaxHp: 100,
+					enemyHp: 90 - round * 30,
+					enemyMaxHp: 90,
+				})),
+			},
+		};
+		const withoutIds = (value: unknown) =>
+			JSON.parse(JSON.stringify(value, (key, item) => (key === 'custom_id' ? undefined : item)));
+		for (const page of [-1, 0, 1, 2]) {
+			session.screen = page === -1 ? { kind: 'result' } : { kind: 'log', page };
+			session.gamePanel = battlePanel(session);
+			const actual = menuView(session).components[0];
+			const expected = buildBattleLogPage(
+				raidBattleOptions(session.battle, false, 'Alice'),
+				page === -1 ? 2 : page,
+			).components[0];
+			expect(withoutIds(actual)).toEqual(withoutIds(expected));
+			const payload = JSON.parse(JSON.stringify(menuView(session)));
+			expect(payload.components).toHaveLength(2);
+			expect(payload.components[1].components).toHaveLength(1);
+			expect(parseMenuId(payload.components[1].components[0].custom_id)?.action).toBe('home');
+		}
+	});
 	it('serializes real V2 views within Discord limits with unique component IDs', () => {
 		const store = new MenuSessionStore(),
 			session = store.create('a');

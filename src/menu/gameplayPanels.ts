@@ -204,15 +204,16 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			buttons: [button('hunt', 'Săn quái')],
 		};
 	if (session.screen.kind === 'log') {
-		const pages = logPages(r);
+		const pages = r.battle.roundLogs;
 		const page = Math.max(0, Math.min(pages.length - 1, session.screen.page));
 		return {
 			title: `Nhật ký · ${page + 1}/${Math.max(1, pages.length)}`,
-			body: pages[page] ?? 'Không có log.',
+			body: pages[page]?.lines.join('\n').slice(-2800) || 'Không có log.',
 			buttons: [
+				button('first', 'Đầu', page === 0),
 				button('prev', 'Trang trước', page === 0),
 				button('next', 'Trang sau', page >= pages.length - 1),
-				button('result', 'Kết quả'),
+				button('last', 'Cuối', page >= pages.length - 1),
 			],
 		};
 	}
@@ -228,6 +229,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			(r.gearDrop ? `${r.gearDrop}\n` : '') +
 			(r.progress.leveledUp ? `Lên cấp ${r.progress.previousLevel} → ${r.progress.newLevel}!\n` : '') +
 			(r.boss ? `Phí vào boss: −${n(BOSS_ENTRY.credux)} Credux.\n` : ''),
-		buttons: [button('log', 'Xem nhật ký'), button('hunt', 'Săn tiếp'), button('quests', 'Nhiệm vụ')],
+		buttons: battlePanel({ battle: r, screen: { kind: 'log', page: Math.max(0, r.battle.roundLogs.length - 1) } })
+			.buttons,
 	};
 }

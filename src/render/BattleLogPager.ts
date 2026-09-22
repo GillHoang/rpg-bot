@@ -77,7 +77,11 @@ function hpBlock(round: BattleRoundLog | undefined, playerName: string, enemyNam
 export function buildBattleLogPage(
 	options: BattleLogPagerOptions,
 	pageIndex: number,
-	{ locked = false, navigation = true }: { locked?: boolean; navigation?: boolean } = {},
+	{
+		locked = false,
+		navigation = true,
+		customIds = PAGE_CUSTOM_IDS,
+	}: { locked?: boolean; navigation?: boolean; customIds?: Record<keyof typeof PAGE_CUSTOM_IDS, string> } = {},
 ): { components: [ContainerBuilder]; flags: number } {
 	const { battle } = options;
 	const total = Math.max(battle.roundLogs.length, 1);
@@ -103,12 +107,12 @@ export function buildBattleLogPage(
 		container.addActionRowComponents(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder()
-					.setCustomId(PAGE_CUSTOM_IDS.first)
+					.setCustomId(customIds.first)
 					.setLabel(BATTLE_LOG_FIRST_LABEL)
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(atStart),
 				new ButtonBuilder()
-					.setCustomId(PAGE_CUSTOM_IDS.prev)
+					.setCustomId(customIds.prev)
 					.setLabel(BATTLE_LOG_PREV_LABEL)
 					.setStyle(ButtonStyle.Primary)
 					.setDisabled(atStart),
@@ -118,12 +122,12 @@ export function buildBattleLogPage(
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(true),
 				new ButtonBuilder()
-					.setCustomId(PAGE_CUSTOM_IDS.next)
+					.setCustomId(customIds.next)
 					.setLabel(BATTLE_LOG_NEXT_LABEL)
 					.setStyle(ButtonStyle.Primary)
 					.setDisabled(atEnd),
 				new ButtonBuilder()
-					.setCustomId(PAGE_CUSTOM_IDS.last)
+					.setCustomId(customIds.last)
 					.setLabel(BATTLE_LOG_LAST_LABEL)
 					.setStyle(ButtonStyle.Secondary)
 					.setDisabled(atEnd),

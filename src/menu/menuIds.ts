@@ -17,6 +17,8 @@ export const GAME_ACTIONS = [
 	'confirm',
 	'cancel',
 	'log',
+	'first',
+	'last',
 	'prev',
 	'next',
 	'result',

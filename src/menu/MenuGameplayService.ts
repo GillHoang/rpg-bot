@@ -17,7 +17,6 @@ import {
 	battleLobbyPanel,
 	confirmationPanel,
 	homePanel,
-	logPages,
 	onboardingPanel,
 	profilePanel,
 	questsPanel,
@@ -121,17 +120,28 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'result':
 				return { kind: 'result' };
 			case 'log':
-				return { kind: 'log', page: 0 };
+				return { kind: 'log', page: Math.max(0, (session.battle?.battle.roundLogs.length ?? 1) - 1) };
+			case 'first':
+			case 'last':
 			case 'prev':
 			case 'next': {
-				if (session.screen.kind !== 'log' || !session.battle) throw new Error('No battle log');
+				if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
+					throw new Error('No battle log');
+				const currentPage =
+					session.screen.kind === 'log'
+						? session.screen.page
+						: Math.max(0, session.battle.battle.roundLogs.length - 1);
 				return {
 					kind: 'log',
 					page: Math.max(
 						0,
 						Math.min(
-							logPages(session.battle).length - 1,
-							session.screen.page + (action === 'next' ? 1 : -1),
+							session.battle.battle.roundLogs.length - 1,
+							action === 'first'
+								? 0
+								: action === 'last'
+									? session.battle.battle.roundLogs.length - 1
+									: currentPage + (action === 'next' ? 1 : -1),
 						),
 					),
 				};

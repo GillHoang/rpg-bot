@@ -31,7 +31,7 @@ import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
 let id: string;
 let sequence = 0;
 beforeAll(async () => {
-	const { testClient } = await import('../src/db/client.js') as unknown as TestDatabase;
+	const { testClient } = (await import('../src/db/client.js')) as unknown as TestDatabase;
 	await migrateTestDatabase(testClient);
 	await db.insert(s.weaponRoster).values(WEAPON_SEED);
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
@@ -106,6 +106,33 @@ function checkPayload(payload: unknown) {
 }
 
 describe('phase 2 menu', () => {
+	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
+		await start();
+		const router = new MenuRouter(undefined, new MenuGameplayService());
+		const open = fixture('command');
+		await router.open(open.command);
+		const initial = open.raw.editReply.mock.calls[0][0];
+		const daily = fixture('button', action(initial, 'daily'));
+		await router.handle(daily.interaction);
+		expect(daily.raw.deferUpdate).toHaveBeenCalledOnce();
+		expect(daily.raw.deferReply).not.toHaveBeenCalled();
+		const updated = daily.raw.editReply.mock.calls[0][0];
+		expect(JSON.stringify(updated)).toContain('Đã nhận daily');
+		expect(parseMenuId(action(updated, 'profile'))!.id).toBe(parseMenuId(action(initial, 'profile'))!.id);
+		let view = updated;
+		for (const name of ['quests', 'reroll', 'cancel', 'refresh', 'home']) {
+			const click = fixture('button', action(view, name));
+			await router.handle(click.interaction);
+			expect(click.raw.deferUpdate).toHaveBeenCalledOnce();
+			expect(click.raw.deferReply).not.toHaveBeenCalled();
+			view = click.raw.editReply.mock.calls[0][0];
+			expect(parseMenuId(action(view, 'home'))!.id).toBe(parseMenuId(action(initial, 'profile'))!.id);
+		}
+		const profile = fixture('button', action(view, 'profile'));
+		await router.handle(profile.interaction);
+		expect(profile.raw.deferReply).toHaveBeenCalledOnce();
+		expect(profile.raw.deferUpdate).not.toHaveBeenCalled();
+	});
 	it('requires confirmation for boss, allows cancel, and rejects changed balances', async () => {
 		await start();
 		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
@@ -135,6 +162,12 @@ describe('phase 2 menu', () => {
 		await click('boss');
 		await click('confirm');
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(1);
+		const bossPayload = JSON.parse(JSON.stringify(view));
+		expect(bossPayload.components).toHaveLength(2);
+		expect(bossPayload.components[1].components).toHaveLength(1);
+		expect(parseMenuId(bossPayload.components[1].components[0].custom_id)?.action).toBe('home');
+		expect(JSON.stringify(view)).toContain('HP');
+		expect(JSON.stringify(view)).not.toContain('Xem nhật ký');
 		await click('home');
 		await click('inventory');
 		expect(JSON.stringify(view)).toContain('Kho đồ');
@@ -160,7 +193,7 @@ describe('phase 2 menu', () => {
 		expect(after.dailies.some((q) => q.id === before.dailies[0].id && q.completed)).toBe(true);
 	});
 
-	it('paginates long emoji logs without dropping text or exceeding message limits', async () => {
+	it('keeps journal pagination aligned to rounds even for very long logs', async () => {
 		const session = new MenuSessionStore().create(id);
 		const game = new MenuGameplayService();
 		const longLine = '🔥'.repeat(4000) + 'END';
@@ -185,15 +218,10 @@ describe('phase 2 menu', () => {
 			},
 		};
 		session.screen = { kind: 'log', page: 0 };
-		let text = '';
-		for (let page = 0; page < 4; page++) {
-			const panel = (await game.render(session))!;
-			expect(panel.body.length).toBeLessThanOrEqual(2800);
-			text += panel.body;
-			if (panel.buttons.find((b) => b.action === 'next')!.disabled) break;
-			session.screen = await game.act(session, 'next', id);
-		}
-		expect(text).toContain(longLine);
+		const panel = (await game.render(session))!;
+		expect(panel.buttons.find((b) => b.action === 'next')!.disabled).toBe(true);
+		expect(panel.buttons.find((b) => b.action === 'last')!.disabled).toBe(true);
+		expect(await game.act(session, 'next', id)).toEqual({ kind: 'log', page: 0 });
 	});
 
 	it('does not create an account when starter seed is missing', async () => {
@@ -241,11 +269,20 @@ describe('phase 2 menu', () => {
 		const battlePayload = JSON.parse(JSON.stringify(view));
 		expect(battlePayload.components[0].type).toBe(17);
 		expect(battlePayload.components[1].type).toBe(1);
-		expect(battlePayload.components[0].components.every((c: { type: number }) => c.type !== 1)).toBe(true);
-		await click('log');
-		expect(JSON.stringify(view)).toContain('Hiệp 1');
-		await click('result');
-		await click('refresh');
+		expect(battlePayload.components).toHaveLength(2);
+		expect(battlePayload.components[1].components).toHaveLength(1);
+		expect(parseMenuId(battlePayload.components[1].components[0].custom_id)?.action).toBe('home');
+		const journal = JSON.stringify(view);
+		if (!journal.includes('Hiệp 1/')) {
+			await click('first');
+			expect(JSON.stringify(view)).toContain('Hiệp 1/');
+			await click('next');
+			expect(JSON.stringify(view)).toContain('Hiệp 2/');
+			await click('prev');
+			expect(JSON.stringify(view)).toContain('Hiệp 1/');
+			await click('last');
+			expect(JSON.stringify(view)).toContain('HP');
+		}
 		expect(await db.select().from(s.menuActionReceipts).where(eq(s.menuActionReceipts.discordId, id))).toHaveLength(
 			1,
 		);
