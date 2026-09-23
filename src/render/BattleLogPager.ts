@@ -185,13 +185,10 @@ export async function sendBattleLog(
 				});
 				return;
 			}
-			if (expired || replaying || Date.now() < replayReadyAt) {
+			const unavailableReason = replayUnavailableReason(expired, replaying, replayReadyAt);
+			if (unavailableReason) {
 				await button.reply({
-					content: expired
-						? 'Nút đã hết hạn. Hãy dùng /raid hunt.'
-						: replaying
-							? 'Trận đấu đang được xử lý.'
-							: `Chờ ${Math.ceil((replayReadyAt - Date.now()) / 1000)} giây nữa để đánh lại.`,
+					content: unavailableReason,
 					flags: MessageFlags.Ephemeral,
 				});
 				return;
@@ -246,4 +243,12 @@ export async function sendBattleLog(
 			.edit({ components: buildBattleLogPage(options, current, { locked: true }).components })
 			.catch(() => undefined);
 	});
+}
+
+function replayUnavailableReason(expired: boolean, replaying: boolean, replayReadyAt: number): string | undefined {
+	if (expired) return 'Nút đã hết hạn. Hãy dùng /raid hunt.';
+	if (replaying) return 'Trận đấu đang được xử lý.';
+	const remainingMs = replayReadyAt - Date.now();
+	if (remainingMs > 0) return `Chờ ${Math.ceil(remainingMs / 1000)} giây nữa để đánh lại.`;
+	return undefined;
 }
