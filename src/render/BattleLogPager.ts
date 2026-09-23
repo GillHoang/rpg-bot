@@ -22,6 +22,7 @@ import {
 	BATTLE_LOG_PREV_LABEL,
 } from '../text/battleLog.js';
 import { renderProgressBar } from '../utils/progressBar.js';
+import { logger } from '../utils/logger.js';
 
 export interface BattleLogPagerOptions {
 	battle: BattleResult;
@@ -175,7 +176,7 @@ export async function sendBattleLog(
 		componentType: ComponentType.Button,
 		time: BATTLE_LOG_PAGER_TTL_MS,
 	});
-	collector.on('collect', async (button: ButtonInteraction) => {
+	const handleButton = async (button: ButtonInteraction): Promise<void> => {
 		if (button.customId === 'battlelog:replay' && options.replay) {
 			const replay = options.replay;
 			if (button.user.id !== replay.ownerId) {
@@ -235,6 +236,23 @@ export async function sendBattleLog(
 				return;
 		}
 		await button.update(payload());
+	};
+	collector.on('collect', async (button: ButtonInteraction) => {
+		try {
+			await handleButton(button);
+		} catch (err) {
+			logger.warn({ err, customId: button.customId }, 'Battle log interaction failed');
+			const errorReply = {
+				content: 'Không thể cập nhật nhật ký lúc này. Hãy thử lại sau.',
+				flags: MessageFlags.Ephemeral,
+			} as const;
+			try {
+				if (button.deferred || button.replied) await button.followUp(errorReply);
+				else await button.reply(errorReply);
+			} catch (replyError) {
+				logger.warn({ err: replyError }, 'Battle log error reply failed');
+			}
+		}
 	});
 	collector.on('end', async () => {
 		expired = true;

@@ -123,6 +123,27 @@ function pageJson(battle: BattleResult, index: number, locked = false): PageJson
 }
 
 describe('battle log pager (Components V2)', () => {
+	it('contains navigation failures even when the recovery reply also fails', async () => {
+		let collect!: (button: ButtonInteraction) => Promise<void>;
+		const message = {
+			createMessageComponentCollector: () => ({
+				on: (event: string, callback: typeof collect) => {
+					if (event === 'collect') collect = callback;
+				},
+			}),
+		};
+		await sendBattleLog(
+			{ editReply: vi.fn().mockResolvedValue(message) } as unknown as ChatInputCommandInteraction,
+			{ battle: fakeBattle, playerName: 'Gill', enemyName: 'Mob', headerLines: ['header'] },
+		);
+		const button = {
+			customId: 'battlelog:prev',
+			update: vi.fn().mockRejectedValue(new Error('Unknown message')),
+			reply: vi.fn().mockRejectedValue(new Error('Unknown interaction')),
+		};
+		await expect(collect(button as unknown as ButtonInteraction)).resolves.toBeUndefined();
+		expect(button.reply).toHaveBeenCalledWith(expect.objectContaining({ flags: MessageFlags.Ephemeral }));
+	});
 	it('restricts replay to the owner and enforces 15 seconds between battles', async () => {
 		const now = vi.spyOn(Date, 'now').mockReturnValue(0);
 		try {
