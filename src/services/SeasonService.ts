@@ -28,7 +28,7 @@ export class SeasonService {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			await this.queries.lock(tx);
 			const active = await this.queries.active(tx);
-			if (!active || active.seasonId !== expectedSeasonId) return { status: 'stale' as const };
+			if (active?.seasonId !== expectedSeasonId) return { status: 'stale' as const };
 			if (now < active.endsAt) return { status: 'not-due' as const };
 			await this.queries.close(tx, active.seasonId);
 			return { status: 'ok' as const, season: await this.create(tx, now) };

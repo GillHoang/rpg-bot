@@ -46,3 +46,12 @@ Các regression ranked no-opponent, thứ tự bag/character, amount và starter
 - [ ] Đối soát database thực tế, backup và chạy migration trong maintenance window. Đây là bước triển khai, chưa thực hiện trên dữ liệu ứng dụng.
 
 Suite PostgreSQL bao phủ daily đồng thời, tiêu số dư casino cuối, ranked cùng đối thủ/đấu chéo/ranked + raid/double-submit, khởi tạo season và reset + start. Các test dùng schema ngẫu nhiên riêng, search_path không fallback public và statement/lock timeout; không dùng DATABASE_URL ứng dụng.
+
+## Xử lý 8 cảnh báo static analysis — 2026-09-23
+
+- Duel/ranked dùng chung comparator String.localeCompare với locale en cố định; không ép Discord ID thành Number.
+- Tách lockFighters khỏi RankedService.fight để giảm cognitive complexity và giữ bag trước character.
+- Link checker dùng bộ đọc segment tuyến tính thay regex backtracking; thêm test link/title/angle và đầu vào sai dài 400.000 ký tự.
+- Migration khai báo một hằng legacy_week_prefix trong DO block cho cả ba cột tuần; không thay đổi schema kết quả.
+- Bỏ undefined dư, tách chuỗi deity khỏi template lồng nhau, dùng optional chaining trong rollover.
+- Kiểm tra: lint/typecheck/diff/link checker đạt; 53/53 test liên quan đạt; 7/7 test concurrency PostgreSQL thật đạt. Chưa chạy lại máy quét Sonar để xác nhận trạng thái issue trên server.

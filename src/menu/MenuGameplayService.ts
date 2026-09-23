@@ -147,7 +147,7 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 
 	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
-		const r = await this.daily.claim(session.ownerId, undefined);
+		const r = await this.daily.claim(session.ownerId);
 		if (r.status === 'ok') {
 			const milestone = r.milestoneChestLabel ? DAILY_MILESTONE_LINE(r.milestoneChestLabel) : '';
 			session.notice = DAILY_SUCCESS(r.day, r.monthly, r.overall, n(r.credux), r.shards, r.chestLabel, milestone);
