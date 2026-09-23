@@ -30,7 +30,7 @@ export function inlineLinkDestinations(source) {
 	const segments = source.split('](');
 	const links = [];
 	for (let index = 1; index < segments.length; index++) {
-		if (segments[index - 1].lastIndexOf('[') === -1) continue;
+		if (!segments[index - 1].includes('[')) continue;
 		const link = destination(segments[index]);
 		if (link !== null) links.push(link);
 	}
