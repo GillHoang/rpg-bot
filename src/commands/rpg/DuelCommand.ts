@@ -5,10 +5,13 @@ import {
 	ComponentType,
 	SlashCommandBuilder,
 	type ChatInputCommandInteraction,
+	type ButtonInteraction,
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { DuelService, DUEL_STAKE_MIN, type DuelAcceptResult } from '../../services/DuelService.js';
 import { sendBattleLog } from '../../render/BattleLogPager.js';
+import { logger } from '../../utils/logger.js';
+import { GENERIC_ERROR } from '../../text/common.js';
 import {
 	DUEL_ACCEPT_LABEL,
 	DUEL_BUSY,
@@ -102,7 +105,7 @@ export class DuelCommand implements ICommand {
 			componentType: ComponentType.Button,
 			time: 62_000,
 		});
-		collector.on('collect', async (button) => {
+		const handleButton = async (button: ButtonInteraction): Promise<void> => {
 			if (button.customId === `duel:decline:${created.duelId}`) {
 				// Only the two participants may decline — anyone else clicking must
 				// not stop the collector or kill the pending invite.
@@ -122,8 +125,9 @@ export class DuelCommand implements ICommand {
 			}
 			await button.deferUpdate();
 			collector.stop('accepted');
-		});
-		collector.on('end', async (_collected, reason) => {
+		};
+		const handleEnd = async (reason: string): Promise<void> => {
+			if (reason === 'error') return;
 			if (reason === 'accepted') {
 				const result = await this.duels.accept(created.duelId, opponent.id);
 				await interaction.editReply({ components: [] });
@@ -152,12 +156,24 @@ export class DuelCommand implements ICommand {
 				await interaction.editReply({ content: DUEL_DECLINED, components: [] });
 				return;
 			}
-			if (reason === 'stale') return;
+			if (reason === 'stale') {
+				await interaction.editReply({ content: DUEL_NOT_FOUND, components: [] });
+				return;
+			}
 			// Expired — the sweep drops the pending row; just clean the buttons.
 			await interaction
 				.editReply({ content: DUEL_EXPIRED(interaction.user.username), components: [] })
 				.catch(() => undefined);
-		});
+		};
+		const recover = async (err: unknown): Promise<void> => {
+			logger.error({ err, duelId: created.duelId }, 'Duel interaction failed');
+			collector.stop('error');
+			await interaction
+				.editReply({ content: GENERIC_ERROR, components: [] })
+				.catch((replyError: unknown) => logger.warn({ err: replyError }, 'Duel error reply failed'));
+		};
+		collector.on('collect', (button) => handleButton(button).catch(recover));
+		collector.on('end', (_collected, reason) => handleEnd(reason).catch(recover));
 	}
 }
 

@@ -34,6 +34,9 @@ export class CommandRegistry {
 		const command = this.commands.get(interaction.commandName);
 		if (!command) {
 			logger.warn({ command: interaction.commandName }, 'Unknown command invoked');
+			await interaction
+				.reply({ content: 'Lệnh này không còn khả dụng. Hãy mở lại danh sách lệnh.', ephemeral: true })
+				.catch((err: unknown) => logger.warn({ err }, 'Unknown command reply failed'));
 			return;
 		}
 
@@ -59,7 +62,9 @@ export class CommandRegistry {
 			// kills the process.
 			try {
 				const payload = { content: GENERIC_ERROR, ephemeral: true };
-				if (interaction.replied || interaction.deferred) {
+				if (interaction.deferred && !interaction.replied) {
+					await interaction.editReply({ content: GENERIC_ERROR, components: [] });
+				} else if (interaction.replied) {
 					await interaction.followUp(payload);
 				} else {
 					await interaction.reply(payload);
