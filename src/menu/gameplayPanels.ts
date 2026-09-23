@@ -16,7 +16,7 @@ import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { MenuAction } from './menuIds.js';
 
-const n = (value: number) => formatNumber(Number(value));
+const n = (value: number) => formatNumber(Number(value), 'vi-VN');
 const button = (action: MenuAction, label: string, disabled = false): GamePanel['buttons'][number] => ({
 	action,
 	label,

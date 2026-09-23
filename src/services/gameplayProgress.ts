@@ -22,10 +22,10 @@ export class GameplayProgressCoordinator {
 		this.quests = options.quests ?? new QuestService(this.reputation, { persistence });
 	}
 
-	async apply(tx: Executor, discordId: string, type: QuestType, now: Date, amount = 1): Promise<void> {
-		await this.quests.progressInTx(tx, discordId, type, now, amount);
-		if (type === 'daily' || type === 'raid_win' || type === 'duel_win' || type === 'ranked') {
-			await this.reputation.awardInTx(tx, discordId, type === 'ranked' ? 'ranked_win' : type, now);
+	async apply(tx: Executor, discordId: string, type: QuestType | 'ranked_win', now: Date, amount = 1): Promise<void> {
+		if (type !== 'ranked_win') await this.quests.progressInTx(tx, discordId, type, now, amount);
+		if (type === 'daily' || type === 'raid_win' || type === 'duel_win' || type === 'ranked_win') {
+			await this.reputation.awardInTx(tx, discordId, type, now);
 		}
 	}
 }
@@ -33,6 +33,12 @@ export class GameplayProgressCoordinator {
 const defaultProgress = new GameplayProgressCoordinator();
 
 /** Compatibility entry point for callers using the default composition. */
-export async function applyGameplayProgress(tx: Executor, discordId: string, type: QuestType, now: Date, amount = 1) {
+export async function applyGameplayProgress(
+	tx: Executor,
+	discordId: string,
+	type: QuestType | 'ranked_win',
+	now: Date,
+	amount = 1,
+) {
 	await defaultProgress.apply(tx, discordId, type, now, amount);
 }

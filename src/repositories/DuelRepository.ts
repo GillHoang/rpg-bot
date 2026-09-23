@@ -17,7 +17,11 @@ export class DuelRepository {
 	}
 
 	async createParticipants(tx: Executor, values: (typeof activeDuelParticipants.$inferInsert)[]) {
-		return tx.insert(activeDuelParticipants).values(values);
+		return tx
+			.insert(activeDuelParticipants)
+			.values(values)
+			.onConflictDoNothing()
+			.returning({ discordId: activeDuelParticipants.discordId });
 	}
 
 	async findUser(tx: Executor, discordId: string) {

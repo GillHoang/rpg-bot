@@ -9,6 +9,7 @@ import {
 	PVP_BOUGHT_BAG,
 	PVP_BOUGHT_COSMETIC,
 	PVP_BOUGHT_TITLE,
+	PVP_ALREADY_OWNED,
 	PVP_INSUFFICIENT,
 	PVP_ITEM_LINE,
 	PVP_ITEM_NOT_FOUND,
@@ -82,6 +83,19 @@ export class PvpShopService {
 			if (item.kind.type !== 'bag' && item.limitPerSeason) {
 				const [purchase] = await this.queries.findPurchase(tx, discordId, season.seasonId, item.key);
 				if ((purchase?.qty ?? 0) >= item.limitPerSeason) return PVP_SEASON_LIMIT(item.limitPerSeason);
+			}
+			// Grant first: a duplicate must consume neither currency nor seasonal quota.
+			if (
+				item.kind.type === 'cosmetic' &&
+				!(await this.cosmetics.grantCosmeticInTx(tx, discordId, item.kind.cosmeticKey, 'shop'))
+			)
+				return PVP_ALREADY_OWNED;
+			if (
+				item.kind.type === 'title' &&
+				!(await this.cosmetics.grantTitleInTx(tx, discordId, item.kind.titleCode))
+			)
+				return PVP_ALREADY_OWNED;
+			if (item.kind.type !== 'bag' && item.limitPerSeason) {
 				await this.queries.incrementPurchase(tx, {
 					discordId,
 					seasonId: season.seasonId,
@@ -99,11 +113,9 @@ export class PvpShopService {
 					});
 					return PVP_BOUGHT_BAG(item.label, item.kind.qty);
 				case 'cosmetic': {
-					await this.cosmetics.grantCosmeticInTx(tx, discordId, item.kind.cosmeticKey, 'shop');
 					return PVP_BOUGHT_COSMETIC(item.label);
 				}
 				case 'title': {
-					await this.cosmetics.grantTitleInTx(tx, discordId, item.kind.titleCode);
 					return PVP_BOUGHT_TITLE(item.label);
 				}
 			}

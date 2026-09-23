@@ -101,7 +101,7 @@ export class BattleEngine {
 
 		return {
 			outcome: this.resolveOutcome(player, enemy),
-			rounds: Math.min(round, MAX_ROUNDS),
+			rounds: roundLogs.length,
 			log: roundLogs.flatMap((r) => r.lines),
 			roundLogs,
 			playerHpRemaining: player.hp,

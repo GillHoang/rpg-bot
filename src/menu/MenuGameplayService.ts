@@ -1,4 +1,4 @@
-import { formatNumber } from '../text/format.js';
+import { dailyRewardText } from '../render/dailyRewardText.js';
 import { MENU_ERROR_TEXT } from '../text/diagnostics.js';
 import { GAMEPLAY_NOTICE } from '../text/gameplay.js';
 import { MenuPlayerRepository } from '../repositories/MenuPlayerRepository.js';
@@ -11,7 +11,7 @@ import { DailyService } from '../services/DailyService.js';
 import { QuestService } from '../services/QuestService.js';
 import { RaidService } from '../services/RaidService.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
-import { DAILY_ALREADY_CLAIMED, DAILY_MILESTONE_LINE, DAILY_SUCCESS } from '../text/daily.js';
+import { DAILY_ALREADY_CLAIMED } from '../text/daily.js';
 import type { GamePanel, MenuGameplay } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { MenuAction } from './menuIds.js';
@@ -24,8 +24,6 @@ import {
 	profilePanel,
 	questsPanel,
 } from './gameplayPanels.js';
-
-const n = (value: number) => formatNumber(value, 'vi-VN');
 
 export interface MenuGameplayDependencies {
 	persistence?: PersistenceContext;
@@ -152,8 +150,7 @@ export class MenuGameplayService implements MenuGameplay {
 	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
 		const r = await this.daily.claim(session.ownerId);
 		if (r.status === 'ok') {
-			const milestone = r.milestoneChestLabel ? DAILY_MILESTONE_LINE(r.milestoneChestLabel) : '';
-			session.notice = DAILY_SUCCESS(r.day, r.monthly, r.overall, n(r.credux), r.shards, r.chestLabel, milestone);
+			session.notice = dailyRewardText(r);
 		} else if (r.status === 'already-claimed') {
 			session.notice = DAILY_ALREADY_CLAIMED(r.overall);
 		} else {

@@ -31,7 +31,7 @@ export class MenuRouter {
 	async open(interaction: ChatInputCommandInteraction | ButtonInteraction): Promise<void> {
 		let session: MenuSession | undefined;
 		try {
-			await interaction.deferReply();
+			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 			session = this.sessions.create(interaction.user.id);
 			session.launcher = true;
 			session.avatarUrl = interaction.user.displayAvatarURL?.({ size: 256 });

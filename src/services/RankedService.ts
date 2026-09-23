@@ -78,7 +78,7 @@ export interface RankedDependencies {
 		| 'findCharacter'
 		| 'insertLog'
 		| 'findOpponentInWindow'
-		| 'findRecentResults'
+		| 'currentWinStreak'
 	>;
 	engine?: Pick<BattleEngine, 'resolve'>;
 	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
@@ -114,7 +114,7 @@ export class RankedService {
 		| 'findCharacter'
 		| 'insertLog'
 		| 'findOpponentInWindow'
-		| 'findRecentResults'
+		| 'currentWinStreak'
 	>;
 	private readonly engine: Pick<BattleEngine, 'resolve'>;
 	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
@@ -220,7 +220,9 @@ export class RankedService {
 				opponentChange,
 			});
 
-			if (!draw) await this.progress.apply(tx, won ? discordId : opponentRow.discordId, 'ranked', new Date());
+			const now = new Date();
+			await this.progress.apply(tx, discordId, 'ranked', now);
+			if (!draw) await this.progress.apply(tx, won ? discordId : opponentRow.discordId, 'ranked_win', now);
 			await this.seasons.ensureActive(tx);
 			await this.queries.deleteFightLock(tx, discordId);
 
@@ -394,47 +396,48 @@ export class RankedService {
 			opponentChange,
 		} = input;
 
-		if (meChange.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
-			// Bracket promotion → rank_season title (challenger/initiator only).
-			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
-		}
-
-		await this.queries.updateCharacter(tx, discordId, {
-			pvpRating: ratingAfter,
-			pvpPeak: Math.max(me.pvpPeak, ratingAfter),
-			// A fresh promotion re-arms the shield; falling without it breaks it.
-			pvpDemotionShield: meChange.shield,
-			// Ranked counts toward the PvP win/loss record too (draw = no change).
-			pvpWins: me.pvpWins + (won ? 1 : 0),
-			pvpLosses: me.pvpLosses + (!won && !draw ? 1 : 0),
-		});
-		await this.queries.updateCharacter(tx, opponentRow.discordId, {
-			pvpRating: opponentRatingAfter,
-			pvpPeak: Math.max(opponentRow.pvpPeak, opponentRatingAfter),
-			pvpDemotionShield: opponentChange.shield,
-			// Draw = no W/L change for either fighter (mirrors the initiator).
-			pvpWins: opponentRow.pvpWins + (!won && !draw ? 1 : 0),
-			pvpLosses: opponentRow.pvpLosses + (won ? 1 : 0),
-		});
-
-		await this.queries.insertLog(tx, {
-			playerId: discordId,
-			opponentId: opponentRow.discordId,
-			result: rankedLogResultOf(draw, won),
+		await this.settleParticipant(
+			tx,
+			me,
+			opponentRow.discordId,
 			ratingBefore,
 			ratingAfter,
-		});
-		await this.queries.insertLog(tx, {
-			playerId: opponentRow.discordId,
-			opponentId: discordId,
-			result: rankedLogResultOf(draw, !won),
-			ratingBefore: opponentRow.pvpRating,
-			ratingAfter: opponentRatingAfter,
-		});
+			rankedLogResultOf(draw, won),
+			meChange,
+		);
+		await this.settleParticipant(
+			tx,
+			opponentRow,
+			discordId,
+			opponentRow.pvpRating,
+			opponentRatingAfter,
+			rankedLogResultOf(draw, !won),
+			opponentChange,
+		);
+	}
 
+	private async settleParticipant(
+		tx: Transaction,
+		character: typeof userCharacter.$inferSelect,
+		opponentId: string,
+		ratingBefore: number,
+		ratingAfter: number,
+		result: 'win' | 'loss' | 'draw',
+		change: { shield: boolean; promoted: boolean },
+	): Promise<void> {
+		const discordId = character.discordId;
+		if (change.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
+			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
+		}
+		await this.queries.insertLog(tx, { playerId: discordId, opponentId, result, ratingBefore, ratingAfter });
 		const streak = await this.currentWinStreak(tx, discordId);
 		await this.queries.updateCharacter(tx, discordId, {
-			highestRankStreak: Math.max(me.highestRankStreak, streak),
+			pvpRating: ratingAfter,
+			pvpPeak: Math.max(character.pvpPeak, ratingAfter),
+			pvpDemotionShield: change.shield,
+			pvpWins: character.pvpWins + (result === 'win' ? 1 : 0),
+			pvpLosses: character.pvpLosses + (result === 'loss' ? 1 : 0),
+			highestRankStreak: Math.max(character.highestRankStreak, streak),
 		});
 	}
 
@@ -453,13 +456,7 @@ export class RankedService {
 
 	/** Win streak = consecutive wins at the tail of ranked_logs. */
 	private async currentWinStreak(tx: Transaction, discordId: string): Promise<number> {
-		const logs = await this.queries.findRecentResults(tx, discordId);
-		let streak = 0;
-		for (const log of logs) {
-			if (log.result !== 'win') break;
-			streak += 1;
-		}
-		return streak;
+		return this.queries.currentWinStreak(tx, discordId);
 	}
 }
 

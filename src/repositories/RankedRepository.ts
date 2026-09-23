@@ -1,5 +1,6 @@
 import type { Executor } from '../db/client.js';
-import { and, desc, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, eq, gte, ne, sql } from 'drizzle-orm';
+import { countWinStreak } from './countWinStreak.js';
 import { activeRankedFights, rankedLogs, rankedReward, users, usersBag, userCharacter } from '../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
@@ -68,12 +69,11 @@ export class RankedRepository {
 			.limit(1);
 	}
 
-	async findRecentResults(tx: Executor, discordId: string) {
-		return tx
-			.select({ result: rankedLogs.result })
-			.from(rankedLogs)
-			.where(eq(rankedLogs.playerId, discordId))
-			.orderBy(desc(rankedLogs.id))
-			.limit(50);
+	async currentWinStreak(tx: Executor, discordId: string): Promise<number> {
+		return countWinStreak(
+			tx,
+			{ table: rankedLogs, id: rankedLogs.id, player: rankedLogs.playerId, result: rankedLogs.result },
+			discordId,
+		);
 	}
 }

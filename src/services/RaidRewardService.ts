@@ -39,7 +39,7 @@ export class RaidRewardService {
 			| 'updateBag'
 			| 'insertGameLog'
 			| 'insertRaidLog'
-			| 'recentResults'
+			| 'currentWinStreak'
 		> = new RaidRewardStore(),
 	) {}
 
@@ -125,12 +125,6 @@ export class RaidRewardService {
 
 	/** Consecutive wins at the tail of raid_logs — for highestRaidStreak. */
 	async currentWinStreak(executor: Executor, discordId: string): Promise<number> {
-		const logs = await this.store.recentResults(executor, discordId);
-		let streak = 0;
-		for (const log of logs) {
-			if (log.result !== 'win') break;
-			streak += 1;
-		}
-		return streak;
+		return this.store.currentWinStreak(executor, discordId);
 	}
 }

@@ -11,7 +11,7 @@ import type { CombatClass } from '../src/domain/entities/PlayerAccount.js';
 const classes: Array<CombatClass | null> = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer', null];
 const seeds = [1, 7, 42, 12345];
 
-// Recorded against the original engine before extracting attack/status handling.
+// Baseline updated for the reviewed round-count and fixed Tailwind corrections.
 // Hash the complete logs, round snapshots and mutated combatants so even a
 // changed RNG call, hook order or remaining debuff is caught, without storing
 // thousands of repetitive log lines. Pin numeric formatting across host locales.
@@ -52,6 +52,7 @@ describe('combat behavior before responsibility extraction', () => {
 						crit: 20,
 					});
 					const result = new BattleEngine().resolve(player, enemy, seed);
+					expect(result.rounds).toBe(result.roundLogs.length);
 					return { result, player, enemy };
 				}),
 			),
@@ -109,6 +110,7 @@ describe('combat behavior before responsibility extraction', () => {
 								{ effectKey: 'thorns', value: 0.15 },
 							]),
 						});
+						expect(result.rounds).toBe(result.roundLogs.length);
 						return { result, player, enemy };
 					}),
 				),
@@ -124,6 +126,7 @@ describe('combat behavior before responsibility extraction', () => {
 					const player = createCombatant({ name: 'Wall', combatClass: null, hp, atk: 1, def: 0, crit: 0 });
 					const enemy = createCombatant({ name: 'Wall', combatClass: null, hp, atk: 1, def: 0, crit: 0 });
 					const result = new BattleEngine().resolve(player, enemy, seed);
+					expect(result.rounds).toBe(result.roundLogs.length);
 					return { result, player, enemy };
 				}),
 			),

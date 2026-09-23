@@ -142,11 +142,18 @@ export class DuelService {
 		if (challengerId === opponentId) return { status: 'self' };
 
 		return this.persistence.unitOfWork.run(async (tx): Promise<DuelCreateResult> => {
-			for (const who of ['challenger', 'opponent'] as const) {
-				const id = who === 'challenger' ? challengerId : opponentId;
-				const blocked = await this.participantGuard(tx, id, who);
-				if (blocked) return blocked;
+			// Expired-duel cleanup can lock rows too; use the same order as acquisition.
+			const candidates = [
+				{ id: challengerId, who: 'challenger' as const },
+				{ id: opponentId, who: 'opponent' as const },
+			].sort((a, b) => comparePlayerIds(a.id, b.id));
+			let blocked: DuelCreateResult | null = null;
+			for (const { id, who } of candidates) {
+				const failure = await this.participantGuard(tx, id, who);
+				// Error priority follows the request roles, independently of lock order.
+				if (failure && (!blocked || who === 'challenger')) blocked = failure;
 			}
+			if (blocked) return blocked;
 			if (stake > 0 && !(await this.bothCanAfford(tx, challengerId, opponentId, stake)))
 				return { status: 'insufficient-funds' };
 
@@ -163,10 +170,20 @@ export class DuelService {
 				status: 'pending',
 				expiresAt,
 			});
-			await this.queries.createParticipants(tx, [
-				{ discordId: challengerId, duelId, lockToken, role: 'challenger', expiresAt },
-				{ discordId: opponentId, duelId, lockToken, role: 'opponent', expiresAt },
-			]);
+			const participants = await this.queries.createParticipants(
+				tx,
+				[
+					{ discordId: challengerId, duelId, lockToken, role: 'challenger', expiresAt },
+					{ discordId: opponentId, duelId, lockToken, role: 'opponent', expiresAt },
+				].sort((a, b) => comparePlayerIds(a.discordId, b.discordId)),
+			);
+			if (participants.length !== 2) {
+				await this.queries.deleteDuel(tx, duelId);
+				return {
+					status: 'busy',
+					who: participants.some((p) => p.discordId === challengerId) ? 'opponent' : 'challenger',
+				};
+			}
 			return { status: 'ok', duelId, stake, expiresAt };
 		});
 	}
@@ -181,6 +198,7 @@ export class DuelService {
 		if (!(await this.characters.hasCharacter(tx, id))) return { status: 'no-character', who };
 		const [participant] = await this.queries.findParticipant(tx, id);
 		if (participant && participant.expiresAt > new Date()) return { status: 'busy', who };
+		if (participant) await this.queries.deleteDuel(tx, participant.duelId);
 		return null;
 	}
 
@@ -341,10 +359,8 @@ export class DuelService {
 			await this.queries.updateBag(tx, winnerId, { credux: winnerBag.credux + stake });
 		}
 		await this.queries.updateCharacter(tx, winnerId, { pvpWins: winner.character.pvpWins + 1 });
-		if (winner.character.pvpWins === 0) {
-			// First-ever duel win → First Blood title (idempotent grant).
-			await this.cosmetics.grantTitleInTx(tx, winnerId, 'first_blood');
-		}
+		// A duel win qualifies independently of the shared ranked/duel PvP counter.
+		await this.cosmetics.grantTitleInTx(tx, winnerId, 'first_blood');
 		await this.queries.updateCharacter(tx, loserId, { pvpLosses: loser.character.pvpLosses + 1 });
 		await this.queries.insertPvpLog(tx, {
 			duelId: duel.duelId,

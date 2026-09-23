@@ -318,10 +318,9 @@ export class QuestService {
 		// read the same counter (read–modify–write would drop one increment).
 		const [quest] = await this.queries.lockDailyQuest(tx, discordId, day, questType);
 		if (!quest || quest.completed) return;
-		const count = Math.min(quest.targetCount, quest.currentCount + amount);
-		const completed = count >= quest.targetCount;
-		await this.queries.updateDailyProgress(tx, quest.id, { currentCount: count, completed });
-		if (!completed) return;
+		const progress = advanceQuest(quest, amount);
+		await this.queries.updateDailyProgress(tx, quest.id, progress);
+		if (!progress.completed) return;
 
 		const [bag] = await this.queries.lockRewardBag(tx, discordId);
 		if (!bag) return;
@@ -358,10 +357,9 @@ export class QuestService {
 		// Row lock — same lost-update protection as bumpDaily.
 		const [quest] = await this.queries.lockWeeklyQuest(tx, discordId, week, questType);
 		if (!quest || quest.completed) return;
-		const count = Math.min(quest.targetCount, quest.currentCount + amount);
-		const completed = count >= quest.targetCount;
-		await this.queries.updateWeeklyProgress(tx, quest.id, { currentCount: count, completed });
-		if (!completed) return;
+		const progress = advanceQuest(quest, amount);
+		await this.queries.updateWeeklyProgress(tx, quest.id, progress);
+		if (!progress.completed) return;
 
 		const [bag] = await this.queries.lockRewardBag(tx, discordId);
 		if (!bag) return;
@@ -372,4 +370,9 @@ export class QuestService {
 		});
 		await this.reputation.awardInTx(tx, discordId, 'quest_complete', now);
 	}
+}
+
+function advanceQuest(quest: { targetCount: number; currentCount: number }, amount: number) {
+	const currentCount = Math.min(quest.targetCount, quest.currentCount + amount);
+	return { currentCount, completed: currentCount >= quest.targetCount };
 }

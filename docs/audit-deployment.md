@@ -14,6 +14,14 @@ Chưa chạy migration trên database ứng dụng. Migration cần triển khai
 - CHECK chặn currency âm, class không hỗ trợ, combat level ngoài 1–50, preset slot ngoài 1–2, enhancement ngoài 1–21 (Divine tối đa +20; giới hạn theo tier vẫn do service kiểm tra), và season có endsAt không sau startsAt. Dữ liệu cũ vi phạm làm migration thất bại, không bị tự động xóa/sửa.
 - Dùng pnpm db:migrate sau khi hoàn tất đối soát. Rollback phiên bản phải khôi phục schema/dữ liệu từ backup, không chỉ checkout code cũ.
 
+## Migration 0003 và bản sửa nghiệp vụ 2026-09-23
+
+Chạy `pnpm db:migrate` trước khi khởi động code mới. Migration `0003_combat_progression` nâng CHECK combat level lên 1–100 và chuyển `user_character.lifetime_exp`, `user_character.combat_exp`, `raid_logs.updated_exp` sang bigint. Mapping TypeScript vẫn là number; đường cong EXP đến cấp 100 nằm trong miền số nguyên an toàn của JavaScript. Các giá trị đã lưu được giữ nguyên. Không đổi hay chạy lại migration 0002 đã áp dụng.
+
+Migration đã kiểm chứng trên PGlite với dữ liệu có sẵn; chưa chạy trên database ứng dụng. Các thay đổi cấp phần thưởng chỉ áp dụng cho hành động mới, không tự hoàn tiền hay cấp bù dữ liệu lịch sử thiếu bằng chứng.
+
+Ranked: quest tham gia tăng một lần cho người gọi, kể cả thua/hòa; reputation thắng chỉ cấp cho winner. Cả hai bên đều ghi nhận kỷ lục chuỗi thắng và title khi thăng hạng. Menu mở riêng tư; menu và thông báo daily dùng định dạng số Việt Nam.
+
 ## Season
 
 Policy triển khai là chuyển mùa thủ công. endsAt là thời điểm sớm nhất được chuyển; hết hạn không tự reset quota shop. Quản trị chạy pnpm season:rollover <expected-active-season-id>. Lệnh khóa và kiểm tra lại mùa hiện tại; gọi lại cùng ID trả stale và không tạo mùa nữa. Mùa mới dài 30 ngày, quota shop gắn seasonId mới. Rating và thưởng cuối mùa giữ nguyên; không tự phát thêm thưởng hoặc reset rating.

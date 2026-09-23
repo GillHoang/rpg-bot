@@ -32,3 +32,4 @@ export const PVP_SHOP_LABELS = {
 	summon_circle_gold: 'Cosmetic — Golden Summon Circle (tier Chosen)',
 	title_legend: 'Title — Arena Legend',
 };
+export const PVP_ALREADY_OWNED = 'Bạn đã sở hữu vật phẩm này. Valor và lượt mua được giữ nguyên.';

@@ -34,31 +34,27 @@ const mob = (patch: Partial<MonsterRosterRow> = {}): MonsterRosterRow => ({
 
 function rewardStore() {
 	return {
-		lockBag: vi
-			.fn<RaidRewardStore['lockBag']>()
-			.mockResolvedValue({
-				credux: 1000,
-				beliefShards: 10,
-				lifetimeCreduxEarned: 2000,
-				silverChest: 2,
-				goldChest: 3,
-				bossTreasureChest: 4,
-			}),
-		lockCharacter: vi
-			.fn<RaidRewardStore['lockCharacter']>()
-			.mockResolvedValue({
-				combatLevel: 1,
-				combatExp: 50,
-				lifetimeExp: 100,
-				bossKills: 2,
-				raidsWon: 3,
-				raidsLost: 4,
-			}),
+		lockBag: vi.fn<RaidRewardStore['lockBag']>().mockResolvedValue({
+			credux: 1000,
+			beliefShards: 10,
+			lifetimeCreduxEarned: 2000,
+			silverChest: 2,
+			goldChest: 3,
+			bossTreasureChest: 4,
+		}),
+		lockCharacter: vi.fn<RaidRewardStore['lockCharacter']>().mockResolvedValue({
+			combatLevel: 1,
+			combatExp: 50,
+			lifetimeExp: 100,
+			bossKills: 2,
+			raidsWon: 3,
+			raidsLost: 4,
+		}),
 		updateCharacter: vi.fn<RaidRewardStore['updateCharacter']>().mockResolvedValue(undefined),
 		updateBag: vi.fn<RaidRewardStore['updateBag']>().mockResolvedValue(undefined),
 		insertGameLog: vi.fn<RaidRewardStore['insertGameLog']>().mockResolvedValue(undefined),
 		insertRaidLog: vi.fn<RaidRewardStore['insertRaidLog']>().mockResolvedValue(undefined),
-		recentResults: vi.fn<RaidRewardStore['recentResults']>().mockResolvedValue([]),
+		currentWinStreak: vi.fn<RaidRewardStore['currentWinStreak']>().mockResolvedValue(0),
 	};
 }
 const grant: RaidRewardGrant = {
@@ -86,17 +82,15 @@ function deityData() {
 			.fn<DeityDataRepository['listAvailableForTier']>()
 			.mockResolvedValue([deity, { ...deity, deityId: 2, name: 'Two' }]),
 		ownedDeityIds: vi.fn<DeityDataRepository['ownedDeityIds']>().mockResolvedValue(new Set([1])),
-		findAssemblyData: vi
-			.fn<DeityDataRepository['findAssemblyData']>()
-			.mockResolvedValue({
-				baseAtk: 101,
-				baseHp: 1001,
-				baseDef: 81,
-				sigils: 3,
-				mythology: 'Greek',
-				blessingKey: 'damage',
-				blessingScaling: 'scalable',
-			}),
+		findAssemblyData: vi.fn<DeityDataRepository['findAssemblyData']>().mockResolvedValue({
+			baseAtk: 101,
+			baseHp: 1001,
+			baseDef: 81,
+			sigils: 3,
+			mythology: 'Greek',
+			blessingKey: 'damage',
+			blessingScaling: 'scalable',
+		}),
 		findOwnedProgress: vi.fn<DeityDataRepository['findOwnedProgress']>().mockResolvedValue(null),
 		setSigils: vi.fn<DeityDataRepository['setSigils']>().mockResolvedValue(undefined),
 		setAscended: vi.fn<DeityDataRepository['setAscended']>().mockResolvedValue(undefined),
@@ -326,16 +320,11 @@ describe('RaidRewardService', () => {
 		expect(broken.insertRaidLog).not.toHaveBeenCalled();
 	});
 
-	it('counts only the consecutive win prefix returned by the store', async () => {
+	it('uses the complete streak count from the store', async () => {
 		const store = rewardStore();
-		store.recentResults.mockResolvedValue([
-			{ result: 'win' },
-			{ result: 'win' },
-			{ result: 'loss' },
-			{ result: 'win' },
-		]);
-		expect(await new RaidRewardService(store).currentWinStreak(executor, 'owner')).toBe(2);
-		expect(store.recentResults).toHaveBeenCalledExactlyOnceWith(executor, 'owner');
+		store.currentWinStreak.mockResolvedValue(51);
+		expect(await new RaidRewardService(store).currentWinStreak(executor, 'owner')).toBe(51);
+		expect(store.currentWinStreak).toHaveBeenCalledExactlyOnceWith(executor, 'owner');
 	});
 });
 

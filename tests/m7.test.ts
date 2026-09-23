@@ -157,6 +157,11 @@ describe('M7 quests + believer EXP', () => {
 });
 
 describe('M7 duels', () => {
+	beforeEach(async () => {
+		// A failed assertion in another case must not leave a pending challenge here.
+		await db.delete(s.activeDuels);
+	});
+
 	it('creates, accepts, pays the wager to the winner and logs everything', async () => {
 		const id2 = `test-${++sequence}-opponent`;
 		await new StartService().start(id2, id2, 'Mage');

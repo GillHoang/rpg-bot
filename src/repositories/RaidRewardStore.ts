@@ -1,4 +1,5 @@
-import { desc, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { countWinStreak } from './countWinStreak.js';
 import type { Executor } from '../db/client.js';
 import { raidLogs, userCharacter, usersBag, gameLogs } from '../db/schema.js';
 
@@ -52,12 +53,11 @@ export class RaidRewardStore {
 		await executor.insert(raidLogs).values(entry);
 	}
 
-	async recentResults(executor: Executor, discordId: string): Promise<{ result: string }[]> {
-		return executor
-			.select({ result: raidLogs.result })
-			.from(raidLogs)
-			.where(eq(raidLogs.discordId, discordId))
-			.orderBy(desc(raidLogs.id))
-			.limit(50);
+	async currentWinStreak(executor: Executor, discordId: string): Promise<number> {
+		return countWinStreak(
+			executor,
+			{ table: raidLogs, id: raidLogs.id, player: raidLogs.discordId, result: raidLogs.result },
+			discordId,
+		);
 	}
 }
