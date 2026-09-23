@@ -29,7 +29,7 @@ describe('Discord gameplay surface', () => {
 	it('serializes all slash commands, including their new subcommands', () => {
 		registerAllCommands();
 		const commands = CommandRegistry.getInstance().getAll().map(c => c.data.toJSON());
-		expect(commands.map(c => c.name)).toEqual(expect.arrayContaining(['inventory', 'deities', 'open', 'runes', 'equip', 'preset', 'raid', 'casino']));
+		expect(commands.map(c => c.name)).toEqual(expect.arrayContaining(['inventory', 'deities', 'open', 'runes', 'equip', 'preset', 'raid', 'casino', 'ung-ho', 'donate', 'ung-ho-trang-thai']));
 		expect(commands.find(c => c.name === 'casino')?.options?.map(o => o.name)).toEqual(expect.arrayContaining(['blackjack', 'crash', 'coin_toss', 'dice_roll', 'slot_machine', 'baccarat']));
 		expect(commands.find(c => c.name === 'raid')?.options?.map(o => o.name)).toEqual(['hunt', 'boss']);
 		expect(commands.find(c => c.name === 'socket')?.options?.map(o => o.name)).toContain('unlock');

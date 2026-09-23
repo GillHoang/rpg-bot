@@ -180,6 +180,7 @@ export const UNICODE_ICONS = {
 		casino: '🎲',
 	},
 	battle: { health: '❤️' },
+	supporter: { heart: '❤️' },
 } as const;
 
 /** Same semantic keys for both render targets; canvas cannot draw Discord markup. */

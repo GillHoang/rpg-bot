@@ -14,6 +14,12 @@ Drizzle ORM và PostgreSQL. Gameflow khép kín từ tạo nhân vật đến en
 triển khai gameflow: [docs/gameplay-implementation.md](docs/gameplay-implementation.md) ·
 triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 
+Donation/supporter (tắt mặc định):
+[Supporter / Donation System](docs/supporter-donation-plan.md) — ủng hộ nhà phát triển,
+quyền cảm ơn cosmetic/social, không tạo lợi thế gameplay. Luồng VietQR + SePay chỉ
+được mở khi cấu hình đầy đủ; phần cấp quyền Keygate vẫn cần contract test với
+deployment thực tế trước khi bật production.
+
 ## Yêu cầu
 
 - Node.js >= 20
@@ -33,6 +39,13 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 | `ERROR_WEBHOOK_URL` | Tuỳ chọn — URL webhook Discord nhận embed khi logger ghi `error`/`fatal` (bao gồm lỗi client/shard). Để trống để tắt. Embed có thông báo, stack trace, ngữ cảnh; giới hạn 4096 ký tự và che token/URL DB đã cấu hình. Giữ `LOG_LEVEL=info` hoặc `error` để nhận đủ lỗi; `fatal` lọc bỏ `error`. |
 | `OWNER_DISCORD_IDS` | Discord ID của chủ bot (phân tách bằng dấu `,`) — bắt buộc để dùng `/reset` |
 | `DEPLOY_GUILD_ID` | Tuỳ chọn — guild deploy mặc định cho `deploy:commands` trên server thử nghiệm |
+| `SUPPORTER_DONATIONS_ENABLED` | Mặc định `false`; bản tích hợp `tabloy/keygate` hiện chặn cứng việc bật nhận tiền vì API tạo license chưa bảo đảm chống cấp trùng |
+| `SUPPORTER_TIERS_JSON` | JSON array tier, mỗi tier có `id`, `name`, `minimumAmount`, `durationDays` và `keygatePlanSlug` |
+| `SUPPORTER_DONATION_MIN_AMOUNT` / `SUPPORTER_DONATION_MAX_AMOUNT` | Khoảng số tiền VND nguyên được phép nhận |
+| `SEPAY_WEBHOOK_API_KEY` / `SEPAY_ACCOUNT_NUMBER` / `SEPAY_BANK_NAME` | Bí mật và tài khoản nhận tiền dùng để xác thực/matching webhook |
+| `SEPAY_WEBHOOK_HOST` / `SEPAY_WEBHOOK_PORT` / `SEPAY_WEBHOOK_PATH` | Địa chỉ HTTP callback; mặc định `0.0.0.0:8787/webhooks/sepay` |
+| `KEYGATE_BASE_URL` / `KEYGATE_ADMIN_TOKEN` / `KEYGATE_PRODUCT_ID` | HTTPS origin, admin token và product ID của deployment `tabloy/keygate`; adapter đọc `/api/v1/admin/plans` và `/api/v1/admin/licenses` |
+| `KEYGATE_CONTRACT_VERIFIED` | Mặc định `false`; đặt `true` hiện vẫn không mở nhận tiền cho đến khi API license có chống cấp trùng bền vững và quyền được xác minh |
 
 2. Cài đặt và khởi tạo:
 
@@ -224,12 +237,14 @@ pnpm build    # compile + kiểm tra import của dist
   đúng một đòn/trận; 10 Sigil = 100% base stat; Ascension không cộng stat hay
   kích hoạt blessing; gear/deity mới phải trang bị vào preset mới có tác dụng
   (deity đầu tiên tự equip nếu slot trống).
-- **Chưa thuộc phạm vi** (cố ý, xem docs/gameplay-implementation.md + docs/m7-implementation.md
-  §Giới hạn): world boss guild (`boss_*`, `auto_raids`), vote reward top.gg
-  (`topgg_vote_events`), echo deity slot, season-end payout,
-  supporter/stripe/tickets (`custom_avatar_token`, `custom_deity_token`),
-  `supreme_chest`, essence exchange, per-level reward grants, passive
-  weapon/armor theo roster, portrait canvas.
+- **Chưa thuộc phạm vi runtime hiện tại** (cố ý, xem docs/gameplay-implementation.md +
+  docs/m7-implementation.md §Giới hạn): world boss guild (`boss_*`, `auto_raids`),
+  vote reward top.gg (`topgg_vote_events`), echo deity slot, season-end payout,
+  `supreme_chest`, essence exchange, per-level reward grants, passive weapon/armor
+  theo roster, portrait canvas. Donation/supporter đang được triển khai từng phần
+  theo [Supporter / Donation System](docs/supporter-donation-plan.md);
+  các cột supporter legacy và `custom_avatar_token`, `custom_deity_token` chưa được
+  nối vào luồng thanh toán.
 - [docs/port-history.md](docs/port-history.md) — lịch sử port trước gameflow,
   giữ làm tham khảo kiến trúc, không phải hướng dẫn chạy hiện tại.
 
