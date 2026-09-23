@@ -35,7 +35,7 @@ export const QUEST_REGISTER_FIRST = 'Gõ /start để đăng ký trước.';
 export const QUEST_DAILY_HEADER = (day: string): string => `${ICONS.quest.dailyHeader} **Daily quests (${day})**`;
 export const QUEST_DAILY_ALL_DONE = (relics: number): string =>
 	`\n${ICONS.status.completed} Đủ 3 daily — đã nhận +${relics} Sacred Relic.`;
-export const QUEST_WEEKLY_HEADER = (week: number): string =>
+export const QUEST_WEEKLY_HEADER = (week: string): string =>
 	`\n\n${ICONS.quest.weeklyHeader} **Weekly quests (tuần ${week})**`;
 export const QUEST_GRAND_READY = '\n' + ICONS.quest.grand + ' Đủ 3 weekly — dùng `/quest claim` nhận Weekly Grand!';
 export const QUEST_GRAND_CLAIMED = '\n' + ICONS.status.completed + ' Weekly grand đã claim tuần này.';

@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import { LootGrantService } from './LootGrantService.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -38,6 +39,7 @@ export const ESSENCE_FIELDS = {
 } as const;
 
 export interface LootDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	grants?: Pick<LootGrantService, 'rune' | 'gear'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<LootInventoryRepository, 'updateBag'>;
@@ -47,6 +49,7 @@ type LootSource = Pick<LootRepository, 'lockBag' | 'log' | 'bags'> & Partial<Pic
 
 export class LootService {
 	private readonly grants: Pick<LootGrantService, 'rune' | 'gear'>;
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly repo: Pick<LootRepository, 'lockBag' | 'log' | 'bags'>;
 	private readonly events: Pick<EventBus, 'emit'>;
@@ -54,6 +57,7 @@ export class LootService {
 
 	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new LootRepository();
 		// Preserve earlier positional collaborators that supplied both storage and grants.
 		this.grants =
@@ -117,13 +121,14 @@ export class LootService {
 				supremeRelics: bag.supremeRelics + relics.supremeRelics,
 			});
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
+			await this.progress.apply(tx, id, 'open_chest', new Date(), count);
 			return (
 				OPEN_RESULT(count, table.label, creux.toLocaleString(), shards) +
 				(items.length ? '\n' + items.join('\n') : '') +
 				OPEN_HINT
 			);
 		});
-		if (opened) this.events.emit('chest.opened', { discordId: id, chest: key, count });
+		if (opened) this.events.emit('chest.opened', { discordId: id, chest: key, count, progressApplied: true });
 		return message;
 	}
 

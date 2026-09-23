@@ -1,7 +1,7 @@
+import { SeasonService } from './SeasonService.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { PvpShopRepository } from '../repositories/PvpShopRepository.js';
-import type { Transaction } from '../db/client.js';
 import { PVP_SHOP_ITEMS } from '../config/pvpShop.js';
 import { COSMETIC_TIER_MIN_LEVEL } from '../config/reputation.js';
 import { CosmeticService } from './CosmeticService.js';
@@ -24,15 +24,7 @@ export interface PvpShopDependencies {
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		PvpShopRepository,
-		| 'lockCharacter'
-		| 'lockBag'
-		| 'findCosmeticTier'
-		| 'findPurchase'
-		| 'incrementPurchase'
-		| 'updateBag'
-		| 'findActiveSeason'
-		| 'countSeasons'
-		| 'createSeason'
+		'lockCharacter' | 'lockBag' | 'findCosmeticTier' | 'findPurchase' | 'incrementPurchase' | 'updateBag'
 	>;
 }
 
@@ -43,19 +35,12 @@ export interface PvpShopDependencies {
  */
 
 export class PvpShopService {
+	private readonly seasons = new SeasonService();
 	private readonly persistence: PersistenceContext;
 	private readonly cosmetics: Pick<CosmeticService, 'grantCosmeticInTx' | 'grantTitleInTx'>;
 	private readonly queries: Pick<
 		PvpShopRepository,
-		| 'lockCharacter'
-		| 'lockBag'
-		| 'findCosmeticTier'
-		| 'findPurchase'
-		| 'incrementPurchase'
-		| 'updateBag'
-		| 'findActiveSeason'
-		| 'countSeasons'
-		| 'createSeason'
+		'lockCharacter' | 'lockBag' | 'findCosmeticTier' | 'findPurchase' | 'incrementPurchase' | 'updateBag'
 	>;
 
 	constructor(
@@ -80,13 +65,13 @@ export class PvpShopService {
 		const item = PVP_SHOP_ITEMS.find((i) => i.key === itemKey);
 		if (!item) return PVP_ITEM_NOT_FOUND;
 		return this.persistence.unitOfWork.run(async (tx) => {
+			const [bag] = await this.queries.lockBag(tx, discordId);
 			const [character] = await this.queries.lockCharacter(tx, discordId);
 			if (!character) return PVP_NO_CHARACTER;
-			const [bag] = await this.queries.lockBag(tx, discordId);
 			if (!bag) return PVP_NO_REGISTER;
 			if (bag.valorMedals < item.cost) return PVP_INSUFFICIENT(item.cost, bag.valorMedals);
 
-			const season = await this.ensureActiveSeason(tx);
+			const season = await this.seasons.ensureActive(tx);
 			if (item.kind.type === 'cosmetic') {
 				// Cosmetic tiers gate on believer level — same rule as /cosmetic equip.
 				const [catalog] = await this.queries.findCosmeticTier(tx, item.kind.cosmeticKey);
@@ -123,19 +108,6 @@ export class PvpShopService {
 				}
 			}
 		});
-	}
-
-	private async ensureActiveSeason(tx: Transaction) {
-		const [active] = await this.queries.findActiveSeason(tx);
-		if (active) return active;
-		const [{ count }] = await this.queries.countSeasons(tx);
-		const [created] = await this.queries.createSeason(tx, {
-			name: `Season ${count + 1}`,
-			startsAt: new Date(),
-			endsAt: new Date(Date.now() + 30 * 86_400_000),
-			isActive: true,
-		});
-		return created;
 	}
 }
 

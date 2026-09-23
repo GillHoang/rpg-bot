@@ -50,7 +50,6 @@ export type RaidResult =
 
 export interface RaidRunOptions {
 	requestId?: string;
-	atomicProgress?: boolean;
 	expectedDay?: string;
 }
 
@@ -174,7 +173,7 @@ export class RaidService {
 			this.events.emit('battle.won', {
 				discordId,
 				battleType: boss ? 'boss' : 'raid',
-				progressApplied: options.atomicProgress,
+				progressApplied: true,
 			});
 		else this.events.emit('battle.lost', { discordId, battleType: boss ? 'boss' : 'raid' });
 		if (credux > 0)
@@ -255,7 +254,7 @@ export class RaidService {
 		});
 		await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
 		const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
-		if (won && options.atomicProgress) await this.progress.apply(tx, discordId, 'raid_win', now);
+		if (won) await this.progress.apply(tx, discordId, 'raid_win', now);
 		if (options.requestId)
 			await this.queries.insertReceipt(tx, {
 				discordId,

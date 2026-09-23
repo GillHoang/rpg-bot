@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { EnhancementStateRepository } from '../repositories/EnhancementStateRepository.js';
@@ -16,6 +17,7 @@ export type EnhanceResult =
 	| { status: 'failure'; cost: number };
 
 export interface EnhancementDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<EnhancementStateRepository, 'lockBag'>;
 }
@@ -28,6 +30,7 @@ export interface EnhancementDependencies {
  */
 
 export class EnhancementService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly repo: Pick<
 		EnhancementRepository,
@@ -45,6 +48,7 @@ export class EnhancementService {
 		options: EnhancementDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new EnhancementRepository();
 		this.events = events ?? EventBus.getInstance();
 		this.queries = options.queries ?? new EnhancementStateRepository();
@@ -63,6 +67,7 @@ export class EnhancementService {
 			if (credux < attempt.cost) return { status: 'insufficient-credux', needed: attempt.cost, have: credux };
 
 			await this.repo.spendCredux(tx, discordId, attempt.cost);
+			await this.progress.apply(tx, discordId, 'enhance', new Date());
 
 			const rng = createRng(createSecureSeed());
 			const succeeded = rollChance(attempt.successRate, rng);
@@ -81,7 +86,11 @@ export class EnhancementService {
 
 		// Both success and failure count as an enhance attempt for quests.
 		if (result.status === 'success' || result.status === 'failure') {
-			this.events.emit('gear.enhanced', { discordId, success: result.status === 'success' });
+			this.events.emit('gear.enhanced', {
+				discordId,
+				success: result.status === 'success',
+				progressApplied: true,
+			});
 		}
 		if (result.status === 'success') {
 			logger.info({ user: discordId, gearId, to: `+${result.newLevel - 1}`, cost: result.cost }, 'gear-enhanced');

@@ -1,3 +1,4 @@
+import { enhancementPlus } from '../utils/enhancementDisplay.js';
 import type { Executor } from '../db/client.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { InventoryDataRepository } from '../repositories/InventoryDataRepository.js';
@@ -54,7 +55,7 @@ export class InventoryService {
 				WEAPON_LIST_LINE({
 					name: r.name,
 					tier: r.tier,
-					plus: w.enhancement - 1,
+					plus: enhancementPlus(w.enhancement),
 					id: w.weaponId,
 					atk: w.currAtk,
 					crit: w.crit,
@@ -67,7 +68,7 @@ export class InventoryService {
 				ARMOR_LIST_LINE({
 					name: r.name,
 					tier: r.tier,
-					plus: a.enhancement - 1,
+					plus: enhancementPlus(a.enhancement),
 					id: a.armorId,
 					hp: a.currHp,
 					def: a.currDef,

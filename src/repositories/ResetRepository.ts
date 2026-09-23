@@ -12,6 +12,7 @@ const KEEP_TABLES = new Set(['server_config', 'stripe_events', 'dev_logs']);
  */
 const LOG_TABLES = [
 	'active_battles',
+	'active_ranked_fights',
 	'auto_raids',
 	'boss_attack_log',
 	'boss_spawn_queue',
@@ -31,6 +32,9 @@ const LOG_TABLES = [
 
 /** Explicit persistence operations for the separately confirmed administrator reset. */
 export class ResetRepository {
+	async lockUsers(tx: Executor): Promise<void> {
+		await tx.execute(sql`LOCK TABLE users_bag, users IN ACCESS EXCLUSIVE MODE`);
+	}
 	async countUsers(tx: Executor): Promise<number> {
 		const [{ count }] = await tx
 			.execute<{ count: number }>(sql`SELECT count(*)::int AS count FROM users`)

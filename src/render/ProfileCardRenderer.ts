@@ -21,6 +21,11 @@ export interface ProfileCardData {
 	stats: { hp: number; atk: number; def: number; crit: number };
 	credux: number;
 	beliefShards: number;
+	loadout?: {
+		weapon: { name: string; enhancement: number } | null;
+		armor: { name: string; enhancement: number } | null;
+		deities: { name: string; sigils: number }[];
+	};
 	/** M7 extras — optional so callers outside the RPG flow still render. */
 	title?: string | null;
 	believerLevel?: number;

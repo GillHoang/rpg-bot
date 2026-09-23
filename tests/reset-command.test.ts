@@ -84,11 +84,12 @@ describe('ResetCommand confirm flow', () => {
 		await new ResetCommand().execute(f.interaction);
 		const button = press(f.collector);
 		// stop('confirmed') bắn trước khi resetAll xong — chờ tới khi kết quả hiển thị.
-		await vi.waitFor(() => expect(button.update).toHaveBeenCalled());
+		await vi.waitFor(() => expect(button.editReply).toHaveBeenCalled());
 		expect(f.collector.stop).toHaveBeenCalledWith('confirmed');
 		expect(reset.resetAll).toHaveBeenCalledOnce();
-		expect(reset.audit).toHaveBeenCalledWith('owner-1', 7);
-		expect(button.update).toHaveBeenCalledWith(
+		expect(reset.resetAll).toHaveBeenCalledWith('owner-1');
+		expect(button.deferUpdate).toHaveBeenCalledOnce();
+		expect(button.editReply).toHaveBeenCalledWith(
 			expect.objectContaining({ content: expect.stringContaining('7') }),
 		);
 	});

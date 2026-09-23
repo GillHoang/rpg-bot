@@ -21,7 +21,7 @@ try {
 	const registry = new CommandRegistry();
 	registerAllCommands(services, registry);
 	// Quest progress + believer EXP are pure EventBus subscribers — wire once.
-	subscribeDomainEvents(services.events, services.quests, services.reputation);
+	subscribeDomainEvents(services.events);
 	const bot = new DiscordBot({ registry, menu: services.menu, maintenance: services.maintenance });
 	await bot.start();
 } catch (error) {

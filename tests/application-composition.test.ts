@@ -66,13 +66,13 @@ describe('application composition', () => {
 		const second = createApplicationServices({ persistence: context() });
 		const progress = vi.spyOn(first.quests, 'progress').mockResolvedValue();
 		const award = vi.spyOn(first.reputation, 'award').mockResolvedValue({ granted: 0, newLevel: null });
-		subscribeDomainEvents(first.events, first.quests, first.reputation);
+		subscribeDomainEvents(first.events);
 		second.events.emit('daily.claimed', { discordId: 'other', streak: 1 });
 		first.events.emit('daily.claimed', { discordId: 'atomic', streak: 1, progressApplied: true });
 		expect(progress).not.toHaveBeenCalled();
 		first.events.emit('daily.claimed', { discordId: 'owner', streak: 1 });
-		expect(progress).toHaveBeenCalledExactlyOnceWith('owner', 'daily');
-		expect(award).toHaveBeenCalledExactlyOnceWith('owner', 'daily');
+		expect(progress).not.toHaveBeenCalled();
+		expect(award).not.toHaveBeenCalled();
 	});
 
 	it('keeps zero-argument registration on the legacy shared menu and event bus', async () => {

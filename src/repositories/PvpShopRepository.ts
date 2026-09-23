@@ -1,6 +1,6 @@
 import type { Executor } from '../db/client.js';
 import { and, eq, sql } from 'drizzle-orm';
-import { cosmeticCatalog, pvpShopPurchases, seasons, usersBag, userCharacter } from '../db/schema.js';
+import { cosmeticCatalog, pvpShopPurchases, usersBag, userCharacter } from '../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
 export class PvpShopRepository {
@@ -46,17 +46,5 @@ export class PvpShopRepository {
 
 	async updateBag(tx: Executor, discordId: string, values: Partial<typeof usersBag.$inferInsert>) {
 		return tx.update(usersBag).set(values).where(eq(usersBag.discordId, discordId));
-	}
-
-	async findActiveSeason(tx: Executor) {
-		return tx.select().from(seasons).where(eq(seasons.isActive, true)).limit(1);
-	}
-
-	async countSeasons(tx: Executor) {
-		return tx.select({ count: sql<number>`count(*)::int` }).from(seasons);
-	}
-
-	async createSeason(tx: Executor, values: typeof seasons.$inferInsert) {
-		return tx.insert(seasons).values(values).returning();
 	}
 }

@@ -25,7 +25,7 @@ const profile: ProfileCardData = {
 };
 const quests: QuestSnapshot = {
 	day: '2026-09-21',
-	week: 202639,
+	week: '2026-W39',
 	refreshAvailable: true,
 	grandClaimed: false,
 	grandReady: false,
@@ -52,7 +52,7 @@ const quests: QuestSnapshot = {
 			rewardCredux: 5000,
 			rewardValor: 10,
 			completed: true,
-			questWeek: 202639,
+			questWeek: '2026-W39',
 		},
 	],
 };
@@ -104,36 +104,37 @@ describe('pure gameplay panels', () => {
 	});
 
 	it('escapes player text, formats progress and keeps profile defaults', () => {
-		const panel = profilePanel(profile, true);
+		const panel = profilePanel(profile);
 		expect(panel.title).toBe('Nhân vật');
 		expect(panel.withAvatar).toBe(true);
 		expect(panel.body).toContain('**\\*Hero\\***');
 		expect(panel.body).toContain('EXP <a:linee2:');
 		expect(panel.body).toContain(' `500/1.000`');
 		expect(panel.body).not.toMatch(/[▰▱]/);
-		expect(panel.body).toContain('HP 1.000 · ATK 200 · DEF 300 · Crit 5.0%');
-		expect(panel.body).toContain('Tín đồ cấp 1 · EXP 0 · PvP 0\nChưa trang bị danh hiệu.');
-		expect(action(panel, 'daily')).toEqual({ action: 'daily', label: 'Đã nhận daily', disabled: true });
-		const titled = profilePanel(
-			{ ...profile, title: '*Champion*', believerLevel: 3, believerExp: 100, pvpRating: 1200 },
-			false,
-		);
-		expect(titled.body).toContain('Tín đồ cấp 3 · EXP 100 · PvP 1200\n\\*Champion\\*');
-		expect(action(titled, 'daily')?.disabled).toBe(false);
+		expect(panel.body).toContain('HP 1.000 · ATK 200 · DEF 300');
+		expect(panel.body).toContain('Vũ khí: Chưa trang bị');
+		expect(panel.body).toContain('Chưa có thần đồng hành');
+		expect(panel.grouped).toBe(true);
+		expect(panel.buttons.map((b) => b.action)).toEqual(['hunt']);
+		const titled = profilePanel({
+			...profile,
+			title: '*Champion*',
+			loadout: {
+				weapon: { name: '*Sword*', enhancement: 3 },
+				armor: null,
+				deities: [{ name: '*Zeus*', sigils: 2 }],
+			},
+		});
+		expect(titled.body).toContain('\\*Champion\\*');
+		expect(titled.body).toContain('**\\*Sword\\*** · +2');
+		expect(titled.body).toContain('**\\*Zeus\\*** · 2 Sigil');
 	});
 
-	it('keeps home groups, quest completion counts and missing-quest fallbacks', () => {
-		const panel = homePanel(
-			profile,
-			{ dailyDone: true, bossDone: true, overallStreak: 7 },
-			{ ...quests, grandReady: true },
-		);
+	it('keeps home groups without showing activity details', () => {
+		const panel = homePanel(profile, { dailyDone: true, bossDone: true });
 		expect(panel.grouped).toBe(true);
 		expect(panel.withAvatar).toBe(true);
-		expect(panel.body).toContain('Daily: đã nhận · Chuỗi 7 ngày');
-		expect(panel.body).toContain('Quest hoàn thành: ngày 0/1 · tuần 1/1');
-		expect(panel.body).toContain('Thưởng tuần sẵn sàng trong Nhiệm vụ!');
-		expect(panel.body).toContain('Boss: đã đánh hôm nay');
+		expect(panel.body).not.toMatch(/Daily:|Quest hoàn thành:|Thưởng tuần|Boss:|Reset/);
 		expect(panel.buttons.map(({ action, group }) => [action, group])).toEqual([
 			['profile', 'Thông tin'],
 			['help', 'Thông tin'],
@@ -147,20 +148,15 @@ describe('pure gameplay panels', () => {
 			['shop', 'Tài sản'],
 			['casino', 'Tài sản'],
 		]);
-		const empty = homePanel(
-			{ ...profile, level: 1 },
-			{ dailyDone: false, bossDone: false, overallStreak: 0 },
-			null,
-		);
-		expect(empty.body).toContain('Quest hoàn thành: ngày 0/0 · tuần 0/0');
-		expect(empty.body).toContain('Boss: mở ở cấp 10');
+		const empty = homePanel({ ...profile, level: 1 }, { dailyDone: false, bossDone: false });
+		expect(empty.body).not.toMatch(/Daily:|Quest hoàn thành:|Boss:|Reset/);
 		expect(action(empty, 'boss')?.disabled).toBe(true);
 	});
 
 	it('renders daily/weekly rewards and switches claim and reroll availability', () => {
 		const panel = questsPanel(quests, false);
 		expect(panel.body).toContain('**Ngày 2026-09-21**\n0/1 Nhận daily · 1.000 Credux + 5 shards');
-		expect(panel.body).toContain('**Tuần 202639**\n✅ Thắng săn quái/boss · 5.000 Credux + 10 Valor');
+		expect(panel.body).toContain('**Tuần 2026-W39**\n✅ Thắng săn quái/boss · 5.000 Credux + 10 Valor');
 		expect(panel.body).toContain('Hoàn thành 3 nhiệm vụ tuần để nhận thưởng tuần.');
 		expect(action(panel, 'claim')?.disabled).toBe(true);
 		expect(action(panel, 'reroll')?.disabled).toBe(false);

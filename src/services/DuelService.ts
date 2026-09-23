@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { DuelRepository } from '../repositories/DuelRepository.js';
@@ -51,6 +52,7 @@ type BagRow = typeof usersBag.$inferSelect;
 type CharacterRow = typeof userCharacter.$inferSelect;
 
 export interface DuelDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		DuelRepository,
@@ -84,6 +86,7 @@ export interface DuelDependencies {
  */
 
 export class DuelService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
@@ -120,6 +123,7 @@ export class DuelService {
 		options: DuelDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.characters = characters ?? new UserCharacterRepository();
 		this.statAssembly =
@@ -215,6 +219,8 @@ export class DuelService {
 			await this.settle(tx, { duel, bags, duelists, battle });
 			// Consume the duel: participants cascade with this delete.
 			await this.queries.deleteDuel(tx, duel.duelId);
+			const winner = settlementWinnerId(battle, duel.challengerId, duel.opponentId);
+			if (winner) await this.progress.apply(tx, winner, 'duel_win', new Date());
 			return {
 				status: 'ok',
 				battle,
@@ -235,7 +241,7 @@ export class DuelService {
 
 		if (result.status === 'ok' && !result.draw && result.winnerId) {
 			const loserId = result.winnerId === result.challengerId ? result.opponentId : result.challengerId;
-			this.events.emit('battle.won', { discordId: result.winnerId, battleType: 'duel' });
+			this.events.emit('battle.won', { discordId: result.winnerId, battleType: 'duel', progressApplied: true });
 			this.events.emit('battle.lost', { discordId: loserId, battleType: 'duel' });
 		}
 		return result;
@@ -259,8 +265,13 @@ export class DuelService {
 		opponentId: string,
 		stake: number,
 	): Promise<{ challengerBag: BagRow; opponentBag: BagRow } | { error: DuelAcceptResult }> {
-		const [challengerBag] = await this.queries.lockBag(tx, challengerId);
-		const [opponentBag] = await this.queries.lockBag(tx, opponentId);
+		const bags = new Map<string, BagRow>();
+		for (const id of [challengerId, opponentId].sort()) {
+			const [bag] = await this.queries.lockBag(tx, id);
+			if (bag) bags.set(id, bag);
+		}
+		const challengerBag = bags.get(challengerId);
+		const opponentBag = bags.get(opponentId);
 		if (!challengerBag || !opponentBag) return { error: { status: 'not-found' } };
 		if (stake > 0 && (challengerBag.credux < stake || opponentBag.credux < stake))
 			return { error: { status: 'insufficient-funds' } };

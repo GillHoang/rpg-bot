@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { CasinoRepository } from '../repositories/CasinoRepository.js';
@@ -14,6 +15,7 @@ export type PlayResult =
 	| { status: 'ok'; outcome: CasinoOutcome; balanceAfter: number };
 
 export interface CasinoDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 }
 
@@ -25,6 +27,7 @@ export interface CasinoDependencies {
  */
 
 export class CasinoService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly repo: Pick<CasinoRepository, 'getCredux' | 'settle'>;
 	private readonly events: Pick<EventBus, 'emit'>;
@@ -35,6 +38,7 @@ export class CasinoService {
 		options: CasinoDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new CasinoRepository();
 		this.events = events ?? EventBus.getInstance();
 	}
@@ -58,11 +62,12 @@ export class CasinoService {
 				metadata: outcome.metadata,
 			});
 
+			await this.progress.apply(tx, discordId, 'casino', new Date());
 			return { status: 'ok', outcome, balanceAfter };
 		});
 
 		if (result.status === 'ok') {
-			this.events.emit('casino.played', { discordId, game });
+			this.events.emit('casino.played', { discordId, game, progressApplied: true });
 		}
 		return result;
 	}

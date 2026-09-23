@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { CasinoSessionRepository } from '../repositories/CasinoSessionRepository.js';
@@ -25,6 +26,7 @@ export type SessionView =
 	| { status: 'ok'; sessionId: string; game: InteractiveGame; done: boolean; text: string; revision: number }
 	| { status: 'error'; text: string };
 export interface CasinoSessionDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		CasinoSessionRepository,
@@ -41,6 +43,7 @@ export interface CasinoSessionDependencies {
 }
 
 export class CasinoSessionService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly queries: Pick<
 		CasinoSessionRepository,
@@ -57,6 +60,7 @@ export class CasinoSessionService {
 
 	constructor(options: CasinoSessionDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.queries = options.queries ?? new CasinoSessionRepository();
 	}
 	async start(id: string, game: InteractiveGame, bet: number): Promise<SessionView> {
@@ -150,6 +154,7 @@ export class CasinoSessionService {
 			balanceAfter: after,
 			metadata: { sessionId: s.sessionId, actions: stored.actions },
 		});
+		await this.progress.apply(tx, s.discordId, 'casino', new Date());
 		return {
 			status: 'ok',
 			sessionId: s.sessionId,

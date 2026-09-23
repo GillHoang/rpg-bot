@@ -1,23 +1,18 @@
+import { recordFailure } from '../utils/operationalMetrics.js';
 import { EventEmitter } from 'node:events';
 import { logger } from '../utils/logger.js';
 
-/**
- * Domain events the game engine emits. Extend this map as new systems
- * are ported (quests, achievements, vote rewards...) instead of calling
- * those systems directly from combat/economy code — that direct-call
- * style is exactly what made the original battleEngine.js a 2500-line
- * file that everything imported from.
- */
+/** Events describe committed actions. Core progression is applied before commit. */
 export interface DomainEvents {
 	'battle.won': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss'; progressApplied?: boolean };
-	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' };
+	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss'; progressApplied?: boolean };
 	'currency.earned': { discordId: string; currency: string; amount: number; source: string };
 	'level.up': { discordId: string; newLevel: number };
-	// --- M7 quest/reputation hooks (subscribers: QuestService, ReputationService) ---
-	'summon.done': { discordId: string; count: number };
-	'gear.enhanced': { discordId: string; success: boolean };
-	'chest.opened': { discordId: string; chest: string; count: number };
-	'casino.played': { discordId: string; game: string };
+	// Progression-bearing events are marked after their transaction commits.
+	'summon.done': { discordId: string; count: number; progressApplied?: boolean };
+	'gear.enhanced': { discordId: string; success: boolean; progressApplied?: boolean };
+	'chest.opened': { discordId: string; chest: string; count: number; progressApplied?: boolean };
+	'casino.played': { discordId: string; game: string; progressApplied?: boolean };
 	'daily.claimed': { discordId: string; streak: number; progressApplied?: boolean };
 }
 
@@ -26,7 +21,7 @@ type Listener<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void
 /**
  * Observer pattern: an application-scoped pub/sub bus. Combat/economy code fires
  * events ("what happened") without knowing who cares ("who reacts").
- * Quest/achievement/vote-reward modules subscribe independently. getInstance()
+ * Noncritical observers subscribe independently; core rewards commit in the action transaction. getInstance()
  * retains the default bus for callers outside the composed application.
  */
 export class EventBus {
@@ -43,7 +38,17 @@ export class EventBus {
 	}
 
 	on<K extends keyof DomainEvents>(event: K, listener: Listener<K>): void {
-		this.emitter.on(event, listener);
+		this.emitter.on(event, (payload: DomainEvents[K]) => {
+			try {
+				void Promise.resolve(listener(payload)).catch((error: unknown) => {
+					recordFailure('observer');
+					logger.error({ error, event }, 'event-observer-failed');
+				});
+			} catch (error) {
+				recordFailure('observer');
+				logger.error({ error, event }, 'event-observer-failed');
+			}
+		});
 	}
 
 	emit<K extends keyof DomainEvents>(event: K, payload: DomainEvents[K]): void {

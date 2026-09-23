@@ -54,6 +54,7 @@ export function eloDelta(rating: number, opponentRating: number, score: 0 | 0.5 
 }
 
 export interface WeekWindow {
+	key: string;
 	week: number;
 	/** Monday 00:00 Asia/Manila as a UTC instant. */
 	startsAt: Date;
@@ -62,7 +63,7 @@ export interface WeekWindow {
 
 /**
  * ISO week window anchored to the Asia/Manila calendar (UTC+8 fixed — the
- * same convention as DailyCycle). `week` matches ranked weekly claim keys.
+ * same convention as DailyCycle). `key` includes the ISO week-year for persisted claim keys.
  */
 export function weekWindowAt(instant: Date = new Date()): WeekWindow {
 	const parts = Object.fromEntries(
@@ -85,6 +86,7 @@ export function weekWindowAt(instant: Date = new Date()): WeekWindow {
 	const MANILA_OFFSET_MS = 8 * 3_600_000;
 	return {
 		week,
+		key: `${thursdayDate.getUTCFullYear()}-W${String(week).padStart(2, '0')}`,
 		startsAt: new Date(monday - MANILA_OFFSET_MS),
 		endsAt: new Date(monday + 7 * 86_400_000 - MANILA_OFFSET_MS),
 	};

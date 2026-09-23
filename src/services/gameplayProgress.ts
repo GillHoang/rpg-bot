@@ -1,3 +1,4 @@
+import type { QuestType } from '../config/quests.js';
 import type { Executor } from '../db/client.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -10,7 +11,7 @@ export interface GameplayProgressDependencies {
 	reputation?: Pick<ReputationService, 'awardInTx'>;
 }
 
-/** Menu rewards and their core progression commit or roll back together. */
+/** Gameplay rewards and their core progression commit or roll back together. */
 export class GameplayProgressCoordinator {
 	private readonly quests: Pick<QuestService, 'progressInTx'>;
 	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
@@ -21,15 +22,17 @@ export class GameplayProgressCoordinator {
 		this.quests = options.quests ?? new QuestService(this.reputation, { persistence });
 	}
 
-	async apply(tx: Executor, discordId: string, type: 'daily' | 'raid_win', now: Date): Promise<void> {
-		await this.quests.progressInTx(tx, discordId, type, now);
-		await this.reputation.awardInTx(tx, discordId, type, now);
+	async apply(tx: Executor, discordId: string, type: QuestType, now: Date, amount = 1): Promise<void> {
+		await this.quests.progressInTx(tx, discordId, type, now, amount);
+		if (type === 'daily' || type === 'raid_win' || type === 'duel_win' || type === 'ranked') {
+			await this.reputation.awardInTx(tx, discordId, type === 'ranked' ? 'ranked_win' : type, now);
+		}
 	}
 }
 
 const defaultProgress = new GameplayProgressCoordinator();
 
 /** Compatibility entry point for callers using the default composition. */
-export async function applyGameplayProgress(tx: Executor, discordId: string, type: 'daily' | 'raid_win', now: Date) {
-	await defaultProgress.apply(tx, discordId, type, now);
+export async function applyGameplayProgress(tx: Executor, discordId: string, type: QuestType, now: Date, amount = 1) {
+	await defaultProgress.apply(tx, discordId, type, now, amount);
 }

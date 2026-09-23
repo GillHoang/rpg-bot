@@ -9,18 +9,21 @@ vi.mock('../src/db/client.js', async () => {
 	return createTestDatabase();
 });
 import { db, pool } from '../src/db/client.js';
-import * as s from '../src/db/schema.js';import { StartService } from '../src/services/StartService.js';
+import * as s from '../src/db/schema.js';
+import { StartService } from '../src/services/StartService.js';
 import { ResetService } from '../src/services/ResetService.js';
 import { WEAPON_SEED } from '../src/seed/data/weapons.js';
 import { ARMOR_SEED } from '../src/seed/data/armors.js';
 
 beforeAll(async () => {
-	const { testClient } = await import('../src/db/client.js') as unknown as TestDatabase;
+	const { testClient } = (await import('../src/db/client.js')) as unknown as TestDatabase;
 	await migrateTestDatabase(testClient);
 	await db.insert(s.weaponRoster).values(WEAPON_SEED);
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
 }, 30000);
-afterAll(async () => { await pool.end(); });
+afterAll(async () => {
+	await pool.end();
+});
 
 describe('ResetService', () => {
 	it('countAll() counts without touching data — preview is destructive-free', async () => {
@@ -38,7 +41,7 @@ describe('ResetService', () => {
 		expect(await reset.countAll()).toBe(3);
 
 		// Only the explicit reset call wipes.
-		expect(await reset.resetAll()).toEqual({ status: 'ok', deletedUsers: 3 });
+		expect(await reset.resetAll('developer')).toEqual({ status: 'ok', deletedUsers: 3 });
 		expect(await db.select().from(s.users)).toHaveLength(0);
 	});
 
@@ -53,7 +56,7 @@ describe('ResetService', () => {
 		expect(await db.select().from(s.userWeapons)).toHaveLength(2);
 
 		const reset = new ResetService();
-		const result = await reset.resetAll();
+		const result = await reset.resetAll('developer');
 		expect(result).toEqual({ status: 'ok', deletedUsers: 2 });
 
 		// Player tables are empty.
@@ -69,15 +72,14 @@ describe('ResetService', () => {
 		expect(await db.select().from(s.serverConfig)).toHaveLength(1);
 
 		// Audit row lands in dev_logs.
-		await reset.audit('dev-1', (result as { deletedUsers: number }).deletedUsers);
 		const logs = await db.select().from(s.devLogs);
-		expect(logs).toHaveLength(1);
+		expect(logs).toHaveLength(2);
 		expect(logs[0].actionType).toBe('reset_full');
 	});
 
 	it('reports nothing-to-reset when there are no users', async () => {
 		// Previous test already wiped everything; audit row is in dev_logs only.
-		const result = await new ResetService().resetAll();
+		const result = await new ResetService().resetAll('developer');
 		expect(result).toEqual({ status: 'nothing-to-reset' });
 	});
 
@@ -87,10 +89,11 @@ describe('ResetService', () => {
 		if (result.status !== 'ok') throw new Error(result.status);
 		// Identity columns restarted, so freshly created rows work as before.
 		expect(await db.select().from(s.userCharacter)).toHaveLength(1);
-		expect((await new ResetService().resetAll()) as { status: string }).toEqual({ status: 'ok', deletedUsers: 1 });
-		const [{ count }] = await db
-			.select({ count: sql<number>`count(*)::int` })
-			.from(s.users);
+		expect((await new ResetService().resetAll('developer')) as { status: string }).toEqual({
+			status: 'ok',
+			deletedUsers: 1,
+		});
+		const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(s.users);
 		expect(count).toBe(0);
 	});
 });

@@ -22,7 +22,10 @@
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "check": "pnpm lint:check && pnpm typecheck && pnpm test"
+    "check": "pnpm lint:check && pnpm typecheck && pnpm test && pnpm check:links",
+    "check:links": "node scripts/check-markdown-links.mjs README.md docs/audit-deployment.md",
+    "test:postgres": "vitest run tests/postgres-concurrency.test.ts",
+    "season:rollover": "tsx src/scripts/rolloverSeason.ts"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.9",

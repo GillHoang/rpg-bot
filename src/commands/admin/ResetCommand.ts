@@ -9,6 +9,7 @@ import {
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { isOwner } from '../../core/owners.js';
+import { logger } from '../../utils/logger.js';
 import { ResetService } from '../../services/ResetService.js';
 import {
 	RESET_ALREADY_EMPTY,
@@ -40,7 +41,7 @@ export class ResetCommand implements ICommand {
 		.setDescription(RESET_DESCRIPTION)
 		.setDefaultMemberPermissions(0); // ẩn khỏieveryone — gate thật là OWNER_DISCORD_IDS
 
-	constructor(private readonly reset: Pick<ResetService, 'countAll' | 'resetAll' | 'audit'> = new ResetService()) {}
+	constructor(private readonly reset: Pick<ResetService, 'countAll' | 'resetAll'> = new ResetService()) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply({ ephemeral: true });
@@ -86,13 +87,19 @@ export class ResetCommand implements ICommand {
 				return;
 			}
 			collector.stop('confirmed');
-			const result = await this.reset.resetAll();
-			if (result.status === 'nothing-to-reset') {
-				await button.update({ content: RESET_ALREADY_EMPTY, components: [] });
-				return;
+			await button.deferUpdate();
+			try {
+				const result = await this.reset.resetAll(interaction.user.id);
+				await button.editReply({
+					content: result.status === 'ok' ? RESET_DONE(result.deletedUsers) : RESET_ALREADY_EMPTY,
+					components: [],
+				});
+			} catch (error) {
+				logger.error({ error }, 'reset-failed');
+				await button
+					.editReply({ content: 'Reset thất bại. Vui lòng kiểm tra log trước khi thử lại.', components: [] })
+					.catch(() => undefined);
 			}
-			await this.reset.audit(interaction.user.id, result.deletedUsers);
-			await button.update({ content: RESET_DONE(result.deletedUsers), components: [] });
 		});
 		collector?.on('end', async (_collected, reason) => {
 			if (reason === 'confirmed' || reason === 'cancelled' || reason === 'not-owner') return;

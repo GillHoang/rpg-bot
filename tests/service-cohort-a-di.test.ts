@@ -84,6 +84,9 @@ describe('service cohort A persistence isolation', () => {
 		expect(result.data.combatClass).toBe('Knight');
 		expect(result.data.stats.hp).toBeGreaterThan(0);
 		expect(result.data.beliefShards).toBe(1000);
+		expect(result.data.loadout?.weapon?.name).toBe("Initiate's Blade");
+		expect(result.data.loadout?.armor?.name).toBe("Initiate's Garb");
+		expect(result.data.loadout?.deities).toEqual([]);
 		const separate = new ProfileService(undefined, undefined, undefined, { persistence: contextFor(other) });
 		expect(await separate.get(id)).toEqual({ status: 'not-registered' });
 		expect((await profile.get(id)).status).toBe('ok');
@@ -96,7 +99,7 @@ describe('service cohort A persistence isolation', () => {
 		const run = vi.spyOn(persistence.unitOfWork, 'run');
 		const emit = vi.fn();
 		const service = new DailyService(undefined, { emit }, { persistence });
-		expect((await service.claim(id, new Date(), true)).status).toBe('ok');
+		expect((await service.claim(id, new Date())).status).toBe('ok');
 		expect(run).toHaveBeenCalledTimes(1);
 		expect(emit).toHaveBeenCalledExactlyOnceWith(
 			'daily.claimed',
@@ -105,7 +108,7 @@ describe('service cohort A persistence isolation', () => {
 		const [character] = await isolated.db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(character.believerExp).toBeGreaterThanOrEqual(50);
 		expect(await isolated.db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, id))).toHaveLength(3);
-		expect((await service.claim(id, new Date(), true)).status).toBe('already-claimed');
+		expect((await service.claim(id, new Date())).status).toBe('already-claimed');
 		expect(emit).toHaveBeenCalledTimes(1);
 	});
 
@@ -117,7 +120,7 @@ describe('service cohort A persistence isolation', () => {
 			reputation: { awardInTx: vi.fn().mockRejectedValue(new Error('progress rejected')) },
 		});
 		const service = new DailyService(undefined, { emit }, { persistence, progress });
-		await expect(service.claim(id, new Date(), true)).rejects.toThrow('progress rejected');
+		await expect(service.claim(id, new Date())).rejects.toThrow('progress rejected');
 		expect(await bag()).toEqual(before);
 		const [user] = await isolated.db.select().from(s.users).where(eq(s.users.discordId, id));
 		expect(user.lastDailyClaimDate).toBeNull();
@@ -139,7 +142,7 @@ describe('service cohort A persistence isolation', () => {
 			await expect(coordinator.apply(tx as unknown as Transaction, id, 'raid_win', now)).rejects.toThrow(
 				'quest failed',
 			);
-			expect(progressInTx).toHaveBeenCalledExactlyOnceWith(tx, id, 'raid_win', now);
+			expect(progressInTx).toHaveBeenCalledExactlyOnceWith(tx, id, 'raid_win', now, 1);
 		});
 		expect(awardInTx).not.toHaveBeenCalled();
 		expect(run).not.toHaveBeenCalled();

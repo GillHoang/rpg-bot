@@ -8,6 +8,19 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: credd_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U test -d credd_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://test:test@localhost:5432/credd_test
     steps:
       # Actions are pinned to full commit SHAs (supply-chain hardening).
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -29,6 +42,9 @@ jobs:
       - name: Build
         run: pnpm build
 
-      # Tests run on PGlite (in-memory PostgreSQL) — no database service needed.
+      - name: Check documentation links
+        run: pnpm check:links
+
+      # Fast PGlite suites plus real PostgreSQL contention tests.
       - name: Test
         run: pnpm test

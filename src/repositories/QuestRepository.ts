@@ -4,7 +4,7 @@ import { dailyQuestCompletionRewards, dailyQuests, users, usersBag, weeklyGrand,
 
 /** Named persistence operations; callers own transactions and reward policy. */
 export class QuestRepository {
-	async findWeeklyGrand(executor: Executor, discordId: string, week: number) {
+	async findWeeklyGrand(executor: Executor, discordId: string, week: string) {
 		return executor
 			.select()
 			.from(weeklyGrand)
@@ -62,7 +62,7 @@ export class QuestRepository {
 		return executor.update(usersBag).set(values).where(eq(usersBag.discordId, discordId));
 	}
 
-	async listWeeklyQuests(executor: Executor, discordId: string, week: number) {
+	async listWeeklyQuests(executor: Executor, discordId: string, week: string) {
 		return executor
 			.select()
 			.from(weeklyQuests)
@@ -108,7 +108,7 @@ export class QuestRepository {
 		return executor.update(usersBag).set(values).where(eq(usersBag.discordId, discordId));
 	}
 
-	async lockWeeklyQuest(executor: Executor, discordId: string, week: number, questType: string) {
+	async lockWeeklyQuest(executor: Executor, discordId: string, week: string, questType: string) {
 		return executor
 			.select()
 			.from(weeklyQuests)

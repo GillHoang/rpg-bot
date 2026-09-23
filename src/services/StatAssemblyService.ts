@@ -97,9 +97,10 @@ export class StatAssemblyService {
 		combatClass: CombatClass,
 		level: number,
 		executor: Executor = this.persistence.executor,
+		suppliedPreset?: typeof userPresets.$inferSelect | null,
 	): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
-		const preset = await this.activePreset(executor, discordId);
+		const preset = suppliedPreset !== undefined ? suppliedPreset : await this.activePreset(executor, discordId);
 
 		const weapon = preset?.equippedWeaponId
 			? await this.gear.findWeaponCurrStats(executor, discordId, preset.equippedWeaponId)
