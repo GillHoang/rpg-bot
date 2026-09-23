@@ -125,6 +125,9 @@ export function profilePanel(p: ProfileCardData): GamePanel {
 	const summary = profileSummary(p);
 	const gear = (item: { name: string; enhancement: number } | null | undefined) =>
 		item ? `**${escapeMarkdown(item.name)}** · +${enhancementPlus(item.enhancement)}` : 'Chưa trang bị';
+	const deities = p.loadout?.deities.length
+		? p.loadout.deities.map((d) => `✦ **${escapeMarkdown(d.name)}** · ${d.sigils} Sigil`).join('\n')
+		: 'Chưa có thần đồng hành';
 	return {
 		title: 'Nhân vật',
 		withAvatar: true,
@@ -133,7 +136,7 @@ export function profilePanel(p: ProfileCardData): GamePanel {
 			summary +
 			(p.title ? `*${escapeMarkdown(p.title)}*\n` : '') +
 			`\n**Đang sử dụng**\n⚔️ Vũ khí: ${gear(p.loadout?.weapon)}\n🛡️ Giáp: ${gear(p.loadout?.armor)}\n` +
-			`\n**Thần đồng hành**\n${p.loadout?.deities.length ? p.loadout.deities.map((d) => `✦ **${escapeMarkdown(d.name)}** · ${d.sigils} Sigil`).join('\n') : 'Chưa có thần đồng hành'}\n` +
+			`\n**Thần đồng hành**\n${deities}\n` +
 			`\nHP ${n(p.stats.hp)} · ATK ${n(p.stats.atk)} · DEF ${n(p.stats.def)}`,
 		buttons: [button('hunt', 'Săn quái')],
 	};

@@ -1,3 +1,4 @@
+import { comparePlayerIds } from '../utils/comparePlayerIds.js';
 import { SeasonService } from './SeasonService.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
@@ -144,13 +145,7 @@ export class RankedService {
 			if (!candidate) return { status: 'no-character' };
 			const selected = await this.pickOpponentRow(tx, discordId, candidate.pvpRating);
 			if (!selected) return { status: 'no-opponent' };
-			const ids = [discordId, selected.discordId].sort();
-			for (const id of ids) await this.queries.lockBag(tx, id);
-			const locked = new Map<string, typeof userCharacter.$inferSelect>();
-			for (const id of ids) {
-				const [row] = await this.queries.lockCharacter(tx, id);
-				if (row) locked.set(id, row);
-			}
+			const locked = await this.lockFighters(tx, discordId, selected.discordId);
 			const me = locked.get(discordId);
 			const opponentRow = locked.get(selected.discordId);
 			if (!me) return { status: 'no-character' };
@@ -259,6 +254,18 @@ export class RankedService {
 			});
 		}
 		return result;
+	}
+
+	/** Lock all bags before either character, in the shared player order. */
+	private async lockFighters(tx: Transaction, discordId: string, opponentId: string) {
+		const ids = [discordId, opponentId].sort(comparePlayerIds);
+		for (const id of ids) await this.queries.lockBag(tx, id);
+		const locked = new Map<string, typeof userCharacter.$inferSelect>();
+		for (const id of ids) {
+			const [row] = await this.queries.lockCharacter(tx, id);
+			if (row) locked.set(id, row);
+		}
+		return locked;
 	}
 
 	async claim(discordId: string): Promise<RankedClaimResult> {

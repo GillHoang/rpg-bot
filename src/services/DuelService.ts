@@ -1,3 +1,4 @@
+import { comparePlayerIds } from '../utils/comparePlayerIds.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -266,7 +267,7 @@ export class DuelService {
 		stake: number,
 	): Promise<{ challengerBag: BagRow; opponentBag: BagRow } | { error: DuelAcceptResult }> {
 		const bags = new Map<string, BagRow>();
-		for (const id of [challengerId, opponentId].sort()) {
+		for (const id of [challengerId, opponentId].sort(comparePlayerIds)) {
 			const [bag] = await this.queries.lockBag(tx, id);
 			if (bag) bags.set(id, bag);
 		}
