@@ -1,3 +1,4 @@
+import { RANKED_RESULT_TEXT } from '../../text/ranked.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { sendBattleLog } from '../../render/BattleLogPager.js';
@@ -96,8 +97,13 @@ export class RankedCommand implements ICommand {
 				enemyName: result.opponentName,
 				headerLines: [
 					RANKED_MATCHUP(result.opponentName, outcome),
-					`Rating: **${result.ratingBefore} → ${result.ratingAfter}** (${result.delta >= 0 ? '+' : ''}${result.delta}) · ` +
-						`Bracket: ${result.bracketBefore} → **${result.bracketAfter}** · Peak ${result.peak}` +
+					RANKED_RESULT_TEXT.rating(
+						result.ratingBefore,
+						result.ratingAfter,
+						result.delta >= 0 ? '+' : '',
+						result.delta,
+					) +
+						RANKED_RESULT_TEXT.bracket(result.bracketBefore, result.bracketAfter, result.peak) +
 						(result.shieldUsed ? RANKED_SHIELD_NOTE : ''),
 				],
 				footerLine: RANKED_FOOTER,

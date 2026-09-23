@@ -1,3 +1,4 @@
+import { SUMMON_RELIC_TEXT, RELIC_NAMES } from '../../text/summon.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SummonService } from '../../services/SummonService.js';
@@ -101,8 +102,8 @@ export class SummonCommand implements ICommand {
 				.setName('relic')
 				.setDescription(SUMMON_RELIC_OPTION_DESC)
 				.addChoices(
-					{ name: 'sacred (đảm bảo Mythic+)', value: 'sacred' },
-					{ name: 'supreme (đảm bảo Legendary+)', value: 'supreme' },
+					{ name: SUMMON_RELIC_TEXT.sacredChoice, value: 'sacred' },
+					{ name: SUMMON_RELIC_TEXT.supremeChoice, value: 'supreme' },
 				),
 		);
 
@@ -137,7 +138,10 @@ export class SummonCommand implements ICommand {
 				return;
 			case 'ok': {
 				const lines = summarizePulls(result.pulls);
-				const cost = `${count} ${relic === 'sacred' ? 'Sacred' : 'Supreme'} Relic`;
+				const cost = SUMMON_RELIC_TEXT.relicCost(
+					count,
+					relic === 'sacred' ? RELIC_NAMES.sacred : RELIC_NAMES.supreme,
+				);
 				await interaction.editReply(
 					relic
 						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines, result.finalPity)

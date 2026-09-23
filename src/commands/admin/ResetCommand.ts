@@ -1,3 +1,4 @@
+import { RESET_FLOW_TEXT } from '../../text/reset.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -96,9 +97,7 @@ export class ResetCommand implements ICommand {
 				});
 			} catch (error) {
 				logger.error({ error }, 'reset-failed');
-				await button
-					.editReply({ content: 'Reset thất bại. Vui lòng kiểm tra log trước khi thử lại.', components: [] })
-					.catch(() => undefined);
+				await button.editReply({ content: RESET_FLOW_TEXT.failed, components: [] }).catch(() => undefined);
 			}
 		});
 		collector?.on('end', async (_collected, reason) => {

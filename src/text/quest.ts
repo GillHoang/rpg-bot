@@ -54,3 +54,8 @@ export const QUEST_CLAIM_NOT_READY = 'Chưa đủ 3 weekly quest.';
 export const QUEST_CLAIM_ALREADY = 'Weekly grand tuần này đã nhận rồi.';
 export const QUEST_CLAIM_OK = (creux: string, diamonds: number): string =>
 	`${ICONS.quest.grand} Weekly Grand! +${creux} Credux · +${diamonds} Diamond Chest.`;
+
+/** Display text for services/QuestService. */
+export const QUEST_FLOW_TEXT = {
+	dayChanged: 'Đã sang ngày mới. Hãy xem lại nhiệm vụ trước khi đổi.',
+};

@@ -1,3 +1,4 @@
+import { RAID_FOOTER_TEXT } from '../text/raid.js';
 import type { RaidResult } from '../services/RaidService.js';
 import type { BattleLogPagerOptions } from './BattleLogPager.js';
 import {
@@ -28,7 +29,7 @@ export function raidBattleOptions(
 		shards > 0 ? RAID_REWARD_SHARDS(shards) : null,
 		gotChest ? `${ICONS.reward.droppedChest} +1 ${result.chestName}` : null,
 		result.gearDrop,
-		boss ? 'Phí vào boss: -10.000 Credux (reset 00:00 Manila).' : null,
+		boss ? RAID_FOOTER_TEXT.bossFee : null,
 		progress.leveledUp ? RAID_REWARD_LEVEL_UP(progress.previousLevel, progress.newLevel) : null,
 	].filter((line): line is string => line !== null);
 

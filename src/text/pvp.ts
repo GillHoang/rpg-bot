@@ -21,3 +21,14 @@ export const PVP_SEASON_LIMIT = (limit: number): string => `Đã mua tối đa (
 export const PVP_BOUGHT_BAG = (label: string, qty: number): string => `Đã mua ${label}. Bag: +${qty}.`;
 export const PVP_BOUGHT_COSMETIC = (label: string): string => `Đã mua ${label}. /cosmetic equip để trang bị.`;
 export const PVP_BOUGHT_TITLE = (label: string): string => `Đã mua ${label}. /title equip để đeo.`;
+
+export const PVP_SHOP_LABELS = {
+	change_class: 'Change-Class Token (đổi class)',
+	diamond_chest: 'Diamond Chest',
+	frame_gold: 'Cosmetic — Golden Frame (tier Chosen)',
+	frame_eternal: 'Cosmetic — Eternal Frame (tier Eternal)',
+	title_champion: 'Title — Arena Champion',
+	banner_crimson: 'Cosmetic — Crimson Battle Banner (tier Chosen)',
+	summon_circle_gold: 'Cosmetic — Golden Summon Circle (tier Chosen)',
+	title_legend: 'Title — Arena Legend',
+};

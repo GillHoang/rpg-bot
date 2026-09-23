@@ -47,3 +47,13 @@ export const RANKED_SHIELD_ON = 'bật';
 export const RANKED_SHIELD_OFF = 'đã mất';
 export const RANKED_WEEK_STATUS = (week: number, resetDate: string, claimed: boolean): string =>
 	`Thưởng tuần ${week} (reset ${resetDate}): ${claimed ? 'đã claim' : 'chưa claim — /ranked claim'}`;
+
+/** Display text for commands/rpg/RankedCommand. */
+export const RANKED_RESULT_TEXT = {
+	rating: (before: string | number, after: string | number, sign: string | number, delta: string | number): string =>
+		`Rating: **${before} → ${after}** (${sign}${delta}) · `,
+	bracket: (before: string | number, after: string | number, peak: string | number): string =>
+		`Bracket: ${before} → **${after}** · Peak ${peak}`,
+};
+
+export const SEASON_NAME = (number: number): string => `Season ${number}`;

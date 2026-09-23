@@ -1,3 +1,4 @@
+import { LOOT_SEED_TEXT } from '../text/loot.js';
 import { randomUUID } from 'node:crypto';
 import type { Executor } from '../db/client.js';
 import { choose, GEAR_STATS } from '../config/chestLoot.js';
@@ -15,7 +16,7 @@ export class LootGrantService {
 	async rune(tx: Executor, id: string, rng: () => number, filter: { tier?: string; names?: string[] }) {
 		const pool = await this.repo.findRunePool(tx, filter);
 		if (filter.names?.some((name) => !pool.some((r) => r.name === name)))
-			throw new Error('Thiếu rune trong seed shop.');
+			throw new Error(LOOT_SEED_TEXT.missingRune);
 		const rune = choose(pool, rng);
 		const runeUid = `r_${randomUUID()}`;
 		await this.repo.insertRune(tx, { discordId: id, runeUid, runeId: rune.runeId });

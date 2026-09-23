@@ -99,3 +99,8 @@ export const HELP_PAGES: readonly HelpPage[] = [
 		].join('\n\n'),
 	},
 ];
+
+/** Display text for commands/rpg/HelpCommand. */
+export const HELP_FLOW_TEXT = {
+	failed: 'Đã có lỗi xảy ra khi thực thi lệnh này.',
+};

@@ -30,3 +30,5 @@ export const SOCKET_UNLOCK_DONE = (slot: number): string => `Đã mở native so
 export const SOCKET_UNLOCK_SUB_DESC = 'Mở thêm native socket bằng Credux và essence';
 export const SOCKET_UNLOCK_GEAR_OPTION_DESC = 'ID gear';
 export const SOCKET_LANE_OPTION_DESC = 'Lane rune (xem /inventory)';
+
+export const SOCKET_LANE_LABELS = { native: 'native', opposite: 'opposite' };

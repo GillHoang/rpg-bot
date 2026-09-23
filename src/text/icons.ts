@@ -59,9 +59,9 @@ export const ICONS = {
 
 	/** Thưởng và tài nguyên (dòng reward). */
 	reward: {
-		exp: '✨',
-		credux: '🪙',
-		shards: '🔮',
+		exp: '<:xp:1552213820599042088>',
+		credux: '<:coin:1552212010958200922>',
+		shards: '<:shard:1552211980704813127>',
 		chest: '🎁',
 		droppedChest: '📦',
 		levelUp: '⬆️',
@@ -69,8 +69,8 @@ export const ICONS = {
 
 	/** Số dư tài nguyên hiển thị ở profile/ví. */
 	economy: {
-		wallet: '💰',
-		shards: '🔮',
+		wallet: '<:coin:1552212010958200922>',
+		shards: '<:shard:1552211980704813127>',
 	},
 
 	/** Điểm danh hằng ngày. */
@@ -104,7 +104,7 @@ export const ICONS = {
 	duel: {
 		challenge: '⚔️',
 		casual: '🤝',
-		wager: '💰',
+		wager: '<:coin:1552210977611587715>',
 		countdown: '⏳',
 		expired: '⌛',
 	},

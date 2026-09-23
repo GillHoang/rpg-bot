@@ -65,3 +65,9 @@ export const START_SUCCESS = (
 	`Quà tân thủ: +${shards} Belief Shards · +${chests} Silver Chests\n\n` +
 	'Bước tiếp theo: `/daily` nhận quà → `/raid hunt` luyện cấp → `/summon` triệu hồi deity.\n' +
 	'`/open` mở rương · `/inventory` xem ID · `/equip` trang bị · `/runes shop` mua rune.';
+
+/** Display text for commands/rpg/StartCommand. */
+export const START_STATS_TEXT = {
+	baseStats: (hp: string | number, atk: string | number, def: string | number, crit: string | number): string =>
+		`HP ${hp} · ATK ${atk} · DEF ${def} · CRIT ${crit}%\n`,
+};

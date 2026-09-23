@@ -1,3 +1,4 @@
+import { LOOT_CHEST_LABELS } from '../text/loot.js';
 import { choose, pick, rollChance } from '../utils/weightedRandom.js';
 export { choose };
 import { randInt } from './raidLoot.js';
@@ -5,7 +6,7 @@ import { randInt } from './raidLoot.js';
 export const CHESTS = {
 	silver: {
 		column: 'silverChest',
-		label: 'Silver',
+		label: LOOT_CHEST_LABELS.silver,
 		credux: [10000, 50000],
 		shards: [20, 50],
 		runeChance: 15,
@@ -19,7 +20,7 @@ export const CHESTS = {
 	},
 	gold: {
 		column: 'goldChest',
-		label: 'Gold',
+		label: LOOT_CHEST_LABELS.gold,
 		credux: [50000, 200000],
 		shards: [50, 150],
 		runeChance: 40,
@@ -33,7 +34,7 @@ export const CHESTS = {
 	},
 	boss_treasure: {
 		column: 'bossTreasureChest',
-		label: 'Boss Treasure',
+		label: LOOT_CHEST_LABELS.boss,
 		credux: [100000, 300000],
 		shards: [200, 500],
 		runeChance: 60,
@@ -47,7 +48,7 @@ export const CHESTS = {
 	},
 	boss_golden: {
 		column: 'bossGoldenChest',
-		label: 'Boss Golden',
+		label: LOOT_CHEST_LABELS.bossGold,
 		credux: [300000, 600000],
 		shards: [500, 1000],
 		runeChance: 100,
@@ -61,7 +62,7 @@ export const CHESTS = {
 	},
 	diamond: {
 		column: 'diamondChest',
-		label: 'Diamond',
+		label: LOOT_CHEST_LABELS.diamond,
 		credux: [200000, 400000],
 		shards: [300, 600],
 		runeChance: 100,
@@ -75,7 +76,7 @@ export const CHESTS = {
 	},
 	genesis: {
 		column: 'genesisChest',
-		label: 'Genesis',
+		label: LOOT_CHEST_LABELS.genesis,
 		credux: [500000, 1000000],
 		shards: [800, 1500],
 		runeChance: 100,

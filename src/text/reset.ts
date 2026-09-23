@@ -26,3 +26,8 @@ export const RESET_DONE = (users: number): string =>
 	`${ICONS.status.success} Đã reset toàn bộ data: ${users.toLocaleString()} người chơi và toàn bộ log gameplay bị xoá. Người chơi cần dùng lại /start.`;
 
 export const RESET_ALREADY_EMPTY = 'Không có dữ liệu người chơi nào để reset.';
+
+/** Display text for commands/admin/ResetCommand. */
+export const RESET_FLOW_TEXT = {
+	failed: 'Reset thất bại. Vui lòng kiểm tra log trước khi thử lại.',
+};

@@ -30,7 +30,7 @@ export class MenuRouter {
 	async open(interaction: ChatInputCommandInteraction | ButtonInteraction): Promise<void> {
 		let session: MenuSession | undefined;
 		try {
-			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+			await interaction.deferReply();
 			session = this.sessions.create(interaction.user.id);
 			session.launcher = true;
 			session.avatarUrl = interaction.user.displayAvatarURL?.({ size: 256 });
@@ -91,7 +91,12 @@ export class MenuRouter {
 	}
 
 	private selectSession(source: MenuSession, action: MenuAction): MenuSession {
-		if (!source.launcher || this.updatesInPlace(source, action) || ['search', 'close'].includes(action))
+		if (
+			!source.launcher ||
+			this.updatesInPlace(source, action) ||
+			source.gamePanel?.classes ||
+			['search', 'close'].includes(action)
+		)
 			return source;
 		const session = this.sessions.create(source.ownerId);
 		Object.assign(session, {
@@ -105,6 +110,7 @@ export class MenuRouter {
 	}
 
 	private updatesInPlace(source: MenuSession, action: MenuAction): boolean {
+		if (source.gamePanel?.classes) return true;
 		if (['daily', 'quests', 'claim', 'reroll'].includes(action)) return true;
 		if (
 			source.screen.kind === 'confirm' &&
@@ -147,7 +153,8 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		if (['daily', 'quests', 'claim', 'reroll'].includes(action)) await interaction.deferUpdate();
+		if (['daily', 'quests', 'claim', 'reroll'].includes(action) || session.gamePanel?.classes)
+			await interaction.deferUpdate();
 		else await this.acknowledge(interaction, session);
 		session.notice = undefined;
 		session.playerName = interaction.user.username;

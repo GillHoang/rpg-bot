@@ -1,3 +1,4 @@
+import { RAID_FLOW_TEXT } from '../../text/raid.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { sendBattleLog } from '../../render/BattleLogPager.js';
@@ -10,10 +11,8 @@ export class RaidCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('raid')
 		.setDescription(RAID_DESCRIPTION)
-		.addSubcommand((s) => s.setName('hunt').setDescription('Săn mob thường hoặc elite (20%)'))
-		.addSubcommand((s) =>
-			s.setName('boss').setDescription('Bakunawa: cấp 10, phí 10.000 Credux, 1 lần/ngày (00:00 Manila)'),
-		);
+		.addSubcommand((s) => s.setName('hunt').setDescription(RAID_FLOW_TEXT.huntDescription))
+		.addSubcommand((s) => s.setName('boss').setDescription(RAID_FLOW_TEXT.bossDescription));
 
 	constructor(private readonly raid: Pick<RaidService, 'run'> = new RaidService()) {}
 
@@ -23,7 +22,7 @@ export class RaidCommand implements ICommand {
 		const boss = interaction.options.getSubcommand(false) === 'boss';
 		const result = await this.raid.run(interaction.user.id, boss);
 		if (result.status === 'already-processed') {
-			await interaction.editReply('Trận đấu này đã được xử lý.');
+			await interaction.editReply(RAID_FLOW_TEXT.alreadyProcessed);
 			return;
 		}
 		if (result.status === 'boss-locked') {
@@ -56,7 +55,7 @@ export class RaidCommand implements ICommand {
 					if (next.status === 'no-character') return NO_CHARACTER;
 					if (next.status === 'no-monsters-seeded') return RAID_NO_MONSTERS_SEEDED;
 					if (next.status === 'boss-locked') return next.message;
-					return 'Trận đấu này đã được xử lý.';
+					return RAID_FLOW_TEXT.alreadyProcessed;
 				},
 			};
 		}

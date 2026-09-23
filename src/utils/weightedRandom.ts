@@ -1,3 +1,4 @@
+import { REWARD_DATA_TEXT } from '../text/common.js';
 // wrand 1.2.0's package entry points at a missing index.js. Import its published
 // self-contained implementation; never patch node_modules or fall back to Math.random.
 import { RandomPicker } from 'wrand/lib/randomPicker.js';
@@ -19,7 +20,7 @@ export function rollChance(probability: number, rng: () => number): boolean {
 	);
 }
 export function choose<T>(items: readonly T[], rng: () => number): T {
-	if (!items.length) throw new Error('Thiếu dữ liệu seed cho phần thưởng. Tài nguyên chưa bị trừ.');
+	if (!items.length) throw new Error(REWARD_DATA_TEXT.missingSeed);
 	return pick(
 		items.map((original) => ({ original, weight: 1 })),
 		{ next: rng },

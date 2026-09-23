@@ -1,3 +1,4 @@
+import { GAMEPLAY_NOTICE } from '../text/gameplay.js';
 import { MenuPlayerRepository } from '../repositories/MenuPlayerRepository.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -154,7 +155,7 @@ export class MenuGameplayService implements MenuGameplay {
 		} else if (r.status === 'already-claimed') {
 			session.notice = DAILY_ALREADY_CLAIMED(r.overall);
 		} else {
-			session.notice = 'Hãy tạo nhân vật trước.';
+			session.notice = GAMEPLAY_NOTICE.createFirst;
 		}
 		return { kind: 'home' };
 	}
@@ -171,10 +172,9 @@ export class MenuGameplayService implements MenuGameplay {
 		if (s.kind !== 'confirm') throw new Error('Confirmation missing');
 		if (s.operation === 'start') {
 			const r = await this.start.start(session.ownerId, username, s.combatClass);
-			if (r.status === 'ok')
-				session.notice = 'Đã tạo nhân vật và nhận quà khởi đầu! Chọn Nhận daily hoặc Săn quái để chơi.';
-			else if (r.status === 'already-has-character') session.notice = 'Bạn đã có nhân vật.';
-			else session.notice = 'Dữ liệu trang bị khởi đầu chưa sẵn sàng. Hãy thử lại sau.';
+			if (r.status === 'ok') session.notice = GAMEPLAY_NOTICE.created;
+			else if (r.status === 'already-has-character') session.notice = GAMEPLAY_NOTICE.alreadyCreated;
+			else session.notice = GAMEPLAY_NOTICE.starterUnavailable;
 			return { kind: 'home' };
 		}
 		if (s.operation === 'reroll') {
@@ -186,7 +186,7 @@ export class MenuGameplayService implements MenuGameplay {
 
 	private async fight(session: MenuSession, boss: boolean, expectedDay?: string): Promise<MenuScreen> {
 		if (!boss && Date.now() < (session.huntReadyAt ?? 0)) {
-			session.notice = `Chờ ${Math.ceil((session.huntReadyAt! - Date.now()) / 1000)} giây nữa để đánh lại.`;
+			session.notice = GAMEPLAY_NOTICE.cooldown(Math.ceil((session.huntReadyAt! - Date.now()) / 1000));
 			return session.screen;
 		}
 		const r = await this.raid.run(session.ownerId, boss, {
@@ -199,10 +199,9 @@ export class MenuGameplayService implements MenuGameplay {
 			return { kind: 'result' };
 		}
 		if (r.status === 'boss-locked') session.notice = r.message;
-		else if (r.status === 'already-processed')
-			session.notice = 'Trận đấu đã được xử lý; không nhận thưởng lần hai.';
-		else if (r.status === 'no-monsters-seeded') session.notice = 'Chưa có quái phù hợp. Hãy thử lại sau.';
-		else session.notice = 'Hãy tạo nhân vật trước.';
+		else if (r.status === 'already-processed') session.notice = GAMEPLAY_NOTICE.alreadyProcessed;
+		else if (r.status === 'no-monsters-seeded') session.notice = GAMEPLAY_NOTICE.noMonster;
+		else session.notice = GAMEPLAY_NOTICE.createFirst;
 		return { kind: 'battle' };
 	}
 }

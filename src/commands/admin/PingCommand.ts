@@ -1,3 +1,4 @@
+import { PING_VALUE_TEXT } from '../../text/ping.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { HealthService } from '../../services/HealthService.js';
@@ -50,6 +51,6 @@ export class PingCommand implements ICommand {
 }
 
 function format(latency: Latency): string {
-	if (latency.error) return `${latency.error} (${latency.ms}ms)`;
-	return `${latency.ms}ms`;
+	if (latency.error) return PING_VALUE_TEXT.error(latency.error, latency.ms);
+	return PING_VALUE_TEXT.latency(latency.ms);
 }

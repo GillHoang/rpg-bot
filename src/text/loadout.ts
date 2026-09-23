@@ -25,3 +25,5 @@ export const EQUIP_PRESET_OPTION_DESC = 'Mặc định: preset đang dùng';
 export const PRESET_DESCRIPTION = 'Đổi bộ trang bị';
 export const PRESET_SWITCH_DESC = 'Chuyển preset đang dùng';
 export const PRESET_SLOT_OPTION_DESC = 'Preset';
+
+export const DEFAULT_PRESET_NAMES = { main: 'Main', secondary: 'Preset 2' };

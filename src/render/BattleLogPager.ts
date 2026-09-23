@@ -1,3 +1,4 @@
+import { BATTLE_REPLAY_TEXT } from '../text/battleLog.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -142,7 +143,7 @@ export function buildBattleLogPage(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder()
 					.setCustomId('battlelog:replay')
-					.setLabel(`Đánh lại (${options.replay.cooldownMs / 1000}s)`)
+					.setLabel(BATTLE_REPLAY_TEXT.button(options.replay.cooldownMs / 1000))
 					.setStyle(ButtonStyle.Success)
 					.setDisabled(locked),
 			),
@@ -181,7 +182,7 @@ export async function sendBattleLog(
 			const replay = options.replay;
 			if (button.user.id !== replay.ownerId) {
 				await button.reply({
-					content: 'Chỉ người gọi lệnh mới có thể đánh lại.',
+					content: BATTLE_REPLAY_TEXT.ownerOnly,
 					flags: MessageFlags.Ephemeral,
 				});
 				return;
@@ -209,7 +210,7 @@ export async function sendBattleLog(
 			} catch {
 				await button
 					.followUp({
-						content: 'Không thể đánh lại lúc này. Hãy thử lại sau.',
+						content: BATTLE_REPLAY_TEXT.failed,
 						flags: MessageFlags.Ephemeral,
 					})
 					.catch(() => undefined);
@@ -243,7 +244,7 @@ export async function sendBattleLog(
 		} catch (err) {
 			logger.warn({ err, customId: button.customId }, 'Battle log interaction failed');
 			const errorReply = {
-				content: 'Không thể cập nhật nhật ký lúc này. Hãy thử lại sau.',
+				content: BATTLE_REPLAY_TEXT.updateFailed,
 				flags: MessageFlags.Ephemeral,
 			} as const;
 			try {
@@ -264,9 +265,9 @@ export async function sendBattleLog(
 }
 
 function replayUnavailableReason(expired: boolean, replaying: boolean, replayReadyAt: number): string | undefined {
-	if (expired) return 'Nút đã hết hạn. Hãy dùng /raid hunt.';
-	if (replaying) return 'Trận đấu đang được xử lý.';
+	if (expired) return BATTLE_REPLAY_TEXT.expired;
+	if (replaying) return BATTLE_REPLAY_TEXT.busy;
 	const remainingMs = replayReadyAt - Date.now();
-	if (remainingMs > 0) return `Chờ ${Math.ceil(remainingMs / 1000)} giây nữa để đánh lại.`;
+	if (remainingMs > 0) return BATTLE_REPLAY_TEXT.cooldown(Math.ceil(remainingMs / 1000));
 	return undefined;
 }

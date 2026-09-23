@@ -1,3 +1,4 @@
+import { START_STATS_TEXT } from '../../text/start.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -68,8 +69,12 @@ function classDetail(combatClass: CombatClass): string {
 	const cls = CLASSES[combatClass];
 	const stats = computeClassStats(combatClass, 1);
 	return (
-		`HP ${stats.hp.toLocaleString()} · ATK ${stats.atk.toLocaleString()} · DEF ${stats.def.toLocaleString()} · CRIT ${stats.crit}%\n` +
-		`_${cls.flavor}_\n${cls.passiveLine}`
+		START_STATS_TEXT.baseStats(
+			stats.hp.toLocaleString(),
+			stats.atk.toLocaleString(),
+			stats.def.toLocaleString(),
+			stats.crit,
+		) + `_${cls.flavor}_\n${cls.passiveLine}`
 	);
 }
 

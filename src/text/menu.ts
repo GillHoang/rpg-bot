@@ -1,9 +1,13 @@
 export const MENU_TEXT = {
-	description: 'Mở bảng điều khiển Credd',
+	description: 'Bắt đầu chơi.',
 	home: 'Trang chủ',
+	home_emoji: '<:home:1552201189108748449>',
 	back: 'Quay lại',
+	back_emoji: '<:back:1552205759381504011>',
 	refresh: 'Làm mới',
+	refresh_emoji: '<:refesh:1552203539630137416>',
 	close: 'Đóng',
+	close_emoji: '<:close:1552206651971473501>',
 	help: 'Hướng dẫn',
 	search: 'Tìm hướng dẫn',
 	open: 'Mở menu mới',
@@ -23,7 +27,7 @@ export const MENU_TEXT = {
 	invalid: 'Thao tác không hợp lệ. Hãy dùng các nút trên menu hoặc mở menu mới.',
 	failed: 'Không thể cập nhật menu. Mở menu mới để tiếp tục.',
 	capacity: 'Đang có quá nhiều menu hoạt động. Vui lòng thử lại sau ít phút.',
-	footer: 'Menu riêng tư • Hết hạn sau 10 phút không hoạt động.',
+	footer: 'Bot đang trong giai đoạn BETA — mọi cơ chế, con số và tỷ lệ đều có thể thay đổi bất cứ lúc nào. Gõ /help để mở lại bảng hướng dẫn.',
 } as const;
 
 /** Fallback descriptions; phase-2 destinations load their gameplay panels. */
@@ -70,3 +74,12 @@ export const MENU_QUEST_LABELS = {
 	duel_win: 'Thắng duel',
 	ranked: 'Đấu ranked',
 } as const;
+
+/** Display text for menu/menuViews. */
+export const MENU_VIEW_TEXT = {
+	player: 'Bạn',
+	replay: 'Đánh lại (15s)',
+	heading: (title: string | number): string => `## CREDD · ${title}`,
+	avatar: 'Avatar nhân vật',
+	chooseClass: 'Chọn class để xem trước',
+};

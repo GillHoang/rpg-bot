@@ -1,3 +1,4 @@
+import { SOCKET_LANE_LABELS } from '../../text/socket.js';
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SocketService } from '../../services/SocketService.js';
@@ -52,7 +53,10 @@ export class SocketCommand implements ICommand {
 					o
 						.setName('lane')
 						.setDescription(SOCKET_LANE_OPTION_DESC)
-						.addChoices({ name: 'native', value: 'native' }, { name: 'opposite', value: 'opposite' }),
+						.addChoices(
+							{ name: SOCKET_LANE_LABELS.native, value: 'native' },
+							{ name: SOCKET_LANE_LABELS.opposite, value: 'opposite' },
+						),
 				),
 		)
 		.addSubcommand((sub) =>

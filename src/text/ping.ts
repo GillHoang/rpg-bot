@@ -9,3 +9,9 @@ export const PING_REST_LABEL = 'REST API';
 export const PING_DB_LABEL = 'PostgreSQL';
 
 export const PING_DB_ERROR = 'Không kết nối được DB';
+
+/** Display text for commands/admin/PingCommand. */
+export const PING_VALUE_TEXT = {
+	error: (error: string | number, ms: string | number): string => `${error} (${ms}ms)`,
+	latency: (ms: string | number): string => `${ms}ms`,
+};

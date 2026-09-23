@@ -1,3 +1,4 @@
+import { SEASON_NAME } from '../text/ranked.js';
 import type { Transaction } from '../db/client.js';
 import { SeasonRepository } from '../repositories/SeasonRepository.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
@@ -17,7 +18,7 @@ export class SeasonService {
 	private async create(tx: Transaction, now: Date) {
 		const count = await this.queries.count(tx);
 		const created = await this.queries.create(tx, {
-			name: `Season ${count + 1}`,
+			name: SEASON_NAME(count + 1),
 			startsAt: now,
 			endsAt: new Date(now.getTime() + 30 * 86400000),
 			isActive: true,
