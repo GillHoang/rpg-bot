@@ -38,7 +38,4 @@ export const WEEKLY_REWARD = { credux: [50_000, 150_000], valor: [5, 15] } as co
 export const DAILY_ALL_COMPLETE_RELICS = 1;
 /** Đủ 3 weekly → weekly grand claim qua /quest claim. */
 export const WEEKLY_GRAND = { diamondChest: 1, credux: 100_000 };
-
-/** /quest refresh: reroll daily 1 lần/ngày. */
-export const DAILY_REFRESH_LIMIT = 1;
 export const QUESTS_PER_CYCLE = 3;

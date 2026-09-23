@@ -16,18 +16,8 @@ export const RAID_REWARD_CREDUX = (credux: string): string =>
 	`${ICONS.reward.credux} +__${credux}__ ${CURRENCY.credux}`;
 export const RAID_REWARD_SHARDS = (shards: number): string =>
 	`${ICONS.reward.shards} +__${shards}__ ${CURRENCY.beliefShards}`;
-export const RAID_REWARD_CHEST = `${ICONS.reward.chest} +1 Silver Chest`;
 export const RAID_REWARD_LEVEL_UP = (prev: number, next: number): string =>
 	`${ICONS.reward.levelUp} **Lên cấp __${prev}__ → __${next}__!**`;
-
-export const RAID_ROUND_SUMMARY = (rounds: number, playerHp: number, enemyHp: number): string =>
-	`Số vòng: __${rounds}__ · HP còn lại — **Bạn**: __${playerHp}__ / **Quái**: __${enemyHp}__
-
-`;
-
-/** Giới hạn ký tự của battle log trong 1 tin nhắn Discord. */
-export const RAID_MAX_LOG_CHARS = 1200;
-export const RAID_LOG_TRUNCATE_PREFIX = '…\n';
 
 // --- Boss (RaidService) ---
 export const BOSS_LEVEL_REQUIRED = (minLevel: number): string => `Boss yêu cầu cấp ${minLevel}.`;

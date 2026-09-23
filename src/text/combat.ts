@@ -98,8 +98,6 @@ export const COMBAT_RUNE_VENOM = (name: string, enemy: string, value: string): s
 	`${combatTag(COMBAT_TAGS.VENM)} ${ICONS.effect.venom} ${name} nhiễm độc ${enemy} (${value} HP mỗi lượt).`;
 export const COMBAT_RUNE_THORNS = (name: string, reflected: string): string =>
 	`${combatTag(COMBAT_TAGS.THORN)} ${ICONS.effect.thorns} ${name} phản lại __${reflected} HP__.`;
-export const COMBAT_RUNE_AEGIS = (name: string): string =>
-	`${combatTag(COMBAT_TAGS.AEGIS)} ${ICONS.effect.aegis} ${name} hoá giải trọn vẹn đòn đánh.`;
 
 // --- Deity blessing decorator ---
 export const COMBAT_BLESSING_GUARDIAN_LIGHT = (name: string, healed: string): string =>

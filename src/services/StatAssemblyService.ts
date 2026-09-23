@@ -25,7 +25,7 @@ export interface AssembledBlessing {
 
 export interface AssembledPlayer {
 	stats: AssembledPlayerStats;
-	/** Combat-hook runes (COMBAT_EFFECT_KEYS) from both equipped weapon and armor, ready for RuneStrategyDecorator. */
+	/** Combat-hook runes from both equipped weapon and armor, ready for RuneStrategyDecorator. */
 	combatEffectRunes: SocketedRuneEffect[];
 	/** Blessing of the pantheon lead (slot 1) with its Sigil-derived strength, ready for DeityBlessingDecorator. */
 	blessings: AssembledBlessing[];

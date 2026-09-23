@@ -43,10 +43,6 @@ export function findDebuff(side: CombatantState, tag: DebuffTag): Debuff | undef
 	return side.debuffs.find((d) => d.tag === tag);
 }
 
-export function hasDebuff(side: CombatantState, tag: DebuffTag): boolean {
-	return findDebuff(side, tag) !== undefined;
-}
-
 /** ``🐅 Tiger`` — tên dạng inline code: username chứa __ không vỡ markdown Discord. */
 export function combatDisplayName(c: CombatantState): string {
 	return c.emoji ? `\`${c.emoji} ${c.name}\`` : `\`${c.name}\``;

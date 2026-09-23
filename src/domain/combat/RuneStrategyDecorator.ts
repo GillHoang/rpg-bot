@@ -12,7 +12,7 @@ import { COMBAT_RUNE_THORNS, COMBAT_RUNE_VAMPIRIC, COMBAT_RUNE_VENOM } from '../
  * near-identical subclasses) mirrors how config/runes.js itself treats
  * these as one data-driven effect-key table, not 7 bespoke systems.
  *
- * Only the COMBAT_EFFECT_KEYS family needs this — the STAT_EFFECT_KEYS
+ * Only combat-hook runes need this — the STAT_EFFECT_KEYS
  * family (sharpness/precision/vitality/bulwark) are flat stat bonuses
  * applied once when the CombatantState is built (see RaidService), never
  * a per-turn hook.

@@ -85,14 +85,6 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 	}
 }
 
-const defaultProcessor = new CombatStatusEffectProcessor();
-export const removeImmuneDebuffs: ICombatStatusEffects['removeImmuneDebuffs'] = (...args) =>
-	defaultProcessor.removeImmuneDebuffs(...args);
-export const isTurnDisabled: ICombatStatusEffects['isTurnDisabled'] = (...args) =>
-	defaultProcessor.isTurnDisabled(...args);
-export const applyEndOfRoundEffects: ICombatStatusEffects['applyEndOfRoundEffects'] = (...args) =>
-	defaultProcessor.applyEndOfRoundEffects(...args);
-
 const DOT_TAGS = ['bleed', 'burn', 'venom'] as const;
 type DotTag = (typeof DOT_TAGS)[number];
 

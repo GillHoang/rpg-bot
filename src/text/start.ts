@@ -19,9 +19,6 @@ export const START_WELCOME =
 	'- Đánh bại mob để luyện cấp và sưu tầm deity\n\n' +
 	'Bấm **Đồng ý** để xem các class và chọn class khởi đầu của bạn.';
 
-/** Người khác bấm nút trong flow của ai đó. */
-export const START_NOT_YOUR_FLOW = 'Quy trình này không phải của bạn. Gõ /start để bắt đầu của riêng bạn.';
-
 /** DB lỗi khi tạo nhân vật — giữ nút để người chơi thử lại. */
 export const START_CREATE_FAILED =
 	`${ICONS.status.fail} Tạo nhân vật chưa thành công (lỗi hệ thống). ` + 'Bấm **Xác nhận** để thử lại.';

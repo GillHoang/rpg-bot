@@ -46,7 +46,7 @@ export class RuneRepository {
 		};
 	}
 
-	/** ALL runes currently socketed into one gear id — caller splits by STAT_EFFECT_KEYS vs COMBAT_EFFECT_KEYS. */
+	/** ALL runes currently socketed into one gear id — caller separates stat effects from combat hooks. */
 	async findSocketedEffects(executor: Executor, gearId: string): Promise<SocketedRuneEffect[]> {
 		const rows = await executor
 			.select({

@@ -15,21 +15,9 @@ export const RANKED_OUTCOME_DRAW = `${ICONS.outcome.draw} Hòa.`;
 export const RANKED_OUTCOME_WIN = `${ICONS.outcome.win} **Thắng!**`;
 export const RANKED_OUTCOME_LOSE = `${ICONS.outcome.lose} **Thua.**`;
 export const RANKED_MATCHUP = (opponent: string, outcome: string): string => `${outcome} vs \`${opponent}\``;
-export const RANKED_RATING_LINE = (
-	before: number,
-	after: number,
-	delta: number,
-	bracketBefore: string,
-	bracketAfter: string,
-	peak: number,
-): string =>
-	`Rating: **${before} → ${after}** (${delta >= 0 ? '+' : ''}${delta}) · ` +
-	`Bracket: ${bracketBefore} → **${bracketAfter}** · Peak ${peak}`;
 export const RANKED_SHIELD_NOTE =
 	'\n' + ICONS.ranked.shield + ' Demotion shield đã cứu bạn khỏi rớt bracket (đỡ 1 lần).';
 export const RANKED_FOOTER = '/ranked claim để nhận thưởng tuần · /ranked stats để xem tổng quan.';
-export const RANKED_LOG_MAX_CHARS = 900;
-export const RANKED_LOG_TRUNCATE_PREFIX = '…';
 
 // claim
 export const RANKED_CLAIM_OK = (bracket: string, creux: string, valor: number): string =>

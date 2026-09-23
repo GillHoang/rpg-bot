@@ -117,9 +117,3 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		return resolved;
 	}
 }
-
-const defaultResolver = new BattleAttackResolver();
-
-/** Compatibility entry point for callers using the functional API. */
-export const executeStrike: IBattleAttackResolver['executeStrike'] = (...args) =>
-	defaultResolver.executeStrike(...args);

@@ -43,7 +43,6 @@ export const QUEST_GRAND_CLAIMED = '\n' + ICONS.status.completed + ' Weekly gran
 // --- format một dòng quest ---
 export const QUEST_BONUS_SHARDS = (bonus: number): string => `${bonus} shards`;
 export const QUEST_BONUS_VALOR = (bonus: number): string => `${bonus} valor`;
-export const QUEST_CREDUX_PART = (creux: string): string => `(+${creux} Credux, `;
 
 // --- refresh ---
 export const QUEST_REFRESH_LIMIT = 'Đã refresh daily hôm nay. Reset lúc 00:00 Asia/Manila.';

@@ -8,7 +8,6 @@ export const MAX_BET = 500_000;
 export const EVEN_MONEY = 2;
 
 export type SlotFace = 'horus' | 'lightning' | 'skull' | 'trident' | 'wings';
-export const SLOT_FACES: readonly SlotFace[] = ['horus', 'lightning', 'skull', 'trident', 'wings'];
 
 /**
  * Highest-prize-first ladder resolved as ONE mutually-exclusive roll

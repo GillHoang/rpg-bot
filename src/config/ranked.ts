@@ -4,7 +4,6 @@
  * khác được dùng làm đối thủ, không cần cả hai online (khớp cấu trúc bảng
  * active_ranked_fights — 1 lock mỗi người, không có cột đối thủ).
  */
-import { DailyCycle } from '../utils/dailyCycle.js';
 
 export const RANKED = {
 	/** Elo K-factor. */
@@ -32,11 +31,6 @@ export function bracketFor(rating: number): Bracket {
 	let current = BRACKETS[0];
 	for (const bracket of BRACKETS) if (rating >= bracket.min) current = bracket;
 	return current;
-}
-
-export function bracketBelow(bracket: Bracket): Bracket | null {
-	const index = BRACKETS.findIndex((b) => b.name === bracket.name);
-	return index > 0 ? BRACKETS[index - 1] : null;
 }
 
 /**
@@ -91,6 +85,3 @@ export function weekWindowAt(instant: Date = new Date()): WeekWindow {
 		endsAt: new Date(monday + 7 * 86_400_000 - MANILA_OFFSET_MS),
 	};
 }
-
-/** Today's Manila date key — re-exported alias so callers have one import. */
-export const todayKey = (): string => DailyCycle.keyAt();

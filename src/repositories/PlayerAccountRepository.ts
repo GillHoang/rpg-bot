@@ -42,10 +42,6 @@ export class PlayerAccountRepository implements Repository<PlayerAccount, string
 	// see StartService, which owns that transaction. This repository only
 	// reads/updates the already-created account.
 
-	async saveCredux(account: PlayerAccount): Promise<void> {
-		await this.saveCreduxWithExecutor(this.executor, account);
-	}
-
 	async saveCreduxWithExecutor(executor: Executor, account: PlayerAccount): Promise<void> {
 		await executor
 			.update(usersBag)

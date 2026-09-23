@@ -2,7 +2,6 @@ import { CURRENCY } from './common.js';
 import { ICONS } from './icons.js';
 
 export const CASINO_DESCRIPTION = 'Chơi 1 ván casino (Credux)';
-export const CASINO_GAME_OPTION_DESC = 'Trò chơi';
 export const CASINO_BET_OPTION_DESC = (maxBet: string): string => `Tiền cược (tối đa ${maxBet})`;
 export const CASINO_CHOICE_OPTION_DESC = 'Lựa chọn (coin: heads/tails · dice: odd/even · baccarat: player/banker)';
 

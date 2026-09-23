@@ -29,16 +29,3 @@ export class GameplayProgressCoordinator {
 		}
 	}
 }
-
-const defaultProgress = new GameplayProgressCoordinator();
-
-/** Compatibility entry point for callers using the default composition. */
-export async function applyGameplayProgress(
-	tx: Executor,
-	discordId: string,
-	type: QuestType | 'ranked_win',
-	now: Date,
-	amount = 1,
-) {
-	await defaultProgress.apply(tx, discordId, type, now, amount);
-}
