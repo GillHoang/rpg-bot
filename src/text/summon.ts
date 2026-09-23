@@ -41,3 +41,12 @@ export const TIER_ALIAS: Record<string, string> = {
 	Supreme: 'Primordial',
 };
 export const SUMMON_RELIC_OPTION_DESC = 'Dùng Sacred/Supreme Relic để ép tier (1 relic/lượt, không tốn shards)';
+
+/** Display text for commands/rpg/SummonCommand. */
+export const SUMMON_RELIC_TEXT = {
+	sacredChoice: 'sacred (đảm bảo Mythic+)',
+	supremeChoice: 'supreme (đảm bảo Legendary+)',
+	relicCost: (count: string | number, relicName: string | number): string => `${count} ${relicName} Relic`,
+};
+
+export const RELIC_NAMES = { sacred: 'Sacred', supreme: 'Supreme' };

@@ -1,3 +1,4 @@
+import { DEFAULT_PRESET_NAMES } from '../text/loadout.js';
 import type { Executor } from '../db/client.js';
 import { userPresets } from '../db/schema.js';
 
@@ -15,11 +16,11 @@ export class PresetRepository {
 		await executor.insert(userPresets).values({
 			discordId,
 			slot: 1,
-			name: 'Main',
+			name: DEFAULT_PRESET_NAMES.main,
 			equippedWeaponId: starterGear.weaponId,
 			equippedArmorId: starterGear.armorId,
 		});
 
-		await executor.insert(userPresets).values({ discordId, slot: 2, name: 'Preset 2' });
+		await executor.insert(userPresets).values({ discordId, slot: 2, name: DEFAULT_PRESET_NAMES.secondary });
 	}
 }

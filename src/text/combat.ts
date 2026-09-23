@@ -128,3 +128,10 @@ export const COMBAT_MONSTER_FEAST = (name: string, healed: string): string =>
 	`${combatTag(COMBAT_TAGS.LIFEST)} ${ICONS.effect.feast} ${name} tấn __${healed} HP__.`;
 export const COMBAT_MONSTER_VENOM_SPIT = (name: string, enemy: string, value: string): string =>
 	`${combatTag(COMBAT_TAGS.VENM)} ${ICONS.effect.venom} ${name} phun nọc vào ${enemy} (${value} HP mỗi lượt).`;
+
+/** Display text for domain/combat/CombatStatusEffects. */
+export const COMBAT_DOT_LABELS = {
+	bleed: 'Chảy máu',
+	burn: 'Bỏng',
+	venom: 'Nhiễm độc',
+};

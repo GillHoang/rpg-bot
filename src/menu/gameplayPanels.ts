@@ -1,3 +1,4 @@
+import { GAMEPLAY_TEXT } from '../text/gameplay.js';
 import { enhancementPlus } from '../utils/enhancementDisplay.js';
 import { escapeMarkdown } from 'discord.js';
 import { CLASSES } from '../config/classes.js';
@@ -13,19 +14,19 @@ import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { MenuAction } from './menuIds.js';
 
-const n = (value: number) => value.toLocaleString('vi-VN');
+const n = (value: number) => Number(value).toLocaleString('en-US', { maximumFractionDigits: 3 });
 const button = (action: MenuAction, label: string, disabled = false): GamePanel['buttons'][number] => ({
 	action,
 	label,
 	disabled,
 });
-const cancel = button('cancel', 'Huỷ');
+const cancel = button('cancel', GAMEPLAY_TEXT.cancel);
 
 function activityButtons(dailyDone: boolean) {
 	return {
-		dailyButton: button('daily', dailyDone ? 'Đã nhận daily' : 'Nhận daily', dailyDone),
-		hunt: button('hunt', 'Săn quái'),
-		quests: button('quests', 'Nhiệm vụ'),
+		dailyButton: button('daily', dailyDone ? GAMEPLAY_TEXT.dailyClaimed : GAMEPLAY_TEXT.dailyClaim, dailyDone),
+		hunt: button('hunt', GAMEPLAY_TEXT.hunt),
+		quests: button('quests', GAMEPLAY_TEXT.quests),
 	};
 }
 
@@ -33,29 +34,29 @@ export function confirmationPanel(screen: Extract<MenuScreen, { kind: 'confirm' 
 	if (screen.operation === 'start') {
 		const c = CLASSES[screen.combatClass];
 		return {
-			title: `Chọn ${screen.combatClass}`,
+			title: GAMEPLAY_TEXT.chooseClass(screen.combatClass),
 			body:
-				`${c.flavor}\n${c.passiveLine}\n\n` +
-				`Chỉ số cơ bản: HP ${c.base.hp} · ATK ${c.base.atk} · DEF ${c.base.def} · Crit ${c.base.crit}%\n` +
-				`Quà khởi đầu: trang bị, ${n(GRANT_BELIEF_SHARDS)} shards và ${GRANT_SILVER_CHESTS} Silver Chest.\nXác nhận để tạo nhân vật; đổi class về sau cần vật phẩm.`,
-			buttons: [button('confirm', 'Tạo nhân vật'), cancel],
+				`> ${c.flavor}\n${c.passiveLine}\n\n` +
+				GAMEPLAY_TEXT.baseStats(c.base.hp, c.base.atk, c.base.def, c.base.crit) +
+				GAMEPLAY_TEXT.starterRewards(n(GRANT_BELIEF_SHARDS), GRANT_SILVER_CHESTS),
+			buttons: [button('confirm', GAMEPLAY_TEXT.createCharacter), cancel],
 			classes: true,
 		};
 	}
 	return {
-		title: screen.operation === 'boss' ? 'Xác nhận đánh boss' : 'Xác nhận đổi quest',
+		title: screen.operation === 'boss' ? GAMEPLAY_TEXT.confirmBoss : GAMEPLAY_TEXT.confirmReroll,
 		body:
 			screen.operation === 'boss'
-				? `Yêu cầu cấp ${BOSS_ENTRY.minLevel}. Phí: **${n(BOSS_ENTRY.credux)} Credux**, trừ khi vào trận kể cả thua.\nMỗi ngày 1 lượt; reset 00:00 Manila (23:00 Việt Nam).\nLượt ngày ${screen.day}.`
-				: `Đổi miễn phí 1 lần/ngày. **Tiến độ của nhiệm vụ ngày chưa hoàn thành sẽ mất.** Nhiệm vụ đã hoàn thành được giữ.\nBộ nhiệm vụ ngày ${screen.day}.`,
-		buttons: [{ action: 'confirm', label: 'Xác nhận', danger: true }, cancel],
+				? GAMEPLAY_TEXT.bossConfirmation(BOSS_ENTRY.minLevel, n(BOSS_ENTRY.credux), screen.day)
+				: GAMEPLAY_TEXT.rerollConfirmation(screen.day),
+		buttons: [{ action: 'confirm', label: GAMEPLAY_TEXT.confirm, danger: true }, cancel],
 	};
 }
 
 export function onboardingPanel(): GamePanel {
 	return {
-		title: 'Bắt đầu hành trình',
-		body: 'Chọn một class bên dưới để xem chỉ số và tạo nhân vật. Sau đó bạn có thể nhận daily và săn quái ngay trong menu này.',
+		title: GAMEPLAY_TEXT.onboardingTitle,
+		body: GAMEPLAY_TEXT.onboardingBody,
 		classes: true,
 		buttons: [],
 	};
@@ -67,78 +68,85 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 		(weekly ? q.weeklies : q.dailies)
 			.map((row) => {
 				const label = MENU_QUEST_LABELS[row.questType as QuestType];
-				const bonus = 'rewardValor' in row ? `${row.rewardValor} Valor` : `${row.rewardBeliefShards} shards`;
+				const bonus =
+					'rewardValor' in row
+						? GAMEPLAY_TEXT.valorReward(row.rewardValor)
+						: GAMEPLAY_TEXT.shardReward(row.rewardBeliefShards);
 				const progress = row.completed ? '✅' : `${row.currentCount}/${row.targetCount}`;
-				return `${progress} ${label} · ${n(row.rewardCredux)} Credux + ${bonus}`;
+				return GAMEPLAY_TEXT.questRow(progress, label, n(row.rewardCredux), bonus);
 			})
 			.join('\n');
-	let grandStatus = 'Hoàn thành 3 nhiệm vụ tuần để nhận thưởng tuần.';
-	if (q.grandClaimed) grandStatus = 'Đã nhận thưởng tuần.';
-	else if (q.grandReady) grandStatus = 'Thưởng tuần sẵn sàng!';
+	let grandStatus = GAMEPLAY_TEXT.weeklyIncomplete;
+	if (q.grandClaimed) grandStatus = GAMEPLAY_TEXT.weeklyClaimed;
+	else if (q.grandReady) grandStatus = GAMEPLAY_TEXT.weeklyReady;
 	return {
-		title: 'Daily & nhiệm vụ',
+		title: GAMEPLAY_TEXT.questsTitle,
 		body:
-			`**Ngày ${q.day}**\n${rows(false)}\n\n**Tuần ${q.week}**\n${rows(true)}\n\n` +
-			grandStatus +
-			'\nThưởng từng quest tự nhận khi hoàn thành. Các tính năng kho đồ, triệu hồi và PvP sẽ được nối menu ở giai đoạn tiếp theo.',
+			GAMEPLAY_TEXT.questSections(q.day, rows(false), q.week, rows(true)) + grandStatus + GAMEPLAY_TEXT.questHint,
 		buttons: [
 			dailyButton,
 			hunt,
-			button('claim', 'Nhận thưởng tuần', !q.grandReady),
-			button('reroll', 'Đổi quest ngày', !q.refreshAvailable || q.dailies.every((x) => x.completed)),
+			button('claim', GAMEPLAY_TEXT.claimWeekly, !q.grandReady),
+			button('reroll', GAMEPLAY_TEXT.rerollDaily, !q.refreshAvailable || q.dailies.every((x) => x.completed)),
 		],
 	};
 }
 
 export function battleLobbyPanel(p: ProfileSummaryData, bossDone: boolean, hasBattle: boolean): GamePanel {
-	const hunt = button('hunt', 'Săn quái');
-	const quests = button('quests', 'Nhiệm vụ');
-	let bossStatus = 'Bạn có thể đánh boss.';
-	if (bossDone) bossStatus = 'Đã đánh boss hôm nay.';
-	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = 'Chưa đủ cấp đánh boss.';
-	else if (p.credux < BOSS_ENTRY.credux) bossStatus = 'Chưa đủ Credux vào boss.';
+	const hunt = button('hunt', GAMEPLAY_TEXT.hunt);
+	const quests = button('quests', GAMEPLAY_TEXT.quests);
+	let bossStatus = GAMEPLAY_TEXT.bossReady;
+	if (bossDone) bossStatus = GAMEPLAY_TEXT.bossDone;
+	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = GAMEPLAY_TEXT.bossLowLevel;
+	else if (p.credux < BOSS_ENTRY.credux) bossStatus = GAMEPLAY_TEXT.bossLowBalance;
 	return {
-		title: 'Săn quái & boss',
+		title: GAMEPLAY_TEXT.battleLobbyTitle,
 		body:
-			`Cấp ${p.level} · ${n(p.credux)} Credux\nSăn quái miễn phí.\n` +
-			`Boss: cấp ${BOSS_ENTRY.minLevel}, phí ${n(BOSS_ENTRY.credux)} Credux, 1 lượt/ngày.\n` +
+			GAMEPLAY_TEXT.huntInfo(p.level, n(p.credux)) +
+			GAMEPLAY_TEXT.bossInfo(BOSS_ENTRY.minLevel, n(BOSS_ENTRY.credux)) +
 			bossStatus +
-			'\nReset 00:00 Manila (23:00 Việt Nam).',
+			GAMEPLAY_TEXT.resetTime,
 		buttons: [
 			hunt,
-			button('boss', 'Đánh boss', bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux),
+			button(
+				'boss',
+				GAMEPLAY_TEXT.boss,
+				bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
+			),
 			quests,
-			...(hasBattle ? [button('result', 'Trận gần nhất')] : []),
+			...(hasBattle ? [button('result', GAMEPLAY_TEXT.lastBattle)] : []),
 		],
 	};
 }
 
 function profileSummary(p: ProfileSummaryData): string {
 	return (
-		`**${escapeMarkdown(p.username)}**\n${CLASSES[p.combatClass].emoji} **${p.combatClass} · Cấp ${p.level}**\n` +
-		`EXP ${renderProgressBar({ current: p.exp, max: p.expToNext })} \`${n(p.exp)}/${n(p.expToNext)}\`\n` +
-		`💰 **${n(p.credux)}** Credux · 💎 **${n(p.beliefShards)}** shards\n`
+		GAMEPLAY_TEXT.profileHeading(escapeMarkdown(p.username), CLASSES[p.combatClass].emoji, p.combatClass, p.level) +
+		GAMEPLAY_TEXT.profileExp(renderProgressBar({ current: p.exp, max: p.expToNext }), n(p.exp), n(p.expToNext)) +
+		GAMEPLAY_TEXT.profileCurrency(n(p.credux), n(p.beliefShards))
 	);
 }
 
 export function profilePanel(p: ProfileCardData): GamePanel {
 	const summary = profileSummary(p);
 	const gear = (item: { name: string; enhancement: number } | null | undefined) =>
-		item ? `**${escapeMarkdown(item.name)}** · +${enhancementPlus(item.enhancement)}` : 'Chưa trang bị';
+		item
+			? GAMEPLAY_TEXT.gearRow(escapeMarkdown(item.name), enhancementPlus(item.enhancement))
+			: GAMEPLAY_TEXT.unequipped;
 	const deities = p.loadout?.deities.length
-		? p.loadout.deities.map((d) => `✦ **${escapeMarkdown(d.name)}** · ${d.sigils} Sigil`).join('\n')
-		: 'Chưa có thần đồng hành';
+		? p.loadout.deities.map((d) => GAMEPLAY_TEXT.deityRow(escapeMarkdown(d.name), d.sigils)).join('\n')
+		: GAMEPLAY_TEXT.noDeities;
 	return {
-		title: 'Nhân vật',
+		title: GAMEPLAY_TEXT.profile,
 		withAvatar: true,
 		grouped: true,
 		body:
 			summary +
 			(p.title ? `*${escapeMarkdown(p.title)}*\n` : '') +
-			`\n**Đang sử dụng**\n⚔️ Vũ khí: ${gear(p.loadout?.weapon)}\n🛡️ Giáp: ${gear(p.loadout?.armor)}\n` +
-			`\n**Thần đồng hành**\n${deities}\n` +
-			`\nHP ${n(p.stats.hp)} · ATK ${n(p.stats.atk)} · DEF ${n(p.stats.def)}`,
-		buttons: [button('hunt', 'Săn quái')],
+			GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor)) +
+			GAMEPLAY_TEXT.deitiesSection(deities) +
+			GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def)),
+		buttons: [button('hunt', GAMEPLAY_TEXT.hunt)],
 	};
 }
 
@@ -146,26 +154,32 @@ export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; b
 	const { dailyDone, bossDone } = status;
 	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
 	return {
-		title: 'Trang chủ',
+		title: GAMEPLAY_TEXT.home,
 		withAvatar: true,
 		grouped: true,
 		body: profileSummary(p),
 		buttons: [
-			...[button('profile', 'Nhân vật'), button('help', 'Hướng dẫn'), button('search', 'Tìm hướng dẫn')].map(
-				(b) => ({ ...b, group: 'Thông tin' }),
-			),
+			...[
+				button('profile', GAMEPLAY_TEXT.profile),
+				button('help', GAMEPLAY_TEXT.help),
+				button('search', GAMEPLAY_TEXT.searchHelp),
+			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.infoGroup })),
 			...[
 				dailyButton,
 				hunt,
-				button('boss', 'Đánh boss', bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux),
+				button(
+					'boss',
+					GAMEPLAY_TEXT.boss,
+					bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
+				),
 				quests,
-			].map((b) => ({ ...b, group: 'Hoạt động' })),
+			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.activityGroup })),
 			...[
-				button('inventory', 'Kho đồ'),
-				button('deity', 'Deity & triệu hồi'),
-				button('shop', 'Cửa hàng'),
-				button('casino', 'Casino'),
-			].map((b) => ({ ...b, group: 'Tài sản' })),
+				button('inventory', GAMEPLAY_TEXT.inventory),
+				button('deity', GAMEPLAY_TEXT.deitySummon),
+				button('shop', GAMEPLAY_TEXT.shop),
+				button('casino', GAMEPLAY_TEXT.casino),
+			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.assetsGroup })),
 		],
 	};
 }
@@ -173,7 +187,14 @@ export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; b
 /** Split long rounds instead of silently dropping combat events at the text limit. */
 export function logPages(result: MenuBattle): string[] {
 	return result.battle.roundLogs.flatMap((round) => {
-		const text = `Hiệp ${round.round}\nBạn: ${round.playerHp}/${round.playerMaxHp} HP · Địch: ${round.enemyHp}/${round.enemyMaxHp} HP\n${round.lines.join('\n')}`;
+		const text = GAMEPLAY_TEXT.roundLog(
+			round.round,
+			round.playerHp,
+			round.playerMaxHp,
+			round.enemyHp,
+			round.enemyMaxHp,
+			round.lines.join('\n'),
+		);
 		const pages: string[] = [];
 		let page = '';
 		for (const character of text) {
@@ -192,37 +213,43 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 	const r = session.battle;
 	if (!r)
 		return {
-			title: 'Chiến đấu',
-			body: 'Chưa có trận đấu trong menu này.',
-			buttons: [button('hunt', 'Săn quái')],
+			title: GAMEPLAY_TEXT.battleTitle,
+			body: GAMEPLAY_TEXT.noBattle,
+			buttons: [button('hunt', GAMEPLAY_TEXT.hunt)],
 		};
 	if (session.screen.kind === 'log') {
 		const pages = r.battle.roundLogs;
 		const page = Math.max(0, Math.min(pages.length - 1, session.screen.page));
 		return {
-			title: `Nhật ký · ${page + 1}/${Math.max(1, pages.length)}`,
-			body: pages[page]?.lines.join('\n').slice(-2800) || 'Không có log.',
+			title: GAMEPLAY_TEXT.logTitle(page + 1, Math.max(1, pages.length)),
+			body: pages[page]?.lines.join('\n').slice(-2800) || GAMEPLAY_TEXT.noLog,
 			buttons: [
-				button('first', 'Đầu', page === 0),
-				button('prev', 'Trang trước', page === 0),
-				button('next', 'Trang sau', page >= pages.length - 1),
-				button('last', 'Cuối', page >= pages.length - 1),
-				...(!r.boss ? [button('hunt', 'Đánh lại (15s)')] : []),
+				button('first', GAMEPLAY_TEXT.first, page === 0),
+				button('prev', GAMEPLAY_TEXT.previous, page === 0),
+				button('next', GAMEPLAY_TEXT.next, page >= pages.length - 1),
+				button('last', GAMEPLAY_TEXT.last, page >= pages.length - 1),
+				...(!r.boss ? [button('hunt', GAMEPLAY_TEXT.replay)] : []),
 			],
 		};
 	}
-	let outcome = 'Hoà';
-	if (r.battle.outcome === 'player_win') outcome = 'Chiến thắng';
-	else if (r.battle.outcome === 'enemy_win') outcome = 'Thất bại';
+	let outcome = GAMEPLAY_TEXT.draw;
+	if (r.battle.outcome === 'player_win') outcome = GAMEPLAY_TEXT.win;
+	else if (r.battle.outcome === 'enemy_win') outcome = GAMEPLAY_TEXT.lose;
 	return {
-		title: 'Kết quả trận đấu',
+		title: GAMEPLAY_TEXT.resultTitle,
 		body:
 			`${outcome} · ${escapeMarkdown(r.monsterName)}\n` +
-			`${r.battle.rounds} hiệp · HP còn ${r.battle.playerHpRemaining}\n+${n(r.expGained)} EXP · +${n(r.credux)} Credux · +${n(r.shards)} shards\n` +
+			GAMEPLAY_TEXT.battleRewards(
+				r.battle.rounds,
+				r.battle.playerHpRemaining,
+				n(r.expGained),
+				n(r.credux),
+				n(r.shards),
+			) +
 			(r.gotChest ? `+1 ${r.chestName}\n` : '') +
 			(r.gearDrop ? `${r.gearDrop}\n` : '') +
-			(r.progress.leveledUp ? `Lên cấp ${r.progress.previousLevel} → ${r.progress.newLevel}!\n` : '') +
-			(r.boss ? `Phí vào boss: −${n(BOSS_ENTRY.credux)} Credux.\n` : ''),
+			(r.progress.leveledUp ? GAMEPLAY_TEXT.levelUp(r.progress.previousLevel, r.progress.newLevel) : '') +
+			(r.boss ? GAMEPLAY_TEXT.bossFee(n(BOSS_ENTRY.credux)) : ''),
 		buttons: battlePanel({ battle: r, screen: { kind: 'log', page: Math.max(0, r.battle.roundLogs.length - 1) } })
 			.buttons,
 	};

@@ -1,3 +1,4 @@
+import { CASINO_SESSION_TEXT } from '../text/casino.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -102,7 +103,10 @@ export class CasinoSessionService {
 					game: session.game as InteractiveGame,
 					done: true,
 					revision: stored.actions.length,
-					text: `${replayGame(session.game as InteractiveGame, session.betAmount, stored).text}\nVán đã kết thúc. Payout: ${session.payout ?? 0} Credux.`,
+					text: CASINO_SESSION_TEXT.finished(
+						replayGame(session.game as InteractiveGame, session.betAmount, stored).text,
+						session.payout ?? 0,
+					),
 				};
 			const next = Date.now() >= session.expiresAt.getTime() ? 'timeout' : action;
 			if (next !== 'timeout' && expectedRevision !== undefined && expectedRevision !== stored.actions.length)
@@ -111,7 +115,7 @@ export class CasinoSessionService {
 				next !== 'timeout' &&
 				!(session.game === 'blackjack' ? ['hit', 'stand'] : ['push', 'cash']).includes(next)
 			)
-				return { status: 'error', text: 'Thao tác không hợp lệ.' };
+				return { status: 'error', text: CASINO_SESSION_TEXT.invalidAction };
 			stored.actions.push(next);
 			return this.resolve(tx, session, stored);
 		});
@@ -131,7 +135,7 @@ export class CasinoSessionService {
 				game,
 				done: false,
 				revision: stored.actions.length,
-				text: view.text + '\nTự Stand / Cash Out sau 60 giây tính từ khi mở ván. Tiền cược đã trừ.',
+				text: view.text + CASINO_SESSION_TEXT.timeoutHint,
 			};
 		}
 		const [bag] = await this.queries.findBag(tx, s.discordId);

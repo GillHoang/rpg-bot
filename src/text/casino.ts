@@ -47,3 +47,17 @@ export const CASINO_CRASH_VIEW = (bet: string, round: number, multiplier: string
 export const CASINO_SETTLE_LINE = (view: string, result: string, payout: string, balance: string): string =>
 	`${view}\n${result} · Nhận ${payout} · Số dư ${balance} Credux.`;
 export const CASINO_HIDDEN_CARD = '[ẩn]';
+
+/** Display text for commands/casino/CasinoCommand. */
+export const CASINO_DESCRIPTION_TEXT = {
+	blackjack: 'Blackjack: Hit/Stand, hết hạn 60 giây',
+	crash: 'Crash: Push/Cash Out, hết hạn 60 giây',
+};
+
+/** Display text for services/CasinoSessionService. */
+export const CASINO_SESSION_TEXT = {
+	finished: (gameText: string | number, payout: string | number): string =>
+		`${gameText}\nVán đã kết thúc. Payout: ${payout} Credux.`,
+	invalidAction: 'Thao tác không hợp lệ.',
+	timeoutHint: '\nTự Stand / Cash Out sau 60 giây tính từ khi mở ván. Tiền cược đã trừ.',
+};

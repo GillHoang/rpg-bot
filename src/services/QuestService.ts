@@ -1,3 +1,4 @@
+import { QUEST_FLOW_TEXT } from '../text/quest.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { QuestRepository } from '../repositories/QuestRepository.js';
@@ -184,7 +185,7 @@ export class QuestService {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
 			const day = DailyCycle.keyAt();
-			if (expectedDay && expectedDay !== day) return 'Đã sang ngày mới. Hãy xem lại nhiệm vụ trước khi đổi.';
+			if (expectedDay && expectedDay !== day) return QUEST_FLOW_TEXT.dayChanged;
 			if (user.lastQuestRefreshDate === day) return QUEST_REFRESH_LIMIT;
 			await this.queries.deleteIncompleteDailyQuests(tx, discordId, day);
 			// Completed quests stay; reroll only tops the board back up to

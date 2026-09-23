@@ -1,3 +1,4 @@
+import { TITLES_TEXT } from '../../text/catalog/titles.js';
 /**
  * SEED DATA — title_catalog (M7, số liệu mặc định mới).
  * Source: believer | rank_season | boss_feat | collection | event
@@ -14,56 +15,56 @@ export interface TitleSeed {
 export const TITLE_SEED: TitleSeed[] = [
 	{
 		code: 'first_blood',
-		display: 'First Blood',
+		display: TITLES_TEXT['first_blood'].display,
 		source: 'event',
-		howTo: 'Thắng duel đầu tiên (/duel).',
+		howTo: TITLES_TEXT['first_blood'].howTo,
 	},
 	{
 		code: 'boss_slayer',
-		display: 'Bakunawa Slayer',
+		display: TITLES_TEXT['boss_slayer'].display,
 		source: 'boss_feat',
-		howTo: 'Hạ Bakunawa trong /raid boss.',
+		howTo: TITLES_TEXT['boss_slayer'].howTo,
 	},
 	{
 		code: 'rank_champion',
-		display: 'Arena Champion',
+		display: TITLES_TEXT['rank_champion'].display,
 		source: 'rank_season',
-		howTo: 'Đạt bracket Champion trong ranked.',
+		howTo: TITLES_TEXT['rank_champion'].howTo,
 	},
 	{
 		code: 'rank_demigod',
-		display: 'Demigod of the Arena',
+		display: TITLES_TEXT['rank_demigod'].display,
 		source: 'rank_season',
-		howTo: 'Đạt bracket Demigod trong ranked.',
+		howTo: TITLES_TEXT['rank_demigod'].howTo,
 	},
 	{
 		code: 'rank_ascendant',
-		display: 'Ascendant',
+		display: TITLES_TEXT['rank_ascendant'].display,
 		source: 'rank_season',
-		howTo: 'Đạt bracket Ascendant trong ranked.',
+		howTo: TITLES_TEXT['rank_ascendant'].howTo,
 	},
 	{
 		code: 'rank_divine',
-		display: 'Divine Duelist',
+		display: TITLES_TEXT['rank_divine'].display,
 		source: 'rank_season',
-		howTo: 'Đạt bracket Divine trong ranked.',
+		howTo: TITLES_TEXT['rank_divine'].howTo,
 	},
 	{
 		code: 'streak_master',
-		display: 'Unstoppable',
+		display: TITLES_TEXT['streak_master'].display,
 		source: 'event',
-		howTo: 'Chuỗi thắng raid đạt 10 trận liên tiếp.',
+		howTo: TITLES_TEXT['streak_master'].howTo,
 	},
 	{
 		code: 'devout_believer',
-		display: 'Devout Believer',
+		display: TITLES_TEXT['devout_believer'].display,
 		source: 'believer',
-		howTo: 'Đạt believer level 10.',
+		howTo: TITLES_TEXT['devout_believer'].howTo,
 	},
 	{
 		code: 'arena_legend',
-		display: 'Arena Legend',
+		display: TITLES_TEXT['arena_legend'].display,
 		source: 'event',
-		howTo: 'Mua bằng Valor Medals ở /pvp shop.',
+		howTo: TITLES_TEXT['arena_legend'].howTo,
 	},
 ];

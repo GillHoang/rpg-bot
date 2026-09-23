@@ -1,3 +1,4 @@
+import { COMMAND_RECOVERY_TEXT } from '../text/common.js';
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from './ICommand.js';
 import { logger } from '../utils/logger.js';
@@ -35,7 +36,7 @@ export class CommandRegistry {
 		if (!command) {
 			logger.warn({ command: interaction.commandName }, 'Unknown command invoked');
 			await interaction
-				.reply({ content: 'Lệnh này không còn khả dụng. Hãy mở lại danh sách lệnh.', ephemeral: true })
+				.reply({ content: COMMAND_RECOVERY_TEXT.unavailable, ephemeral: true })
 				.catch((err: unknown) => logger.warn({ err }, 'Unknown command reply failed'));
 			return;
 		}

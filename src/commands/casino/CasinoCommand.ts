@@ -1,3 +1,4 @@
+import { CASINO_DESCRIPTION_TEXT } from '../../text/casino.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { CasinoService } from '../../services/CasinoService.js';
@@ -26,8 +27,8 @@ export class CasinoCommand implements ICommand {
 		.addSubcommand((s) => casinoOptions(s, 'dice_roll', CASINO_GAME_LABELS.dice_roll))
 		.addSubcommand((s) => casinoOptions(s, 'slot_machine', CASINO_GAME_LABELS.slot_machine))
 		.addSubcommand((s) => casinoOptions(s, 'baccarat', CASINO_GAME_LABELS.baccarat))
-		.addSubcommand((s) => casinoOptions(s, 'blackjack', 'Blackjack: Hit/Stand, hết hạn 60 giây'))
-		.addSubcommand((s) => casinoOptions(s, 'crash', 'Crash: Push/Cash Out, hết hạn 60 giây'));
+		.addSubcommand((s) => casinoOptions(s, 'blackjack', CASINO_DESCRIPTION_TEXT.blackjack))
+		.addSubcommand((s) => casinoOptions(s, 'crash', CASINO_DESCRIPTION_TEXT.crash));
 
 	constructor(
 		private readonly casino: Pick<CasinoService, 'play'> = new CasinoService(),

@@ -1,3 +1,4 @@
+import { COMBAT_DOT_LABELS } from '../../text/combat.js';
 import { rollChance } from '../../utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
@@ -105,10 +106,10 @@ function dotTagOf(tag: DotTag): string {
 function dotLabelOf(tag: DotTag): string {
 	switch (tag) {
 		case 'bleed':
-			return 'Chảy máu';
+			return COMBAT_DOT_LABELS.bleed;
 		case 'burn':
-			return 'Bỏng';
+			return COMBAT_DOT_LABELS.burn;
 		default:
-			return 'Nhiễm độc';
+			return COMBAT_DOT_LABELS.venom;
 	}
 }

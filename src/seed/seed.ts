@@ -1,10 +1,10 @@
 /**
- * Seed runner — nạp dữ liệu seed vào SQLite.
+ * Seed runner — nạp dữ liệu seed vào PostgreSQL.
  *
  *   npm run db:seed
  *
  * Chạy SAU `npm run db:migrate`. Mọi string/text dữ liệu nằm ở
- * `src/seed/data/*.ts` — sửa ở đó rồi chạy lại script này.
+ * `src/text/catalog/*.ts` — sửa text ở đó rồi chạy lại script này.
  *
  * Chế độ upsert theo khóa chính (`onConflictDoUpdate`): seed có thể chạy
  * lại bao nhiêu lần cũng không nhân bản row; row người chơi tạo sau đó

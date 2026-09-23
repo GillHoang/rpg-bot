@@ -1,3 +1,4 @@
+import { RAID_CONFIRMATION_TEXT } from '../text/raid.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { RaidRepository } from '../repositories/RaidRepository.js';
@@ -287,7 +288,7 @@ export class RaidService {
 			if (receipt) return { status: 'already-processed' };
 		}
 		if (boss && options.expectedDay && options.expectedDay !== day) {
-			return { status: 'boss-locked', message: 'Đã sang ngày mới. Hãy xác nhận lại lượt đánh boss.' };
+			return { status: 'boss-locked', message: RAID_CONFIRMATION_TEXT.dayChanged };
 		}
 		return null;
 	}

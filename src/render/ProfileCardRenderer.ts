@@ -1,3 +1,4 @@
+import { PROFILE_EXTRA_TEXT } from '../text/profile.js';
 import { createCanvas } from '@napi-rs/canvas';
 import { CLASSES } from '../config/classes.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
@@ -132,9 +133,13 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	if (data.title) m7Parts.push(`${ICONS.gear.titles} ${data.title}`);
 	if (data.believerLevel != null)
 		m7Parts.push(
-			`${ICONS.deity.believer} Believer Lv.${data.believerLevel} (${(data.believerExp ?? 0).toLocaleString()} exp)`,
+			PROFILE_EXTRA_TEXT.believer(
+				ICONS.deity.believer,
+				data.believerLevel,
+				(data.believerExp ?? 0).toLocaleString(),
+			),
 		);
-	if (data.pvpRating != null) m7Parts.push(`${ICONS.ranked.profileBadge} ${data.pvpRating} rated`);
+	if (data.pvpRating != null) m7Parts.push(PROFILE_EXTRA_TEXT.rating(ICONS.ranked.profileBadge, data.pvpRating));
 	if (m7Parts.length > 0) {
 		ctx.fillStyle = '#ffffffaa';
 		ctx.font = '16px sans-serif';

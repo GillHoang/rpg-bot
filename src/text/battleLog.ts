@@ -20,3 +20,14 @@ export const BATTLE_LOG_HP_CELLS = 7;
 
 /** Trước khi hết hạn, pager vô hiệu nút điều hướng (phút). */
 export const BATTLE_LOG_PAGER_TTL_MS = 4 * 60_000;
+
+/** Display text for render/BattleLogPager. */
+export const BATTLE_REPLAY_TEXT = {
+	button: (seconds: string | number): string => `Đánh lại (${seconds}s)`,
+	ownerOnly: 'Chỉ người gọi lệnh mới có thể đánh lại.',
+	failed: 'Không thể đánh lại lúc này. Hãy thử lại sau.',
+	updateFailed: 'Không thể cập nhật nhật ký lúc này. Hãy thử lại sau.',
+	expired: 'Nút đã hết hạn. Hãy dùng /raid hunt.',
+	busy: 'Trận đấu đang được xử lý.',
+	cooldown: (seconds: string | number): string => `Chờ ${seconds} giây nữa để đánh lại.`,
+};

@@ -13,3 +13,10 @@ export const PROFILE_STAT_LABELS = {
 } as const;
 
 export const PROFILE_EXP_LABEL = 'EXP';
+
+/** Display text for render/ProfileCardRenderer. */
+export const PROFILE_EXTRA_TEXT = {
+	believer: (icon: string | number, level: string | number, exp: string | number): string =>
+		`${icon} Believer Lv.${level} (${exp} exp)`,
+	rating: (icon: string | number, rating: string | number): string => `${icon} ${rating} rated`,
+};

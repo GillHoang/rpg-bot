@@ -1,3 +1,4 @@
+import { MENU_VIEW_TEXT } from '../text/menu.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -127,7 +128,7 @@ export function menuView(session: MenuSession) {
 	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
 		const battle = session.battle;
 		const container = buildBattleLogPage(
-			raidBattleOptions(battle, battle.boss, session.playerName ?? 'Bạn'),
+			raidBattleOptions(battle, battle.boss, session.playerName ?? MENU_VIEW_TEXT.player),
 			session.screen.kind === 'log' ? session.screen.page : battle.battle.roundLogs.length - 1,
 			{
 				navigation: true,
@@ -142,8 +143,10 @@ export function menuView(session: MenuSession) {
 		if (session.notice) container.addTextDisplayComponents((t) => t.setContent(session.notice!));
 		const rows = [
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }),
-				...(!battle.boss ? [gameplayButton(session, { action: 'hunt', label: 'Đánh lại (15s)' }, '⚔️')] : []),
+				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
+				...(!battle.boss
+					? [gameplayButton(session, { action: 'hunt', label: MENU_VIEW_TEXT.replay }, '⚔️')]
+					: []),
 			),
 		];
 		return {
@@ -156,14 +159,14 @@ export function menuView(session: MenuSession) {
 	const container = new ContainerBuilder().setAccentColor(0xf1c232);
 	const screen = session.screen;
 	const { title, body, topics } = viewContent(session);
-	container.addTextDisplayComponents((t) => t.setContent(`## CREDD · ${title}`));
+	container.addTextDisplayComponents((t) => t.setContent(MENU_VIEW_TEXT.heading(title)));
 	// Reserve room within the V2 message text budget for the title/footer.
 	if (session.gamePanel?.withAvatar && session.avatarUrl) {
 		container.addSectionComponents(
 			new SectionBuilder()
 				.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)))
 				.setThumbnailAccessory(
-					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription('Avatar nhân vật'),
+					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription(MENU_VIEW_TEXT.avatar),
 				),
 		);
 	} else container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
@@ -172,12 +175,13 @@ export function menuView(session: MenuSession) {
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				new StringSelectMenuBuilder()
 					.setCustomId(id('class'))
-					.setPlaceholder('Chọn class để xem trước')
+					.setPlaceholder(MENU_VIEW_TEXT.chooseClass)
 					.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
 			),
 		);
 	addGameplayButtons(container, session);
-	if (!session.gamePanel?.grouped)
+	// Class screens (onboarding, start confirm) show only the class select — no section/topic pickers.
+	if (!session.gamePanel?.grouped && !session.gamePanel?.classes)
 		container.addActionRowComponents(
 			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
 				new StringSelectMenuBuilder()
@@ -204,7 +208,7 @@ export function menuView(session: MenuSession) {
 			),
 		);
 	}
-	if (!session.gamePanel?.grouped)
+	if (!session.gamePanel?.grouped && !session.gamePanel?.classes)
 		container.addActionRowComponents(
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				new ButtonBuilder().setCustomId(id('help')).setLabel(MENU_TEXT.help).setStyle(ButtonStyle.Primary),
@@ -220,15 +224,25 @@ export function menuView(session: MenuSession) {
 			new ButtonBuilder()
 				.setCustomId(id('back'))
 				.setLabel(MENU_TEXT.back)
+				.setEmoji(MENU_TEXT.back_emoji)
 				.setStyle(ButtonStyle.Secondary)
 				.setDisabled(!session.history.length),
 			new ButtonBuilder()
 				.setCustomId(id('home'))
 				.setLabel(MENU_TEXT.home)
+				.setEmoji(MENU_TEXT.home_emoji)
 				.setStyle(ButtonStyle.Secondary)
 				.setDisabled(screen.kind === 'home'),
-			new ButtonBuilder().setCustomId(id('refresh')).setLabel(MENU_TEXT.refresh).setStyle(ButtonStyle.Secondary),
-			new ButtonBuilder().setCustomId(id('close')).setLabel(MENU_TEXT.close).setStyle(ButtonStyle.Danger),
+			new ButtonBuilder()
+				.setCustomId(id('refresh'))
+				.setLabel(MENU_TEXT.refresh)
+				.setEmoji(MENU_TEXT.refresh_emoji)
+				.setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder()
+				.setCustomId(id('close'))
+				.setLabel(MENU_TEXT.close)
+				.setEmoji(MENU_TEXT.close_emoji)
+				.setStyle(ButtonStyle.Danger),
 		),
 	);
 	container.addTextDisplayComponents((t) => t.setContent(MENU_TEXT.footer));

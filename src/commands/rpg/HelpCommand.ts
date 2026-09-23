@@ -1,3 +1,4 @@
+import { HELP_FLOW_TEXT } from '../../text/help.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -86,9 +87,7 @@ export class HelpCommand implements ICommand {
 				await button.update({ embeds: [helpEmbed(page)], components: [pagerRow(page, total)] });
 			} catch (error) {
 				logger.error({ err: error, discordId: button.user.id }, 'help-page-failed');
-				await button
-					.reply({ content: 'Đã có lỗi xảy ra khi thực thi lệnh này.', ephemeral: true })
-					.catch(() => undefined);
+				await button.reply({ content: HELP_FLOW_TEXT.failed, ephemeral: true }).catch(() => undefined);
 			}
 		});
 		collector.on('end', async () => {

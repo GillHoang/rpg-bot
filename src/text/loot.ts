@@ -43,3 +43,17 @@ export const RUNE_BAG_EMPTY = 'Không đủ túi rune. Mở rương để lấy 
 export const RUNE_BAG_OPENED = (bag: string, item: string): string => `Mở túi ${bag}: ${item}`;
 export const RUNE_BAG_HINT = '\n/socket equip để gắn vào gear; /inventory category:runes xem lane.';
 export const OPEN_ITEM_RELIC = (relic: string): string => `+1 ${relic}`;
+
+/** Display text for services/LootGrantService. */
+export const LOOT_SEED_TEXT = {
+	missingRune: 'Thiếu rune trong seed shop.',
+};
+
+export const LOOT_CHEST_LABELS = {
+	silver: 'Silver',
+	gold: 'Gold',
+	boss: 'Boss Treasure',
+	bossGold: 'Boss Golden',
+	diamond: 'Diamond',
+	genesis: 'Genesis',
+};

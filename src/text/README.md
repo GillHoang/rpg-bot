@@ -1,44 +1,55 @@
-# src/text — toàn bộ text hiển thị của bot
+# Cấu hình text của bot
 
-Mọi chuỗi người chơi nhìn thấy (tên lệnh, mô tả, câu trả lời, lore, nhãn
-trên thẻ profile, battle log...) nằm trong folder này. Muốn đổi wording,
-sửa đúng file tương ứng rồi restart bot — không cần đụng code logic.
+Sửa nội dung hiển thị trong `src/text`. Các file TypeScript chứa chuỗi tĩnh hoặc hàm tạo câu có số liệu; không cần sửa command/service để đổi wording.
 
-## Các file
+## Tìm đúng file
 
-| File | Nội dung |
+| File / thư mục | Nội dung |
 | --- | --- |
-| `common.ts` | Câu dùng chung nhiều lệnh + tên tiền tệ (Credux, Belief Shards) |
-| `register.ts` | `/register` |
-| `create.ts` | `/create` |
-| `balance.ts` | `/balance` |
-| `daily.ts` | `/daily` + nhãn rương (Silver/Gold/Boss...) |
-| `profile.ts` | `/profile` + nhãn vẽ trên thẻ (HP/ATK/DEF/CRIT...) |
-| `raid.ts` | `/raid` (khung thông báo chiến thắng/thất bại, reward) |
-| `summon.ts` | `/summon` + alias tier (Remnant/Awakened/...) |
-| `enhance.ts` | `/enhance` |
-| `socket.ts` | `/socket` |
-| `deity.ts` | `/deity` (Sigil/Ascension) |
-| `casino.ts` | `/casino` + tên 4 game |
-| `classes.ts` | Lore + passive text của 5 lớp nhân vật |
-| `combat.ts` | Battle log hiện trong `/raid` (hit/crit/passive/rune) |
+| `gameplay.ts` | Menu trang chủ, nhân vật, daily/quest, xác nhận, kết quả chiến đấu và thông báo gameplay |
+| `menu.ts` | Điều hướng, tìm kiếm, placeholder, thông báo phiên menu |
+| `battleLog.ts` | Phân trang nhật ký, nút đánh lại, cooldown và lỗi cập nhật |
+| `common.ts` | Thông báo chung, tiền tệ, lệnh không khả dụng, thiếu dữ liệu thưởng |
+| `start.ts`, `classes.ts` | Tạo nhân vật, chỉ số hiển thị, lore và mô tả class |
+| `raid.ts`, `ranked.ts`, `duel.ts`, `combat.ts` | Lệnh chiến đấu, mùa ranked, kết quả và combat log |
+| `profile.ts`, `balance.ts` | Text trên profile card và số dư |
+| `daily.ts`, `quest.ts` | Daily và nhiệm vụ |
+| `inventory.ts`, `loadout.ts`, `loot.ts` | Kho đồ, tên preset mặc định, rương và phần thưởng |
+| `summon.ts`, `deity.ts`, `enhance.ts`, `socket.ts` | Triệu hồi, deity, enhance, socket và tên lựa chọn |
+| `casino.ts`, `pvp.ts`, `cosmetic.ts` | Casino, cửa hàng PvP và cosmetic |
+| `help.ts`, `autocomplete.ts`, `reset.ts`, `ping.ts` | Trợ giúp, gợi ý nhập lệnh và quản trị |
+| `icons.ts` | Emoji/icon dùng chung |
+| `catalog/weapons.ts`, `catalog/armors.ts` | Tên trang bị, mythology, nội tại, mô tả và lore |
+| `catalog/deities.ts`, `catalog/mobs.ts` | Tên, mythology, blessing/skill và mô tả |
+| `catalog/runes.ts`, `catalog/titles.ts`, `catalog/cosmetics.ts` | Tên rune, danh hiệu, cosmetic và mô tả/điều kiện |
 
-## Quy tắc
+## Cách sửa
 
-1. Chuỗi tĩnh: sửa trực tiếp trong ngoặc kép.
-2. Chuỗi có biến (hàm arrow): chỉ sửa wording **quanh** placeholder,
-   giữ nguyên thứ tự/tham số — code gọi hàm đang truyền số liệu vào.
-3. Chỉ text, không viết logic trong folder này.
-4. `index.ts` re-export tất cả; import từ `'../text/index.js'` (hoặc file
-   cụ thể) ở nơi sử dụng.
+- Chuỗi tĩnh: sửa nội dung trong dấu nháy.
+- Hàm tạo câu: sửa câu quanh `${...}`; giữ tên/thứ tự tham số và placeholder. Ví dụ `GAMEPLAY_NOTICE.cooldown(seconds)` dùng `seconds` do gameplay truyền vào.
+- Giữ escape Markdown, dấu xuống dòng `\n` và giới hạn độ dài Discord, nhất là mô tả slash command và nhãn nút.
+- Key object và tên export là địa chỉ code sử dụng, không đổi tên chúng khi chỉnh wording.
+- Các con số trong câu chỉ là mô tả; thay phí/cooldown/cấp yêu cầu trong text không thay luật gameplay.
 
-## Lưu ý: những gì KHÔNG nằm ở đây
+## Áp dụng trên VPS
 
-- **Tên lệnh** (`register`, `casino`, subcommand `equip`...) và **key
-  trạng thái** (`not-registered`, `ok`...) — là định danh logic, đổi sẽ
-  vỡ quyền hạn DB/discord registration.
-- **Giá trị token kết quả casino** (`heads`, `tails`, `blank`...) — được
-  lưu vào `casino_logs` trong DB, là dữ liệu chứ không phải text thuần.
-- **Dữ liệu seed** (`src/seed/data/` — tên deity, mob, vũ khí...) — là
-  game data trong DB, chỉnh qua seed.
-- Màu/font trong `ProfileCardRenderer` — là style, không phải text.
+**Text giao diện:** build lại và restart bot. Với Docker Compose:
+
+```sh
+docker compose up -d --build bot
+docker compose logs --tail=100 bot
+```
+
+Entrypoint hiện chạy migration, seed và đăng ký slash commands trước khi khởi động bot, nên mô tả lệnh và catalog được cập nhật trong lần triển khai này.
+
+**Chạy trực tiếp bằng Node:** sau khi sửa, chạy `pnpm build` rồi restart tiến trình. Nếu đổi mô tả/lựa chọn slash command, chạy thêm `pnpm deploy:commands` với scope đang sử dụng. Nếu đổi `catalog/*`, chạy `pnpm db:seed` với đúng `DATABASE_URL`.
+
+**Dữ liệu đã lưu:** đổi tên preset mặc định và mẫu tên season chỉ áp dụng khi tạo preset/season mới; không tự đổi các bản ghi cũ. Seed không tự đổi tên lịch sử trận đấu đã lưu.
+
+## Catalog và định danh
+
+Catalog được tách theo key/ID ổn định. Giữ nguyên các key này. Tên starter weapon/armor được `config/starter.ts` lấy từ cùng catalog, tránh lệch tên tra cứu khi tạo nhân vật.
+
+**Mob là ngoại lệ:** seed hiện đối chiếu bằng `(name, mythology, mobType)`. Đổi `name` hoặc `mythology` của mob có thể tạo bản ghi mới; cần migration/đối soát DB nếu đổi các trường đó. Đổi mô tả skill thì không đổi khóa này.
+
+Những chuỗi còn ở ngoài `src/text` là định danh và dữ liệu kỹ thuật: tên slash command/subcommand, custom ID, trạng thái, tier/bracket, enum class, key passive/skill, token kết quả casino, đường dẫn, SQL, log vận hành và lỗi nội bộ. Đây không phải cấu hình wording. Số liệu gameplay vẫn nằm trong `src/config` và `src/seed/data`.
