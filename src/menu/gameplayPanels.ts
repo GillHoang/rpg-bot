@@ -1,8 +1,10 @@
+import { enhancementPlus } from '../utils/enhancementDisplay.js';
 import { escapeMarkdown } from 'discord.js';
 import { CLASSES } from '../config/classes.js';
 import { BOSS_ENTRY } from '../config/raidLoot.js';
 import { GRANT_BELIEF_SHARDS, GRANT_SILVER_CHESTS } from '../config/starter.js';
 import type { QuestType } from '../config/quests.js';
+import type { ProfileSummaryData } from '../services/ProfileService.js';
 import type { ProfileCardData } from '../render/ProfileCardRenderer.js';
 import type { QuestSnapshot } from '../services/QuestService.js';
 import { MENU_QUEST_LABELS } from '../text/menu.js';
@@ -88,7 +90,7 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 	};
 }
 
-export function battleLobbyPanel(p: ProfileCardData, bossDone: boolean, hasBattle: boolean): GamePanel {
+export function battleLobbyPanel(p: ProfileSummaryData, bossDone: boolean, hasBattle: boolean): GamePanel {
 	const hunt = button('hunt', 'Săn quái');
 	const quests = button('quests', 'Nhiệm vụ');
 	let bossStatus = 'Bạn có thể đánh boss.';
@@ -111,7 +113,7 @@ export function battleLobbyPanel(p: ProfileCardData, bossDone: boolean, hasBattl
 	};
 }
 
-function profileSummary(p: ProfileCardData): string {
+function profileSummary(p: ProfileSummaryData): string {
 	return (
 		`**${escapeMarkdown(p.username)}**\n${CLASSES[p.combatClass].emoji} **${p.combatClass} · Cấp ${p.level}**\n` +
 		`EXP ${renderProgressBar({ current: p.exp, max: p.expToNext })} \`${n(p.exp)}/${n(p.expToNext)}\`\n` +
@@ -119,41 +121,32 @@ function profileSummary(p: ProfileCardData): string {
 	);
 }
 
-export function profilePanel(p: ProfileCardData, dailyDone: boolean): GamePanel {
+export function profilePanel(p: ProfileCardData): GamePanel {
 	const summary = profileSummary(p);
-	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
+	const gear = (item: { name: string; enhancement: number } | null | undefined) =>
+		item ? `**${escapeMarkdown(item.name)}** · +${enhancementPlus(item.enhancement)}` : 'Chưa trang bị';
 	return {
 		title: 'Nhân vật',
-		withAvatar: true,
-		body:
-			summary +
-			`\nHP ${n(p.stats.hp)} · ATK ${n(p.stats.atk)} · DEF ${n(p.stats.def)} · Crit ${p.stats.crit.toFixed(1)}%\n` +
-			`Tín đồ cấp ${p.believerLevel ?? 1} · EXP ${n(p.believerExp ?? 0)} · PvP ${p.pvpRating ?? 0}\n${p.title ? escapeMarkdown(p.title) : 'Chưa trang bị danh hiệu.'}`,
-		buttons: [dailyButton, hunt, quests],
-	};
-}
-
-export function homePanel(
-	p: ProfileCardData,
-	status: { dailyDone: boolean; bossDone: boolean; overallStreak: number },
-	q: QuestSnapshot | null,
-): GamePanel {
-	const { dailyDone, bossDone, overallStreak } = status;
-	const summary = profileSummary(p);
-	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
-	let bossStatus = 'còn lượt hôm nay';
-	if (bossDone) bossStatus = 'đã đánh hôm nay';
-	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = `mở ở cấp ${BOSS_ENTRY.minLevel}`;
-	return {
-		title: 'Trang chủ',
 		withAvatar: true,
 		grouped: true,
 		body:
 			summary +
-			`\nDaily: ${dailyDone ? 'đã nhận' : 'sẵn sàng'} · Chuỗi ${overallStreak} ngày\n` +
-			`Quest hoàn thành: ngày ${q?.dailies.filter((x) => x.completed).length ?? 0}/${q?.dailies.length ?? 0} · tuần ${q?.weeklies.filter((x) => x.completed).length ?? 0}/${q?.weeklies.length ?? 0}\n` +
-			(q?.grandReady ? 'Thưởng tuần sẵn sàng trong Nhiệm vụ!\n' : '') +
-			`Boss: ${bossStatus}\nReset 00:00 Manila (23:00 Việt Nam).`,
+			(p.title ? `*${escapeMarkdown(p.title)}*\n` : '') +
+			`\n**Đang sử dụng**\n⚔️ Vũ khí: ${gear(p.loadout?.weapon)}\n🛡️ Giáp: ${gear(p.loadout?.armor)}\n` +
+			`\n**Thần đồng hành**\n${p.loadout?.deities.length ? p.loadout.deities.map((d) => `✦ **${escapeMarkdown(d.name)}** · ${d.sigils} Sigil`).join('\n') : 'Chưa có thần đồng hành'}\n` +
+			`\nHP ${n(p.stats.hp)} · ATK ${n(p.stats.atk)} · DEF ${n(p.stats.def)}`,
+		buttons: [button('hunt', 'Săn quái')],
+	};
+}
+
+export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; bossDone: boolean }): GamePanel {
+	const { dailyDone, bossDone } = status;
+	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
+	return {
+		title: 'Trang chủ',
+		withAvatar: true,
+		grouped: true,
+		body: profileSummary(p),
 		buttons: [
 			...[button('profile', 'Nhân vật'), button('help', 'Hướng dẫn'), button('search', 'Tìm hướng dẫn')].map(
 				(b) => ({ ...b, group: 'Thông tin' }),

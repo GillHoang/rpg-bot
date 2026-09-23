@@ -1,3 +1,4 @@
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { SummonRepository } from '../repositories/SummonRepository.js';
@@ -48,6 +49,7 @@ export type SummonResult =
 	| { status: 'ok'; pulls: SummonPullResult[]; finalPity: number; shardsSpent: number };
 
 export interface SummonDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		SummonRepository,
@@ -57,7 +59,6 @@ export interface SummonDependencies {
 		| 'findPreset'
 		| 'insertShardLog'
 		| 'upsertPity'
-		| 'updateActiveDeity'
 		| 'updatePresetDeity'
 		| 'updateRelicBalance'
 		| 'insertRelicGrant'
@@ -81,6 +82,7 @@ export interface SummonDependencies {
  */
 
 export class SummonService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
 	private readonly deities: Pick<DeityService, 'ownedDeityIds' | 'pickRandomAvailableForTier' | 'insertNew'>;
@@ -94,6 +96,7 @@ export class SummonService {
 		options: SummonDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.characters = characters ?? new UserCharacterRepository();
 		this.deities = deities ?? new DeityService();
 		this.events = events ?? EventBus.getInstance();
@@ -108,7 +111,7 @@ export class SummonService {
 		const result = await this.persistence.unitOfWork.run(async (tx) => this.runInTx(tx, discordId, count, relic));
 
 		if (result.status === 'ok') {
-			this.events.emit('summon.done', { discordId, count });
+			this.events.emit('summon.done', { discordId, count, progressApplied: true });
 		}
 		return result;
 	}
@@ -170,12 +173,12 @@ export class SummonService {
 		}
 
 		if (pendingActiveDeityId != null && activePreset) {
-			await this.queries.updateActiveDeity(tx, discordId, { activeDeityId: pendingActiveDeityId });
 			await this.queries.updatePresetDeity(tx, discordId, activePreset.slot, {
 				equippedDeity1Id: pendingActiveDeityId,
 			});
 		}
 
+		await this.progress.apply(tx, discordId, 'summon', new Date(), count);
 		return { status: 'ok', pulls, finalPity: planned.pityAfter, shardsSpent: cost };
 	}
 

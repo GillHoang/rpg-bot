@@ -1,7 +1,9 @@
+import { enhancementPlus } from '../utils/enhancementDisplay.js';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
 import { db, type Executor } from '../db/client.js';
 import {
 	userCharacter,
+	userPresets,
 	usersBag,
 	userWeapons,
 	userArmors,
@@ -31,8 +33,15 @@ export class InventoryDataRepository {
 
 	async searchWeapons(id: string, query: string): Promise<GearSearchRow[]> {
 		const [character] = await this.executor
-			.select({ weapon: userCharacter.equippedWeaponId })
+			.select({ weapon: userPresets.equippedWeaponId })
 			.from(userCharacter)
+			.innerJoin(
+				userPresets,
+				and(
+					eq(userPresets.discordId, userCharacter.discordId),
+					eq(userPresets.slot, userCharacter.activePresetSlot),
+				),
+			)
 			.where(eq(userCharacter.discordId, id))
 			.limit(1);
 		const pattern = `%${query}%`;
@@ -53,13 +62,20 @@ export class InventoryDataRepository {
 			)
 			.orderBy(userWeapons.weaponId)
 			.limit(25);
-		return rows.map((w) => ({ ...w, plus: w.plus - 1, equipped: w.id === character?.weapon }));
+		return rows.map((w) => ({ ...w, plus: enhancementPlus(w.plus), equipped: w.id === character?.weapon }));
 	}
 
 	async searchArmors(id: string, query: string): Promise<GearSearchRow[]> {
 		const [character] = await this.executor
-			.select({ armor: userCharacter.equippedArmorId })
+			.select({ armor: userPresets.equippedArmorId })
 			.from(userCharacter)
+			.innerJoin(
+				userPresets,
+				and(
+					eq(userPresets.discordId, userCharacter.discordId),
+					eq(userPresets.slot, userCharacter.activePresetSlot),
+				),
+			)
 			.where(eq(userCharacter.discordId, id))
 			.limit(1);
 		const pattern = `%${query}%`;
@@ -80,7 +96,7 @@ export class InventoryDataRepository {
 			)
 			.orderBy(userArmors.armorId)
 			.limit(25);
-		return rows.map((a) => ({ ...a, plus: a.plus - 1, equipped: a.id === character?.armor }));
+		return rows.map((a) => ({ ...a, plus: enhancementPlus(a.plus), equipped: a.id === character?.armor }));
 	}
 
 	async searchDeities(id: string, query: string): Promise<DeitySearchRow[]> {

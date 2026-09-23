@@ -40,10 +40,6 @@ export class SummonRepository {
 			.onConflictDoUpdate({ target: pityCounters.discordId, set: { pityCount: pityCount } });
 	}
 
-	async updateActiveDeity(executor: Executor, discordId: string, values: Partial<typeof userCharacter.$inferInsert>) {
-		return executor.update(userCharacter).set(values).where(eq(userCharacter.discordId, discordId));
-	}
-
 	async updatePresetDeity(
 		executor: Executor,
 		discordId: string,

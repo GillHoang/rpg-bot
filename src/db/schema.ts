@@ -1,7 +1,19 @@
 // AUTO-GENERATED from PostgreSQL schema.sql (pg_dump) — review before use.
 // Generator: convert/gen_drizzle.py. Postgres-specific features (RLS, sequences,
 // ARRAY/ANY() CHECK constraints, GENERATED IDENTITY) are approximated for SQLite.
-import { pgTable, text, integer, real, primaryKey, unique, boolean, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import {
+	pgTable,
+	text,
+	integer,
+	real,
+	primaryKey,
+	unique,
+	uniqueIndex,
+	check,
+	boolean,
+	jsonb,
+	timestamp,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Written in the same transaction as menu raid rewards. No interaction tokens stored.
@@ -557,15 +569,24 @@ export const runeRoster = pgTable('rune_roster', {
 	isAvailable: boolean('is_available').notNull().default(true),
 });
 
-export const seasons = pgTable('seasons', {
-	seasonId: integer('season_id').primaryKey().generatedByDefaultAsIdentity(),
-	name: text('name').notNull(),
-	theme: text('theme'),
-	startsAt: timestamp('starts_at', { mode: 'date', withTimezone: false }).notNull(),
-	endsAt: timestamp('ends_at', { mode: 'date', withTimezone: false }).notNull(),
-	featuredDeityId: integer('featured_deity_id').references(() => deityRoster.deityId),
-	isActive: boolean('is_active').notNull().default(false),
-});
+export const seasons = pgTable(
+	'seasons',
+	{
+		seasonId: integer('season_id').primaryKey().generatedByDefaultAsIdentity(),
+		name: text('name').notNull(),
+		theme: text('theme'),
+		startsAt: timestamp('starts_at', { mode: 'date', withTimezone: false }).notNull(),
+		endsAt: timestamp('ends_at', { mode: 'date', withTimezone: false }).notNull(),
+		featuredDeityId: integer('featured_deity_id').references(() => deityRoster.deityId),
+		isActive: boolean('is_active').notNull().default(false),
+	},
+	(t) => [
+		uniqueIndex('seasons_one_active')
+			.on(t.isActive)
+			.where(sql`${t.isActive} = true`),
+		check('seasons_valid_window', sql`${t.endsAt} > ${t.startsAt}`),
+	],
+);
 
 export const serverConfig = pgTable('server_config', {
 	guildId: text('guild_id').primaryKey(),
@@ -771,71 +792,74 @@ export const topggVoteEvents = pgTable('topgg_vote_events', {
 
 // user_armors — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((enhancement >= 1) AND (enhancement <= 11)))
-export const userArmors = pgTable('user_armors', {
-	discordId: text('discord_id')
-		.notNull()
-		.references(() => users.discordId),
-	armorId: text('armor_id').primaryKey(),
-	armorRosterId: integer('armor_roster_id')
-		.notNull()
-		.references(() => armorRoster.armorRosterId),
-	currHp: integer('curr_hp').notNull(),
-	currDef: integer('curr_def').notNull(),
-	enhancement: integer('enhancement').notNull().default(1),
-	baseHp: integer('base_hp').notNull(),
-	baseDef: integer('base_def').notNull(),
-	nativeSockets: jsonb('native_sockets').notNull(),
-	oppositeSockets: jsonb('opposite_sockets').notNull(),
-	isLocked: boolean('is_locked').notNull().default(false),
-	obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })
-		.notNull()
-		.default(sql`now()`),
-});
-
+export const userArmors = pgTable(
+	'user_armors',
+	{
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
+		armorId: text('armor_id').primaryKey(),
+		armorRosterId: integer('armor_roster_id')
+			.notNull()
+			.references(() => armorRoster.armorRosterId),
+		currHp: integer('curr_hp').notNull(),
+		currDef: integer('curr_def').notNull(),
+		enhancement: integer('enhancement').notNull().default(1),
+		baseHp: integer('base_hp').notNull(),
+		baseDef: integer('base_def').notNull(),
+		nativeSockets: jsonb('native_sockets').notNull(),
+		oppositeSockets: jsonb('opposite_sockets').notNull(),
+		isLocked: boolean('is_locked').notNull().default(false),
+		obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })
+			.notNull()
+			.default(sql`now()`),
+	},
+	(t) => [check('user_armors_valid_enhancement', sql`${t.enhancement} BETWEEN 1 AND 21`)],
+);
 // user_character — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((class)::text = ANY ((ARRAY['Swordsman'::character varying, 'Fighter'::character varying, 'Mage'::character varying, 'Knight'::character varying, 'Archer'::character varying])::text[])))
 //   CHECK (((combat_level >= 1) AND (combat_level <= 50)))
 //   CHECK (active_preset_slot = ANY (ARRAY[1, 2]))
 //   CHECK (highest_raid_streak >= 0)
 //   CHECK (highest_rank_streak >= 0)
-export const userCharacter = pgTable('user_character', {
-	discordId: text('discord_id')
-		.primaryKey()
-		.references(() => users.discordId, { onDelete: 'cascade' }),
-	class: text('class').notNull(),
-	combatLevel: integer('combat_level').notNull().default(1),
-	combatExp: integer('combat_exp').notNull().default(0),
-	activePresetSlot: integer('active_preset_slot').notNull().default(1),
-	highestRaidStreak: integer('highest_raid_streak').notNull().default(0),
-	highestRankStreak: integer('highest_rank_streak').notNull().default(0),
-	equippedWeaponId: text('equipped_weapon_id').references(() => userWeapons.weaponId, { onDelete: 'set null' }),
-	activeDeityId: integer('active_deity_id').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-	raidsWon: integer('raids_won').notNull().default(0),
-	raidsLost: integer('raids_lost').notNull().default(0),
-	pvpWins: integer('pvp_wins').notNull().default(0),
-	pvpLosses: integer('pvp_losses').notNull().default(0),
-	believerLevel: integer('believer_level').notNull().default(1),
-	believerExp: integer('believer_exp').notNull().default(0),
-	reputationExpToday: integer('reputation_exp_today').notNull().default(0),
-	reputationExpResetDate: text('reputation_exp_reset_date'),
-	createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
-		.notNull()
-		.default(sql`now()`),
-	equippedArmorId: text('equipped_armor_id').references(() => userArmors.armorId, { onDelete: 'set null' }),
-	activeDeityId2: integer('active_deity_id_2').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-	activeDeityId3: integer('active_deity_id_3').references(() => userDeities.userDeityId, { onDelete: 'set null' }),
-	pvpRating: integer('pvp_rating').notNull().default(1000),
-	bossKills: integer('boss_kills').notNull().default(0),
-	equippedTitleId: integer('equipped_title_id').references(() => titleCatalog.titleId, { onDelete: 'set null' }),
-	activeEchoDeityId: integer('active_echo_deity_id').references(() => userDeities.userDeityId, {
-		onDelete: 'set null',
-	}),
-	pvpPeak: integer('pvp_peak').notNull().default(1000),
-	lastWeeklyClaimWeek: integer('last_weekly_claim_week'),
-	pvpDemotionShield: boolean('pvp_demotion_shield').notNull().default(true),
-	bossTopDamage: integer('boss_top_damage').notNull().default(0),
-	lifetimeExp: integer('lifetime_exp').notNull().default(0),
-});
+export const userCharacter = pgTable(
+	'user_character',
+	{
+		discordId: text('discord_id')
+			.primaryKey()
+			.references(() => users.discordId, { onDelete: 'cascade' }),
+		class: text('class').notNull(),
+		combatLevel: integer('combat_level').notNull().default(1),
+		combatExp: integer('combat_exp').notNull().default(0),
+		activePresetSlot: integer('active_preset_slot').notNull().default(1),
+		highestRaidStreak: integer('highest_raid_streak').notNull().default(0),
+		highestRankStreak: integer('highest_rank_streak').notNull().default(0),
+		raidsWon: integer('raids_won').notNull().default(0),
+		raidsLost: integer('raids_lost').notNull().default(0),
+		pvpWins: integer('pvp_wins').notNull().default(0),
+		pvpLosses: integer('pvp_losses').notNull().default(0),
+		believerLevel: integer('believer_level').notNull().default(1),
+		believerExp: integer('believer_exp').notNull().default(0),
+		reputationExpToday: integer('reputation_exp_today').notNull().default(0),
+		reputationExpResetDate: text('reputation_exp_reset_date'),
+		createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
+			.notNull()
+			.default(sql`now()`),
+		pvpRating: integer('pvp_rating').notNull().default(1000),
+		bossKills: integer('boss_kills').notNull().default(0),
+		equippedTitleId: integer('equipped_title_id').references(() => titleCatalog.titleId, { onDelete: 'set null' }),
+		pvpPeak: integer('pvp_peak').notNull().default(1000),
+		lastWeeklyClaimWeek: text('last_weekly_claim_week'),
+		pvpDemotionShield: boolean('pvp_demotion_shield').notNull().default(true),
+		bossTopDamage: integer('boss_top_damage').notNull().default(0),
+		lifetimeExp: integer('lifetime_exp').notNull().default(0),
+	},
+	(t) => [
+		check('character_valid_class', sql`${t.class} IN ('Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer')`),
+		check('character_valid_preset', sql`${t.activePresetSlot} IN (1, 2)`),
+		check('character_valid_level', sql`${t.combatLevel} BETWEEN 1 AND 50`),
+	],
+);
 
 // user_cosmetics — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((source)::text = ANY ((ARRAY['base'::character varying, 'shop'::character varying, 'founder'::character varying, 'grant'::character varying])::text[])))
@@ -908,9 +932,7 @@ export const userGuildActivity = pgTable(
 export const userPresets = pgTable(
 	'user_presets',
 	{
-		id: integer(
-			'id',
-		).primaryKey() /* was GENERATED BY DEFAULT AS IDENTITY -> use autoIncrement via {autoIncrement:true} if needed */,
+		id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
 		discordId: text('discord_id')
 			.notNull()
 			.references(() => users.discordId, { onDelete: 'cascade' }),
@@ -936,6 +958,7 @@ export const userPresets = pgTable(
 	},
 	(table) => ({
 		unique0: unique('user_presets_unique_0').on(table.discordId, table.slot),
+		validSlot: check('user_presets_valid_slot', sql`${table.slot} IN (1, 2)`),
 	}),
 );
 
@@ -975,27 +998,30 @@ export const userTitles = pgTable(
 
 // user_weapons — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((enhancement >= 1) AND (enhancement <= 11)))
-export const userWeapons = pgTable('user_weapons', {
-	discordId: text('discord_id')
-		.notNull()
-		.references(() => users.discordId),
-	weaponId: text('weapon_id').primaryKey(),
-	weaponRosterId: integer('weapon_roster_id')
-		.notNull()
-		.references(() => weaponRoster.weaponRosterId),
-	currAtk: integer('curr_atk').notNull(),
-	enhancement: integer('enhancement').notNull().default(1),
-	baseAtk: integer('base_atk').notNull(),
-	crit: real('crit').notNull(),
-	bonusDmgPct: real('bonus_dmg_pct'),
-	isLocked: boolean('is_locked').notNull().default(false),
-	obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })
-		.notNull()
-		.default(sql`now()`),
-	nativeSockets: jsonb('native_sockets').notNull(),
-	oppositeSockets: jsonb('opposite_sockets').notNull(),
-});
-
+export const userWeapons = pgTable(
+	'user_weapons',
+	{
+		discordId: text('discord_id')
+			.notNull()
+			.references(() => users.discordId),
+		weaponId: text('weapon_id').primaryKey(),
+		weaponRosterId: integer('weapon_roster_id')
+			.notNull()
+			.references(() => weaponRoster.weaponRosterId),
+		currAtk: integer('curr_atk').notNull(),
+		enhancement: integer('enhancement').notNull().default(1),
+		baseAtk: integer('base_atk').notNull(),
+		crit: real('crit').notNull(),
+		bonusDmgPct: real('bonus_dmg_pct'),
+		isLocked: boolean('is_locked').notNull().default(false),
+		obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })
+			.notNull()
+			.default(sql`now()`),
+		nativeSockets: jsonb('native_sockets').notNull(),
+		oppositeSockets: jsonb('opposite_sockets').notNull(),
+	},
+	(t) => [check('user_weapons_valid_enhancement', sql`${t.enhancement} BETWEEN 1 AND 21`)],
+);
 export const users = pgTable('users', {
 	discordId: text('discord_id').primaryKey(),
 	username: text('username').notNull(),
@@ -1016,35 +1042,40 @@ export const users = pgTable('users', {
 // users_bag — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (custom_avatar_token >= 0)
 //   CHECK (custom_deity_token >= 0)
-export const usersBag = pgTable('users_bag', {
-	discordId: text('discord_id')
-		.primaryKey()
-		.references(() => users.discordId),
-	credux: integer('credux').notNull().default(0),
-	beliefShards: integer('belief_shards').notNull().default(0),
-	sacredRelics: integer('sacred_relics').notNull().default(0),
-	supremeRelics: integer('supreme_relics').notNull().default(0),
-	silverChest: integer('silver_chest').notNull().default(0),
-	goldChest: integer('gold_chest').notNull().default(0),
-	bossTreasureChest: integer('boss_treasure_chest').notNull().default(0),
-	bossGoldenChest: integer('boss_golden_chest').notNull().default(0),
-	supremeChest: integer('supreme_chest').notNull().default(0),
-	epicEssence: integer('epic_essence').notNull().default(0),
-	mythicEssence: integer('mythic_essence').notNull().default(0),
-	legendaryEssence: integer('legendary_essence').notNull().default(0),
-	supremeEssence: integer('supreme_essence').notNull().default(0),
-	lifetimeCreduxEarned: integer('lifetime_credux_earned').notNull().default(0),
-	lesserRuneBag: integer('lesser_rune_bag').notNull().default(0),
-	greaterRuneBag: integer('greater_rune_bag').notNull().default(0),
-	divineRuneBag: integer('divine_rune_bag').notNull().default(0),
-	valorMedals: integer('valor_medals').notNull().default(0),
-	customAvatarToken: integer('custom_avatar_token').notNull().default(0),
-	customDeityToken: integer('custom_deity_token').notNull().default(0),
-	changeClass: integer('change_class').notNull().default(0),
-	diamondChest: integer('diamond_chest').notNull().default(0),
-	genesisChest: integer('genesis_chest').notNull().default(0),
-});
-
+export const usersBag = pgTable(
+	'users_bag',
+	{
+		discordId: text('discord_id')
+			.primaryKey()
+			.references(() => users.discordId),
+		credux: integer('credux').notNull().default(0),
+		beliefShards: integer('belief_shards').notNull().default(0),
+		sacredRelics: integer('sacred_relics').notNull().default(0),
+		supremeRelics: integer('supreme_relics').notNull().default(0),
+		silverChest: integer('silver_chest').notNull().default(0),
+		goldChest: integer('gold_chest').notNull().default(0),
+		bossTreasureChest: integer('boss_treasure_chest').notNull().default(0),
+		bossGoldenChest: integer('boss_golden_chest').notNull().default(0),
+		supremeChest: integer('supreme_chest').notNull().default(0),
+		epicEssence: integer('epic_essence').notNull().default(0),
+		mythicEssence: integer('mythic_essence').notNull().default(0),
+		legendaryEssence: integer('legendary_essence').notNull().default(0),
+		supremeEssence: integer('supreme_essence').notNull().default(0),
+		lifetimeCreduxEarned: integer('lifetime_credux_earned').notNull().default(0),
+		lesserRuneBag: integer('lesser_rune_bag').notNull().default(0),
+		greaterRuneBag: integer('greater_rune_bag').notNull().default(0),
+		divineRuneBag: integer('divine_rune_bag').notNull().default(0),
+		valorMedals: integer('valor_medals').notNull().default(0),
+		customAvatarToken: integer('custom_avatar_token').notNull().default(0),
+		customDeityToken: integer('custom_deity_token').notNull().default(0),
+		changeClass: integer('change_class').notNull().default(0),
+		diamondChest: integer('diamond_chest').notNull().default(0),
+		genesisChest: integer('genesis_chest').notNull().default(0),
+	},
+	(t) => [
+		check('bag_nonnegative_currency', sql`${t.credux} >= 0 AND ${t.beliefShards} >= 0 AND ${t.valorMedals} >= 0`),
+	],
+);
 export const wagerLogs = pgTable('wager_logs', {
 	id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
 	challengerId: text('challenger_id').notNull(),
@@ -1079,7 +1110,7 @@ export const weeklyGrand = pgTable(
 		discordId: text('discord_id')
 			.notNull()
 			.references(() => users.discordId),
-		questWeek: integer('quest_week').notNull(),
+		questWeek: text('quest_week').notNull(),
 		claimed: boolean('claimed').notNull().default(false),
 	},
 	(table) => ({
@@ -1100,7 +1131,7 @@ export const weeklyQuests = pgTable(
 		rewardCredux: integer('reward_credux').notNull(),
 		rewardValor: integer('reward_valor').notNull(),
 		completed: boolean('completed').notNull().default(false),
-		questWeek: integer('quest_week').notNull(),
+		questWeek: text('quest_week').notNull(),
 	},
 	(table) => ({
 		unique0: unique('weekly_quests_unique_0').on(table.discordId, table.questType, table.questWeek),

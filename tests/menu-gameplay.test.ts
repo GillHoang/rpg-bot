@@ -323,12 +323,12 @@ describe('phase 2 menu', () => {
 			questDate: DailyCycle.keyAt(),
 		});
 		const daily = new DailyService();
-		expect((await daily.claim(id, new Date(), true)).status).toBe('ok');
+		expect((await daily.claim(id, new Date())).status).toBe('ok');
 		const first = await bag();
 		const [quest] = await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, id));
 		expect(quest.completed).toBe(true);
 		expect(quest.currentCount).toBe(1);
-		expect((await daily.claim(id, new Date(), true)).status).toBe('already-claimed');
+		expect((await daily.claim(id, new Date())).status).toBe('already-claimed');
 		expect(await bag()).toEqual(first);
 		expect(asyncProgress).not.toHaveBeenCalled();
 	});
@@ -337,7 +337,7 @@ describe('phase 2 menu', () => {
 		await start();
 		const before = await bag();
 		vi.spyOn(ReputationService.prototype, 'awardInTx').mockRejectedValueOnce(new Error('failure'));
-		await expect(new DailyService().claim(id, new Date(), true)).rejects.toThrow('failure');
+		await expect(new DailyService().claim(id, new Date())).rejects.toThrow('failure');
 		expect(await bag()).toEqual(before);
 		const [user] = await db.select().from(s.users).where(eq(s.users.discordId, id));
 		expect(user.lastDailyClaimDate).not.toBe(DailyCycle.keyAt());
@@ -345,12 +345,10 @@ describe('phase 2 menu', () => {
 
 	it('deduplicates raid rewards durably across service instances', async () => {
 		await start();
-		const first = await new RaidService().run(id, false, { requestId: 'same-action', atomicProgress: true });
+		const first = await new RaidService().run(id, false, { requestId: 'same-action' });
 		expect(first.status).toBe('ok');
 		const before = await bag();
-		expect(
-			(await new RaidService().run(id, false, { requestId: 'same-action', atomicProgress: true })).status,
-		).toBe('already-processed');
+		expect((await new RaidService().run(id, false, { requestId: 'same-action' })).status).toBe('already-processed');
 		expect(await bag()).toEqual(before);
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(1);
 	});
@@ -369,9 +367,7 @@ describe('phase 2 menu', () => {
 			enemyHpRemaining: 0,
 		});
 		vi.spyOn(QuestService.prototype, 'progressInTx').mockRejectedValueOnce(new Error('quest failure'));
-		await expect(
-			new RaidService().run(id, true, { requestId: 'boss-failed', atomicProgress: true }),
-		).rejects.toThrow('quest failure');
+		await expect(new RaidService().run(id, true, { requestId: 'boss-failed' })).rejects.toThrow('quest failure');
 		expect(await bag()).toEqual(before);
 		expect(await db.select().from(s.menuActionReceipts).where(eq(s.menuActionReceipts.discordId, id))).toHaveLength(
 			0,

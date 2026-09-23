@@ -11,7 +11,6 @@ Drizzle ORM và PostgreSQL. Gameflow khép kín từ tạo nhân vật đến en
 - **Tiến trình dài hạn (M7)** — quest daily/weekly, believer EXP, cosmetics +
   titles, relics, rune bag, Diamond/Genesis chest.
 
-Thiết kế flow: [docs/gameplay-flow.md](docs/gameplay-flow.md) ·
 triển khai gameflow: [docs/gameplay-implementation.md](docs/gameplay-implementation.md) ·
 triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
 
@@ -129,12 +128,12 @@ Meta dài hạn (M7):
 
 | Lệnh | Chức năng |
 | --- | --- |
-| `/quest view` · `refresh` · `claim` | 3 quest daily + 3 weekly sinh tự động, progress qua sự kiện trong game; đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand (100k + Diamond Chest); refresh 1 lần/ngày |
+| `/quest view` · `refresh` · `claim` | 3 quest daily + 3 weekly sinh tự động, progress trong transaction của hành động; đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand (100k + Diamond Chest); refresh 1 lần/ngày |
 | `/cosmetic list` · `equip id:<#>` | Cosmetics theo category (profile/battle/battle_result/summon), tier gate theo believer level |
 | `/title list` · `equip id:<#>` | Title kiếm qua duel đầu tiên, hạ Bakunawa, thăng bracket ranked, hoặc mua bằng valor |
 
-Hành trình người chơi và dòng tài nguyên (kiếm → tiêu) được thiết kế chi tiết
-ở [gameplay-flow.md](docs/gameplay-flow.md).
+Cơ chế gameplay và trạng thái triển khai: [gameplay-implementation.md](docs/gameplay-implementation.md).
+Lịch sử thiết kế và port được lưu tại [port-history.md](docs/port-history.md).
 
 ## Kiến trúc
 
@@ -225,7 +224,7 @@ pnpm build    # compile + kiểm tra import của dist
   đúng một đòn/trận; 10 Sigil = 100% base stat; Ascension không cộng stat hay
   kích hoạt blessing; gear/deity mới phải trang bị vào preset mới có tác dụng
   (deity đầu tiên tự equip nếu slot trống).
-- **Chưa thuộc phạm vi** (cố ý, xem §8 gameplay-flow + docs/m7-implementation.md
+- **Chưa thuộc phạm vi** (cố ý, xem docs/gameplay-implementation.md + docs/m7-implementation.md
   §Giới hạn): world boss guild (`boss_*`, `auto_raids`), vote reward top.gg
   (`topgg_vote_events`), echo deity slot, season-end payout,
   supporter/stripe/tickets (`custom_avatar_token`, `custom_deity_token`),

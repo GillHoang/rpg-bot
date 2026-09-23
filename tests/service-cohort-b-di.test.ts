@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { PersistenceContext } from '../src/application/ports/PersistenceContext.js';
 import type { Transaction } from '../src/db/client.js';
 import type { BattleResult } from '../src/domain/combat/BattleEngine.js';
@@ -220,7 +220,7 @@ describe('service cohort B dependency and transaction boundaries', () => {
 			queries,
 			engine: { resolve: () => win },
 		});
-		const result = await raids.run(id, false, { atomicProgress: true, requestId: `${id}-raid` });
+		const result = await raids.run(id, false, { requestId: `${id}-raid` });
 		expect(result.status).toBe('ok');
 		expect(local.handles).toHaveLength(1);
 		expect(lockBag.mock.calls[0][0]).toBe(local.handles[0]);
@@ -229,7 +229,7 @@ describe('service cohort B dependency and transaction boundaries', () => {
 		expect((await character()).believerExp).toBeGreaterThan(0);
 		expect((await character(other)).believerExp).toBe(0);
 		const before = await bag();
-		expect(await raids.run(id, false, { atomicProgress: true, requestId: `${id}-raid` })).toEqual({
+		expect(await raids.run(id, false, { requestId: `${id}-raid` })).toEqual({
 			status: 'already-processed',
 		});
 		expect(await bag()).toEqual(before);
@@ -244,9 +244,7 @@ describe('service cohort B dependency and transaction boundaries', () => {
 			engine: { resolve: () => win },
 			progress: { apply },
 		});
-		await expect(raids.run(id, false, { atomicProgress: true, requestId: `${id}-failed` })).rejects.toThrow(
-			'progress rejected',
-		);
+		await expect(raids.run(id, false, { requestId: `${id}-failed` })).rejects.toThrow('progress rejected');
 		expect(apply.mock.calls[0][0]).toBe(local.handles[0]);
 		expect(await bag()).toEqual(before);
 		expect(await isolated.db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
@@ -283,7 +281,15 @@ describe('service cohort B dependency and transaction boundaries', () => {
 		const loadout = new LoadoutService({ persistence });
 		await loadout.equip(id, 'weapon', weapon.weaponId, 2);
 		await loadout.switch(id, 2);
-		expect((await character()).equippedWeaponId).toBe(weapon.weaponId);
+		expect((await character()).activePresetSlot).toBe(2);
+		expect(
+			(
+				await isolated.db
+					.select()
+					.from(s.userPresets)
+					.where(and(eq(s.userPresets.discordId, id), eq(s.userPresets.slot, 2)))
+			)[0].equippedWeaponId,
+		).toBe(weapon.weaponId);
 		expect((await character(other)).activePresetSlot).toBe(1);
 		const [rune] = await isolated.db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id));
 		const sockets = new SocketService(undefined, undefined, { persistence });
@@ -329,8 +335,7 @@ describe('service cohort B dependency and transaction boundaries', () => {
 		const reset = new ResetService({ persistence: remote.persistence });
 		const deletedUsers = await reset.countAll();
 		expect(deletedUsers).toBeGreaterThan(0);
-		expect(await reset.resetAll()).toEqual({ status: 'ok', deletedUsers });
-		await reset.audit('developer', deletedUsers);
+		expect(await reset.resetAll('developer')).toEqual({ status: 'ok', deletedUsers });
 		expect(await reset.countAll()).toBe(0);
 		expect(await new ResetService({ persistence }).countAll()).toBe(untouched);
 		expect(

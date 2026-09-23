@@ -1,7 +1,7 @@
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { LoadoutRepository } from '../repositories/LoadoutRepository.js';
-import type { userCharacter, userPresets } from '../db/schema.js';
+import type { userPresets } from '../db/schema.js';
 import type { Executor } from '../db/client.js';
 import { logger } from '../utils/logger.js';
 import {
@@ -18,7 +18,6 @@ import {
 	LOADOUT_WEAPON_NOT_OWNED,
 } from '../text/loadout.js';
 
-type CharacterRow = typeof userCharacter.$inferSelect;
 type PresetRow = typeof userPresets.$inferSelect;
 
 export interface LoadoutDependencies {
@@ -67,10 +66,10 @@ export class LoadoutService {
 			if (!preset) return LOADOUT_PRESET_MISSING;
 
 			let error: string | null;
-			if (kind === 'weapon') error = await this.equipWeapon(tx, id, preset, item, target, character);
-			else if (kind === 'armor') error = await this.equipArmor(tx, id, preset, item, target, character);
+			if (kind === 'weapon') error = await this.equipWeapon(tx, id, preset, item);
+			else if (kind === 'armor') error = await this.equipArmor(tx, id, preset, item);
 			else if (/^deity[123]?$/.test(kind)) {
-				error = await this.equipDeity(tx, id, preset, kind, item, target, character);
+				error = await this.equipDeity(tx, id, preset, kind, item);
 			} else return LOADOUT_INVALID_KIND;
 			if (error) return error;
 			logger.info({ user: id, kind, item, preset: target }, 'gear-equipped');
@@ -78,35 +77,17 @@ export class LoadoutService {
 		});
 	}
 
-	private async equipWeapon(
-		tx: Executor,
-		id: string,
-		preset: PresetRow,
-		item: string,
-		target: number,
-		character: CharacterRow,
-	): Promise<string | null> {
+	private async equipWeapon(tx: Executor, id: string, preset: PresetRow, item: string): Promise<string | null> {
 		const [owned] = await this.queries.findOwnedWeapon(tx, id, item);
 		if (!owned) return LOADOUT_WEAPON_NOT_OWNED;
 		await this.queries.updatePreset(tx, preset.id, { equippedWeaponId: item, updatedAt: new Date() });
-		if (target === character.activePresetSlot)
-			await this.queries.updateCharacter(tx, id, { equippedWeaponId: item });
 		return null;
 	}
 
-	private async equipArmor(
-		tx: Executor,
-		id: string,
-		preset: PresetRow,
-		item: string,
-		target: number,
-		character: CharacterRow,
-	): Promise<string | null> {
+	private async equipArmor(tx: Executor, id: string, preset: PresetRow, item: string): Promise<string | null> {
 		const [owned] = await this.queries.findOwnedArmor(tx, id, item);
 		if (!owned) return LOADOUT_ARMOR_NOT_OWNED;
 		await this.queries.updatePreset(tx, preset.id, { equippedArmorId: item, updatedAt: new Date() });
-		if (target === character.activePresetSlot)
-			await this.queries.updateCharacter(tx, id, { equippedArmorId: item });
 		return null;
 	}
 
@@ -116,8 +97,6 @@ export class LoadoutService {
 		preset: PresetRow,
 		kind: string,
 		item: string,
-		target: number,
-		character: CharacterRow,
 	): Promise<string | null> {
 		if (!/^\d+$/.test(item) || !Number.isSafeInteger(Number(item))) return LOADOUT_INVALID_KIND;
 		const userDeityId = Number(item);
@@ -125,14 +104,10 @@ export class LoadoutService {
 		if (!owned) return LOADOUT_DEITY_NOT_OWNED;
 		const slotIndex = kind === 'deity' ? 1 : Number(kind.slice(5));
 		const column = `equippedDeity${slotIndex}Id` as 'equippedDeity1Id' | 'equippedDeity2Id' | 'equippedDeity3Id';
-		const activeColumn = `activeDeityId${slotIndex === 1 ? '' : slotIndex}` as
-			'activeDeityId' | 'activeDeityId2' | 'activeDeityId3';
 		// One deity cannot hold two pantheon slots at once.
 		const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
 		if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId) return LOADOUT_DEITY_IN_OTHER_SLOT;
 		await this.queries.updatePreset(tx, preset.id, { [column]: userDeityId, updatedAt: new Date() });
-		if (target === character.activePresetSlot)
-			await this.queries.updateCharacter(tx, id, { [activeColumn]: userDeityId });
 		return null;
 	}
 
@@ -145,12 +120,6 @@ export class LoadoutService {
 			if (!preset) return LOADOUT_PRESET_MISSING;
 			await this.queries.updateCharacter(tx, id, {
 				activePresetSlot: slot,
-				equippedWeaponId: preset.equippedWeaponId,
-				equippedArmorId: preset.equippedArmorId,
-				activeDeityId: preset.equippedDeity1Id,
-				activeDeityId2: preset.equippedDeity2Id,
-				activeDeityId3: preset.equippedDeity3Id,
-				activeEchoDeityId: preset.equippedEchoDeityId,
 			});
 			logger.info({ user: id, preset: slot }, 'preset-switched');
 			return LOADOUT_SWITCHED(

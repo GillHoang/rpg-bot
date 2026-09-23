@@ -1,7 +1,7 @@
 /**
  * Quest balance — M7 design defaults (không port từ bản gốc).
  * Mỗi ngày/tuần người chơi nhận lazily 3 quest từ pool (không trùng loại);
- * progress chạy qua EventBus subscriber, hoàn thành tự cộng thưởng.
+ * progress chạy trong transaction của hành động, hoàn thành tự cộng thưởng.
  * Wording của từng quest nằm ở src/text/quest.ts (QUEST_*_LABELS).
  */
 export type QuestType = 'raid_win' | 'duel_win' | 'ranked' | 'summon' | 'enhance' | 'open_chest' | 'casino' | 'daily';

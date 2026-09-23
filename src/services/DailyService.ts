@@ -57,7 +57,7 @@ export class DailyService {
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 	}
 
-	async claim(discordId: string, now: Date = new Date(), atomicProgress = false): Promise<ClaimDailyResult> {
+	async claim(discordId: string, now?: Date): Promise<ClaimDailyResult> {
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ClaimDailyResult> => {
 			if (!(await this.repo.hasBag(tx, discordId))) return { status: 'not-registered' };
 
@@ -65,7 +65,7 @@ export class DailyService {
 			if (!state) return { status: 'not-registered' };
 
 			// Menu actions may wait on another transaction across the daily reset.
-			const claimTime = atomicProgress ? new Date() : now;
+			const claimTime = now ?? new Date();
 			const todayKey = DailyCycle.keyAt(claimTime);
 			const yesterdayKey = DailyCycle.yesterdayKeyAt(claimTime);
 
@@ -124,7 +124,7 @@ export class DailyService {
 				);
 			}
 
-			if (atomicProgress) await this.progress.apply(tx, discordId, 'daily', claimTime);
+			await this.progress.apply(tx, discordId, 'daily', claimTime);
 			return {
 				status: 'ok',
 				day: overall,
@@ -138,7 +138,7 @@ export class DailyService {
 		});
 
 		if (result.status === 'ok') {
-			this.events.emit('daily.claimed', { discordId, streak: result.overall, progressApplied: atomicProgress });
+			this.events.emit('daily.claimed', { discordId, streak: result.overall, progressApplied: true });
 		}
 		return result;
 	}

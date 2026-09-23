@@ -38,9 +38,9 @@ export class ClassChangeService {
 	async change(discordId: string, newClass: CombatClass): Promise<string> {
 		if (!(newClass in CLASSES)) return CLASS_INVALID;
 		return this.persistence.unitOfWork.run(async (tx) => {
+			const [bag] = await this.queries.lockBagForClassChange(tx, discordId);
 			const [character] = await this.queries.lockCharacter(tx, discordId);
 			if (!character) return CLASS_NO_CHARACTER;
-			const [bag] = await this.queries.lockBagForClassChange(tx, discordId);
 			if (!bag) return CLASS_NO_REGISTER;
 			if (bag.changeClass < 1) return CLASS_NO_TOKEN;
 			if (character.class === newClass) return CLASS_SAME;

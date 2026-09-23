@@ -55,15 +55,13 @@ beforeAll(async () => {
 		nativeSockets: [null, 'R02'],
 		oppositeSockets: [null],
 	};
-	await db
-		.insert(s.userWeapons)
-		.values([
-			...Array.from({ length: 26 }, (_, index) => ({
-				...weapon,
-				weaponId: `W${String(26 - index).padStart(2, '0')}`,
-			})),
-			{ ...weapon, discordId: 'foreign', weaponId: 'W00' },
-		]);
+	await db.insert(s.userWeapons).values([
+		...Array.from({ length: 26 }, (_, index) => ({
+			...weapon,
+			weaponId: `W${String(26 - index).padStart(2, '0')}`,
+		})),
+		{ ...weapon, discordId: 'foreign', weaponId: 'W00' },
+	]);
 	const armor = {
 		discordId: 'owner',
 		armorRosterId: 1,
@@ -79,9 +77,10 @@ beforeAll(async () => {
 		{ ...armor, armorId: 'A01' },
 		{ ...armor, discordId: 'foreign', armorId: 'A00' },
 	]);
+	await db.insert(s.userCharacter).values({ discordId: 'owner', class: 'Knight' });
 	await db
-		.insert(s.userCharacter)
-		.values({ discordId: 'owner', class: 'Knight', equippedWeaponId: 'W03', equippedArmorId: 'A01' });
+		.insert(s.userPresets)
+		.values({ discordId: 'owner', slot: 1, equippedWeaponId: 'W03', equippedArmorId: 'A01' });
 	await db.insert(s.userRunes).values([
 		{ discordId: 'owner', runeId: 1, runeUid: 'R01', socketedInto: 'W01' },
 		{ discordId: 'owner', runeId: 1, runeUid: 'R03' },

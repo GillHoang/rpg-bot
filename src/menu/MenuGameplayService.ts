@@ -61,27 +61,29 @@ export class MenuGameplayService implements MenuGameplay {
 		if (screen.kind === 'result' || screen.kind === 'log') return battlePanel(session);
 		if (screen.kind === 'confirm') return confirmationPanel(screen);
 
-		const profile = await this.profiles.get(session.ownerId);
-		if (profile.status !== 'ok') return onboardingPanel();
-		const user = await this.players.findState(session.ownerId);
-		const day = DailyCycle.keyAt();
-		const dailyDone = user?.lastDailyClaimDate === day;
-		const bossDone = user?.lastBossAttackDate === day;
 		const kind =
 			screen.kind === 'section'
 				? ({ character: 'profile', daily: 'quests', battle: 'battle' } as Record<string, string>)[
 						screen.section
 					]
 				: screen.kind;
+		if (kind === 'profile') {
+			const detail = await this.profiles.get(session.ownerId);
+			return detail.status === 'ok' ? profilePanel(detail.data) : onboardingPanel();
+		}
+		const profile = await this.profiles.get(session.ownerId, 'summary');
+		if (profile.status !== 'ok') return onboardingPanel();
+		const user = await this.players.findState(session.ownerId);
+		const day = DailyCycle.keyAt();
+		const dailyDone = user?.lastDailyClaimDate === day;
+		const bossDone = user?.lastBossAttackDate === day;
 		if (kind === 'quests') {
 			const snapshot = await this.quests.snapshot(session.ownerId);
 			if (!snapshot) throw new Error('Menu player disappeared');
 			return questsPanel(snapshot, dailyDone);
 		}
 		if (kind === 'battle') return battleLobbyPanel(profile.data, bossDone, !!session.battle);
-		if (kind === 'profile') return profilePanel(profile.data, dailyDone);
-		const snapshot = await this.quests.snapshot(session.ownerId);
-		return homePanel(profile.data, { dailyDone, bossDone, overallStreak: user?.overallStreak ?? 0 }, snapshot);
+		return homePanel(profile.data, { dailyDone, bossDone });
 	}
 
 	async act(session: MenuSession, action: MenuAction, username: string, value?: string): Promise<MenuScreen> {
@@ -145,7 +147,7 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 
 	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
-		const r = await this.daily.claim(session.ownerId, new Date(), true);
+		const r = await this.daily.claim(session.ownerId, undefined);
 		if (r.status === 'ok') {
 			const milestone = r.milestoneChestLabel ? DAILY_MILESTONE_LINE(r.milestoneChestLabel) : '';
 			session.notice = DAILY_SUCCESS(r.day, r.monthly, r.overall, n(r.credux), r.shards, r.chestLabel, milestone);
@@ -189,7 +191,6 @@ export class MenuGameplayService implements MenuGameplay {
 		}
 		const r = await this.raid.run(session.ownerId, boss, {
 			requestId: `${session.id}:${session.revision}`,
-			atomicProgress: true,
 			expectedDay,
 		});
 		if (r.status === 'ok') {

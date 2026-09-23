@@ -8,7 +8,7 @@ export type ResetResult = { status: 'ok'; deletedUsers: number } | { status: 'no
 
 export interface ResetDependencies {
 	persistence?: PersistenceContext;
-	queries?: Pick<ResetRepository, 'countUsers' | 'truncatePlayerData' | 'insertAudit'>;
+	queries?: Pick<ResetRepository, 'lockUsers' | 'countUsers' | 'truncatePlayerData' | 'insertAudit'>;
 }
 
 /**
@@ -24,7 +24,7 @@ export interface ResetDependencies {
 
 export class ResetService {
 	private readonly persistence: PersistenceContext;
-	private readonly queries: Pick<ResetRepository, 'countUsers' | 'truncatePlayerData' | 'insertAudit'>;
+	private readonly queries: Pick<ResetRepository, 'lockUsers' | 'countUsers' | 'truncatePlayerData' | 'insertAudit'>;
 	constructor(options: ResetDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
 		this.queries = options.queries ?? new ResetRepository();
@@ -35,18 +35,17 @@ export class ResetService {
 		return this.queries.countUsers(this.persistence.executor);
 	}
 
-	async resetAll(): Promise<ResetResult> {
-		// Đếm trước khi xoá (TRUNCATE xoá luôn bằng chứng), sau đó xoá.
-		const deletedUsers = await this.countAll();
-		if (deletedUsers === 0) return { status: 'nothing-to-reset' };
-		await this.queries.truncatePlayerData(this.persistence.executor);
-		logger.warn({ deletedUsers }, 'full-reset');
-		return { status: 'ok', deletedUsers };
-	}
-
-	/** Ghi dấu vết reset vào dev_logs (bảng này được chủ đích giữ lại). */
-	async audit(devId: string, deletedUsers: number): Promise<void> {
-		const detail = `reset ${deletedUsers} users`;
-		await this.queries.insertAudit(this.persistence.executor, devId, detail);
+	async resetAll(devId: string): Promise<ResetResult> {
+		if (!devId.trim()) throw new Error('Reset requires an administrator ID');
+		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ResetResult> => {
+			await this.queries.lockUsers(tx);
+			const deletedUsers = await this.queries.countUsers(tx);
+			if (deletedUsers === 0) return { status: 'nothing-to-reset' };
+			await this.queries.truncatePlayerData(tx);
+			await this.queries.insertAudit(tx, devId, `reset ${deletedUsers} users`);
+			return { status: 'ok', deletedUsers };
+		});
+		if (result.status === 'ok') logger.warn({ devId, deletedUsers: result.deletedUsers }, 'full-reset');
+		return result;
 	}
 }

@@ -1,3 +1,5 @@
+import { SeasonService } from './SeasonService.js';
+import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { RankedRepository } from '../repositories/RankedRepository.js';
@@ -58,6 +60,7 @@ export type RankedClaimResult =
 	  };
 
 export interface RankedDependencies {
+	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
 	queries?: Pick<
 		RankedRepository,
@@ -74,9 +77,6 @@ export interface RankedDependencies {
 		| 'insertLog'
 		| 'findOpponentInWindow'
 		| 'findRecentResults'
-		| 'findActiveSeason'
-		| 'countSeasons'
-		| 'insertSeason'
 	>;
 	engine?: Pick<BattleEngine, 'resolve'>;
 	factory?: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
@@ -91,6 +91,8 @@ export interface RankedDependencies {
  */
 
 export class RankedService {
+	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
+	private readonly seasons = new SeasonService();
 	private readonly persistence: PersistenceContext;
 	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
@@ -111,9 +113,6 @@ export class RankedService {
 		| 'insertLog'
 		| 'findOpponentInWindow'
 		| 'findRecentResults'
-		| 'findActiveSeason'
-		| 'countSeasons'
-		| 'insertSeason'
 	>;
 	private readonly engine: Pick<BattleEngine, 'resolve'>;
 	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
@@ -126,6 +125,7 @@ export class RankedService {
 		options: RankedDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.statAssembly =
 			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
@@ -140,9 +140,23 @@ export class RankedService {
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<RankedFightResult> => {
 			const [account] = await this.queries.findUser(tx, discordId);
 			if (!account) return { status: 'not-registered' };
-			const [me] = await this.queries.lockCharacter(tx, discordId);
+			const [candidate] = await this.queries.findCharacter(tx, discordId);
+			if (!candidate) return { status: 'no-character' };
+			const selected = await this.pickOpponentRow(tx, discordId, candidate.pvpRating);
+			if (!selected) return { status: 'no-opponent' };
+			const ids = [discordId, selected.discordId].sort();
+			for (const id of ids) await this.queries.lockBag(tx, id);
+			const locked = new Map<string, typeof userCharacter.$inferSelect>();
+			for (const id of ids) {
+				const [row] = await this.queries.lockCharacter(tx, id);
+				if (row) locked.set(id, row);
+			}
+			const me = locked.get(discordId);
+			const opponentRow = locked.get(selected.discordId);
 			if (!me) return { status: 'no-character' };
-			await this.queries.lockBag(tx, discordId);
+			if (!opponentRow) return { status: 'no-opponent' };
+			const opponentAccount = await this.accounts.findByIdWithExecutor(tx, opponentRow.discordId);
+			if (!opponentAccount) return { status: 'no-opponent' };
 
 			const [lock] = await this.queries.createFightLock(tx, {
 				discordId,
@@ -150,13 +164,6 @@ export class RankedService {
 				expiresAt: new Date(Date.now() + RANKED.LOCK_SECONDS * 1000),
 			});
 			if (!lock) return { status: 'busy' };
-
-			// Opponent: random registered player, nearest rating window first.
-			const opponentRow = await this.pickOpponentRow(tx, discordId, me.pvpRating);
-			if (!opponentRow) return { status: 'no-opponent' };
-
-			const opponentAccount = await this.accounts.findByIdWithExecutor(tx, opponentRow.discordId);
-			if (!opponentAccount) return { status: 'no-opponent' };
 
 			const myAssembled = await this.statAssembly.assemble(
 				discordId,
@@ -217,7 +224,8 @@ export class RankedService {
 				opponentChange,
 			});
 
-			await this.ensureActiveSeason(tx);
+			if (!draw) await this.progress.apply(tx, won ? discordId : opponentRow.discordId, 'ranked', new Date());
+			await this.seasons.ensureActive(tx);
 			await this.queries.deleteFightLock(tx, discordId);
 
 			return {
@@ -239,10 +247,15 @@ export class RankedService {
 
 		if (result.status === 'ok' && !result.draw) {
 			// A draw must not feed the win/loss quest + reputation subscribers.
-			this.events.emit(result.won ? 'battle.won' : 'battle.lost', { discordId, battleType: 'ranked' });
+			this.events.emit(result.won ? 'battle.won' : 'battle.lost', {
+				discordId,
+				battleType: 'ranked',
+				progressApplied: true,
+			});
 			this.events.emit(result.won ? 'battle.lost' : 'battle.won', {
 				discordId: result.opponentId,
 				battleType: 'ranked',
+				progressApplied: true,
 			});
 		}
 		return result;
@@ -250,9 +263,11 @@ export class RankedService {
 
 	async claim(discordId: string): Promise<RankedClaimResult> {
 		return this.persistence.unitOfWork.run(async (tx): Promise<RankedClaimResult> => {
+			const [bag] = await this.queries.lockBag(tx, discordId);
+			if (!bag) return { status: 'not-registered' };
 			const [me] = await this.queries.lockCharacter(tx, discordId);
 			if (!me) return { status: 'not-registered' };
-			const { week, startsAt } = weekWindowAt();
+			const { key: week, startsAt } = weekWindowAt();
 			if (me.lastWeeklyClaimWeek === week) return { status: 'already-claimed' };
 
 			const [fight] = await this.queries.findWeeklyFight(tx, discordId, startsAt);
@@ -262,8 +277,6 @@ export class RankedService {
 			const [reward] = await this.queries.findWeeklyReward(tx, bracket.name);
 			if (!reward) return { status: 'no-reward-row' };
 
-			const [bag] = await this.queries.lockBag(tx, discordId);
-			if (!bag) return { status: 'not-registered' };
 			const payload = reward.weeklyPayload as {
 				silverChest?: number;
 				goldChest?: number;
@@ -301,8 +314,8 @@ export class RankedService {
 		const [me] = await this.queries.findCharacter(this.persistence.executor, discordId);
 		if (!me) return RANKED_NOT_REGISTERED;
 		const bracket = bracketFor(me.pvpRating);
-		const { week, endsAt } = weekWindowAt();
-		const claimed = me.lastWeeklyClaimWeek === week;
+		const { week, key, endsAt } = weekWindowAt();
+		const claimed = me.lastWeeklyClaimWeek === key;
 		return (
 			RANKED_STATS_HEADER(me.pvpRating, bracket.name, me.pvpPeak) +
 			'\n' +
@@ -439,18 +452,6 @@ export class RankedService {
 			streak += 1;
 		}
 		return streak;
-	}
-
-	private async ensureActiveSeason(tx: Transaction): Promise<void> {
-		const [active] = await this.queries.findActiveSeason(tx);
-		if (active) return;
-		const [{ count }] = await this.queries.countSeasons(tx);
-		await this.queries.insertSeason(tx, {
-			name: `Season ${count + 1}`,
-			startsAt: new Date(),
-			endsAt: new Date(Date.now() + 30 * 86_400_000),
-			isActive: true,
-		});
 	}
 }
 

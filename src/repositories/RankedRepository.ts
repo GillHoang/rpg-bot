@@ -1,6 +1,6 @@
 import type { Executor } from '../db/client.js';
 import { and, desc, eq, gte, ne, sql } from 'drizzle-orm';
-import { activeRankedFights, rankedLogs, rankedReward, seasons, users, usersBag, userCharacter } from '../db/schema.js';
+import { activeRankedFights, rankedLogs, rankedReward, users, usersBag, userCharacter } from '../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
 export class RankedRepository {
@@ -75,17 +75,5 @@ export class RankedRepository {
 			.where(eq(rankedLogs.playerId, discordId))
 			.orderBy(desc(rankedLogs.id))
 			.limit(50);
-	}
-
-	async findActiveSeason(tx: Executor) {
-		return tx.select().from(seasons).where(eq(seasons.isActive, true)).limit(1);
-	}
-
-	async countSeasons(tx: Executor) {
-		return tx.select({ count: sql<number>`count(*)::int` }).from(seasons);
-	}
-
-	async insertSeason(tx: Executor, values: typeof seasons.$inferInsert) {
-		return tx.insert(seasons).values(values);
 	}
 }

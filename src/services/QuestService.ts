@@ -43,7 +43,7 @@ export type QuestRow = typeof dailyQuests.$inferSelect;
 export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
 export interface QuestSnapshot {
 	day: string;
-	week: number;
+	week: string;
 	dailies: QuestRow[];
 	weeklies: WeeklyQuestRow[];
 	refreshAvailable: boolean;
@@ -81,7 +81,7 @@ export interface QuestDependencies {
 /**
  * Quest daily/weekly (M7): sinh lazily theo ngày/ISO-week Manila — không cần
  * cron, quest xuất hiện đúng lúc người chơi chạm vào hệ thống. Progress đến
- * qua EventBus (`progress`), hoàn thành tự cộng thưởng trong cùng giao dịch.
+ * qua coordinator trong transaction hành động (`progressInTx`), hoàn thành tự cộng thưởng trong cùng giao dịch.
  * Đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand claim được.
  * Toàn bộ wording nằm ở src/text/quest.ts.
  */
@@ -99,19 +99,29 @@ export class QuestService {
 		this.queries = options.queries ?? new QuestRepository();
 	}
 
-	/** Event-subscriber entry — opens its own transaction. */
-	async progress(discordId: string, questType: QuestType): Promise<void> {
-		await this.persistence.unitOfWork.run(async (tx) => this.progressInTx(tx, discordId, questType));
+	/** Standalone administrative/test entry; gameplay uses progressInTx. */
+	async progress(discordId: string, questType: QuestType, amount = 1): Promise<void> {
+		await this.persistence.unitOfWork.run(async (tx) =>
+			this.progressInTx(tx, discordId, questType, new Date(), amount),
+		);
 	}
 
-	async progressInTx(tx: Executor, discordId: string, questType: QuestType, now = new Date()): Promise<void> {
+	async progressInTx(
+		tx: Executor,
+		discordId: string,
+		questType: QuestType,
+		now = new Date(),
+		amount = 1,
+	): Promise<void> {
+		if (!Number.isSafeInteger(amount) || amount < 1)
+			throw new RangeError('Progress amount must be a positive integer');
 		if (!(await this.lockPlayer(tx, discordId))) return;
 		const day = DailyCycle.keyAt(now);
-		const { week } = weekWindowAt(now);
+		const { key: week } = weekWindowAt(now);
 		await this.ensureDailyQuests(tx, discordId, day);
 		await this.ensureWeeklyQuests(tx, discordId, week);
-		await this.bumpDaily(tx, discordId, day, questType, now);
-		await this.bumpWeekly(tx, discordId, week, questType, now);
+		await this.bumpDaily(tx, discordId, day, questType, now, amount);
+		await this.bumpWeekly(tx, discordId, week, questType, now, amount);
 	}
 
 	async view(discordId: string): Promise<string> {
@@ -143,7 +153,7 @@ export class QuestService {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return null;
 			const day = DailyCycle.keyAt();
-			const { week } = weekWindowAt();
+			const { key: week } = weekWindowAt();
 			const dailies = await this.ensureDailyQuests(tx, discordId, day);
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			const [grand] = await this.queries.findWeeklyGrand(tx, discordId, week);
@@ -207,7 +217,7 @@ export class QuestService {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
-			const { week } = weekWindowAt();
+			const { key: week } = weekWindowAt();
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return QUEST_CLAIM_NOT_READY;
 			const [bag] = await this.queries.lockRewardBag(tx, discordId);
@@ -257,7 +267,7 @@ export class QuestService {
 		return this.queries.listDailyQuests(tx, discordId, day);
 	}
 
-	private async ensureWeeklyQuests(tx: Executor, discordId: string, week: number): Promise<WeeklyQuestRow[]> {
+	private async ensureWeeklyQuests(tx: Executor, discordId: string, week: string): Promise<WeeklyQuestRow[]> {
 		const existing = await this.queries.listWeeklyQuests(tx, discordId, week);
 		if (existing.length > 0) return existing;
 		const rng = createRng(createSecureSeed());
@@ -297,12 +307,13 @@ export class QuestService {
 		day: string,
 		questType: QuestType,
 		now: Date,
+		amount: number,
 	): Promise<void> {
 		// Row lock: two concurrent progress events for the same quest must not
 		// read the same counter (read–modify–write would drop one increment).
 		const [quest] = await this.queries.lockDailyQuest(tx, discordId, day, questType);
 		if (!quest || quest.completed) return;
-		const count = quest.currentCount + 1;
+		const count = Math.min(quest.targetCount, quest.currentCount + amount);
 		const completed = count >= quest.targetCount;
 		await this.queries.updateDailyProgress(tx, quest.id, { currentCount: count, completed });
 		if (!completed) return;
@@ -334,14 +345,15 @@ export class QuestService {
 	private async bumpWeekly(
 		tx: Executor,
 		discordId: string,
-		week: number,
+		week: string,
 		questType: QuestType,
 		now: Date,
+		amount: number,
 	): Promise<void> {
 		// Row lock — same lost-update protection as bumpDaily.
 		const [quest] = await this.queries.lockWeeklyQuest(tx, discordId, week, questType);
 		if (!quest || quest.completed) return;
-		const count = quest.currentCount + 1;
+		const count = Math.min(quest.targetCount, quest.currentCount + amount);
 		const completed = count >= quest.targetCount;
 		await this.queries.updateWeeklyProgress(tx, quest.id, { currentCount: count, completed });
 		if (!completed) return;
