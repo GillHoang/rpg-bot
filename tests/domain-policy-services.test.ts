@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Executor } from '../src/db/client.js';
-import { MonsterRepository } from '../src/repositories/MonsterRepository.js';
-import { RaidRewardRepository } from '../src/repositories/RaidRewardRepository.js';
-import { DeityRepository } from '../src/repositories/DeityRepository.js';
 import type { MonsterRosterRepository, MonsterRosterRow } from '../src/repositories/MonsterRosterRepository.js';
 import type { RaidRewardStore } from '../src/repositories/RaidRewardStore.js';
 import type { DeityDataRepository, DeityRosterRow } from '../src/repositories/DeityDataRepository.js';
@@ -65,7 +62,7 @@ const grant: RaidRewardGrant = {
 	battleType: 'raid',
 	enemyName: 'Regular',
 	enemyTier: 'regular',
-	won: true,
+	outcome: 'player_win',
 };
 const deity: DeityRosterRow = {
 	deityId: 1,
@@ -97,14 +94,6 @@ function deityData() {
 		insertNew: vi.fn<DeityDataRepository['insertNew']>().mockResolvedValue(7),
 	};
 }
-
-describe('policy service compatibility', () => {
-	it('keeps old constructor exports on the same class and prototype', () => {
-		expect(MonsterRepository).toBe(MonsterEncounterService);
-		expect(RaidRewardRepository).toBe(RaidRewardService);
-		expect(DeityRepository).toBe(DeityService);
-	});
-});
 
 describe('MonsterEncounterService', () => {
 	it('preserves tier-then-roster RNG order and weighted boundary with regular scaling', async () => {
@@ -256,7 +245,7 @@ describe('RaidRewardService', () => {
 			credux: 0,
 			shards: 0,
 			grantChest: false,
-			won: false,
+			outcome: 'enemy_win',
 		});
 		expect(result).toEqual({ previousLevel: 1, newLevel: 1, leveledUp: false });
 		expect(store.updateCharacter).toHaveBeenCalledWith(executor, 'owner', {

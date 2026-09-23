@@ -134,9 +134,9 @@ export class BattleEngine {
 	private closeRound(ctx: RoundContext, round: number): void {
 		const { player, enemy } = ctx;
 		if (player.hp <= 0 || enemy.hp <= 0) return;
-		this.endOfRound(player, ctx.playerStrategy, round, ctx);
+		this.endOfRound(player, enemy, ctx.playerStrategy, round, ctx);
 		if (player.hp <= 0) return;
-		this.endOfRound(enemy, ctx.enemyStrategy, round, ctx);
+		this.endOfRound(enemy, player, ctx.enemyStrategy, round, ctx);
 	}
 
 	/** Initiative: the holder of a higher `initiative_bias` flag (Tailwind blessing) is more likely to act first; even footing is 50/50. */
@@ -164,8 +164,11 @@ export class BattleEngine {
 		if (player.hp <= 0 && enemy.hp <= 0) return 'draw';
 		if (enemy.hp <= 0) return 'player_win';
 		if (player.hp <= 0) return 'enemy_win';
-		// Round-limit reached with both alive: whoever has the higher HP% wins.
-		return player.hp / player.maxHp >= enemy.hp / enemy.maxHp ? 'player_win' : 'enemy_win';
+		// Round-limit reached with both alive: equal HP% is a draw.
+		const playerHpRatio = player.hp / player.maxHp;
+		const enemyHpRatio = enemy.hp / enemy.maxHp;
+		if (playerHpRatio === enemyHpRatio) return 'draw';
+		return playerHpRatio > enemyHpRatio ? 'player_win' : 'enemy_win';
 	}
 
 	private takeTurn(
@@ -188,11 +191,17 @@ export class BattleEngine {
 		this.attacks.executeStrike(attacker, defender, atkStrategy, defStrategy, ctx);
 	}
 
-	private endOfRound(side: CombatantState, strategy: IClassStrategy, round: number, battle: RoundContext): void {
+	private endOfRound(
+		side: CombatantState,
+		opponent: CombatantState,
+		strategy: IClassStrategy,
+		round: number,
+		battle: RoundContext,
+	): void {
 		if (side.hp <= 0) return;
 		const ctx: StrategyContext = {
 			self: side,
-			enemy: side,
+			enemy: opponent,
 			round,
 			rng: battle.rng,
 			log: (m) => battle.log.push(m),

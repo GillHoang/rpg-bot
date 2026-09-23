@@ -36,9 +36,9 @@ Pure arithmetic helpers, immutable configuration and text formatting remain func
 
 ## Compatibility
 
-Original positional constructor arguments remain supported with optional trailing dependency options. Old InventoryRepository, DeityRepository, MonsterRepository and RaidRewardRepository exports alias the new policy classes. LootService still honors legacy injected rune/gear methods, with explicit grant overrides taking precedence.
+Original positional constructor arguments remain supported with optional trailing dependency options. The unused InventoryRepository, DeityRepository, MonsterRepository and RaidRewardRepository aliases were removed on 2026-09-23; tests now import the policy services directly. LootService still honors legacy injected rune/gear methods, with explicit grant overrides taking precedence.
 
-Zero-argument registration uses the legacy shared EventBus and lazy menuRouter, matching zero-argument observer/bot setup. Explicit application graphs use independent buses and menu stores. Existing function entry points remain compatibility delegates.
+Zero-argument registration uses the legacy shared EventBus and lazy menuRouter, matching zero-argument observer/bot setup. Explicit application graphs use independent buses and menu stores. Unused functional delegates for gameplay progress, battle attacks and combat status effects were also removed on 2026-09-23; active callers use the corresponding classes.
 
 ## Verification
 

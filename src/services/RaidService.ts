@@ -13,6 +13,7 @@ import { RaidRewardService, type RaidRewardResult } from './RaidRewardService.js
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { createCombatant } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
+import { createBattleActionContext } from '../domain/combat/BattleActionContext.js';
 import { PlayerCombatantFactory } from './combatantFactory.js';
 import { scaleExpForMobLevel } from '../config/expScaling.js';
 import {
@@ -20,6 +21,7 @@ import {
 	RAID_LOOT_ELITE,
 	RAID_LOOT_BOSS,
 	BOSS_ENTRY,
+	RAID_HUNT_COOLDOWN_SECONDS,
 	randInt,
 	rollRaidChest,
 } from '../config/raidLoot.js';
@@ -34,6 +36,7 @@ import { LootGrantService } from './LootGrantService.js';
 
 export type RaidResult =
 	| { status: 'already-processed' }
+	| { status: 'cooldown'; retryAt: Date }
 	| { status: 'not-registered' }
 	| { status: 'no-character' }
 	| { status: 'no-monsters-seeded' }
@@ -72,6 +75,8 @@ export interface RaidDependencies {
 		| 'lockCharacter'
 		| 'findReceipt'
 		| 'insertReceipt'
+		| 'lockHuntCooldown'
+		| 'upsertHuntCooldown'
 		| 'updateCharacter'
 		| 'lockUser'
 		| 'updateUser'
@@ -138,6 +143,8 @@ export class RaidService {
 		| 'lockCharacter'
 		| 'findReceipt'
 		| 'insertReceipt'
+		| 'lockHuntCooldown'
+		| 'upsertHuntCooldown'
 		| 'updateCharacter'
 		| 'lockUser'
 		| 'updateUser'
@@ -178,7 +185,8 @@ export class RaidService {
 				battleType: boss ? 'boss' : 'raid',
 				progressApplied: true,
 			});
-		else this.events.emit('battle.lost', { discordId, battleType: boss ? 'boss' : 'raid' });
+		else if (result.battle.outcome === 'enemy_win')
+			this.events.emit('battle.lost', { discordId, battleType: boss ? 'boss' : 'raid' });
 		if (credux > 0)
 			this.events.emit('currency.earned', {
 				discordId,
@@ -198,7 +206,12 @@ export class RaidService {
 		options: RaidRunOptions,
 	): Promise<RaidResult> {
 		await this.queries.lockBag(tx, discordId);
-		const now = new Date();
+		const action = createBattleActionContext({
+			actorId: discordId,
+			mode: boss ? 'boss' : 'raid',
+			actionId: options.requestId,
+		});
+		const now = action.now;
 		const day = DailyCycle.keyAt(now);
 		const [character] = await this.queries.lockCharacter(tx, discordId);
 		const account = await this.accounts.findByIdWithExecutor(tx, discordId);
@@ -206,6 +219,10 @@ export class RaidService {
 		if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
 		const invalidAttempt = await this.validateAttempt(tx, discordId, boss, day, options);
 		if (invalidAttempt) return invalidAttempt;
+		if (!boss) {
+			const [cooldown] = await this.queries.lockHuntCooldown(tx, discordId);
+			if (cooldown && cooldown.readyAt > now) return { status: 'cooldown', retryAt: cooldown.readyAt };
+		}
 
 		const lootRng = createRng(createSecureSeed());
 		const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
@@ -229,10 +246,17 @@ export class RaidService {
 		});
 
 		monster.immunityTags = monsterStats.immunityTags;
-		const battle = this.engine.resolve(player, monster, createSecureSeed(), {
+		const battle = this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
 		});
+		if (!boss) {
+			await this.queries.upsertHuntCooldown(
+				tx,
+				discordId,
+				new Date(now.getTime() + RAID_HUNT_COOLDOWN_SECONDS * 1000),
+			);
+		}
 		const won = battle.outcome === 'player_win';
 
 		const { credux, shards, expGained, gotChest, chestField, chestName } = rollBattleRewards(
@@ -253,7 +277,7 @@ export class RaidService {
 			battleType: boss ? 'boss' : 'raid',
 			enemyName: monsterStats.name,
 			enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
-			won,
+			outcome: battle.outcome,
 		});
 		await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
 		const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
@@ -329,7 +353,7 @@ export class RaidService {
 		return null;
 	}
 
-	/** Boss entry gate: level, once-per-Manila-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
+	/** Boss entry gate: level, once-per-Vietnam-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
 	private async bossGate(
 		tx: Transaction,
 		discordId: string,

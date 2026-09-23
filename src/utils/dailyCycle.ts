@@ -1,4 +1,4 @@
-const TIME_ZONE = 'Asia/Manila';
+const TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 const formatter = new Intl.DateTimeFormat('en-US', {
 	timeZone: TIME_ZONE,
@@ -9,8 +9,8 @@ const formatter = new Intl.DateTimeFormat('en-US', {
 
 /**
  * Ported from utils/dailyCycle.js. The "daily cycle" is a calendar date in
- * Asia/Manila, not a rolling 24h window — a claim always resets at PHT
- * midnight regardless of what time the player claimed the day before.
+ * Asia/Ho_Chi_Minh, not a rolling 24h window — a claim always resets at
+ * Vietnam midnight regardless of what time the player claimed the day before.
  */
 export class DailyCycle {
 	static keyAt(instant: Date = new Date()): string {

@@ -155,73 +155,82 @@ function battleMenuView(session: MenuSession, battle: NonNullable<MenuSession['b
 	};
 }
 
-export function menuView(session: MenuSession) {
-	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
-		return battleMenuView(session, session.battle);
-	}
-	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
-	const container = new ContainerBuilder().setAccentColor(0xf1c232);
-	const screen = session.screen;
-	const { title, body, topics } = viewContent(session);
-	container.addTextDisplayComponents((t) => t.setContent(MENU_VIEW_TEXT.heading(title)));
-	// Reserve room within the V2 message text budget for the title/footer.
+function addMenuBody(container: ContainerBuilder, session: MenuSession, body: string): void {
+	const content = body.slice(0, 3400);
 	if (session.gamePanel?.withAvatar && session.avatarUrl) {
 		container.addSectionComponents(
 			new SectionBuilder()
-				.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)))
+				.addTextDisplayComponents((t) => t.setContent(content))
 				.setThumbnailAccessory(
 					new ThumbnailBuilder().setURL(session.avatarUrl).setDescription(MENU_VIEW_TEXT.avatar),
 				),
 		);
-	} else container.addTextDisplayComponents((t) => t.setContent(body.slice(0, 3400)));
-	if (session.gamePanel?.classes)
-		container.addActionRowComponents(
-			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				new StringSelectMenuBuilder()
-					.setCustomId(id('class'))
-					.setPlaceholder(MENU_VIEW_TEXT.chooseClass)
-					.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
-			),
-		);
-	addGameplayButtons(container, session);
-	// Class screens (onboarding, start confirm) show only the class select — no section/topic pickers.
-	if (!session.gamePanel?.grouped && !session.gamePanel?.classes)
-		container.addActionRowComponents(
-			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				new StringSelectMenuBuilder()
-					.setCustomId(id('section'))
-					.setPlaceholder(MENU_TEXT.chooseSection)
-					.addOptions(
-						Object.entries(MENU_SECTIONS).map(([value, section]) => ({
-							label: section.title,
-							value,
-							default: screen.kind === 'section' && screen.section === value,
-						})),
-					),
-			),
-		);
-	if (topics.length) {
-		container.addActionRowComponents(
-			new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
-				new StringSelectMenuBuilder()
-					.setCustomId(id('topic'))
-					.setPlaceholder(MENU_TEXT.chooseTopic)
-					.addOptions(
-						topics.slice(0, 25).map((index) => ({ label: HELP_PAGES[index]!.title, value: String(index) })),
-					),
-			),
-		);
+		return;
 	}
-	if (!session.gamePanel?.grouped && !session.gamePanel?.classes)
-		container.addActionRowComponents(
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				new ButtonBuilder().setCustomId(id('help')).setLabel(MENU_TEXT.help).setStyle(ButtonStyle.Primary),
-				new ButtonBuilder()
-					.setCustomId(id('search'))
-					.setLabel(MENU_TEXT.search)
-					.setStyle(ButtonStyle.Secondary),
-			),
-		);
+	container.addTextDisplayComponents((t) => t.setContent(content));
+}
+
+function addClassSelector(container: ContainerBuilder, session: MenuSession, id: (action: MenuAction) => string): void {
+	if (!session.gamePanel?.classes) return;
+	container.addActionRowComponents(
+		new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+			new StringSelectMenuBuilder()
+				.setCustomId(id('class'))
+				.setPlaceholder(MENU_VIEW_TEXT.chooseClass)
+				.addOptions(CLASS_NAMES.map((value) => ({ label: value, value }))),
+		),
+	);
+}
+
+function addSectionSelector(
+	container: ContainerBuilder,
+	session: MenuSession,
+	screen: MenuSession['screen'],
+	id: (action: MenuAction) => string,
+): void {
+	if (session.gamePanel?.grouped || session.gamePanel?.classes) return;
+	container.addActionRowComponents(
+		new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+			new StringSelectMenuBuilder()
+				.setCustomId(id('section'))
+				.setPlaceholder(MENU_TEXT.chooseSection)
+				.addOptions(
+					Object.entries(MENU_SECTIONS).map(([value, section]) => ({
+						label: section.title,
+						value,
+						default: screen.kind === 'section' && screen.section === value,
+					})),
+				),
+		),
+	);
+}
+
+function addTopicSelector(container: ContainerBuilder, topics: number[], id: (action: MenuAction) => string): void {
+	if (!topics.length) return;
+	container.addActionRowComponents(
+		new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+			new StringSelectMenuBuilder()
+				.setCustomId(id('topic'))
+				.setPlaceholder(MENU_TEXT.chooseTopic)
+				.addOptions(
+					topics.slice(0, 25).map((index) => ({ label: HELP_PAGES[index]!.title, value: String(index) })),
+				),
+		),
+	);
+}
+
+function addHelpActions(container: ContainerBuilder, session: MenuSession, id: (action: MenuAction) => string): void {
+	if (session.gamePanel?.grouped || session.gamePanel?.classes) return;
+	container.addActionRowComponents(
+		new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder().setCustomId(id('help')).setLabel(MENU_TEXT.help).setStyle(ButtonStyle.Primary),
+			new ButtonBuilder().setCustomId(id('search')).setLabel(MENU_TEXT.search).setStyle(ButtonStyle.Secondary),
+		),
+	);
+}
+
+function addNavigation(container: ContainerBuilder, session: MenuSession, screen: MenuSession['screen']): void {
+	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
 	container.addSeparatorComponents((s) => s.setDivider(true));
 	container.addActionRowComponents(
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -250,6 +259,24 @@ export function menuView(session: MenuSession) {
 		),
 	);
 	container.addTextDisplayComponents((t) => t.setContent(MENU_TEXT.footer));
+}
+
+export function menuView(session: MenuSession) {
+	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
+		return battleMenuView(session, session.battle);
+	}
+	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
+	const container = new ContainerBuilder().setAccentColor(0xf1c232);
+	const screen = session.screen;
+	const { title, body, topics } = viewContent(session);
+	container.addTextDisplayComponents((t) => t.setContent(MENU_VIEW_TEXT.heading(title)));
+	addMenuBody(container, session, body);
+	addClassSelector(container, session, id);
+	addGameplayButtons(container, session);
+	addSectionSelector(container, session, screen, id);
+	addTopicSelector(container, topics, id);
+	addHelpActions(container, session, id);
+	addNavigation(container, session, screen);
 	return {
 		components: [container],
 		flags: MessageFlags.IsComponentsV2 as const,

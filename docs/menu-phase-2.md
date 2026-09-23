@@ -25,7 +25,7 @@ Thông tin trên trang là snapshot; Làm mới đọc lại DB. Hai menu của 
 - Mỗi thao tác hunt/boss của menu dùng mã `sessionId:revision`. Bảng `menu_action_receipts` lưu mã cùng transaction với phí, cooldown và phần thưởng. Mã đã xử lý không sinh trận/thưởng lần hai, kể cả gọi qua service instance khác.
 - Daily/raid của menu cập nhật quest và reputation **trong transaction**. Event có `progressApplied` để subscriber không cộng thêm lần nữa. Lệnh cũ tiếp tục đường event hiện có.
 - Quest dùng khoá bag → user trước khi tạo hoặc cập nhật quest; tránh sinh quá 3 quest khi hai menu đồng thời mở bộ mới và tránh đảo thứ tự khoá giữa raid/daily với quest.
-- Confirmation boss/đổi quest gắn ngày Manila; xác nhận sau khi qua ngày bị từ chối. Cooldown ngày/tuần vẫn do service kiểm tra.
+- Confirmation boss/đổi quest gắn ngày Asia/Ho_Chi_Minh; xác nhận sau khi qua ngày bị từ chối. Cooldown ngày/tuần vẫn do service kiểm tra.
 - Lỗi transaction rollback cả phần thưởng lẫn tiến độ. Lỗi Discord sau commit: router huỷ session và đưa nút mở lại, không tự chạy lại nghiệp vụ. Restart khiến nút session cũ hết hiệu lực.
 - Receipt được giữ trong DB, không có job xoá tự động ở giai đoạn này; xoá user/reset cascade sẽ xoá receipt. Mỗi trận menu tạo một row nhỏ. Session RAM vẫn chỉ hỗ trợ một process bot; receipt không biến UI session thành hệ thống nhiều replica.
 

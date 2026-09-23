@@ -21,9 +21,9 @@ import { SummonService } from '../src/services/SummonService.js';
 import { AscensionService } from '../src/services/AscensionService.js';
 import { EnhancementService } from '../src/services/EnhancementService.js';
 import { StatAssemblyService } from '../src/services/StatAssemblyService.js';
-import { InventoryRepository } from '../src/repositories/InventoryRepository.js';
+import { InventoryService } from '../src/services/InventoryService.js';
 import { LootGrantService } from '../src/services/LootGrantService.js';
-import { MonsterRepository } from '../src/repositories/MonsterRepository.js';
+import { MonsterEncounterService } from '../src/services/MonsterEncounterService.js';
 import { WEAPON_SEED } from '../src/seed/data/weapons.js';
 import { ARMOR_SEED } from '../src/seed/data/armors.js';
 import { RUNE_SEED } from '../src/seed/data/runes.js';
@@ -66,9 +66,9 @@ describe('closed gameplay economy', () => {
 		expect((await bag()).silverChest).toBe(10);
 		expect((await bag()).beliefShards).toBe(1000);
 		expect(await new StartService().start(id, id, 'Mage')).toEqual({ status: 'already-has-character' });
-		const weapons = await new InventoryRepository().list(id, 'weapons', 1);
+		const weapons = await new InventoryService().list(id, 'weapons', 1);
 		expect(weapons[0]).toContain(starter.weaponId);
-		expect(await new InventoryRepository().list(id, 'weapons', 2)).toEqual([]);
+		expect(await new InventoryService().list(id, 'weapons', 2)).toEqual([]);
 	});
 	it('opens a chest atomically, grants items and rejects excessive or invalid counts', async () => {
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
@@ -146,9 +146,9 @@ describe('closed gameplay economy', () => {
 		expect(results.map(r => r.status).sort()).toEqual(['already-claimed', 'ok']);
 	});
 	it('keeps summon resources unchanged when seed is missing', async () => {
-		const { DeityRepository } = await import('../src/repositories/DeityRepository.js');
-		const first = await new DeityRepository().pickRandomAvailableForTier(db, 'Epic', () => 0);
-		vi.spyOn(DeityRepository.prototype, 'pickRandomAvailableForTier').mockResolvedValueOnce(first).mockResolvedValue(null);
+		const { DeityService } = await import('../src/services/DeityService.js');
+		const first = await new DeityService().pickRandomAvailableForTier(db, 'Epic', () => 0);
+		vi.spyOn(DeityService.prototype, 'pickRandomAvailableForTier').mockResolvedValueOnce(first).mockResolvedValue(null);
 		const before = await bag();
 		expect((await new SummonService().run(id, 2)).status).toBe('no-deities-seeded');
 		expect(await bag()).toEqual(before);
@@ -161,7 +161,7 @@ describe('closed gameplay economy', () => {
 		expect((await bag()).beliefShards).toBe(800);
 		expect((await bag()).epicEssence).toBe(1);
 		const [owned] = await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, id));
-		expect((await new InventoryRepository().list(id, 'deities', 1))[0]).toContain(`ID: \`${owned.userDeityId}\``);
+		expect((await new InventoryService().list(id, 'deities', 1))[0]).toContain(`ID: \`${owned.userDeityId}\``);
 		const summoned = await new StatAssemblyService().assemble(id, 'Knight', 1);
 		expect(summoned.stats.atk).toBeGreaterThan(before.stats.atk);
 		await db.update(s.usersBag).set({ credux: 100000, epicEssence: 200 }).where(eq(s.usersBag.discordId, id));
@@ -186,10 +186,10 @@ describe('closed gameplay economy', () => {
 		expect((await bag()).credux).toBeLessThan(1000000);
 	});
 	it('selects regular/elite with seeded RNG and grants elite Gold Chest', async () => {
-		const repo = new MonsterRepository();
+		const repo = new MonsterEncounterService();
 		expect((await repo.pickForLevel(db, 1, () => 0))?.mobType).toBe('regular');
 		expect((await repo.pickForLevel(db, 1, () => 0.9))?.mobType).toBe('elite');
-		vi.spyOn(MonsterRepository.prototype, 'pickForLevel').mockResolvedValue({ name: 'Elite', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'elite', skillKey: 'none', immunityTags: [] });
+		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Elite', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'elite', skillKey: 'none', immunityTags: [] });
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
 		const result = await new RaidService().run(id);
 		expect(result.status).toBe('ok');
@@ -202,13 +202,28 @@ describe('closed gameplay economy', () => {
 		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(character.highestRaidStreak).toBe(1);
 	});
+	it('applies hunt cooldown in the service across instances and only after a valid hunt', async () => {
+		const pick = vi
+			.spyOn(MonsterEncounterService.prototype, 'pickForLevel')
+			.mockResolvedValueOnce(null)
+			.mockResolvedValue({ name: 'Pugot', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'regular', skillKey: 'none', immunityTags: [] });
+		const first = await new RaidService().run(id);
+		expect(first.status).toBe('no-monsters-seeded');
+		expect(await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id))).toHaveLength(0);
+		const valid = await new RaidService().run(id);
+		expect(valid.status).toBe('ok');
+		const retry = await new RaidService().run(id);
+		expect(retry.status).toBe('cooldown');
+		if (retry.status === 'cooldown') expect(retry.retryAt.getTime()).toBeGreaterThan(Date.now());
+		expect(pick).toHaveBeenCalledTimes(2);
+	});
 	it('enforces boss level, fee and daily limit; rewards a victory atomically', async () => {
 		const raid = new RaidService();
 		expect((await raid.run(id, true)).status).toBe('boss-locked');
 		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
 		expect((await raid.run(id, true)).status).toBe('boss-locked');
 		await db.update(s.usersBag).set({ credux: 10000 }).where(eq(s.usersBag.discordId, id));
-		vi.spyOn(MonsterRepository.prototype, 'pickForLevel').mockResolvedValue({ name: 'Boss', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'boss', skillKey: 'moon_threshold', immunityTags: ['stun'] });
+		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Boss', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'boss', skillKey: 'moon_threshold', immunityTags: ['stun'] });
 		const first = await raid.run(id, true);
 		expect(first.status).toBe('ok');
 		expect((await bag()).bossTreasureChest).toBe(1);

@@ -19,6 +19,7 @@ import { QuestService } from '../src/services/QuestService.js';
 import { ReputationService } from '../src/services/ReputationService.js';
 import { DuelService, DUEL_STAKE_MIN } from '../src/services/DuelService.js';
 import { RankedService } from '../src/services/RankedService.js';
+import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
 import { PvpShopService } from '../src/services/PvpShopService.js';
 import { CosmeticService } from '../src/services/CosmeticService.js';
 import { ClassChangeService } from '../src/services/ClassChangeService.js';
@@ -143,7 +144,7 @@ describe('M7 quests + believer EXP', () => {
 		expect(await db.select().from(s.weeklyQuests).where(eq(s.weeklyQuests.discordId, ghost))).toHaveLength(0);
 	});
 
-	it('caps believer EXP per Manila day and levels up at the threshold', async () => {
+	it('caps believer EXP per Vietnam day and levels up at the threshold', async () => {
 		const reputation = new ReputationService();
 		for (let i = 0; i < 10; i++) await reputation.award(id, 'daily'); // 10×50 = cap 500
 		const [c1] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
@@ -219,6 +220,43 @@ describe('M7 duels', () => {
 		expect(await db.select().from(s.activeDuelParticipants).where(eq(s.activeDuelParticipants.discordId, id))).toHaveLength(0);
 		// Accepting a swept duel fails cleanly.
 		expect(await duels.accept((stale as { duelId: string }).duelId, id2)).toEqual({ status: 'not-found' });
+	});
+
+	it('records completed duel draws without inventing a winner or changing counters', async () => {
+		const id2 = `test-${++sequence}-opponent`;
+		await new StartService().start(id2, id2, 'Mage');
+		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id));
+		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id2));
+		vi.spyOn(BattleEngine.prototype, 'resolve').mockReturnValue({
+			outcome: 'draw',
+			rounds: 40,
+			log: [],
+			roundLogs: [],
+			playerHpRemaining: 100,
+			enemyHpRemaining: 100,
+		});
+
+		const duels = new DuelService();
+		const created = await duels.create(id, id2, 1000);
+		if (created.status !== 'ok') throw new Error(`duel create failed: ${created.status}`);
+		const result = await duels.accept(created.duelId, id2);
+		if (result.status !== 'ok') throw new Error(`duel accept failed: ${result.status}`);
+		expect(result.draw).toBe(true);
+		const [log] = await db.select().from(s.pvpLogs).where(eq(s.pvpLogs.duelId, created.duelId));
+		expect(log).toMatchObject({ outcome: 'draw', winnerId: null });
+		expect(
+			await db
+				.select()
+				.from(s.wagerLogs)
+				.where(eq(s.wagerLogs.challengerId, id2)),
+		).toHaveLength(0);
+		expect((await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, id)))[0].credux).toBe(5000);
+		expect((await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, id2)))[0].credux).toBe(5000);
+		const [me] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
+		expect(me.duelWins).toBe(0);
+		expect(me.duelLosses).toBe(0);
+		expect(me.pvpWins).toBe(0);
+		expect(me.pvpLosses).toBe(0);
 	});
 });
 

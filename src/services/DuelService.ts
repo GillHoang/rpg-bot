@@ -12,8 +12,8 @@ import { StatAssemblyService, type AssembledPlayer } from './StatAssemblyService
 import { CosmeticService } from './CosmeticService.js';
 import type { CombatantState } from '../domain/combat/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
+import { createBattleActionContext } from '../domain/combat/BattleActionContext.js';
 import { PlayerCombatantFactory } from './combatantFactory.js';
-import { createSecureSeed } from '../domain/combat/Rng.js';
 import type { IClassStrategy } from '../domain/combat/IClassStrategy.js';
 import { EventBus } from '../core/EventBus.js';
 import type { CombatClass } from '../domain/entities/PlayerAccount.js';
@@ -71,6 +71,7 @@ export interface DuelDependencies {
 		| 'updateCharacter'
 		| 'insertPvpLog'
 		| 'insertWagerLog'
+		| 'currentDuelWinStreak'
 		| 'deleteExpiredDuels'
 	>;
 	engine?: Pick<BattleEngine, 'resolve'>;
@@ -82,8 +83,8 @@ export interface DuelDependencies {
  * Challenge → đối thủ Accept/Decline qua nút trên message (60s). Cược bị
  * trừ ở cả hai bên khi accept, winner ăn trọn pot — atomic trong 1 tx
  * (thua rollback = không ai mất tiền). Resolve dùng cùng BattleEngine với
- * StatAssembly + rune + blessing của mỗi người; quest/believer EXP đi qua
- * EventBus sau khi commit. Wording nằm ở src/text/duel.ts.
+ * StatAssembly + rune + blessing của mỗi người; quest/reputation tiến hành
+ * trong cùng transaction. EventBus chỉ phát thông báo sau commit.
  */
 
 export class DuelService {
@@ -110,6 +111,7 @@ export class DuelService {
 		| 'updateCharacter'
 		| 'insertPvpLog'
 		| 'insertWagerLog'
+		| 'currentDuelWinStreak'
 		| 'deleteExpiredDuels'
 	>;
 	private readonly engine: Pick<BattleEngine, 'resolve'>;
@@ -218,6 +220,7 @@ export class DuelService {
 			const loaded = await this.loadAcceptableDuel(tx, duelId, acceptorId);
 			if ('error' in loaded) return loaded.error;
 			const duel = loaded.duel;
+			const action = createBattleActionContext({ actorId: acceptorId, mode: 'duel', actionId: duel.duelId });
 
 			const stake = duel.stake ?? 0;
 			const bags = await this.lockBags(tx, duel.challengerId, duel.opponentId, stake);
@@ -231,7 +234,7 @@ export class DuelService {
 			const battle = this.engine.resolve(
 				duelists.challenger.combatant,
 				duelists.opponent.combatant,
-				createSecureSeed(),
+				action.seed,
 				{ playerStrategy: duelists.challenger.strategy, enemyStrategy: duelists.opponent.strategy },
 			);
 
@@ -239,7 +242,7 @@ export class DuelService {
 			// Consume the duel: participants cascade with this delete.
 			await this.queries.deleteDuel(tx, duel.duelId);
 			const winner = settlementWinnerId(battle, duel.challengerId, duel.opponentId);
-			if (winner) await this.progress.apply(tx, winner, 'duel_win', new Date());
+			if (winner) await this.progress.apply(tx, winner, 'duel_win', action.now);
 			return {
 				status: 'ok',
 				battle,
@@ -343,6 +346,15 @@ export class DuelService {
 		const stake = duel.stake ?? 0;
 		if (battle.outcome === 'draw') {
 			await this.refundWager(tx, duel, bags, stake);
+			await this.queries.insertPvpLog(tx, {
+				duelId: duel.duelId,
+				challengerId: duel.challengerId,
+				opponentId: duel.opponentId,
+				winnerId: null,
+				outcome: 'draw',
+				challengerDamage: duelists.opponent.assembled.stats.hp - battle.enemyHpRemaining,
+				opponentDamage: duelists.challenger.assembled.stats.hp - battle.playerHpRemaining,
+			});
 			return;
 		}
 
@@ -358,17 +370,28 @@ export class DuelService {
 			// (their own stake back plus the loser's).
 			await this.queries.updateBag(tx, winnerId, { credux: winnerBag.credux + stake });
 		}
-		await this.queries.updateCharacter(tx, winnerId, { pvpWins: winner.character.pvpWins + 1 });
+		await this.queries.updateCharacter(tx, winnerId, {
+			duelWins: winner.character.duelWins + 1,
+			pvpWins: winner.character.pvpWins + 1,
+		});
 		// A duel win qualifies independently of the shared ranked/duel PvP counter.
 		await this.cosmetics.grantTitleInTx(tx, winnerId, 'first_blood');
-		await this.queries.updateCharacter(tx, loserId, { pvpLosses: loser.character.pvpLosses + 1 });
 		await this.queries.insertPvpLog(tx, {
 			duelId: duel.duelId,
 			challengerId: duel.challengerId,
 			opponentId: duel.opponentId,
 			winnerId,
+			outcome: challengerWon ? 'win' : 'loss',
 			challengerDamage: duelists.opponent.assembled.stats.hp - battle.enemyHpRemaining,
 			opponentDamage: duelists.challenger.assembled.stats.hp - battle.playerHpRemaining,
+		});
+		const winnerStreak = await this.queries.currentDuelWinStreak(tx, winnerId);
+		await this.queries.updateCharacter(tx, winnerId, {
+			highestDuelStreak: Math.max(winner.character.highestDuelStreak, winnerStreak),
+		});
+		await this.queries.updateCharacter(tx, loserId, {
+			duelLosses: loser.character.duelLosses + 1,
+			pvpLosses: loser.character.pvpLosses + 1,
 		});
 		if (stake > 0) {
 			await this.queries.insertWagerLog(tx, {

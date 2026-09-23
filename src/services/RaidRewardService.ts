@@ -2,6 +2,7 @@ import { RAID_REWARD_ERROR_TEXT } from '../text/diagnostics.js';
 import type { Executor } from '../db/client.js';
 import { RaidRewardStore, type RaidRewardBag } from '../repositories/RaidRewardStore.js';
 import { applyCombatExp } from '../config/combatExp.js';
+import type { BattleOutcome } from '../domain/combat/BattleEngine.js';
 
 export interface RaidRewardGrant {
 	expGain: number; // already scaled by scaleExpForMobLevel
@@ -14,7 +15,7 @@ export interface RaidRewardGrant {
 	battleType: 'raid' | 'boss';
 	enemyName: string;
 	enemyTier: 'regular' | 'elite' | 'boss';
-	won: boolean;
+	outcome: BattleOutcome;
 }
 
 export interface RaidRewardResult {
@@ -50,14 +51,16 @@ export class RaidRewardService {
 		if (!lockedBag) throw new Error(RAID_REWARD_ERROR_TEXT.missingBag(discordId));
 		const bag = lockedBag;
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
+		const won = grant.outcome === 'player_win';
+		const lost = grant.outcome === 'enemy_win';
 
 		await this.store.updateCharacter(executor, discordId, {
 			combatLevel: next.level,
 			combatExp: next.exp,
 			lifetimeExp: character.lifetimeExp + Math.max(0, grant.expGain),
-			bossKills: character.bossKills + (grant.boss && grant.credux > 0 ? 1 : 0),
-			raidsWon: !grant.boss && grant.credux > 0 ? character.raidsWon + 1 : character.raidsWon,
-			raidsLost: !grant.boss && grant.credux === 0 ? character.raidsLost + 1 : character.raidsLost,
+			bossKills: character.bossKills + (grant.boss && won ? 1 : 0),
+			raidsWon: !grant.boss && won ? character.raidsWon + 1 : character.raidsWon,
+			raidsLost: !grant.boss && lost ? character.raidsLost + 1 : character.raidsLost,
 		});
 
 		const creuxAfter = bag.credux + grant.credux;
@@ -82,7 +85,7 @@ export class RaidRewardService {
 			battleType: grant.battleType,
 			enemyName: grant.enemyName,
 			enemyTier: grant.enemyTier,
-			result: grant.won ? 'win' : 'loss',
+			result: won ? 'win' : lost ? 'loss' : 'draw',
 			expEarned: grant.expGain,
 			updatedExp: next.exp,
 			beliefShardsDropped: grant.shards,

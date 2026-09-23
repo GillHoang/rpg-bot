@@ -13,28 +13,16 @@ it('upgrades populated EXP columns and level limits without losing existing prog
 			await testClient.exec(await readFile(new URL(`${tag}.sql`, root), 'utf8'));
 		}
 		await db.insert(s.users).values({ discordId: 'migration', username: 'Migration' });
-		await db
-			.insert(s.userCharacter)
-			.values({
-				discordId: 'migration',
-				class: 'Knight',
-				combatLevel: 50,
-				combatExp: 1000,
-				lifetimeExp: 2_000_000_000,
-			});
-		await db
-			.insert(s.raidLogs)
-			.values({
-				discordId: 'migration',
-				battleType: 'raid',
-				enemyName: 'mob',
-				enemyTier: 'regular',
-				result: 'win',
-				updatedExp: 1000,
-				updatedBeliefShards: 0,
-				updatedCredux: 0,
-			});
+		await testClient.exec(
+			`INSERT INTO user_character (discord_id, class, combat_level, combat_exp, lifetime_exp)
+			 VALUES ('migration', 'Knight', 50, 1000, 2000000000);`,
+		);
+		await testClient.exec(
+			`INSERT INTO raid_logs (discord_id, battle_type, enemy_name, enemy_tier, result, updated_exp, updated_belief_shards, updated_credux)
+			 VALUES ('migration', 'raid', 'mob', 'regular', 'win', 1000, 0, 0);`,
+		);
 		await testClient.exec(await readFile(new URL('0003_combat_progression.sql', root), 'utf8'));
+		await testClient.exec(await readFile(new URL('0004_battle_standardization.sql', root), 'utf8'));
 		const [preserved] = await db.select().from(s.userCharacter);
 		expect(preserved).toMatchObject({ combatLevel: 50, combatExp: 1000, lifetimeExp: 2_000_000_000 });
 		expect((await db.select().from(s.raidLogs))[0].updatedExp).toBe(1000);

@@ -4,7 +4,7 @@ import { ICONS } from './icons.js';
 export const DAILY_DESCRIPTION = 'Nhận phần thưởng điểm danh hàng ngày';
 
 export const DAILY_ALREADY_CLAIMED = (day: number): string =>
-	`${ICONS.daily.already} Bạn đã điểm danh hôm nay rồi (Ngày ${day}). Quay lại sau nửa đêm giờ Manila.`;
+	`${ICONS.daily.already} Bạn đã điểm danh hôm nay rồi (Ngày ${day}). Quay lại sau nửa đêm giờ Việt Nam.`;
 
 export const DAILY_MILESTONE_LINE = (chestLabel: string): string => `\n${ICONS.reward.chest} Cột mốc: +1 ${chestLabel}`;
 

@@ -93,7 +93,7 @@ describe('pure gameplay panels', () => {
 	it('preserves dated boss and quest confirmation warnings', () => {
 		const boss = confirmationPanel({ kind: 'confirm', operation: 'boss', day: '2026-09-21' });
 		expect(boss.body).toBe(
-			'Yêu cầu cấp 10. Phí: **10.000 Credux**, trừ khi vào trận kể cả thua.\nMỗi ngày 1 lượt; reset 00:00 Manila (23:00 Việt Nam).\nLượt ngày 2026-09-21.',
+			'Yêu cầu cấp 10. Phí: **10.000 Credux**, trừ khi vào trận kể cả thua.\nMỗi ngày 1 lượt; reset 00:00 giờ Việt Nam.\nLượt ngày 2026-09-21.',
 		);
 		const reroll = confirmationPanel({ kind: 'confirm', operation: 'reroll', day: '2026-09-21' });
 		expect(reroll.body).toBe(

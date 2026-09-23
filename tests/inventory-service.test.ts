@@ -10,7 +10,6 @@ const defaultQuery = vi.hoisted(() =>
 );
 vi.mock('../src/db/client.js', () => ({ db: { select: defaultQuery, transaction: defaultQuery }, pool: {} }));
 import { InventoryService } from '../src/services/InventoryService.js';
-import { InventoryRepository } from '../src/repositories/InventoryRepository.js';
 import type { InventoryDataRepository } from '../src/repositories/InventoryDataRepository.js';
 import { WEAPON_SEED } from '../src/seed/data/weapons.js';
 import { ARMOR_SEED } from '../src/seed/data/armors.js';
@@ -111,8 +110,7 @@ afterEach(() => {
 });
 
 describe('InventoryService projections and persistence isolation', () => {
-	it('keeps the compatibility alias and isolates injected databases without default reads', async () => {
-		expect(InventoryRepository).toBe(InventoryService);
+	it('isolates injected databases without default reads', async () => {
 		expect((await inventory.bag('owner'))?.credux).toBe(100);
 		expect((await isolated.bag('owner'))?.credux).toBe(900);
 		expect(await inventory.bag('missing')).toBeNull();

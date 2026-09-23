@@ -45,7 +45,7 @@ export const QUEST_BONUS_SHARDS = (bonus: number): string => `${bonus} shards`;
 export const QUEST_BONUS_VALOR = (bonus: number): string => `${bonus} valor`;
 
 // --- refresh ---
-export const QUEST_REFRESH_LIMIT = 'Đã refresh daily hôm nay. Reset lúc 00:00 Asia/Manila.';
+export const QUEST_REFRESH_LIMIT = 'Đã refresh daily hôm nay. Reset lúc 00:00 Asia/Ho_Chi_Minh.';
 export const QUEST_REFRESH_DONE = 'Đã đổi các nhiệm vụ ngày chưa hoàn thành.';
 
 // --- claim weekly grand ---

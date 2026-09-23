@@ -27,7 +27,7 @@ Ba quyết định phạm vi do người dùng chốt:
 - [x] Quest daily/weekly sinh lazily qua EventBus subscriber; `/quest
       view|refresh|claim`; Sacred Relic khi đủ 3 daily; Weekly Grand Diamond
       Chest khi đủ 3 weekly.
-- [x] Believer EXP/reputation với cap hằng ngày (Asia/Manila), level-up nội
+- [x] Believer EXP/reputation với cap hằng ngày (Asia/Ho_Chi_Minh), level-up nội
       bộ, gate tier cosmetic, hiển thị trên `/profile`.
 - [x] `/cosmetic list|equip`, `/title list|equip`, title tự grant (first duel
       win, boss kill, ranked promotion), base cosmetic auto-grant khi `/create`.
@@ -61,7 +61,7 @@ Ba quyết định phạm vi do người dùng chốt:
 | Elo | K=32 zero-sum, cả hai bên đều đổi rating |
 | Bracket | Mortal <1100, Champion 1100, Demigod 1400, Ascendant 1700, Divine ≥2000 |
 | Demotion shield | Lần rớt bracket đầu tiên chỉ về sàn bracket cũ, shield mất; thăng bracket nạp lại |
-| Ranked weekly claim | ≥1 trận trong tuần ISO Manila; thưởng theo `ranked_reward` seed (Mortal 50k+2 valor → Divine 800k+40 valor+1 Genesis) |
+| Ranked weekly claim | ≥1 trận trong tuần ISO Asia/Ho_Chi_Minh; thưởng theo `ranked_reward` seed (Mortal 50k+2 valor → Divine 800k+40 valor+1 Genesis) |
 | PVP shop | change_class 120 · diamond chest 60 · frame_gold 40 · frame_eternal 90 · title_champion 80; cosmetic/title giới hạn 1/season |
 | Quest daily | 3/6 loại, thưởng 20–60k Credux + 50–150 shards; đủ 3 → +1 Sacred Relic |
 | Quest weekly | 3/6 loại, thưởng 50–150k Credux + 5–15 valor; đủ 3 → `/quest claim` 100k + 1 Diamond Chest |
@@ -86,7 +86,7 @@ Ba quyết định phạm vi do người dùng chốt:
 - Duel/ranked khóa người qua `active_duel_participants` / `active_ranked_fights`
   với lockToken + expiresAt; mọi thay đổi tài nguyên trong 1 tx, thua/bị hết hạn
   rollback sạch.
-- Reset daily/weekly là **lazy** (so ngày/ISO-week Manila tại điểm đọc) — không
+- Reset daily/weekly là **lazy** (so ngày/ISO-week Asia/Ho_Chi_Minh tại điểm đọc) — không
   cron nào phải chạy để hệ thống quest/reputation đúng hạn.
 
 ## Giới hạn đã biết

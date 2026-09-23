@@ -21,19 +21,19 @@ export const RAID_REWARD_LEVEL_UP = (prev: number, next: number): string =>
 
 // --- Boss (RaidService) ---
 export const BOSS_LEVEL_REQUIRED = (minLevel: number): string => `Boss yêu cầu cấp ${minLevel}.`;
-export const BOSS_ALREADY_DONE = 'Đã đánh boss hôm nay. Reset lúc 00:00 Asia/Manila.';
+export const BOSS_ALREADY_DONE = 'Đã đánh boss hôm nay. Reset lúc 00:00 Asia/Ho_Chi_Minh.';
 export const BOSS_FEE_REQUIRED = (fee: string): string => `Phí vào boss: ${fee} Credux.`;
 
 /** Display text for commands/rpg/RaidCommand. */
 export const RAID_FLOW_TEXT = {
 	huntDescription: 'Săn mob thường hoặc elite (20%)',
-	bossDescription: 'Bakunawa: cấp 10, phí 10.000 Credux, 1 lần/ngày (00:00 Manila)',
+	bossDescription: 'Bakunawa: cấp 10, phí 10.000 Credux, 1 lần/ngày (00:00 giờ Việt Nam)',
 	alreadyProcessed: 'Trận đấu này đã được xử lý.',
 };
 
 /** Display text for render/raidBattleOptions. */
 export const RAID_FOOTER_TEXT = {
-	bossFee: 'Phí vào boss: -10.000 Credux (reset 00:00 Manila).',
+	bossFee: 'Phí vào boss: -10.000 Credux (reset 00:00 giờ Việt Nam).',
 };
 
 /** Display text for services/RaidService. */

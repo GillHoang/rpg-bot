@@ -45,7 +45,7 @@ export const HELP_PAGES: readonly HelpPage[] = [
 		title: 'Vòng lặp hằng ngày',
 		body: [
 			'Nhịp chơi cốt lõi — vài phút mỗi ngày là đủ tiến bộ:',
-			`**${ICONS.daily.header} \`/daily\`** — điểm danh theo chu kỳ 30 ngày: Credux từ 50.000 lên 1.500.000, Shards từ 100 lên 1.000. Ngày vàng (7 · 14 · 21 · 28 · 29 · 30) tặng **Gold Chest**. Chuỗi điểm danh đạt mốc 15 ngày → **Boss Treasure Chest**; mốc 30/45/60… ngày → **Boss Golden Chest**. Reset 00:00 Manila.`,
+			`**${ICONS.daily.header} \`/daily\`** — điểm danh theo chu kỳ 30 ngày: Credux từ 50.000 lên 1.500.000, Shards từ 100 lên 1.000. Ngày vàng (7 · 14 · 21 · 28 · 29 · 30) tặng **Gold Chest**. Chuỗi điểm danh đạt mốc 15 ngày → **Boss Treasure Chest**; mốc 30/45/60… ngày → **Boss Golden Chest**. Reset 00:00 giờ Việt Nam.`,
 			`**${ICONS.menu.hunt} \`/raid hunt\`** — đánh quái ngẫu nhiên, 20% gặp **elite** (thưởng lớn gấp ~5 lần). Thắng: EXP + Credux 500–1.000 + Shards, 20–35% rơi rương. Thua vẫn nhận chút EXP — không mất gì cả. Tối đa cấp 100.`,
 			`**${ICONS.effect.eclipse} \`/raid boss\`** — **Bakunawa**: cần cấp 10, phí vào cửa 10.000 Credux, 1 lần/ngày. Thưởng khủng (25.000–50.000 Credux), chắc chắn có rương, 30% rơi gear hiếm. Khi dưới nửa HP boss bước vào Eclipse — sát thương tăng mạnh.`,
 			`**${ICONS.quest.dailyHeader} \`/quest view\`** — 3 daily + 3 weekly tự tính tiến độ khi bạn chơi. Đủ 3 daily → +1 **Sacred Relic**. Đủ 3 weekly → \`/quest claim\` nhận **Weekly Grand**: 1 Diamond Chest + 100.000 Credux. \`/quest refresh\` reroll daily (1 lần/ngày).`,

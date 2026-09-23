@@ -184,21 +184,21 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 
 	private async fight(session: MenuSession, boss: boolean, expectedDay?: string): Promise<MenuScreen> {
-		if (!boss && Date.now() < (session.huntReadyAt ?? 0)) {
-			session.notice = GAMEPLAY_NOTICE.cooldown(Math.ceil((session.huntReadyAt! - Date.now()) / 1000));
-			return session.screen;
-		}
 		const r = await this.raid.run(session.ownerId, boss, {
 			requestId: `${session.id}:${session.revision}`,
 			expectedDay,
 		});
 		if (r.status === 'ok') {
-			if (!boss) session.huntReadyAt = Date.now() + 15_000;
 			session.battle = { ...r, boss };
 			return { kind: 'result' };
 		}
 		if (r.status === 'boss-locked') session.notice = r.message;
-		else if (r.status === 'already-processed') session.notice = GAMEPLAY_NOTICE.alreadyProcessed;
+		else if (r.status === 'cooldown') {
+			session.notice = GAMEPLAY_NOTICE.cooldown(
+				Math.max(1, Math.ceil((r.retryAt.getTime() - Date.now()) / 1000)),
+			);
+			return session.battle ? { kind: 'result' } : { kind: 'battle' };
+		} else if (r.status === 'already-processed') session.notice = GAMEPLAY_NOTICE.alreadyProcessed;
 		else if (r.status === 'no-monsters-seeded') session.notice = GAMEPLAY_NOTICE.noMonster;
 		else session.notice = GAMEPLAY_NOTICE.createFirst;
 		return { kind: 'battle' };

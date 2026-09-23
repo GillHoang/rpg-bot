@@ -85,7 +85,7 @@ export interface QuestDependencies {
 }
 
 /**
- * Quest daily/weekly (M7): sinh lazily theo ngày/ISO-week Manila — không cần
+ * Quest daily/weekly (M7): sinh lazily theo ngày/ISO-week Việt Nam — không cần
  * cron, quest xuất hiện đúng lúc người chơi chạm vào hệ thống. Progress đến
  * qua coordinator trong transaction hành động (`progressInTx`), hoàn thành tự cộng thưởng trong cùng giao dịch.
  * Đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand claim được.

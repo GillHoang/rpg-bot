@@ -34,6 +34,7 @@ export const RAID_LOOT_BOSS = {
 	loss: { exp: 150 },
 };
 export const BOSS_ENTRY = { minLevel: 10, credux: 10000, eclipseDamageBonus: 50, gearChance: 0.3 } as const;
+export const RAID_HUNT_COOLDOWN_SECONDS = 15;
 
 export function randInt(rng: () => number, [min, max]: readonly [number, number]): number {
 	return min + Math.floor(rng() * (max - min + 1));

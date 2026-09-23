@@ -8,7 +8,7 @@ const SWEEP_INTERVAL_MS = 30_000;
 /**
  * M7 scheduler — chỉ làm sweeps nhẹ: duel pending hết hạn → huỷ + nhả lock,
  * ranked lock treo (tx chưa kịp dọn) → xoá. Reset daily/weekly (reputation
- * cap, quest) theo kiểu lazy: so ngày Manila tại điểm đọc, không cần cron.
+ * cap, quest) theo kiểu lazy: so ngày Việt Nam tại điểm đọc, không cần cron.
  * World boss / vote reward nằm ngoài phạm vi đợt này.
  */
 export class Scheduler {

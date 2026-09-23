@@ -31,6 +31,14 @@ export const menuActionReceipts = pgTable(
 	(table) => [primaryKey({ columns: [table.discordId, table.requestId] })],
 );
 
+/** Shared business cooldown for valid hunt attempts across every entry point. */
+export const huntCooldowns = pgTable('hunt_cooldowns', {
+	discordId: text('discord_id')
+		.primaryKey()
+		.references(() => users.discordId, { onDelete: 'cascade' }),
+	readyAt: timestamp('ready_at', { mode: 'date', withTimezone: false }).notNull(),
+});
+
 // active_battles — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((battle_type)::text = ANY ((ARRAY['raid'::character varying, 'boss'::character varying])::text[])))
 export const activeBattles = pgTable(
@@ -453,7 +461,10 @@ export const pvpLogs = pgTable('pvp_logs', {
 	duelId: text('duel_id') /* TODO pg type: uuid */,
 	challengerId: text('challenger_id').notNull(),
 	opponentId: text('opponent_id').notNull(),
-	winnerId: text('winner_id').notNull(),
+	/** Winner is null for a completed draw. */
+	winnerId: text('winner_id'),
+	/** Result from the challenger's perspective. */
+	outcome: text('outcome').notNull().default('draw'),
 	challengerDamage: integer('challenger_damage').notNull(),
 	opponentDamage: integer('opponent_damage').notNull(),
 	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: false })
@@ -478,7 +489,7 @@ export const pvpShopPurchases = pgTable(
 
 // raid_logs — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
 //   CHECK (((enemy_tier)::text = ANY ((ARRAY['regular'::character varying, 'elite'::character varying, 'boss'::character varying])::text[])))
-//   CHECK (((result)::text = ANY ((ARRAY['win'::character varying, 'loss'::character varying])::text[])))
+//   CHECK (((result)::text = ANY ((ARRAY['win'::character varying, 'loss'::character varying, 'draw'::character varying])::text[])))
 export const raidLogs = pgTable('raid_logs', {
 	id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
 	discordId: text('discord_id').notNull(),
@@ -530,7 +541,7 @@ export const raidRewardGrants = pgTable('raid_reward_grants', {
 });
 
 // ranked_logs — original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
-//   CHECK (((result)::text = ANY ((ARRAY['win'::character varying, 'loss'::character varying])::text[])))
+//   CHECK (((result)::text = ANY ((ARRAY['win'::character varying, 'loss'::character varying, 'draw'::character varying])::text[])))
 export const rankedLogs = pgTable('ranked_logs', {
 	id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
 	playerId: text('player_id')
@@ -837,6 +848,11 @@ export const userCharacter = pgTable(
 		highestRankStreak: integer('highest_rank_streak').notNull().default(0),
 		raidsWon: integer('raids_won').notNull().default(0),
 		raidsLost: integer('raids_lost').notNull().default(0),
+		duelWins: integer('duel_wins').notNull().default(0),
+		duelLosses: integer('duel_losses').notNull().default(0),
+		highestDuelStreak: integer('highest_duel_streak').notNull().default(0),
+		rankedWins: integer('ranked_wins').notNull().default(0),
+		rankedLosses: integer('ranked_losses').notNull().default(0),
 		pvpWins: integer('pvp_wins').notNull().default(0),
 		pvpLosses: integer('pvp_losses').notNull().default(0),
 		believerLevel: integer('believer_level').notNull().default(1),

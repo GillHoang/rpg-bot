@@ -1,5 +1,5 @@
 import type { Executor } from '../db/client.js';
-import { and, eq, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, lte, or, sql } from 'drizzle-orm';
 import {
 	activeDuelParticipants,
 	activeDuels,
@@ -73,6 +73,21 @@ export class DuelRepository {
 
 	async insertWagerLog(tx: Executor, values: typeof wagerLogs.$inferInsert) {
 		return tx.insert(wagerLogs).values(values);
+	}
+
+	/** Consecutive duel wins at the tail of this player's duel history. */
+	async currentDuelWinStreak(tx: Executor, discordId: string): Promise<number> {
+		const rows = await tx
+			.select({ winnerId: pvpLogs.winnerId, outcome: pvpLogs.outcome })
+			.from(pvpLogs)
+			.where(or(eq(pvpLogs.challengerId, discordId), eq(pvpLogs.opponentId, discordId)))
+			.orderBy(desc(pvpLogs.id));
+		let streak = 0;
+		for (const row of rows) {
+			if (row.outcome === 'draw' || row.winnerId !== discordId) break;
+			streak += 1;
+		}
+		return streak;
 	}
 
 	async deleteExpiredDuels(tx: Executor, now: Date) {

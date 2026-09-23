@@ -81,7 +81,7 @@ it('R1: level 50 can advance to 51 and commit its reward', async () => {
 				battleType: 'raid',
 				enemyName: 'mob',
 				enemyTier: 'regular',
-				won: true,
+				outcome: 'player_win',
 			}),
 		);
 	} catch (caught) {
@@ -360,7 +360,7 @@ it('R1/R11: reaching the cap and receiving more EXP commits without integer over
 				battleType: 'raid',
 				enemyName: 'mob',
 				enemyTier: 'regular',
-				won: true,
+				outcome: 'player_win',
 			}),
 		);
 	await grant(1);

@@ -5,8 +5,6 @@ import ts from 'typescript';
 
 const emoji = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3|✦|<a?:\w+:\d+>/u;
 const vietnamese = /[À-ÖØ-öø-ÿĂăĐđĨĩŨũƠơƯư\u1EA0-\u1EF9]/u;
-// Only the two letters adjacent to each side of a space are needed for detection.
-const prose = /[a-zA-Z]{2} [a-zA-Z]{2}/;
 const displayMethods = new Set(['setLabel', 'setDescription', 'setTitle', 'setPlaceholder', 'setContent']);
 
 /** Narrow exceptions for technical strings, never a file-wide suppression. */
@@ -69,11 +67,32 @@ function isDisplayArgument(node) {
 	);
 }
 
+function isAsciiLetter(value) {
+	const code = value.charCodeAt(0);
+	return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
+}
+
+// Keep this check linear and explicit. A regex with adjacent quantified groups
+// can trigger backtracking in static analysis and is unnecessary for this rule.
+function containsEnglishProse(value) {
+	for (let index = 0; index + 4 < value.length; index += 1) {
+		if (
+			isAsciiLetter(value[index]) &&
+			isAsciiLetter(value[index + 1]) &&
+			value[index + 2] === ' ' &&
+			isAsciiLetter(value[index + 3]) &&
+			isAsciiLetter(value[index + 4])
+		)
+			return true;
+	}
+	return false;
+}
+
 function inspectLiteral(node, file, inText, report) {
 	const value = node.text;
 	if (file !== 'src/text/icons.ts' && emoji.test(value)) report(node, 'Move emoji to src/text/icons.ts.');
 	if (inText || isTechnicalString(node, file, value)) return;
-	if (vietnamese.test(value) || prose.test(value) || (isDisplayArgument(node) && /\p{L}/u.test(value))) {
+	if (vietnamese.test(value) || containsEnglishProse(value) || (isDisplayArgument(node) && /\p{L}/u.test(value))) {
 		report(node, 'Move display/diagnostic text to a named src/text module.');
 	}
 }
@@ -93,6 +112,20 @@ function inspectCall(node, file, inText, report) {
 	}
 }
 
+function inspectNode(node, file, inText, report) {
+	if (inText && ts.isImportDeclaration(node)) inspectTextImport(node, file, report);
+	if (isTextLiteral(node)) inspectLiteral(node, file, inText, report);
+	if (ts.isCallExpression(node)) inspectCall(node, file, inText, report);
+}
+
+function visitTree(tree, file, inText, report) {
+	function visit(node) {
+		inspectNode(node, file, inText, report);
+		ts.forEachChild(node, visit);
+	}
+	visit(tree);
+}
+
 /** Inspect parsed literals, including escaped Unicode and template parts; ignore comments and regexes. */
 export function findTextViolations(source, file) {
 	file = file.replaceAll('\\', '/');
@@ -102,14 +135,7 @@ export function findTextViolations(source, file) {
 		const { line, character } = tree.getLineAndCharacterOfPosition(node.getStart());
 		violations.push(`${file}:${line + 1}:${character + 1}: ${reason}`);
 	};
-	const inText = file.startsWith('src/text/');
-	function visit(node) {
-		if (inText && ts.isImportDeclaration(node)) inspectTextImport(node, file, report);
-		if (isTextLiteral(node)) inspectLiteral(node, file, inText, report);
-		if (ts.isCallExpression(node)) inspectCall(node, file, inText, report);
-		ts.forEachChild(node, visit);
-	}
-	visit(tree);
+	visitTree(tree, file, file.startsWith('src/text/'), report);
 	return violations;
 }
 

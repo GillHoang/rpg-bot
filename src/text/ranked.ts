@@ -22,7 +22,7 @@ export const RANKED_FOOTER = '/ranked claim để nhận thưởng tuần · /ra
 // claim
 export const RANKED_CLAIM_OK = (bracket: string, creux: string, valor: number): string =>
 	`${ICONS.ranked.weeklyReward} Weekly reward (${bracket}): +${creux} Credux · +${valor} Valor Medals`;
-export const RANKED_ALREADY_CLAIMED = 'Đã nhận thưởng tuần này rồi. Reset vào thứ Hai (Asia/Manila).';
+export const RANKED_ALREADY_CLAIMED = 'Đã nhận thưởng tuần này rồi. Reset vào thứ Hai (Asia/Ho_Chi_Minh).';
 export const RANKED_NO_FIGHTS = 'Chưa có trận ranked nào trong tuần này.';
 export const RANKED_NO_REWARD_ROW = 'Chưa seed bảng ranked_reward — báo admin chạy db:seed.';
 

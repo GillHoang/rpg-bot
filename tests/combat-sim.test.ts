@@ -3,8 +3,38 @@ import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
 import { createCombatant } from '../src/domain/combat/CombatantState.js';
 import { ClassStrategyRegistry } from '../src/domain/combat/ClassStrategyRegistry.js';
 import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
+import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
+import type { CombatantState } from '../src/domain/combat/CombatantState.js';
+import type { StrategyContext } from '../src/domain/combat/IClassStrategy.js';
+
+class ObservingStrategy extends NullClassStrategy {
+	constructor(private readonly enemies: CombatantState[]) {
+		super();
+	}
+
+	override onRoundEnd(ctx: StrategyContext): void {
+		this.enemies.push(ctx.enemy);
+	}
+}
 
 describe('raid balance (Pugot 6 HP regression)', () => {
+	it('draws equal HP percentages at the round limit and passes the real opponent to end-of-round hooks', () => {
+		const player = createCombatant({ name: 'player', combatClass: null, hp: 100, atk: 0, def: 0, crit: 0 });
+		const enemy = createCombatant({ name: 'enemy', combatClass: null, hp: 200, atk: 0, def: 0, crit: 0 });
+		const playerEnemies: CombatantState[] = [];
+		const enemyEnemies: CombatantState[] = [];
+		const battle = new BattleEngine().resolve(
+			player,
+			enemy,
+			42,
+			{ playerStrategy: new ObservingStrategy(playerEnemies), enemyStrategy: new ObservingStrategy(enemyEnemies) },
+		);
+		expect(battle.outcome).toBe('draw');
+		expect(battle.rounds).toBe(40);
+		expect(playerEnemies[0]).toBe(enemy);
+		expect(enemyEnemies[0]).toBe(player);
+	});
+
 	it('a level-1 raid is neither a one-shot nor a 20-round slog', () => {
 		// Fighter lv1 + starter gear vs Pugot lv1 với stats mới từ pickForLevel
 		// (hp 3.2×, atk 0.72×, def 0.55× avg class curve; shape 560/600 ≈ 0.93).

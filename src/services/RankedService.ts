@@ -11,8 +11,8 @@ import { PlayerAccountRepository } from '../repositories/PlayerAccountRepository
 import { StatAssemblyService } from './StatAssemblyService.js';
 import { CosmeticService } from './CosmeticService.js';
 import { BattleEngine, type BattleResult } from '../domain/combat/BattleEngine.js';
+import { createBattleActionContext } from '../domain/combat/BattleActionContext.js';
 import { PlayerCombatantFactory } from './combatantFactory.js';
-import { createSecureSeed } from '../domain/combat/Rng.js';
 import { EventBus } from '../core/EventBus.js';
 import { BRACKETS, RANKED, bracketFor, eloDelta, weekWindowAt, type Bracket } from '../config/ranked.js';
 import {
@@ -89,7 +89,7 @@ export interface RankedDependencies {
  * ngẫu nhiên (rating chênh trong cửa sổ matchmaking) làm đối thủ; không cần
  * cả hai online. Elo K=32 zero-sum, bracket theo rating, demotion shield giữ
  * bracket lần rớt đầu tiên. Thưởng tuần claim theo bảng ranked_reward, điều
- * kiện ≥1 trận trong tuần ISO (Manila).
+ * kiện ≥1 trận trong tuần ISO (Asia/Ho_Chi_Minh).
  */
 
 export class RankedService {
@@ -153,11 +153,12 @@ export class RankedService {
 			if (!opponentRow) return { status: 'no-opponent' };
 			const opponentAccount = await this.accounts.findByIdWithExecutor(tx, opponentRow.discordId);
 			if (!opponentAccount) return { status: 'no-opponent' };
+			const action = createBattleActionContext({ actorId: discordId, mode: 'ranked' });
 
 			const [lock] = await this.queries.createFightLock(tx, {
 				discordId,
-				lockToken: crypto.randomUUID(),
-				expiresAt: new Date(Date.now() + RANKED.LOCK_SECONDS * 1000),
+				lockToken: action.actionId,
+				expiresAt: new Date(action.now.getTime() + RANKED.LOCK_SECONDS * 1000),
 			});
 			if (!lock) return { status: 'busy' };
 
@@ -177,7 +178,7 @@ export class RankedService {
 			const battle = this.engine.resolve(
 				this.factory.createCombatant(account.username, accountCombatClass(me.class), myAssembled),
 				this.factory.createCombatant(opponentAccount.username, opponentAccount.combatClass, opponentAssembled),
-				createSecureSeed(),
+				action.seed,
 				{
 					playerStrategy: this.factory.createStrategy(accountCombatClass(me.class), myAssembled),
 					enemyStrategy: this.factory.createStrategy(opponentAccount.combatClass, opponentAssembled),
@@ -220,9 +221,8 @@ export class RankedService {
 				opponentChange,
 			});
 
-			const now = new Date();
-			await this.progress.apply(tx, discordId, 'ranked', now);
-			if (!draw) await this.progress.apply(tx, won ? discordId : opponentRow.discordId, 'ranked_win', now);
+			await this.progress.apply(tx, discordId, 'ranked', action.now);
+			if (!draw) await this.progress.apply(tx, won ? discordId : opponentRow.discordId, 'ranked_win', action.now);
 			await this.seasons.ensureActive(tx);
 			await this.queries.deleteFightLock(tx, discordId);
 
@@ -330,8 +330,8 @@ export class RankedService {
 			RANKED_STATS_HEADER(me.pvpRating, bracket.name, me.pvpPeak) +
 			'\n' +
 			RANKED_STATS_BODY(
-				me.pvpWins,
-				me.pvpLosses,
+				me.rankedWins,
+				me.rankedLosses,
 				me.highestRankStreak,
 				me.pvpDemotionShield ? RANKED_SHIELD_ON : RANKED_SHIELD_OFF,
 			) +
@@ -435,6 +435,8 @@ export class RankedService {
 			pvpRating: ratingAfter,
 			pvpPeak: Math.max(character.pvpPeak, ratingAfter),
 			pvpDemotionShield: change.shield,
+			rankedWins: character.rankedWins + (result === 'win' ? 1 : 0),
+			rankedLosses: character.rankedLosses + (result === 'loss' ? 1 : 0),
 			pvpWins: character.pvpWins + (result === 'win' ? 1 : 0),
 			pvpLosses: character.pvpLosses + (result === 'loss' ? 1 : 0),
 			highestRankStreak: Math.max(character.highestRankStreak, streak),

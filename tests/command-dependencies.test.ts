@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
-import type { InventoryRepository } from '../src/repositories/InventoryRepository.js';
+import type { InventoryService } from '../src/services/InventoryService.js';
 import type { CasinoSessionService } from '../src/services/CasinoSessionService.js';
 import type { SocketService } from '../src/services/SocketService.js';
 import type { EnhancementService } from '../src/services/EnhancementService.js';
@@ -70,9 +70,9 @@ afterEach(() => {
 describe('commands accept narrow structural dependencies', () => {
 	it('uses the supplied inventory reads for both inventory commands', async () => {
 		const inventory = {
-			bag: vi.fn<InventoryRepository['bag']>().mockResolvedValue(null),
-			count: vi.fn<InventoryRepository['count']>(),
-			list: vi.fn<InventoryRepository['list']>().mockResolvedValue(['Injected deity']),
+			bag: vi.fn<InventoryService['bag']>().mockResolvedValue(null),
+			count: vi.fn<InventoryService['count']>(),
+			list: vi.fn<InventoryService['list']>().mockResolvedValue(['Injected deity']),
 		};
 		const missing = interaction();
 		await new InventoryCommand(inventory).execute(missing.command);
@@ -87,12 +87,12 @@ describe('commands accept narrow structural dependencies', () => {
 	it('uses injected equipment services and category-specific autocomplete queries', async () => {
 		const loadout = { equip: vi.fn(async () => 'Equipped') };
 		const inventory = {
-			searchWeapons: vi.fn<InventoryRepository['searchWeapons']>().mockResolvedValue([]),
+			searchWeapons: vi.fn<InventoryService['searchWeapons']>().mockResolvedValue([]),
 			searchArmors: vi
-				.fn<InventoryRepository['searchArmors']>()
+				.fn<InventoryService['searchArmors']>()
 				.mockResolvedValue([{ id: 'a1', name: 'Armor', tier: 'Common', plus: 0, equipped: true }]),
 			searchDeities: vi
-				.fn<InventoryRepository['searchDeities']>()
+				.fn<InventoryService['searchDeities']>()
 				.mockResolvedValue([{ id: 5, name: 'Zeus', tier: 'Epic' }]),
 		};
 		const equip = new EquipCommand(loadout, inventory);
@@ -133,7 +133,7 @@ describe('commands accept narrow structural dependencies', () => {
 
 	it('uses the injected account and bag readers without creating a default repository', async () => {
 		const economy = { getAccount: vi.fn(async () => new PlayerAccount('owner', 'Hero', 1, 0, 'Knight', 200)) };
-		const inventory = { bag: vi.fn<InventoryRepository['bag']>().mockResolvedValue(null) };
+		const inventory = { bag: vi.fn<InventoryService['bag']>().mockResolvedValue(null) };
 		const i = interaction();
 		await new BalanceCommand(economy, inventory).execute(i.command);
 		expect(economy.getAccount).toHaveBeenCalledExactlyOnceWith('owner');
@@ -144,11 +144,11 @@ describe('commands accept narrow structural dependencies', () => {
 	it('uses injected enhancement/socket actions and autocomplete inventory', async () => {
 		const inventory = {
 			searchWeapons: vi
-				.fn<InventoryRepository['searchWeapons']>()
+				.fn<InventoryService['searchWeapons']>()
 				.mockResolvedValue([{ id: 'w1', name: 'Sword', tier: 'Common', plus: 0, equipped: false }]),
-			searchArmors: vi.fn<InventoryRepository['searchArmors']>().mockResolvedValue([]),
+			searchArmors: vi.fn<InventoryService['searchArmors']>().mockResolvedValue([]),
 			searchRunes: vi
-				.fn<InventoryRepository['searchRunes']>()
+				.fn<InventoryService['searchRunes']>()
 				.mockResolvedValue([{ uid: 'r1', name: 'Rune', tier: 'Epic', socketedInto: null }]),
 		};
 		const enhancement = {

@@ -30,6 +30,8 @@ export interface PvpShopDependencies {
 	>;
 }
 
+type LockedBag = Awaited<ReturnType<PvpShopRepository['lockBag']>>[number];
+
 /**
  * /pvp shop — Valor Medals → item (M7). Cosmetic/title giới hạn 1 lần mỗi
  * season qua bảng pvp_shop_purchases; season được tạo lazily giống ranked.
@@ -82,42 +84,43 @@ export class PvpShopService {
 				season.seasonId,
 			);
 			if (restriction) return restriction;
-			// Grant first: a duplicate must consume neither currency nor seasonal quota.
-			if (
-				item.kind.type === 'cosmetic' &&
-				!(await this.cosmetics.grantCosmeticInTx(tx, discordId, item.kind.cosmeticKey, 'shop'))
-			)
-				return PVP_ALREADY_OWNED;
-			if (
-				item.kind.type === 'title' &&
-				!(await this.cosmetics.grantTitleInTx(tx, discordId, item.kind.titleCode))
-			)
-				return PVP_ALREADY_OWNED;
-			if (item.kind.type !== 'bag' && item.limitPerSeason) {
-				await this.queries.incrementPurchase(tx, {
-					discordId,
-					seasonId: season.seasonId,
-					itemKey: item.key,
-					qty: 1,
-				});
-			}
-
-			await this.queries.updateBag(tx, discordId, { valorMedals: bag.valorMedals - item.cost });
-
-			switch (item.kind.type) {
-				case 'bag':
-					await this.queries.updateBag(tx, discordId, {
-						[item.kind.field]: bag[item.kind.field] + item.kind.qty,
-					});
-					return PVP_BOUGHT_BAG(item.label, item.kind.qty);
-				case 'cosmetic': {
-					return PVP_BOUGHT_COSMETIC(item.label);
-				}
-				case 'title': {
-					return PVP_BOUGHT_TITLE(item.label);
-				}
-			}
+			return this.settlePurchase(tx, discordId, item, bag, season.seasonId);
 		});
+	}
+
+	private async settlePurchase(
+		tx: Executor,
+		discordId: string,
+		item: PvpShopItem,
+		bag: LockedBag,
+		seasonId: number,
+	): Promise<string> {
+		// Grant first: a duplicate must consume neither currency nor seasonal quota.
+		if (item.kind.type === 'cosmetic') {
+			const granted = await this.cosmetics.grantCosmeticInTx(tx, discordId, item.kind.cosmeticKey, 'shop');
+			if (!granted) return PVP_ALREADY_OWNED;
+		}
+		if (item.kind.type === 'title') {
+			const granted = await this.cosmetics.grantTitleInTx(tx, discordId, item.kind.titleCode);
+			if (!granted) return PVP_ALREADY_OWNED;
+		}
+		if (item.kind.type !== 'bag' && item.limitPerSeason) {
+			await this.queries.incrementPurchase(tx, {
+				discordId,
+				seasonId,
+				itemKey: item.key,
+				qty: 1,
+			});
+		}
+
+		await this.queries.updateBag(tx, discordId, { valorMedals: bag.valorMedals - item.cost });
+		if (item.kind.type === 'bag') {
+			await this.queries.updateBag(tx, discordId, {
+				[item.kind.field]: bag[item.kind.field] + item.kind.qty,
+			});
+			return PVP_BOUGHT_BAG(item.label, item.kind.qty);
+		}
+		return item.kind.type === 'cosmetic' ? PVP_BOUGHT_COSMETIC(item.label) : PVP_BOUGHT_TITLE(item.label);
 	}
 
 	private async purchaseRestriction(

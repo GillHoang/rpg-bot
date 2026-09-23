@@ -50,19 +50,19 @@ export function eloDelta(rating: number, opponentRating: number, score: 0 | 0.5 
 export interface WeekWindow {
 	key: string;
 	week: number;
-	/** Monday 00:00 Asia/Manila as a UTC instant. */
+	/** Monday 00:00 Asia/Ho_Chi_Minh as a UTC instant. */
 	startsAt: Date;
 	endsAt: Date;
 }
 
 /**
- * ISO week window anchored to the Asia/Manila calendar (UTC+8 fixed — the
+ * ISO week window anchored to the Asia/Ho_Chi_Minh calendar (UTC+7 fixed — the
  * same convention as DailyCycle). `key` includes the ISO week-year for persisted claim keys.
  */
 export function weekWindowAt(instant: Date = new Date()): WeekWindow {
 	const parts = Object.fromEntries(
 		new Intl.DateTimeFormat('en-US', {
-			timeZone: 'Asia/Manila',
+			timeZone: 'Asia/Ho_Chi_Minh',
 			year: 'numeric',
 			month: '2-digit',
 			day: '2-digit',
@@ -77,11 +77,11 @@ export function weekWindowAt(instant: Date = new Date()): WeekWindow {
 	const thursday = monday + (4 - 1) * 86_400_000;
 	const thursdayDate = new Date(thursday);
 	const week = Math.ceil(((thursday - Date.UTC(thursdayDate.getUTCFullYear(), 0, 1)) / 86_400_000 + 1) / 7);
-	const MANILA_OFFSET_MS = 8 * 3_600_000;
+	const VIETNAM_OFFSET_MS = 7 * 3_600_000;
 	return {
 		week,
 		key: `${thursdayDate.getUTCFullYear()}-W${String(week).padStart(2, '0')}`,
-		startsAt: new Date(monday - MANILA_OFFSET_MS),
-		endsAt: new Date(monday + 7 * 86_400_000 - MANILA_OFFSET_MS),
+		startsAt: new Date(monday - VIETNAM_OFFSET_MS),
+		endsAt: new Date(monday + 7 * 86_400_000 - VIETNAM_OFFSET_MS),
 	};
 }

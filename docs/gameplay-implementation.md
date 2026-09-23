@@ -22,7 +22,7 @@ Kiểm tra giao dịch đồng thời, thiếu seed phải rollback, quyền s�
 | Elite | 20% khi có cả regular/elite; thiếu một pool thì dùng pool còn lại |
 | Elite thắng | 2.500–5.000 Credux, 500–750 EXP trước scale, 20–30 shards, 35% Gold |
 | Elite thua | 100 EXP trước scale |
-| Boss | Cấp 10, phí 10.000 Credux, một lượt/ngày Asia/Manila, thắng/thua đều tính lượt |
+| Boss | Cấp 10, phí 10.000 Credux, một lượt/ngày Asia/Ho_Chi_Minh, thắng/thua đều tính lượt |
 | Boss thắng | 25.000–50.000 Credux, 1.500–2.500 EXP trước scale, 100–200 shards, 1 Boss Treasure, 30% Mythic gear |
 | Boss thua | 150 EXP trước scale |
 | Bakunawa Eclipse | Dưới 50% HP: +50 điểm phần trăm damage bonus; miễn stun |

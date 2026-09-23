@@ -1,7 +1,7 @@
 /**
  * Believer EXP / Reputation balance — M7 design defaults (không port từ bản
  * gốc, Master §18 không có trong repo). EXP cộng vào user_character
- * (believer_exp/believer_level) với cap hằng ngày theo lịch Asia/Manila
+ * (believer_exp/believer_level) với cap hằng ngày theo lịch Asia/Ho_Chi_Minh
  * (reputation_exp_today + reputation_exp_reset_date). Believer level là gate
  * tier cosmetic (config/pvpShop + cosmeticCatalog.tier).
  */

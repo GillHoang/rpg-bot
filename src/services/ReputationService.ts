@@ -25,7 +25,7 @@ export interface ReputationDependencies {
 
 /**
  * Believer EXP (hệ reputation của bản gốc): EXP từ hành vi hằng ngày, cap
- * theo ngày Manila, level-up nội bộ. Dùng được cả trong tx (duel/ranked/
+ * theo ngày Việt Nam, level-up nội bộ. Dùng được cả trong tx (duel/ranked/
  * quest cộng cùng giao dịch thưởng) lẫn ngoài tx (event subscriber).
  */
 

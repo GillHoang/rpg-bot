@@ -5,6 +5,8 @@ import { RaidService } from '../../services/RaidService.js';
 import { NO_CHARACTER, NOT_REGISTERED } from '../../text/common.js';
 import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../text/raid.js';
 import { raidBattleOptions } from '../../render/raidBattleOptions.js';
+import { GAMEPLAY_NOTICE } from '../../text/gameplay.js';
+import { RAID_HUNT_COOLDOWN_SECONDS } from '../../config/raidLoot.js';
 
 export class RaidCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -28,6 +30,12 @@ export class RaidCommand implements ICommand {
 			await interaction.editReply(result.message);
 			return;
 		}
+		if (result.status === 'cooldown') {
+			await interaction.editReply(
+				GAMEPLAY_NOTICE.cooldown(Math.max(1, Math.ceil((result.retryAt.getTime() - Date.now()) / 1000))),
+			);
+			return;
+		}
 
 		if (result.status === 'not-registered') {
 			await interaction.editReply({ content: NOT_REGISTERED });
@@ -46,10 +54,14 @@ export class RaidCommand implements ICommand {
 		if (!boss) {
 			options.replay = {
 				ownerId: interaction.user.id,
-				cooldownMs: 15_000,
+				cooldownMs: RAID_HUNT_COOLDOWN_SECONDS * 1000,
 				run: async () => {
 					const next = await this.raid.run(interaction.user.id, false);
 					if (next.status === 'ok') return raidBattleOptions(next, false, interaction.user.username);
+					if (next.status === 'cooldown')
+						return GAMEPLAY_NOTICE.cooldown(
+							Math.max(1, Math.ceil((next.retryAt.getTime() - Date.now()) / 1000)),
+						);
 					if (next.status === 'not-registered') return NOT_REGISTERED;
 					if (next.status === 'no-character') return NO_CHARACTER;
 					if (next.status === 'no-monsters-seeded') return RAID_NO_MONSTERS_SEEDED;

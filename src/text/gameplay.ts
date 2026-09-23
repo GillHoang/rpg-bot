@@ -16,7 +16,7 @@ export const GAMEPLAY_TEXT = {
 	confirmBoss: 'Xác nhận đánh boss',
 	confirmReroll: 'Xác nhận đổi quest',
 	bossConfirmation: (minLevel: string | number, fee: string | number, day: string | number): string =>
-		`Yêu cầu cấp ${minLevel}. Phí: **${fee} Credux**, trừ khi vào trận kể cả thua.\nMỗi ngày 1 lượt; reset 00:00 Manila (23:00 Việt Nam).\nLượt ngày ${day}.`,
+		`Yêu cầu cấp ${minLevel}. Phí: **${fee} Credux**, trừ khi vào trận kể cả thua.\nMỗi ngày 1 lượt; reset 00:00 giờ Việt Nam.\nLượt ngày ${day}.`,
 	rerollConfirmation: (day: string | number): string =>
 		`Đổi miễn phí 1 lần/ngày. **Tiến độ của nhiệm vụ ngày chưa hoàn thành sẽ mất.** Nhiệm vụ đã hoàn thành được giữ.\nBộ nhiệm vụ ngày ${day}.`,
 	confirm: 'Xác nhận',
@@ -54,7 +54,7 @@ export const GAMEPLAY_TEXT = {
 		`Cấp ${level} · ${credux} Credux\nSăn quái miễn phí.\n`,
 	bossInfo: (minLevel: string | number, fee: string | number): string =>
 		`Boss: cấp ${minLevel}, phí ${fee} Credux, 1 lượt/ngày.\n`,
-	resetTime: '\nReset 00:00 Manila (23:00 Việt Nam).',
+	resetTime: '\nReset 00:00 giờ Việt Nam.',
 	boss: 'Đánh boss',
 	lastBattle: 'Trận gần nhất',
 	profileHeading: (

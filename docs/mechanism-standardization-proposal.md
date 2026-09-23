@@ -1,6 +1,6 @@
 # Đề xuất thống nhất cơ chế — 2026-09-23
 
-Trạng thái: đề xuất sau khi đọc code hiện hành; chưa triển khai thay đổi runtime. Rà soát trực tiếp, không dùng agent con. Các nhận xét dưới đây phân biệt khác biệt kiến trúc với lỗi đã tái hiện; không coi mọi khác biệt là bug.
+Trạng thái: đang triển khai theo từng lát cắt; battle/calendar/cooldown đã có thay đổi runtime đầu tiên. Rà soát trực tiếp, không dùng agent con. Các nhận xét dưới đây phân biệt khác biệt kiến trúc với lỗi đã tái hiện; không coi mọi khác biệt là bug.
 
 ## Quyết định sản phẩm
 
@@ -26,7 +26,7 @@ Không còn câu hỏi sản phẩm đang chờ trả lời trong phạm vi đ�
 
 ## 1. Lịch game và thời gian — ưu tiên đầu tiên
 
-**Hiện trạng:** `src/utils/dailyCycle.ts` và `src/config/ranked.ts:68` cùng dùng Manila nhưng tự tính lịch riêng. Ranked còn có offset UTC+8 viết riêng. Season dùng khoảng 30 ngày và chỉ rollover theo lệnh admin (`src/services/SeasonService.ts:28`).
+**Đã sửa trong lát cắt này:** `DailyCycle` và `weekWindowAt` cùng dùng `Asia/Ho_Chi_Minh` và offset UTC+7. Season vẫn dùng khoảng 30 ngày và chỉ rollover theo lệnh admin (`src/services/SeasonService.ts:28`).
 
 **Thống nhất:** một `GameCalendar` chịu trách nhiệm day key, ISO week key và ranh giới kỳ theo timezone đã chọn; một `Clock` cung cấp thời điểm, có thể thay bằng thời gian cố định trong test. Một hành động lấy thời điểm một lần rồi truyền xuống. Phân biệt rõ lịch reset, thời lượng cooldown/TTL và vòng đời season.
 
@@ -36,7 +36,7 @@ Không còn câu hỏi sản phẩm đang chờ trả lời trong phạm vi đ�
 
 ## 2. Hành động, cooldown và chống xử lý lặp — ưu tiên đầu tiên
 
-**Hiện trạng:** `MenuGameplayService.fight` dùng cooldown trong session và truyền `session.id:revision`; `RaidCommand.execute` không truyền request ID, chỉ nút replay có cooldown. `RaidService.validateAttempt` chỉ kiểm tra receipt khi có request ID. Đây là khác biệt giữa đường vào; chưa tự kết luận cooldown UI là sai chính sách.
+**Đã sửa trong lát cắt này:** `RaidService` lưu cooldown hunt trong bảng `hunt_cooldowns`, khóa theo người chơi và kiểm tra trong transaction. Menu, slash và replay đều đi qua policy này; session/replay chỉ còn guard giao diện. Receipt menu vẫn chống xử lý lặp khi có request ID.
 
 **Thống nhất:** menu/slash/nút chỉ chuyển đầu vào sang cùng use case. Context hành động gồm người gọi, mã hành động và thời điểm. Kiểm tra sở hữu, điều kiện chơi, hạn mức, cooldown nghiệp vụ và receipt ở service/transaction; session chỉ giữ trạng thái giao diện. Mã hành động ổn định khi retry, khác nhau cho hai hành động mới hợp lệ.
 
@@ -46,7 +46,7 @@ Không gộp ba khái niệm: chống xử lý lặp bảo vệ cùng một yêu
 
 ## 3. Kết quả trận, thưởng và tiến độ — ưu tiên đầu tiên
 
-**Hiện trạng:** đã có `GameplayProgressCoordinator` và nguyên tắc thưởng/quest/EXP cùng transaction. Tuy nhiên coordinator dùng `QuestType | 'ranked_win'` làm loại hành động. `RaidRewardService.grant:58` suy ra counter thắng/thua từ tiền, trong khi history dùng `grant.won`. Đây là phụ thuộc dễ gây lệch khi đổi bảng thưởng, không phải bằng chứng trận hiện tại đã ghi sai.
+**Đã sửa trong lát cắt này:** `RaidRewardService` nhận `BattleOutcome` và dùng outcome để ghi history/counter; draw không còn bị suy ra thành loss từ số Credux. Duel draw ghi `pvp_logs` với `winner_id = NULL` và outcome rõ ràng.
 
 **Thống nhất:** kết quả trận là nguồn xác định thắng/thua/hòa; phần thưởng được tính từ kết quả và policy. Sự kiện nghiệp vụ biểu đạt điều đã xảy ra, gồm mode, outcome, người khởi tạo và participant. Quy tắc quest, reputation, title ánh xạ riêng từ sự kiện đó. Không dùng tiền nhận được để suy ra kết quả.
 
@@ -110,8 +110,8 @@ Không ép mọi service vào một union khổng lồ hoặc thêm interface ch
 
 ## Thứ tự triển khai đề xuất
 
-1. Lập bảng tính năng cần chuyển sang menu; viết contract thời gian/hành động/kết quả theo các quyết định đã chốt và test đặc tả.
-2. Dùng Daily/Raid làm lát cắt đầu tiên: calendar, action context, receipt/cooldown, result và presenter; nối dependency ở root. Triển khai đổi timezone theo kế hoạch chuyển kỳ riêng.
+1. Lập bảng tính năng cần chuyển sang menu; viết contract thời gian/hành động/kết quả theo các quyết định đã chốt và test đặc tả. (Đang tiếp tục.)
+2. Dùng Daily/Raid làm lát cắt đầu tiên: calendar, action context, receipt/cooldown, result và presenter; nối dependency ở root. Calendar, action context và cooldown hunt đã triển khai; presenter/menu mapping vẫn tiếp tục.
 3. Chuẩn hóa ghi tài sản/progress; lần lượt đưa loot, shop, summon, casino, duel và ranked vào cùng các quy ước. Giữ policy đặc thù của từng tính năng.
 4. Hoàn thiện các luồng menu còn thiếu theo bảng đối chiếu; kiểm chứng chức năng và quyền truy cập. Sau đó loại bỏ các slash dư thừa cùng đăng ký tương ứng.
 5. Hoàn tất locale/thuật ngữ, đơn vị công thức, bỏ compatibility đã hết caller, cập nhật tài liệu và chạy toàn bộ kiểm tra.

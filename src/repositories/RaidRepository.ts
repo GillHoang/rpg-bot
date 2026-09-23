@@ -1,6 +1,6 @@
 import type { Executor } from '../db/client.js';
 import { and, eq } from 'drizzle-orm';
-import { users, usersBag, userCharacter, menuActionReceipts } from '../db/schema.js';
+import { huntCooldowns, users, usersBag, userCharacter, menuActionReceipts } from '../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
 export class RaidRepository {
@@ -21,6 +21,17 @@ export class RaidRepository {
 
 	async insertReceipt(tx: Executor, values: typeof menuActionReceipts.$inferInsert) {
 		return tx.insert(menuActionReceipts).values(values);
+	}
+
+	async lockHuntCooldown(tx: Executor, discordId: string) {
+		return tx.select().from(huntCooldowns).where(eq(huntCooldowns.discordId, discordId)).for('update');
+	}
+
+	async upsertHuntCooldown(tx: Executor, discordId: string, readyAt: Date) {
+		return tx
+			.insert(huntCooldowns)
+			.values({ discordId, readyAt })
+			.onConflictDoUpdate({ target: huntCooldowns.discordId, set: { readyAt } });
 	}
 
 	async updateCharacter(tx: Executor, discordId: string, values: Partial<typeof userCharacter.$inferInsert>) {
