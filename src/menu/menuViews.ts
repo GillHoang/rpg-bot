@@ -125,36 +125,39 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 	}
 }
 
+function battleMenuView(session: MenuSession, battle: NonNullable<MenuSession['battle']>) {
+	const container = buildBattleLogPage(
+		raidBattleOptions(battle, battle.boss, session.playerName ?? MENU_VIEW_TEXT.player),
+		session.screen.kind === 'log' ? session.screen.page : battle.battle.roundLogs.length - 1,
+		{
+			navigation: true,
+			customIds: {
+				first: menuId(session.id, session.revision, 'first'),
+				prev: menuId(session.id, session.revision, 'prev'),
+				next: menuId(session.id, session.revision, 'next'),
+				last: menuId(session.id, session.revision, 'last'),
+			},
+		},
+	).components[0];
+	if (session.notice) container.addTextDisplayComponents((t) => t.setContent(session.notice!));
+	const rows = [
+		new ActionRowBuilder<ButtonBuilder>().addComponents(
+			gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
+			...(!battle.boss
+				? [gameplayButton(session, { action: 'hunt', label: MENU_VIEW_TEXT.replay }, ICONS.menu.hunt)]
+				: []),
+		),
+	];
+	return {
+		components: [container, ...rows],
+		flags: MessageFlags.IsComponentsV2 as const,
+		allowedMentions: { parse: [] as [] },
+	};
+}
+
 export function menuView(session: MenuSession) {
 	if (session.battle && (session.screen.kind === 'result' || session.screen.kind === 'log')) {
-		const battle = session.battle;
-		const container = buildBattleLogPage(
-			raidBattleOptions(battle, battle.boss, session.playerName ?? MENU_VIEW_TEXT.player),
-			session.screen.kind === 'log' ? session.screen.page : battle.battle.roundLogs.length - 1,
-			{
-				navigation: true,
-				customIds: {
-					first: menuId(session.id, session.revision, 'first'),
-					prev: menuId(session.id, session.revision, 'prev'),
-					next: menuId(session.id, session.revision, 'next'),
-					last: menuId(session.id, session.revision, 'last'),
-				},
-			},
-		).components[0];
-		if (session.notice) container.addTextDisplayComponents((t) => t.setContent(session.notice!));
-		const rows = [
-			new ActionRowBuilder<ButtonBuilder>().addComponents(
-				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
-				...(!battle.boss
-					? [gameplayButton(session, { action: 'hunt', label: MENU_VIEW_TEXT.replay }, ICONS.menu.hunt)]
-					: []),
-			),
-		];
-		return {
-			components: [container, ...rows],
-			flags: MessageFlags.IsComponentsV2 as const,
-			allowedMentions: { parse: [] as [] },
-		};
+		return battleMenuView(session, session.battle);
 	}
 	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
 	const container = new ContainerBuilder().setAccentColor(0xf1c232);

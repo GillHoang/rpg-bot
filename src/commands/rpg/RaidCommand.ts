@@ -1,10 +1,9 @@
-import { RAID_FLOW_TEXT } from '../../text/raid.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { sendBattleLog } from '../../render/BattleLogPager.js';
 import { RaidService } from '../../services/RaidService.js';
 import { NO_CHARACTER, NOT_REGISTERED } from '../../text/common.js';
-import { RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../text/raid.js';
+import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../text/raid.js';
 import { raidBattleOptions } from '../../render/raidBattleOptions.js';
 
 export class RaidCommand implements ICommand {

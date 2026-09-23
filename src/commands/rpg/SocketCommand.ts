@@ -1,10 +1,10 @@
-import { SOCKET_LANE_LABELS } from '../../text/socket.js';
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { SocketService } from '../../services/SocketService.js';
 import { InventoryService } from '../../services/InventoryService.js';
 import { GEAR_CHOICE_LABEL, RUNE_CHOICE_LABEL } from '../../text/autocomplete.js';
 import {
+	SOCKET_LANE_LABELS,
 	SOCKET_DESCRIPTION,
 	SOCKET_EQUIP_SUB_DESC,
 	SOCKET_UNEQUIP_SUB_DESC,

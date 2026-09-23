@@ -1,8 +1,14 @@
-import { PING_VALUE_TEXT } from '../../text/ping.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { HealthService } from '../../services/HealthService.js';
-import { PING_DB_ERROR, PING_DB_LABEL, PING_DESCRIPTION, PING_REST_LABEL, PING_WS_LABEL } from '../../text/ping.js';
+import {
+	PING_VALUE_TEXT,
+	PING_DB_ERROR,
+	PING_DB_LABEL,
+	PING_DESCRIPTION,
+	PING_REST_LABEL,
+	PING_WS_LABEL,
+} from '../../text/ping.js';
 
 /** Một số đo latency, round về ms nguyên. */
 interface Latency {

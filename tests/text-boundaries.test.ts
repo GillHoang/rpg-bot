@@ -55,4 +55,37 @@ describe('text and emoji boundaries', () => {
 			),
 		).toEqual([]);
 	});
+
+	it.each([
+		['ab cd', true],
+		['longer words', true],
+		['123ab cd456', true],
+		['ab c', false],
+		['a cd', false],
+		['ab  cd', false],
+		['ab\tcd', false],
+	])('preserves prose detection for %j', (value, expected) => {
+		const violations = findTextViolations(`const value = ${JSON.stringify(value)};`, 'src/example.ts');
+		expect(violations.some((message) => message.includes('Move display/diagnostic'))).toBe(expected);
+	});
+
+	it('handles long word runs without unbounded regex backtracking', () => {
+		const word = 'a'.repeat(100_000);
+		expect(findTextViolations(`const value = '${word}';`, 'src/example.ts')).toEqual([]);
+		expect(findTextViolations(`const value = '${word} b';`, 'src/example.ts')).toEqual([]);
+		expect(findTextViolations(`const value = '${word} bc';`, 'src/example.ts')).toHaveLength(1);
+	});
+
+	it('preserves mixed import and logger diagnostics after separating the AST checks', () => {
+		for (const source of [
+			"import '../config/env.js';",
+			"import env, { type Env } from '../config/env.js';",
+			"import { type Env, env } from '../config/env.js';",
+		])
+			expect(findTextViolations(source, 'src/text/example.ts')).toHaveLength(1);
+		expect(findTextViolations("import { type Env } from '../config/env.js';", 'src/text/example.ts')).toEqual([]);
+		const violations = findTextViolations('logger.error({ err }, `Could not load ${id}`);', 'src/example.ts');
+		expect(violations.some((message) => message.includes('Move log messages'))).toBe(true);
+		expect(violations.some((message) => message.includes('Move display/diagnostic'))).toBe(true);
+	});
 });

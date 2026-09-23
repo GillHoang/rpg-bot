@@ -2,7 +2,8 @@ import { SeasonService } from './SeasonService.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { PvpShopRepository } from '../repositories/PvpShopRepository.js';
-import { PVP_SHOP_ITEMS } from '../config/pvpShop.js';
+import { PVP_SHOP_ITEMS, type PvpShopItem } from '../config/pvpShop.js';
+import type { Executor } from '../db/client.js';
 import { COSMETIC_TIER_MIN_LEVEL } from '../config/reputation.js';
 import { CosmeticService } from './CosmeticService.js';
 import {
@@ -73,17 +74,14 @@ export class PvpShopService {
 			if (bag.valorMedals < item.cost) return PVP_INSUFFICIENT(item.cost, bag.valorMedals);
 
 			const season = await this.seasons.ensureActive(tx);
-			if (item.kind.type === 'cosmetic') {
-				// Cosmetic tiers gate on believer level — same rule as /cosmetic equip.
-				const [catalog] = await this.queries.findCosmeticTier(tx, item.kind.cosmeticKey);
-				const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog?.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
-				if (minLevel != null && character.believerLevel < minLevel)
-					return PVP_TIER_LOCKED(minLevel, character.believerLevel);
-			}
-			if (item.kind.type !== 'bag' && item.limitPerSeason) {
-				const [purchase] = await this.queries.findPurchase(tx, discordId, season.seasonId, item.key);
-				if ((purchase?.qty ?? 0) >= item.limitPerSeason) return PVP_SEASON_LIMIT(item.limitPerSeason);
-			}
+			const restriction = await this.purchaseRestriction(
+				tx,
+				discordId,
+				item,
+				character.believerLevel,
+				season.seasonId,
+			);
+			if (restriction) return restriction;
 			// Grant first: a duplicate must consume neither currency nor seasonal quota.
 			if (
 				item.kind.type === 'cosmetic' &&
@@ -120,6 +118,26 @@ export class PvpShopService {
 				}
 			}
 		});
+	}
+
+	private async purchaseRestriction(
+		tx: Executor,
+		discordId: string,
+		item: PvpShopItem,
+		believerLevel: number,
+		seasonId: number,
+	): Promise<string | undefined> {
+		if (item.kind.type === 'cosmetic') {
+			// Cosmetic tiers gate on believer level — same rule as /cosmetic equip.
+			const [catalog] = await this.queries.findCosmeticTier(tx, item.kind.cosmeticKey);
+			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog?.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
+			if (minLevel != null && believerLevel < minLevel) return PVP_TIER_LOCKED(minLevel, believerLevel);
+		}
+		if (item.kind.type !== 'bag' && item.limitPerSeason) {
+			const [purchase] = await this.queries.findPurchase(tx, discordId, seasonId, item.key);
+			if ((purchase?.qty ?? 0) >= item.limitPerSeason) return PVP_SEASON_LIMIT(item.limitPerSeason);
+		}
+		return undefined;
 	}
 }
 
