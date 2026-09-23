@@ -4,7 +4,7 @@ import { ICONS } from './icons.js';
 export const SUPPORTER_TEXT = {
 	description: 'Ủng hộ nhà phát triển và nhận quyền cảm ơn không ảnh hưởng gameplay.',
 	amountOption: 'Số tiền đóng góp bằng VND',
-	disabled: 'Tính năng ủng hộ chưa được cấu hình. Vui lòng thử lại sau.',
+	disabled: 'Tính năng ủng hộ hiện tạm khóa. Vui lòng thử lại sau.',
 	invalidAmount: (min: number, max: number) => `Khoản đóng góp phải từ ${formatVnd(min)} đến ${formatVnd(max)}.`,
 	underTier: (amount: number, code: string, bank: string, account: string) =>
 		paymentInstructions(amount, undefined, code, bank, account),

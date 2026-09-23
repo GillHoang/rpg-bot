@@ -1,11 +1,12 @@
-import { BOOT_LOG_TEXT, DONATION_ERROR_TEXT } from './text/diagnostics.js';
+import { BOOT_LOG_TEXT, DONATION_ERROR_TEXT, DONATION_LOG_TEXT } from './text/diagnostics.js';
 import { DiscordBot } from './core/DiscordBot.js';
 import { registerAllCommands } from './core/registerAllCommands.js';
 import { subscribeDomainEvents } from './core/subscribeDomainEvents.js';
 import { logger, flushErrorWebhook } from './utils/logger.js';
 import { createApplicationServices } from './application/createApplicationServices.js';
 import { CommandRegistry } from './core/CommandRegistry.js';
-import { loadDonationRuntimeConfig } from './config/donationRuntime.js';
+import { KEYGATE_LICENSE_PROVISIONING_SUPPORTED, loadDonationRuntimeConfig } from './config/donationRuntime.js';
+import { env } from './config/env.js';
 import { SepayWebhookServer } from './infrastructure/payments/SepayWebhookServer.js';
 import { KeygateSupporterClient } from './infrastructure/payments/KeygateSupporterClient.js';
 import { DonationProvisioningWorker } from './infrastructure/payments/DonationProvisioningWorker.js';
@@ -28,6 +29,16 @@ let worker: DonationProvisioningWorker | null = null;
 
 try {
 	const donationConfig = loadDonationRuntimeConfig();
+	if (env.SUPPORTER_DONATIONS_ENABLED && !donationConfig) {
+		logger.warn(
+			{
+				reason: KEYGATE_LICENSE_PROVISIONING_SUPPORTED
+					? DONATION_LOG_TEXT.invalidConfig
+					: DONATION_LOG_TEXT.unsafeKeygate,
+			},
+			DONATION_LOG_TEXT.disabled,
+		);
+	}
 	const services = createApplicationServices({ donationConfig });
 	if (donationConfig) {
 		const keygate = new KeygateSupporterClient(donationConfig.keygate);

@@ -53,6 +53,9 @@ export const DONATION_ERROR_TEXT = {
 } as const;
 
 export const DONATION_LOG_TEXT = {
+	disabled: 'Supporter donations disabled at startup',
+	unsafeKeygate: 'Keygate admin license creation has no durable idempotency guarantee',
+	invalidConfig: 'Supporter donation configuration is incomplete or invalid',
 	conflictingWebhook: 'Conflicting SePay webhook replay',
 	provisioningDeferred: 'Donation provisioning deferred',
 	workerPollFailed: 'Donation worker poll failed',
