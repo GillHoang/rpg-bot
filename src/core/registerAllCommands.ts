@@ -25,9 +25,6 @@ import { ResetCommand } from '../commands/admin/ResetCommand.js';
 import { PingCommand } from '../commands/admin/PingCommand.js';
 import { MenuCommand } from '../commands/rpg/MenuCommand.js';
 import { InteractiveCasinoController } from '../commands/casino/interactiveCasino.js';
-import { SupportCommand } from '../commands/supporter/SupportCommand.js';
-import { DonateCommand } from '../commands/supporter/DonateCommand.js';
-import { SupportStatusCommand } from '../commands/supporter/SupportStatusCommand.js';
 import { createApplicationServices, type ApplicationServices } from '../application/createApplicationServices.js';
 import { EventBus } from './EventBus.js';
 import { menuRouter } from '../menu/menuRuntime.js';
@@ -70,7 +67,4 @@ export function registerAllCommands(
 	registry.register(new TestCommand());
 	registry.register(new ResetCommand(services.reset));
 	registry.register(new PingCommand(services.health));
-	registry.register(new SupportCommand(services.donation));
-	registry.register(new DonateCommand(services.donation));
-	registry.register(new SupportStatusCommand(services.donation));
 }

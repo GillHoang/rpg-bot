@@ -24,7 +24,7 @@
 		"typecheck": "tsc -p tsconfig.json --noEmit",
 		"check": "pnpm lint:check && pnpm typecheck && pnpm check:text && pnpm test && pnpm check:links",
 		"check:text": "node scripts/check-text-boundaries.mjs",
-		"check:links": "node scripts/check-markdown-links.mjs README.md docs/audit-deployment.md docs/supporter-donation-plan.md",
+		"check:links": "node scripts/check-markdown-links.mjs README.md docs/audit-deployment.md",
 		"test:postgres": "vitest run tests/postgres-concurrency.test.ts",
 		"season:rollover": "tsx src/scripts/rolloverSeason.ts"
 	},

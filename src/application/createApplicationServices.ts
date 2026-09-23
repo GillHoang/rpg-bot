@@ -45,16 +45,12 @@ import { RaidRewardService } from '../services/RaidRewardService.js';
 import { LootGrantService } from '../services/LootGrantService.js';
 import { GameplayProgressCoordinator } from '../services/gameplayProgress.js';
 import { PlayerCombatantFactory } from '../services/combatantFactory.js';
-import { DonationService } from '../services/DonationService.js';
-import { loadDonationRuntimeConfig } from '../config/donationRuntime.js';
-import type { DonationRuntimeConfig } from '../config/donationRuntime.js';
 
 export interface ApplicationOptions {
 	persistence?: PersistenceContext;
 	events?: EventBus;
 	/** Allows the compatibility bootstrap to keep its existing lazy menu store. */
 	menu?: MenuRouter;
-	donationConfig?: DonationRuntimeConfig | null;
 }
 
 /**
@@ -110,10 +106,6 @@ export function createApplicationServices(options: ApplicationOptions = {}) {
 	const menu = options.menu ?? new MenuRouter(new MenuSessionStore(), menuGameplay);
 	const scheduler = new Scheduler(duel, new MaintenanceRepository(persistence.executor));
 	const maintenance = new BotMaintenance(casinoSessions, scheduler, menu);
-	const donation = new DonationService({
-		persistence,
-		config: options.donationConfig !== undefined ? options.donationConfig : loadDonationRuntimeConfig(),
-	});
 
 	return {
 		events,
@@ -142,7 +134,6 @@ export function createApplicationServices(options: ApplicationOptions = {}) {
 		reset: new ResetService({ persistence }),
 		inventory: new InventoryService(persistence.executor),
 		health: new HealthService(persistence.executor),
-		donation,
 	};
 }
 

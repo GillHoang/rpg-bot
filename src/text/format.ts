@@ -5,7 +5,3 @@ export const TEXT_LOCALE = 'en-US';
 export function formatNumber(value: number, locale = TEXT_LOCALE, options?: Intl.NumberFormatOptions): string {
 	return value.toLocaleString(locale, options);
 }
-
-export function formatDate(value: Date, locale = 'vi-VN'): string {
-	return value.toLocaleString(locale);
-}

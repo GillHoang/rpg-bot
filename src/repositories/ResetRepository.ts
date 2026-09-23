@@ -2,18 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { Executor } from '../db/client.js';
 
 /** Bảng KHÔNG bị reset — xoá là mất cấu hình bot / ledger đối soát. */
-const KEEP_TABLES = new Set([
-	'server_config',
-	'stripe_events',
-	'dev_logs',
-	// Donation orders and provider receipts are financial audit history. They
-	// deliberately do not reference users, so TRUNCATE users CASCADE cannot
-	// remove them during the gameplay reset.
-	'donation_orders',
-	'donation_webhook_receipts',
-	'donation_provisioning_jobs',
-	'donation_grant_receipts',
-]);
+const KEEP_TABLES = new Set(['server_config', 'stripe_events', 'dev_logs']);
 
 /**
  * Bảng log/giao dịch không có FK về `users` (hoặc không cascade) — dọn
