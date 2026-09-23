@@ -1,3 +1,4 @@
+import { SEED_LOG_TEXT } from '../text/diagnostics.js';
 /**
  * Seed runner — nạp dữ liệu seed vào PostgreSQL.
  *
@@ -108,7 +109,7 @@ const counts = await db.transaction(async (tx) => {
 
 logger.info(
 	counts,
-	'Seed complete: deities=%s, mobs=%s, weapons=%s, armors=%s, runes=%s, socketUnlockCosts=%s, essenceBags=%s, cosmetics=%s, titles=%s, rankedRewards=%s',
+	SEED_LOG_TEXT.complete,
 	counts.deities,
 	counts.mobs,
 	counts.weapons,

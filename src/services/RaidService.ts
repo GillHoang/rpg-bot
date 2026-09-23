@@ -1,4 +1,6 @@
-import { RAID_CONFIRMATION_TEXT } from '../text/raid.js';
+import { formatNumber } from '../text/format.js';
+import { LOOT_CHEST_NAMES } from '../text/loot.js';
+import { RAID_CONFIRMATION_TEXT, BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { RaidRepository } from '../repositories/RaidRepository.js';
@@ -26,7 +28,7 @@ import { EventBus } from '../core/EventBus.js';
 import { CosmeticService } from './CosmeticService.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
-import { BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
+
 import { MonsterStrategy } from '../domain/combat/classes/MonsterStrategy.js';
 import { LootGrantService } from './LootGrantService.js';
 
@@ -84,15 +86,15 @@ export interface RaidDependencies {
 function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, mobType: string, combatLevel: number) {
 	let table: typeof RAID_LOOT_BOSS | typeof RAID_LOOT_ELITE | typeof RAID_LOOT_REGULAR = RAID_LOOT_REGULAR;
 	let chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest' = 'silverChest';
-	let chestName = 'Silver Chest';
+	let chestName: string = LOOT_CHEST_NAMES.silver;
 	if (boss) {
 		table = RAID_LOOT_BOSS;
 		chestField = 'bossTreasureChest';
-		chestName = 'Boss Treasure Chest';
+		chestName = LOOT_CHEST_NAMES.boss;
 	} else if (mobType === 'elite') {
 		table = RAID_LOOT_ELITE;
 		chestField = 'goldChest';
-		chestName = 'Gold Chest';
+		chestName = LOOT_CHEST_NAMES.gold;
 	}
 	let credux = 0;
 	let shards = 0;
@@ -339,7 +341,7 @@ export class RaidService {
 		const [user] = await this.queries.lockUser(tx, discordId);
 		if (user.lastBossAttackDate === day) return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
 		if (account.credux < BOSS_ENTRY.credux)
-			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(BOSS_ENTRY.credux.toLocaleString()) };
+			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(formatNumber(BOSS_ENTRY.credux)) };
 		await this.queries.updateUser(tx, discordId, { lastBossAttackDate: day });
 		await this.queries.updateBag(tx, discordId, { credux: account.credux - BOSS_ENTRY.credux });
 		return null;

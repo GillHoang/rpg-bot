@@ -1,3 +1,4 @@
+import { formatNumber } from '../../../text/format.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit } from '../IClassStrategy.js';
@@ -33,6 +34,6 @@ export class KnightStrategy extends NullClassStrategy {
 		);
 		if (restored <= 0) return;
 		ctx.self.hp += restored;
-		ctx.log(COMBAT_KNIGHT_REGEN(combatDisplayName(ctx.self), restored.toLocaleString()));
+		ctx.log(COMBAT_KNIGHT_REGEN(combatDisplayName(ctx.self), formatNumber(restored)));
 	}
 }

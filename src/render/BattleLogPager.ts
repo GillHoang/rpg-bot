@@ -1,4 +1,15 @@
-import { BATTLE_REPLAY_TEXT } from '../text/battleLog.js';
+import { BATTLE_LOG_DIAGNOSTICS } from '../text/diagnostics.js';
+import {
+	BATTLE_REPLAY_TEXT,
+	BATTLE_LOG_FIRST_LABEL,
+	BATTLE_LOG_HP_CELLS,
+	BATTLE_LOG_HP_LINE,
+	BATTLE_LOG_LAST_LABEL,
+	BATTLE_LOG_NEXT_LABEL,
+	BATTLE_LOG_PAGE_INDICATOR,
+	BATTLE_LOG_PAGER_TTL_MS,
+	BATTLE_LOG_PREV_LABEL,
+} from '../text/battleLog.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -12,16 +23,7 @@ import {
 	type Message,
 } from 'discord.js';
 import type { BattleResult, BattleRoundLog } from '../domain/combat/BattleEngine.js';
-import {
-	BATTLE_LOG_FIRST_LABEL,
-	BATTLE_LOG_HP_CELLS,
-	BATTLE_LOG_HP_LINE,
-	BATTLE_LOG_LAST_LABEL,
-	BATTLE_LOG_NEXT_LABEL,
-	BATTLE_LOG_PAGE_INDICATOR,
-	BATTLE_LOG_PAGER_TTL_MS,
-	BATTLE_LOG_PREV_LABEL,
-} from '../text/battleLog.js';
+
 import { renderProgressBar } from '../utils/progressBar.js';
 import { logger } from '../utils/logger.js';
 
@@ -242,7 +244,7 @@ export async function sendBattleLog(
 		try {
 			await handleButton(button);
 		} catch (err) {
-			logger.warn({ err, customId: button.customId }, 'Battle log interaction failed');
+			logger.warn({ err, customId: button.customId }, BATTLE_LOG_DIAGNOSTICS.interactionFailed);
 			const errorReply = {
 				content: BATTLE_REPLAY_TEXT.updateFailed,
 				flags: MessageFlags.Ephemeral,
@@ -251,7 +253,7 @@ export async function sendBattleLog(
 				if (button.deferred || button.replied) await button.followUp(errorReply);
 				else await button.reply(errorReply);
 			} catch (replyError) {
-				logger.warn({ err: replyError }, 'Battle log error reply failed');
+				logger.warn({ err: replyError }, BATTLE_LOG_DIAGNOSTICS.errorReplyFailed);
 			}
 		}
 	});

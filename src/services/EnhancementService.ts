@@ -1,3 +1,4 @@
+import { LOG_EVENT_TEXT } from '../text/diagnostics.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -93,9 +94,12 @@ export class EnhancementService {
 			});
 		}
 		if (result.status === 'success') {
-			logger.info({ user: discordId, gearId, to: `+${result.newLevel - 1}`, cost: result.cost }, 'gear-enhanced');
+			logger.info(
+				{ user: discordId, gearId, to: `+${result.newLevel - 1}`, cost: result.cost },
+				LOG_EVENT_TEXT.gearEnhanced,
+			);
 		} else if (result.status === 'failure') {
-			logger.info({ user: discordId, gearId, cost: result.cost }, 'gear-enhance-failed');
+			logger.info({ user: discordId, gearId, cost: result.cost }, LOG_EVENT_TEXT.gearEnhanceFailed);
 		}
 		return result;
 	}

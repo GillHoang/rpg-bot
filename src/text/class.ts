@@ -1,3 +1,4 @@
+import { formatNumber } from './format.js';
 import { ICONS } from './icons.js';
 /** Text lệnh /class — sửa wording ngay tại đây. */
 
@@ -10,9 +11,9 @@ export const CLASS_INFO_DESC = 'Xem trước class: flavor, nội tại và ch�
 export const CLASS_INFO_OPTION_DESC = 'Class muốn xem';
 export const CLASS_INFO_HEADER = (emoji: string, name: string): string => `${emoji} **${name}**`;
 export const CLASS_INFO_BASE = (hp: number, atk: number, def: number, crit: string): string =>
-	`Chỉ số gốc (level 1): HP ${hp.toLocaleString()} · ATK ${atk.toLocaleString()} · DEF ${def.toLocaleString()} · CRIT ${crit}%`;
+	`Chỉ số gốc (level 1): HP ${formatNumber(hp)} · ATK ${formatNumber(atk)} · DEF ${formatNumber(def)} · CRIT ${crit}%`;
 export const CLASS_INFO_SCALING = (hp: number, atk: number, def: number, crit: string): string =>
-	`Mỗi level: +${hp.toLocaleString()} HP · +${atk.toLocaleString()} ATK · +${def.toLocaleString()} DEF · +${crit}% CRIT`;
+	`Mỗi level: +${formatNumber(hp)} HP · +${formatNumber(atk)} ATK · +${formatNumber(def)} DEF · +${crit}% CRIT`;
 
 export const CLASS_INVALID = 'Class không hợp lệ.';
 export const CLASS_NO_CHARACTER = 'Gõ /start để tạo nhân vật trước.';

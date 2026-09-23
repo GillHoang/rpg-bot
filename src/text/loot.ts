@@ -57,3 +57,12 @@ export const LOOT_CHEST_LABELS = {
 	diamond: 'Diamond',
 	genesis: 'Genesis',
 };
+
+/** Full names for reward announcements; keys remain gameplay-independent. */
+export const LOOT_CHEST_NAMES = {
+	silver: 'Silver Chest',
+	gold: 'Gold Chest',
+	boss: 'Boss Treasure Chest',
+} as const;
+
+export const LOOT_GEAR_RECEIVED = (name: string, tier: string, id: string): string => `${name} (${tier}) · ID: ${id}`;

@@ -1,9 +1,7 @@
-import { SUMMON_RELIC_TEXT, RELIC_NAMES } from '../../text/summon.js';
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import type { ICommand } from '../../core/ICommand.js';
-import { SummonService } from '../../services/SummonService.js';
-import { MAX_PULLS, type RelicKind } from '../../config/gachaRates.js';
+import { formatNumber } from '../../text/format.js';
 import {
+	SUMMON_RELIC_TEXT,
+	RELIC_NAMES,
 	SUMMON_COUNT_OPTION_DESC,
 	SUMMON_DESCRIPTION,
 	SUMMON_DUPE_SUFFIX,
@@ -20,6 +18,10 @@ import {
 	SUMMON_SUCCESS_RELIC,
 	TIER_ALIAS,
 } from '../../text/summon.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import type { ICommand } from '../../core/ICommand.js';
+import { SummonService } from '../../services/SummonService.js';
+import { MAX_PULLS, type RelicKind } from '../../config/gachaRates.js';
 
 /** Độ dài tối đa của content Discord. */
 const MAX_CONTENT_CHARS = 2000;
@@ -125,7 +127,7 @@ export class SummonCommand implements ICommand {
 				return;
 			case 'insufficient-shards':
 				await interaction.editReply({
-					content: SUMMON_INSUFFICIENT_SHARDS(result.needed.toLocaleString(), result.have.toLocaleString()),
+					content: SUMMON_INSUFFICIENT_SHARDS(formatNumber(result.needed), formatNumber(result.have)),
 				});
 				return;
 			case 'insufficient-relics':
@@ -147,7 +149,7 @@ export class SummonCommand implements ICommand {
 						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines, result.finalPity)
 						: SUMMON_SUCCESS(
 								result.pulls.length,
-								result.shardsSpent.toLocaleString(),
+								formatNumber(result.shardsSpent),
 								lines,
 								result.finalPity,
 							),

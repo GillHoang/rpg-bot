@@ -1,3 +1,4 @@
+import { formatNumber } from '../../../text/format.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import { combatDisplayName, findDebuff } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from '../IClassStrategy.js';
@@ -41,7 +42,7 @@ export class MonsterStrategy extends NullClassStrategy {
 		if (this.skill === 'flesh_feast') {
 			const healed = Math.floor(hit.damageDealt * 0.1);
 			ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + healed);
-			if (healed > 0) ctx.log(COMBAT_MONSTER_FEAST(combatDisplayName(ctx.self), healed.toLocaleString()));
+			if (healed > 0) ctx.log(COMBAT_MONSTER_FEAST(combatDisplayName(ctx.self), formatNumber(healed)));
 		}
 		// Venom spit: wounds fester, ticking true damage for 2 rounds.
 		if (this.skill === 'venom_spit' && hit.damageDealt > 0 && ctx.enemy.hp > 0 && !findDebuff(ctx.enemy, 'venom')) {
@@ -51,7 +52,7 @@ export class MonsterStrategy extends NullClassStrategy {
 				COMBAT_MONSTER_VENOM_SPIT(
 					combatDisplayName(ctx.self),
 					combatDisplayName(ctx.enemy),
-					value.toLocaleString(),
+					formatNumber(value),
 				),
 			);
 		}

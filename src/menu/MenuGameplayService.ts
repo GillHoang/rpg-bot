@@ -1,3 +1,5 @@
+import { formatNumber } from '../text/format.js';
+import { MENU_ERROR_TEXT } from '../text/diagnostics.js';
 import { GAMEPLAY_NOTICE } from '../text/gameplay.js';
 import { MenuPlayerRepository } from '../repositories/MenuPlayerRepository.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
@@ -23,7 +25,7 @@ import {
 	questsPanel,
 } from './gameplayPanels.js';
 
-const n = (value: number) => value.toLocaleString('vi-VN');
+const n = (value: number) => formatNumber(value, 'vi-VN');
 
 export interface MenuGameplayDependencies {
 	persistence?: PersistenceContext;
@@ -80,7 +82,7 @@ export class MenuGameplayService implements MenuGameplay {
 		const bossDone = user?.lastBossAttackDate === day;
 		if (kind === 'quests') {
 			const snapshot = await this.quests.snapshot(session.ownerId);
-			if (!snapshot) throw new Error('Menu player disappeared');
+			if (!snapshot) throw new Error(MENU_ERROR_TEXT.playerDisappeared);
 			return questsPanel(snapshot, dailyDone);
 		}
 		if (kind === 'battle') return battleLobbyPanel(profile.data, bossDone, !!session.battle);
@@ -99,7 +101,7 @@ export class MenuGameplayService implements MenuGameplay {
 				return { kind: 'battle' };
 			case 'class': {
 				const combatClass = CLASS_NAMES.find((c) => c === value);
-				if (!combatClass) throw new Error('Invalid class');
+				if (!combatClass) throw new Error(MENU_ERROR_TEXT.invalidClass);
 				return { kind: 'confirm', operation: 'start', combatClass };
 			}
 			case 'profile':
@@ -130,13 +132,13 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'next':
 				return this.navigateBattleLog(session, action);
 			default:
-				throw new Error('Unknown gameplay action');
+				throw new Error(MENU_ERROR_TEXT.unknownAction);
 		}
 	}
 
 	private navigateBattleLog(session: MenuSession, action: 'first' | 'last' | 'prev' | 'next'): MenuScreen {
 		if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
-			throw new Error('No battle log');
+			throw new Error(MENU_ERROR_TEXT.missingBattleLog);
 		const lastPage = Math.max(0, session.battle.battle.roundLogs.length - 1);
 		const currentPage = session.screen.kind === 'log' ? session.screen.page : lastPage;
 		let page = currentPage;
@@ -169,7 +171,7 @@ export class MenuGameplayService implements MenuGameplay {
 
 	private async confirm(session: MenuSession, username: string): Promise<MenuScreen> {
 		const s = session.screen;
-		if (s.kind !== 'confirm') throw new Error('Confirmation missing');
+		if (s.kind !== 'confirm') throw new Error(MENU_ERROR_TEXT.missingConfirmation);
 		if (s.operation === 'start') {
 			const r = await this.start.start(session.ownerId, username, s.combatClass);
 			if (r.status === 'ok') session.notice = GAMEPLAY_NOTICE.created;

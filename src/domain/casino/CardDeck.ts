@@ -1,3 +1,4 @@
+import { CARD_DECK_ERROR_TEXT } from '../../text/diagnostics.js';
 import { RandomPicker } from '../../utils/weightedRandom.js';
 export type Suit = 'pegasus' | 'trident' | 'laurel' | 'hammer';
 export type Rank = 'a' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'j' | 'q' | 'k';
@@ -29,7 +30,7 @@ export function newDeck(rng: () => number): Deck {
 	let remaining = cards.length;
 	return {
 		draw(): Card {
-			if (remaining === 0) throw new Error('cardDeck: deck exhausted');
+			if (remaining === 0) throw new Error(CARD_DECK_ERROR_TEXT.exhausted);
 			const card = picker.pick();
 			remaining--;
 			return card;

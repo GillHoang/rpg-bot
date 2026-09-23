@@ -1,4 +1,15 @@
-import { RESET_FLOW_TEXT } from '../../text/reset.js';
+import { LOG_EVENT_TEXT } from '../../text/diagnostics.js';
+import {
+	RESET_FLOW_TEXT,
+	RESET_ALREADY_EMPTY,
+	RESET_CANCEL_LABEL,
+	RESET_CANCELLED,
+	RESET_CONFIRM_HEADER,
+	RESET_CONFIRM_LABEL,
+	RESET_DESCRIPTION,
+	RESET_DONE,
+	RESET_NOT_OWNER,
+} from '../../text/reset.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -12,16 +23,6 @@ import type { ICommand } from '../../core/ICommand.js';
 import { isOwner } from '../../core/owners.js';
 import { logger } from '../../utils/logger.js';
 import { ResetService } from '../../services/ResetService.js';
-import {
-	RESET_ALREADY_EMPTY,
-	RESET_CANCEL_LABEL,
-	RESET_CANCELLED,
-	RESET_CONFIRM_HEADER,
-	RESET_CONFIRM_LABEL,
-	RESET_DESCRIPTION,
-	RESET_DONE,
-	RESET_NOT_OWNER,
-} from '../../text/reset.js';
 
 const CONFIRM_TTL_MS = 60_000;
 
@@ -96,7 +97,7 @@ export class ResetCommand implements ICommand {
 					components: [],
 				});
 			} catch (error) {
-				logger.error({ error }, 'reset-failed');
+				logger.error({ error }, LOG_EVENT_TEXT.resetFailed);
 				await button.editReply({ content: RESET_FLOW_TEXT.failed, components: [] }).catch(() => undefined);
 			}
 		});

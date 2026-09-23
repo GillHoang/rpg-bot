@@ -1,3 +1,5 @@
+import { PROGRESS_BAR_EMOJIS } from '../text/icons.js';
+import { PROGRESS_BAR_ERROR_TEXT } from '../text/diagnostics.js';
 // Progress bar built from the server's custom "line" emoji set.
 //
 // Rendering rules:
@@ -17,39 +19,7 @@ export interface BarPieces {
 	right: string;
 }
 
-const emoji = (animated: boolean, name: string, id: string): string => `<${animated ? 'a' : ''}:${name}:${id}>`;
-
-export const PROGRESS_BAR_EMOJIS = {
-	/** Palettes for a 100% full bar — the caller picks one. */
-	full: {
-		blue: {
-			left: emoji(true, 'line1', '1550837949271117824'),
-			mid: emoji(true, 'line2', '1550837973946212422'),
-			right: emoji(true, 'line3', '1550837998118117456'),
-		},
-		green: {
-			left: emoji(true, 'linea1', '1550838020071235704'),
-			mid: emoji(true, 'linea2', '1550838051574521977'),
-			right: emoji(true, 'linea3', '1550838078610997358'),
-		},
-	},
-	/** Fill color for a bar in progress (0% < value < max). */
-	partial: {
-		yellow: {
-			// TODO: paste the real IDs for linee2/linee3 — they were not in the
-			// original emoji list, only linee1's ID is known.
-			left: emoji(true, 'linee2', '1550838146789408799'),
-			mid: emoji(true, 'linee3', '1550838170206339122'),
-			right: emoji(true, 'linee1', '1550838101839056996'),
-		},
-	},
-	/** Gray track for the unfilled remainder and for 0% bars. */
-	empty: {
-		left: emoji(false, 'line4', '1550837845638389821'),
-		mid: emoji(false, 'line6', '1550837891045785620'),
-		right: emoji(false, 'line7', '1550837914701926430'),
-	},
-} as const;
+export { PROGRESS_BAR_EMOJIS } from '../text/icons.js';
 
 export type ProgressBarColor = keyof typeof PROGRESS_BAR_EMOJIS.full;
 
@@ -89,10 +59,10 @@ export function renderProgressBar(options: ProgressBarOptions): string {
 
 function validate(current: number, max: number, cells: number): void {
 	if (!Number.isFinite(current) || !Number.isFinite(max)) {
-		throw new RangeError('current and max must be finite numbers');
+		throw new RangeError(PROGRESS_BAR_ERROR_TEXT.nonFinite);
 	}
 	if (!Number.isInteger(cells) || cells < MIN_CELLS || cells > MAX_CELLS) {
-		throw new RangeError(`cells must be an integer in [${MIN_CELLS}, ${MAX_CELLS}]`);
+		throw new RangeError(PROGRESS_BAR_ERROR_TEXT.invalidCells(MIN_CELLS, MAX_CELLS));
 	}
 }
 

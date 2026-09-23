@@ -1,3 +1,4 @@
+import { CASINO_LOG_TEXT } from '../../text/diagnostics.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -57,7 +58,7 @@ export class InteractiveCasinoController {
 			const ack = button.deferUpdate().then(
 				() => true,
 				(error) => {
-					logger.error({ error }, 'Casino button acknowledgement failed');
+					logger.error({ error }, CASINO_LOG_TEXT.acknowledgementFailed);
 					return false;
 				},
 			);
@@ -76,7 +77,7 @@ export class InteractiveCasinoController {
 					if (view.status === 'ok' && view.done) collector.stop('settled');
 				})
 				.catch((error) => {
-					logger.error({ error }, 'Casino interaction failed');
+					logger.error({ error }, CASINO_LOG_TEXT.interactionFailed);
 					collector.stop('error');
 				});
 		});
@@ -87,7 +88,7 @@ export class InteractiveCasinoController {
 					const view = await this.sessions.act(i.user.id, start.sessionId, 'timeout');
 					await i.editReply(render(view));
 				})
-				.catch((error) => logger.error({ error }, 'Casino timeout failed; expiry worker will recover'));
+				.catch((error) => logger.error({ error }, CASINO_LOG_TEXT.timeoutFailed));
 		});
 	}
 }

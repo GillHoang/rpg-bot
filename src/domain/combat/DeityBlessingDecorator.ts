@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import { combatDisplayName } from './CombatantState.js';
 import type { BlessingKey } from '../../config/blessings.js';
@@ -95,7 +96,7 @@ export class DeityBlessingDecorator implements IClassStrategy {
 			const healed = Math.min(ctx.self.maxHp - ctx.self.hp, Math.floor(ctx.self.maxHp * 0.04 * this.strength));
 			if (healed > 0) {
 				ctx.self.hp += healed;
-				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(combatDisplayName(ctx.self), healed.toLocaleString()));
+				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(combatDisplayName(ctx.self), formatNumber(healed)));
 			}
 		}
 	}

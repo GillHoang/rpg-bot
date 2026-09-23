@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { EnhancementService } from '../../services/EnhancementService.js';
@@ -57,14 +58,14 @@ export class EnhanceCommand implements ICommand {
 				return;
 			case 'insufficient-credux':
 				await interaction.editReply({
-					content: ENHANCE_INSUFFICIENT_CREDUX(result.needed.toLocaleString(), result.have.toLocaleString()),
+					content: ENHANCE_INSUFFICIENT_CREDUX(formatNumber(result.needed), formatNumber(result.have)),
 				});
 				return;
 			case 'success':
-				await interaction.editReply(ENHANCE_SUCCESS(result.newLevel - 1, result.cost.toLocaleString()));
+				await interaction.editReply(ENHANCE_SUCCESS(result.newLevel - 1, formatNumber(result.cost)));
 				return;
 			case 'failure':
-				await interaction.editReply(ENHANCE_FAILURE(result.cost.toLocaleString()));
+				await interaction.editReply(ENHANCE_FAILURE(formatNumber(result.cost)));
 				return;
 		}
 	}

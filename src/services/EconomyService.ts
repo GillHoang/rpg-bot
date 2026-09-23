@@ -1,3 +1,4 @@
+import { ECONOMY_ERROR_TEXT } from '../text/diagnostics.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 
@@ -44,7 +45,7 @@ export class EconomyService {
 		// updates. `earn()` itself rejects amount <= 0 / non-integer.
 		const account = await this.persistence.unitOfWork.run(async (tx) => {
 			const acc = await this.accounts.findByIdWithExecutor(tx, discordId);
-			if (!acc) throw new Error(`No account for ${discordId}; register first`);
+			if (!acc) throw new Error(ECONOMY_ERROR_TEXT.missingAccount(discordId));
 			acc.earn(amount);
 			await this.accounts.saveCreduxWithExecutor(tx, acc);
 			return acc;

@@ -1,3 +1,4 @@
+import { CASINO_REPOSITORY_ERROR_TEXT } from '../text/diagnostics.js';
 import { eq } from 'drizzle-orm';
 import type { Executor } from '../db/client.js';
 import { usersBag, casinoLogs } from '../db/schema.js';
@@ -20,7 +21,7 @@ export class CasinoRepository {
 		params: { game: string; bet: number; payout: number; result: string; metadata: Record<string, unknown> },
 	): Promise<number> {
 		const before = await this.getCredux(executor, discordId);
-		if (before == null) throw new Error(`settle: no users_bag row for ${discordId}`);
+		if (before == null) throw new Error(CASINO_REPOSITORY_ERROR_TEXT.missingBag(discordId));
 		const after = before - params.bet + params.payout;
 		await executor.update(usersBag).set({ credux: after }).where(eq(usersBag.discordId, discordId));
 		await executor.insert(casinoLogs).values({

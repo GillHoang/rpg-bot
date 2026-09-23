@@ -1,3 +1,4 @@
+import { LOG_EVENT_TEXT } from '../text/diagnostics.js';
 import { recordFailure } from '../utils/operationalMetrics.js';
 import { EventEmitter } from 'node:events';
 import { logger } from '../utils/logger.js';
@@ -42,18 +43,21 @@ export class EventBus {
 			try {
 				void Promise.resolve(listener(payload)).catch((error: unknown) => {
 					recordFailure('observer');
-					logger.error({ error, event }, 'event-observer-failed');
+					logger.error({ error, event }, LOG_EVENT_TEXT.eventObserverFailed);
 				});
 			} catch (error) {
 				recordFailure('observer');
-				logger.error({ error, event }, 'event-observer-failed');
+				logger.error({ error, event }, LOG_EVENT_TEXT.eventObserverFailed);
 			}
 		});
 	}
 
 	emit<K extends keyof DomainEvents>(event: K, payload: DomainEvents[K]): void {
 		// Audit trail: mọi nghiệp vụ phát event đều in ra console để theo dõi.
-		logger.info({ event, ...structuredClone(payload) } as unknown as Record<string, unknown>, 'domain-event');
+		logger.info(
+			{ event, ...structuredClone(payload) } as unknown as Record<string, unknown>,
+			LOG_EVENT_TEXT.domainEvent,
+		);
 		this.emitter.emit(event, payload);
 	}
 }

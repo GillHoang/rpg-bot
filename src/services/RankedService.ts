@@ -1,3 +1,4 @@
+import { LOOT_CHEST_LABELS } from '../text/loot.js';
 import { comparePlayerIds } from '../utils/comparePlayerIds.js';
 import { SeasonService } from './SeasonService.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
@@ -300,10 +301,10 @@ export class RankedService {
 				diamondChest: bag.diamondChest + (payload.diamondChest ?? 0),
 				genesisChest: bag.genesisChest + (payload.genesisChest ?? 0),
 			};
-			if (payload.silverChest) chests.push(`+${payload.silverChest} Silver`);
-			if (payload.goldChest) chests.push(`+${payload.goldChest} Gold`);
-			if (payload.diamondChest) chests.push(`+${payload.diamondChest} Diamond`);
-			if (payload.genesisChest) chests.push(`+${payload.genesisChest} Genesis`);
+			if (payload.silverChest) chests.push(`+${payload.silverChest} ${LOOT_CHEST_LABELS.silver}`);
+			if (payload.goldChest) chests.push(`+${payload.goldChest} ${LOOT_CHEST_LABELS.gold}`);
+			if (payload.diamondChest) chests.push(`+${payload.diamondChest} ${LOOT_CHEST_LABELS.diamond}`);
+			if (payload.genesisChest) chests.push(`+${payload.genesisChest} ${LOOT_CHEST_LABELS.genesis}`);
 			await this.queries.updateBag(tx, discordId, patch);
 			await this.queries.updateCharacter(tx, discordId, { lastWeeklyClaimWeek: week });
 

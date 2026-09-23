@@ -1,3 +1,4 @@
+import { ENHANCEMENT_ERROR_TEXT } from '../text/diagnostics.js';
 export type GearTier = 'Rare' | 'Mythic' | 'Legendary' | 'Supreme' | 'Divine';
 
 export const MAX_ENHANCEMENT = 11; // stored; display +10
@@ -110,7 +111,7 @@ export function computeWeaponCurrAtk(baseAtk: number, tier: GearTier, enhancemen
 		return Math.floor(baseAtk * multiplier);
 	}
 	const m = BOOST_TABLE[stored];
-	if (m == null) throw new Error(`computeWeaponCurrAtk: invalid enhancement ${enhancement} for tier ${tier}`);
+	if (m == null) throw new Error(ENHANCEMENT_ERROR_TEXT.invalidWeapon(enhancement, tier));
 	return Math.floor(baseAtk * m);
 }
 
@@ -129,7 +130,7 @@ export function computeArmorCurrStats(
 		return { hp: Math.floor(baseHp * multiplier), def: Math.floor(baseDef * multiplier) };
 	}
 	const m = BOOST_TABLE[stored];
-	if (m == null) throw new Error(`computeArmorCurrStats: invalid enhancement ${enhancement} for tier ${tier}`);
+	if (m == null) throw new Error(ENHANCEMENT_ERROR_TEXT.invalidArmor(enhancement, tier));
 	return { hp: Math.floor(baseHp * m), def: Math.floor(baseDef * m) };
 }
 

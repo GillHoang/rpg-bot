@@ -1,11 +1,6 @@
-import { CASINO_DESCRIPTION_TEXT } from '../../text/casino.js';
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import type { ICommand } from '../../core/ICommand.js';
-import { CasinoService } from '../../services/CasinoService.js';
-import { MAX_BET } from '../../config/casinoPayouts.js';
-import type { StatelessCasinoGameKey } from '../../domain/casino/CasinoGameRegistry.js';
-import { InteractiveCasinoController } from './interactiveCasino.js';
+import { formatNumber } from '../../text/format.js';
 import {
+	CASINO_DESCRIPTION_TEXT,
 	CASINO_BET_OPTION_DESC,
 	CASINO_CHOICE_OPTION_DESC,
 	CASINO_DESCRIPTION,
@@ -18,6 +13,12 @@ import {
 	CASINO_RESULT_LINE,
 	CASINO_WIN,
 } from '../../text/casino.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import type { ICommand } from '../../core/ICommand.js';
+import { CasinoService } from '../../services/CasinoService.js';
+import { MAX_BET } from '../../config/casinoPayouts.js';
+import type { StatelessCasinoGameKey } from '../../domain/casino/CasinoGameRegistry.js';
+import { InteractiveCasinoController } from './interactiveCasino.js';
 
 export class CasinoCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -52,12 +53,12 @@ export class CasinoCommand implements ICommand {
 			return;
 		}
 		if (result.status === 'invalid-bet') {
-			await interaction.editReply({ content: CASINO_INVALID_BET(MAX_BET.toLocaleString()) });
+			await interaction.editReply({ content: CASINO_INVALID_BET(formatNumber(MAX_BET)) });
 			return;
 		}
 		if (result.status === 'insufficient-credux') {
 			await interaction.editReply({
-				content: CASINO_INSUFFICIENT_CREDUX(result.have.toLocaleString()),
+				content: CASINO_INSUFFICIENT_CREDUX(formatNumber(result.have)),
 			});
 			return;
 		}
@@ -66,8 +67,8 @@ export class CasinoCommand implements ICommand {
 		let verdict = CASINO_LOSE;
 		if (outcome.won) verdict = CASINO_WIN;
 		else if (outcome.payout > 0) verdict = CASINO_PUSH;
-		const delta = (outcome.payout - bet >= 0 ? '+' : '') + (outcome.payout - bet).toLocaleString();
-		await interaction.editReply(CASINO_RESULT_LINE(verdict, outcome.result, delta, balanceAfter.toLocaleString()));
+		const delta = (outcome.payout - bet >= 0 ? '+' : '') + formatNumber(outcome.payout - bet);
+		await interaction.editReply(CASINO_RESULT_LINE(verdict, outcome.result, delta, formatNumber(balanceAfter)));
 	}
 }
 
@@ -77,7 +78,7 @@ function casinoOptions(s: import('discord.js').SlashCommandSubcommandBuilder, na
 		.addIntegerOption((o) =>
 			o
 				.setName('bet')
-				.setDescription(CASINO_BET_OPTION_DESC(MAX_BET.toLocaleString()))
+				.setDescription(CASINO_BET_OPTION_DESC(formatNumber(MAX_BET)))
 				.setRequired(true)
 				.setMinValue(1)
 				.setMaxValue(MAX_BET),

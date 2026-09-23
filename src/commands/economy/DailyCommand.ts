@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { DailyService } from '../../services/DailyService.js';
@@ -28,7 +29,7 @@ export class DailyCommand implements ICommand {
 				result.day,
 				result.monthly,
 				result.overall,
-				result.credux.toLocaleString(),
+				formatNumber(result.credux),
 				result.shards,
 				result.chestLabel,
 				milestoneLine,

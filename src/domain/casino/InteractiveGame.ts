@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import { BlackjackSession } from './BlackjackSession.js';
 import { CrashSession } from './CrashSession.js';
 import { createRng } from '../combat/Rng.js';
@@ -27,7 +28,7 @@ function replayBlackjack(bet: number, stored: StoredGame) {
 		payout: s.payout,
 		result: s.outcome ?? 'active',
 		text: CASINO_BLACKJACK_VIEW(
-			bet.toLocaleString(),
+			formatNumber(bet),
 			`${hand(s.player)} (${BlackjackSession.playerValue(s)})`,
 			s.revealed
 				? `${hand(s.dealer)} (${BlackjackSession.dealerValue(s)})`
@@ -52,6 +53,6 @@ function replayCrash(bet: number, stored: StoredGame) {
 		done: s.state !== 'active',
 		payout: s.payout,
 		result,
-		text: CASINO_CRASH_VIEW(bet.toLocaleString(), s.push, s.multiplier.toFixed(2), s.state),
+		text: CASINO_CRASH_VIEW(formatNumber(bet), s.push, s.multiplier.toFixed(2), s.state),
 	};
 }

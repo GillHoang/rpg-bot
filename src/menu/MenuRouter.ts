@@ -1,3 +1,4 @@
+import { MENU_LOG_TEXT } from '../text/diagnostics.js';
 import { randomBytes } from 'node:crypto';
 import {
 	MessageFlags,
@@ -39,7 +40,7 @@ export class MenuRouter {
 			this.sessions.bind(session, message.id);
 		} catch (error) {
 			if (session) this.sessions.delete(session.id);
-			logger.error({ err: error, userId: interaction.user.id }, 'Menu open failed');
+			logger.error({ err: error, userId: interaction.user.id }, MENU_LOG_TEXT.openFailed);
 			// Use V2 even on failure: a failed HTTP response may have already applied the flag.
 			const text = error instanceof MenuCapacityError ? MENU_TEXT.capacity : MENU_TEXT.failed;
 			if (interaction.deferred) {
@@ -79,7 +80,7 @@ export class MenuRouter {
 			// HTTP failures can be ambiguous. Retire the session, never replay an action.
 			this.sessions.delete(session.id);
 			if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) this.sessions.delete(source.id);
-			logger.error({ err: error, sessionId: session.id, action: parsed.action }, 'Menu interaction failed');
+			logger.error({ err: error, sessionId: session.id, action: parsed.action }, MENU_LOG_TEXT.interactionFailed);
 			await this.notice(interaction, MENU_TEXT.failed);
 		} finally {
 			if (session !== source && !session.messageId) this.sessions.delete(session.id);
@@ -297,7 +298,7 @@ export class MenuRouter {
 			if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
 			else await interaction.reply(payload);
 		} catch (error) {
-			logger.warn({ err: error }, 'Could not send menu recovery message');
+			logger.warn({ err: error }, MENU_LOG_TEXT.recoveryFailed);
 		}
 	}
 }

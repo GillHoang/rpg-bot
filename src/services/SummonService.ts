@@ -1,3 +1,4 @@
+import { SUMMON_ERROR_TEXT } from '../text/diagnostics.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -132,7 +133,7 @@ export class SummonService {
 			return { status: 'no-character' };
 		}
 		const [bag] = await this.queries.lockBag(tx, discordId);
-		if (!bag) throw new Error(`run: no users_bag row for ${discordId}`);
+		if (!bag) throw new Error(SUMMON_ERROR_TEXT.missingBag(discordId));
 
 		const funds = this.checkFunds(bag, count, relic);
 		if (funds) return funds;
@@ -150,7 +151,7 @@ export class SummonService {
 		await this.debit(tx, discordId, bag, count, relic, relicField, cost);
 		const owned = await this.deities.ownedDeityIds(tx, discordId);
 		const [character] = await this.queries.lockCharacter(tx, discordId);
-		if (!character) throw new Error(`run: no user_character row for ${discordId}`);
+		if (!character) throw new Error(SUMMON_ERROR_TEXT.missingCharacter(discordId));
 		const [activePreset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
 
 		const { pulls, essenceDelta, pendingActiveDeityId } = await this.grantPlanned(

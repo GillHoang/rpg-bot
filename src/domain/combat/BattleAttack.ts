@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import type { CombatantState } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
@@ -92,7 +93,7 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 				crit ? COMBAT_STRIKE_EMOJIS.crit : (attacker.attackEmoji ?? COMBAT_STRIKE_EMOJIS.bareHand),
 				combatDisplayName(attacker),
 				combatDisplayName(defender),
-				dealt.toLocaleString(),
+				formatNumber(dealt),
 				defender.hp <= 0 ? COMBAT_DEFEATED_SUFFIX(combatDisplayName(defender)) : '',
 			),
 		);

@@ -1,3 +1,4 @@
+import { RUNES_TEXT } from '../../text/catalog/runes.js';
 /**
  * SEED DATA — socket_unlock_cost + essence_bag_def
  * ---------------------------------------------------------------------------
@@ -42,7 +43,7 @@ export const ESSENCE_BAG_DEF_SEED: EssenceBagDefSeed[] = [
 		essenceTier: 'legendary',
 		essenceCost: 15,
 		creduxCost: 20000,
-		runePool: ['Warding Rune', 'Aegis Rune'],
+		runePool: [RUNES_TEXT['10'].name, RUNES_TEXT['11'].name],
 	},
 	{
 		bagKey: 'gb',
@@ -51,13 +52,13 @@ export const ESSENCE_BAG_DEF_SEED: EssenceBagDefSeed[] = [
 		essenceCost: 30,
 		creduxCost: 30000,
 		runePool: [
-			'Vampiric Rune',
-			'Piercing Rune',
-			'Venom Rune',
-			'Blight Rune',
-			'Thorns Rune',
-			'Warding Rune',
-			'Aegis Rune',
+			RUNES_TEXT['5'].name,
+			RUNES_TEXT['6'].name,
+			RUNES_TEXT['7'].name,
+			RUNES_TEXT['8'].name,
+			RUNES_TEXT['9'].name,
+			RUNES_TEXT['10'].name,
+			RUNES_TEXT['11'].name,
 		],
 	},
 	{
@@ -66,6 +67,6 @@ export const ESSENCE_BAG_DEF_SEED: EssenceBagDefSeed[] = [
 		essenceTier: 'supreme',
 		essenceCost: 10,
 		creduxCost: 50000,
-		runePool: ['Aegis Rune', 'Warding Rune'],
+		runePool: [RUNES_TEXT['11'].name, RUNES_TEXT['10'].name],
 	},
 ];

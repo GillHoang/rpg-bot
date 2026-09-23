@@ -41,3 +41,6 @@ export * from './pvp.js';
 export * from './quest.js';
 export * from './ranked.js';
 export * from './test.js';
+
+export * from './format.js';
+export * from './diagnostics.js';

@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { AscensionService } from '../../services/AscensionService.js';
@@ -81,10 +82,7 @@ export class DeityCommand implements ICommand {
 					return;
 				case 'insufficient-resources':
 					await interaction.editReply({
-						content: DEITY_INSUFFICIENT_RESOURCES(
-							result.neededEssence,
-							result.neededCredux.toLocaleString(),
-						),
+						content: DEITY_INSUFFICIENT_RESOURCES(result.neededEssence, formatNumber(result.neededCredux)),
 					});
 					return;
 				case 'ok':

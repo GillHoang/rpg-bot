@@ -1,3 +1,4 @@
+import { LOG_EVENT_TEXT } from '../../text/diagnostics.js';
 import {
 	ComponentType,
 	EmbedBuilder,
@@ -77,7 +78,7 @@ export class InventoryCommand implements ICommand {
 				// Không để lỗi render/update thành unhandled rejection chết process.
 				logger.error(
 					{ err: error, discordId: button.user.id, customId: button.customId },
-					'inventory-page-failed',
+					LOG_EVENT_TEXT.inventoryPageFailed,
 				);
 				await button.reply({ content: GENERIC_ERROR, ephemeral: true }).catch(() => undefined);
 			}

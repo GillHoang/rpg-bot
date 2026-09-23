@@ -1,17 +1,20 @@
-import { PROFILE_EXTRA_TEXT } from '../text/profile.js';
-import { createCanvas } from '@napi-rs/canvas';
-import { CLASSES } from '../config/classes.js';
-import type { CombatClass } from '../domain/entities/PlayerAccount.js';
-import { MAX_COMBAT_LEVEL } from '../config/combatExp.js';
-import { CURRENCY } from '../text/common.js';
+import { formatNumber } from '../text/format.js';
 import {
+	PROFILE_EXTRA_TEXT,
 	PROFILE_CLASS_SEPARATOR,
 	PROFILE_EXP_LABEL,
 	PROFILE_LEVEL_PREFIX,
 	PROFILE_MAX_LEVEL_SUFFIX,
 	PROFILE_STAT_LABELS,
+	PROFILE_CLASS_ICONS,
 } from '../text/profile.js';
-import { ICONS } from '../text/icons.js';
+import { createCanvas } from '@napi-rs/canvas';
+import { CLASSES } from '../config/classes.js';
+import type { CombatClass } from '../domain/entities/PlayerAccount.js';
+import { MAX_COMBAT_LEVEL } from '../config/combatExp.js';
+import { CURRENCY } from '../text/common.js';
+
+import { UNICODE_ICONS } from '../text/icons.js';
 
 export interface ProfileCardData {
 	username: string;
@@ -78,7 +81,7 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	ctx.font = 'bold 26px sans-serif';
 	const maxSuffix = data.level >= MAX_COMBAT_LEVEL ? PROFILE_MAX_LEVEL_SUFFIX : '';
 	ctx.fillText(
-		`${cls.emoji} ${data.combatClass} ${PROFILE_CLASS_SEPARATOR} ${PROFILE_LEVEL_PREFIX}${data.level}${maxSuffix}`,
+		`${PROFILE_CLASS_ICONS[data.combatClass]} ${data.combatClass} ${PROFILE_CLASS_SEPARATOR} ${PROFILE_LEVEL_PREFIX}${data.level}${maxSuffix}`,
 		40,
 		120,
 	);
@@ -96,16 +99,16 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	ctx.fillStyle = '#ffffffaa';
 	ctx.font = '13px sans-serif';
 	ctx.fillText(
-		`${data.exp.toLocaleString()} / ${data.expToNext.toLocaleString()} ${PROFILE_EXP_LABEL}`,
+		`${formatNumber(data.exp)} / ${formatNumber(data.expToNext)} ${PROFILE_EXP_LABEL}`,
 		expBarX,
 		expBarY - 6,
 	);
 
 	// Stat blocks.
 	const stats: Array<[string, string]> = [
-		[PROFILE_STAT_LABELS.hp, data.stats.hp.toLocaleString()],
-		[PROFILE_STAT_LABELS.atk, data.stats.atk.toLocaleString()],
-		[PROFILE_STAT_LABELS.def, data.stats.def.toLocaleString()],
+		[PROFILE_STAT_LABELS.hp, formatNumber(data.stats.hp)],
+		[PROFILE_STAT_LABELS.atk, formatNumber(data.stats.atk)],
+		[PROFILE_STAT_LABELS.def, formatNumber(data.stats.def)],
 		[PROFILE_STAT_LABELS.crit, `${data.stats.crit.toFixed(1)}%`],
 	];
 	const blockW = (WIDTH - 80 - 3 * 20) / 4;
@@ -125,21 +128,26 @@ export function renderProfileCard(data: ProfileCardData): Buffer {
 	// Currency footer.
 	ctx.fillStyle = '#ffffffcc';
 	ctx.font = '20px sans-serif';
-	ctx.fillText(`${ICONS.economy.wallet} ${data.credux.toLocaleString()} ${CURRENCY.credux}`, 40, 340);
-	ctx.fillText(`${ICONS.economy.shards} ${data.beliefShards.toLocaleString()} ${CURRENCY.beliefShards}`, 40, 375);
+	ctx.fillText(`${UNICODE_ICONS.economy.wallet} ${formatNumber(data.credux)} ${CURRENCY.credux}`, 40, 340);
+	ctx.fillText(
+		`${UNICODE_ICONS.economy.shards} ${formatNumber(data.beliefShards)} ${CURRENCY.beliefShards}`,
+		40,
+		375,
+	);
 
 	// M7 line: title · believer level · pvp rating (when provided).
 	const m7Parts: string[] = [];
-	if (data.title) m7Parts.push(`${ICONS.gear.titles} ${data.title}`);
+	if (data.title) m7Parts.push(`${UNICODE_ICONS.gear.titles} ${data.title}`);
 	if (data.believerLevel != null)
 		m7Parts.push(
 			PROFILE_EXTRA_TEXT.believer(
-				ICONS.deity.believer,
+				UNICODE_ICONS.deity.believer,
 				data.believerLevel,
-				(data.believerExp ?? 0).toLocaleString(),
+				formatNumber(data.believerExp ?? 0),
 			),
 		);
-	if (data.pvpRating != null) m7Parts.push(PROFILE_EXTRA_TEXT.rating(ICONS.ranked.profileBadge, data.pvpRating));
+	if (data.pvpRating != null)
+		m7Parts.push(PROFILE_EXTRA_TEXT.rating(UNICODE_ICONS.ranked.profileBadge, data.pvpRating));
 	if (m7Parts.length > 0) {
 		ctx.fillStyle = '#ffffffaa';
 		ctx.font = '16px sans-serif';

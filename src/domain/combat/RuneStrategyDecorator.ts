@@ -1,3 +1,4 @@
+import { formatNumber } from '../../text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import type { RuneEffectKey } from '../../config/runes.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
@@ -58,7 +59,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			const healed = Math.floor(resolved.damageDealt * this.value);
 			if (healed > 0) {
 				ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + healed);
-				ctx.log(COMBAT_RUNE_VAMPIRIC(combatDisplayName(ctx.self), healed.toLocaleString()));
+				ctx.log(COMBAT_RUNE_VAMPIRIC(combatDisplayName(ctx.self), formatNumber(healed)));
 			}
 		} else if (this.effectKey === 'venom') {
 			const value = Math.floor(ctx.enemy.maxHp * this.value);
@@ -69,9 +70,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			} else {
 				ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
 			}
-			ctx.log(
-				COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), value.toLocaleString()),
-			);
+			ctx.log(COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), formatNumber(value)));
 		} else if (this.effectKey === 'blight') {
 			const existing = findDebuff(ctx.enemy, 'blight');
 			if (existing) {
@@ -87,7 +86,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			const reflected = Math.floor(resolved.damageDealt * this.value);
 			if (reflected > 0) {
 				ctx.enemy.hp = Math.max(0, ctx.enemy.hp - reflected);
-				ctx.log(COMBAT_RUNE_THORNS(combatDisplayName(ctx.self), reflected.toLocaleString()));
+				ctx.log(COMBAT_RUNE_THORNS(combatDisplayName(ctx.self), formatNumber(reflected)));
 			}
 		}
 	}

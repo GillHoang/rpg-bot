@@ -1,4 +1,5 @@
-import { MENU_VIEW_TEXT } from '../text/menu.js';
+import { ICONS } from '../text/icons.js';
+import { MENU_VIEW_TEXT, MENU_SECTIONS, MENU_TEXT } from '../text/menu.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -15,7 +16,7 @@ import {
 	escapeMarkdown,
 } from 'discord.js';
 import { HELP_PAGES } from '../text/help.js';
-import { MENU_SECTIONS, MENU_TEXT } from '../text/menu.js';
+
 import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
@@ -97,17 +98,17 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 	const buttons = session.gamePanel?.buttons ?? [];
 	const groups = session.gamePanel?.grouped ? [...new Set(buttons.map((b) => b.group))] : [undefined];
 	const emoji: Partial<Record<MenuAction, string>> = {
-		profile: '👤',
-		help: '📖',
-		search: '🔎',
-		daily: '🎁',
-		hunt: '⚔️',
-		boss: '🐉',
-		quests: '📜',
-		inventory: '🎒',
-		deity: '✨',
-		shop: '🛒',
-		casino: '🎲',
+		profile: ICONS.menu.profile,
+		help: ICONS.menu.help,
+		search: ICONS.menu.search,
+		daily: ICONS.menu.daily,
+		hunt: ICONS.menu.hunt,
+		boss: ICONS.menu.boss,
+		quests: ICONS.menu.quests,
+		inventory: ICONS.menu.inventory,
+		deity: ICONS.menu.deity,
+		shop: ICONS.menu.shop,
+		casino: ICONS.menu.casino,
 	};
 	for (const group of groups) {
 		if (group) {
@@ -145,7 +146,7 @@ export function menuView(session: MenuSession) {
 			new ActionRowBuilder<ButtonBuilder>().addComponents(
 				gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
 				...(!battle.boss
-					? [gameplayButton(session, { action: 'hunt', label: MENU_VIEW_TEXT.replay }, '⚔️')]
+					? [gameplayButton(session, { action: 'hunt', label: MENU_VIEW_TEXT.replay }, ICONS.menu.hunt)]
 					: []),
 			),
 		];

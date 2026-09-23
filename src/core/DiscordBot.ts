@@ -1,3 +1,4 @@
+import { BOT_LOG_TEXT } from '../text/diagnostics.js';
 import { Client, Events, GatewayIntentBits, type Interaction } from 'discord.js';
 import { CommandRegistry } from './CommandRegistry.js';
 import { BotMaintenance } from './BotMaintenance.js';
@@ -34,10 +35,10 @@ export class DiscordBot {
 	}
 
 	private registerEventHandlers(): void {
-		this.client.on(Events.Error, (err) => logger.error({ err }, 'Discord client error'));
-		this.client.on(Events.ShardError, (err, shardId) => logger.error({ err, shardId }, 'Discord shard error'));
+		this.client.on(Events.Error, (err) => logger.error({ err }, BOT_LOG_TEXT.clientError));
+		this.client.on(Events.ShardError, (err, shardId) => logger.error({ err, shardId }, BOT_LOG_TEXT.shardError));
 		this.client.once(Events.ClientReady, (c) => {
-			logger.info(`Logged in as ${c.user.tag}`);
+			logger.info(BOT_LOG_TEXT.loggedIn(c.user.tag));
 			this.maintenance.start();
 		});
 

@@ -1,3 +1,4 @@
+import { formatNumber } from '../text/format.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import { LootGrantService } from './LootGrantService.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
@@ -123,7 +124,7 @@ export class LootService {
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
 			await this.progress.apply(tx, id, 'open_chest', new Date(), count);
 			return (
-				OPEN_RESULT(count, table.label, creux.toLocaleString(), shards) +
+				OPEN_RESULT(count, table.label, formatNumber(creux), shards) +
 				(items.length ? '\n' + items.join('\n') : '') +
 				OPEN_HINT
 			);
@@ -162,7 +163,7 @@ export class LootService {
 				bags
 					.map(
 						(b) =>
-							RUNES_SHOP_OFFER(b.bagKey, b.essenceCost, b.essenceTier, b.creduxCost.toLocaleString()) +
+							RUNES_SHOP_OFFER(b.bagKey, b.essenceCost, b.essenceTier, formatNumber(b.creduxCost)) +
 							'\n' +
 							RUNES_SHOP_POOL((b.runePool as string[]).join(', ')),
 					)
@@ -176,7 +177,7 @@ export class LootService {
 			if (!offer || !Object.hasOwn(ESSENCE_FIELDS, offer.essenceTier)) return RUNES_BAG_NOT_FOUND;
 			const field = ESSENCE_FIELDS[offer.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < offer.creduxCost || bag[field] < offer.essenceCost)
-				return RUNES_COST_NEEDED(offer.essenceCost, offer.essenceTier, offer.creduxCost.toLocaleString());
+				return RUNES_COST_NEEDED(offer.essenceCost, offer.essenceTier, formatNumber(offer.creduxCost));
 			if (
 				!Array.isArray(offer.runePool) ||
 				!offer.runePool.length ||

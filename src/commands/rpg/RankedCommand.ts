@@ -1,9 +1,6 @@
-import { RANKED_RESULT_TEXT } from '../../text/ranked.js';
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import type { ICommand } from '../../core/ICommand.js';
-import { sendBattleLog } from '../../render/BattleLogPager.js';
-import { RankedService, type RankedClaimResult } from '../../services/RankedService.js';
+import { formatNumber } from '../../text/format.js';
 import {
+	RANKED_RESULT_TEXT,
 	RANKED_ALREADY_CLAIMED,
 	RANKED_BUSY,
 	RANKED_CLAIM_DESC,
@@ -23,6 +20,10 @@ import {
 	RANKED_SHIELD_NOTE,
 	RANKED_STATS_DESC,
 } from '../../text/ranked.js';
+import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import type { ICommand } from '../../core/ICommand.js';
+import { sendBattleLog } from '../../render/BattleLogPager.js';
+import { RankedService, type RankedClaimResult } from '../../services/RankedService.js';
 
 export class RankedCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -46,7 +47,7 @@ export class RankedCommand implements ICommand {
 				return RANKED_NO_REWARD_ROW;
 			default:
 				return (
-					RANKED_CLAIM_OK(result.bracket, result.credux.toLocaleString(), result.valor) +
+					RANKED_CLAIM_OK(result.bracket, formatNumber(result.credux), result.valor) +
 					(result.chests.length ? ` · ${result.chests.join(' · ')}` : '')
 				);
 		}

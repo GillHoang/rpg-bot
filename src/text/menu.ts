@@ -1,13 +1,14 @@
+import { ICONS } from './icons.js';
 export const MENU_TEXT = {
 	description: 'Bắt đầu chơi.',
 	home: 'Trang chủ',
-	home_emoji: '<:home:1552201189108748449>',
+	home_emoji: ICONS.menu.home,
 	back: 'Quay lại',
-	back_emoji: '<:back:1552205759381504011>',
+	back_emoji: ICONS.menu.back,
 	refresh: 'Làm mới',
-	refresh_emoji: '<:refesh:1552203539630137416>',
+	refresh_emoji: ICONS.menu.refresh,
 	close: 'Đóng',
-	close_emoji: '<:close:1552206651971473501>',
+	close_emoji: ICONS.menu.close,
 	help: 'Hướng dẫn',
 	search: 'Tìm hướng dẫn',
 	open: 'Mở menu mới',

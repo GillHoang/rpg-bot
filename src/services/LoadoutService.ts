@@ -1,3 +1,4 @@
+import { LOG_EVENT_TEXT } from '../text/diagnostics.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { LoadoutRepository } from '../repositories/LoadoutRepository.js';
@@ -72,7 +73,7 @@ export class LoadoutService {
 				error = await this.equipDeity(tx, id, preset, kind, item);
 			} else return LOADOUT_INVALID_KIND;
 			if (error) return error;
-			logger.info({ user: id, kind, item, preset: target }, 'gear-equipped');
+			logger.info({ user: id, kind, item, preset: target }, LOG_EVENT_TEXT.gearEquipped);
 			return LOADOUT_EQUIPPED(kind, item, target);
 		});
 	}
@@ -121,7 +122,7 @@ export class LoadoutService {
 			await this.queries.updateCharacter(tx, id, {
 				activePresetSlot: slot,
 			});
-			logger.info({ user: id, preset: slot }, 'preset-switched');
+			logger.info({ user: id, preset: slot }, LOG_EVENT_TEXT.presetSwitched);
 			return LOADOUT_SWITCHED(
 				slot,
 				preset.equippedWeaponId ?? LOADOUT_EMPTY,

@@ -1,8 +1,14 @@
-import { COMBAT_DOT_LABELS } from '../../text/combat.js';
+import { formatNumber } from '../../text/format.js';
+import {
+	COMBAT_DOT_LABELS,
+	COMBAT_ATTACK_MISSES_DIZZY,
+	COMBAT_DOT_TICK,
+	COMBAT_TAGS,
+	COMBAT_UNABLE_TO_ACT,
+} from '../../text/combat.js';
 import { rollChance } from '../../utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
-import { COMBAT_ATTACK_MISSES_DIZZY, COMBAT_DOT_TICK, COMBAT_TAGS, COMBAT_UNABLE_TO_ACT } from '../../text/combat.js';
 
 export interface ICombatStatusEffects {
 	removeImmuneDebuffs(side: CombatantState): void;
@@ -59,7 +65,7 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 				COMBAT_DOT_TICK(
 					dotTagOf(debuff.tag),
 					combatDisplayName(side),
-					tick.toLocaleString(),
+					formatNumber(tick),
 					dotLabelOf(debuff.tag),
 				),
 			);

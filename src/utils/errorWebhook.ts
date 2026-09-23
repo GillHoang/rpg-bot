@@ -1,3 +1,4 @@
+import { WEBHOOK_DIAGNOSTICS } from '../text/diagnostics.js';
 import type { WebhookMessageCreateOptions } from 'discord.js';
 
 /** Receives serialized Pino records, so child logger context is included too. */
@@ -14,13 +15,13 @@ export class ErrorWebhook {
 			const record = JSON.parse(line) as Record<string, unknown>;
 			if (Number(record.level) < 50) return;
 			const { level, time, msg, ...context } = record;
-			const message = typeof msg === 'string' ? msg : JSON.stringify(msg ?? 'Unknown error');
+			const message = typeof msg === 'string' ? msg : JSON.stringify(msg ?? WEBHOOK_DIAGNOSTICS.unknownError);
 			const description = this.redact(`${message}\n\n${JSON.stringify(context, null, 2)}`);
 			const payload: WebhookMessageCreateOptions = {
 				allowedMentions: { parse: [] },
 				embeds: [
 					{
-						title: Number(level) >= 60 ? 'Fatal error' : 'Bot error',
+						title: Number(level) >= 60 ? WEBHOOK_DIAGNOSTICS.fatal : WEBHOOK_DIAGNOSTICS.error,
 						color: 0xed4245,
 						description: description.slice(0, 4096),
 						timestamp: new Date(Number(time)).toISOString(),
@@ -31,12 +32,12 @@ export class ErrorWebhook {
 			const task = Promise.resolve()
 				.then(() => this.send(payload))
 				.catch(() => {
-					process.stderr.write('Error webhook delivery failed\n');
+					process.stderr.write(WEBHOOK_DIAGNOSTICS.deliveryFailed);
 				});
 			this.pending.add(task);
 			void task.finally(() => this.pending.delete(task));
 		} catch {
-			process.stderr.write('Could not format error webhook notification\n');
+			process.stderr.write(WEBHOOK_DIAGNOSTICS.formatFailed);
 		}
 	}
 

@@ -1,3 +1,5 @@
+import { LOG_EVENT_TEXT, SOCKET_ERROR_TEXT } from '../text/diagnostics.js';
+
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { SocketStateRepository } from '../repositories/SocketStateRepository.js';
@@ -106,7 +108,10 @@ export class SocketService {
 			else await this.gear.writeOppositeSockets(tx, discordId, gearId, info.kind, next);
 			await this.runes.equip(tx, runeUid, gearId);
 
-			logger.info({ user: discordId, rune: runeUid, gear: gearId, slot: slotNum, lane }, 'rune-socketed');
+			logger.info(
+				{ user: discordId, rune: runeUid, gear: gearId, slot: slotNum, lane },
+				LOG_EVENT_TEXT.runeSocketed,
+			);
 			return { status: 'ok' };
 		});
 	}
@@ -120,7 +125,7 @@ export class SocketService {
 
 			await this.gear.clearRuneFromAnyGear(tx, discordId, rune.socketedInto, runeUid);
 			await this.runes.unequip(tx, runeUid);
-			logger.info({ user: discordId, rune: runeUid, from: rune.socketedInto }, 'rune-unequipped');
+			logger.info({ user: discordId, rune: runeUid, from: rune.socketedInto }, LOG_EVENT_TEXT.runeUnequipped);
 			return { status: 'ok' };
 		});
 	}
@@ -138,7 +143,7 @@ export class SocketService {
 			const next = Math.max(1, info.nativeSockets.length) + 1;
 			const [cost] = await this.queries.findUnlockCost(tx, rows[0].tier, next);
 			if (!cost) return SOCKET_UNLOCK_LIMIT;
-			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier)) throw new Error('Invalid socket essence tier');
+			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier)) throw new Error(SOCKET_ERROR_TEXT.invalidEssenceTier);
 			const field = ESSENCE_FIELDS[cost.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < cost.creduxCost || bag[field] < cost.essenceCost)
 				return SOCKET_UNLOCK_COST_NEEDED(cost.creduxCost, cost.essenceCost, cost.essenceTier);

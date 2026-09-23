@@ -1,3 +1,4 @@
+import { GEAR_ID_ERROR_TEXT } from '../text/diagnostics.js';
 import { randomBytes } from 'node:crypto';
 import type { Executor } from '../db/client.js';
 import { GearIdentityRepository } from '../repositories/GearIdentityRepository.js';
@@ -36,7 +37,7 @@ export class GearIdGenerator {
 			const id = this.createId();
 			if (await this.isFree(id)) return id;
 		}
-		throw new Error('Failed to generate a unique gear id after 10 attempts');
+		throw new Error(GEAR_ID_ERROR_TEXT.exhausted);
 	}
 
 	private async isFree(id: string): Promise<boolean> {

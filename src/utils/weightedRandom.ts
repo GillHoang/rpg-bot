@@ -1,3 +1,4 @@
+import { RANDOM_ERROR_TEXT } from '../text/diagnostics.js';
 import { REWARD_DATA_TEXT } from '../text/common.js';
 // wrand 1.2.0's package entry points at a missing index.js. Import its published
 // self-contained implementation; never patch node_modules or fall back to Math.random.
@@ -9,7 +10,7 @@ export function pick<T>(items: Array<{ original: T; weight: number }>, options: 
 
 /** Probability is a fraction, not a percentage. */
 export function rollChance(probability: number, rng: () => number): boolean {
-	if (!Number.isFinite(probability)) throw new RangeError('Probability must be finite');
+	if (!Number.isFinite(probability)) throw new RangeError(RANDOM_ERROR_TEXT.nonFiniteProbability);
 	const weight = Math.max(0, Math.min(1, probability));
 	return pick(
 		[

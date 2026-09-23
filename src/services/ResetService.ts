@@ -1,3 +1,5 @@
+import { LOG_EVENT_TEXT, RESET_ERROR_TEXT } from '../text/diagnostics.js';
+
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { ResetRepository } from '../repositories/ResetRepository.js';
@@ -36,7 +38,7 @@ export class ResetService {
 	}
 
 	async resetAll(devId: string): Promise<ResetResult> {
-		if (!devId.trim()) throw new Error('Reset requires an administrator ID');
+		if (!devId.trim()) throw new Error(RESET_ERROR_TEXT.missingAdministrator);
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ResetResult> => {
 			await this.queries.lockUsers(tx);
 			const deletedUsers = await this.queries.countUsers(tx);
@@ -45,7 +47,7 @@ export class ResetService {
 			await this.queries.insertAudit(tx, devId, `reset ${deletedUsers} users`);
 			return { status: 'ok', deletedUsers };
 		});
-		if (result.status === 'ok') logger.warn({ devId, deletedUsers: result.deletedUsers }, 'full-reset');
+		if (result.status === 'ok') logger.warn({ devId, deletedUsers: result.deletedUsers }, LOG_EVENT_TEXT.fullReset);
 		return result;
 	}
 }

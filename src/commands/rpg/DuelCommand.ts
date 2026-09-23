@@ -1,3 +1,5 @@
+import { formatNumber } from '../../text/format.js';
+import { DUEL_LOG_TEXT } from '../../text/diagnostics.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -49,7 +51,7 @@ export class DuelCommand implements ICommand {
 		.addIntegerOption((o) =>
 			o
 				.setName(STAKE_OPTION)
-				.setDescription(DUEL_STAKE_OPTION_DESC(DUEL_STAKE_MIN.toLocaleString()))
+				.setDescription(DUEL_STAKE_OPTION_DESC(formatNumber(DUEL_STAKE_MIN)))
 				.setMinValue(0),
 		);
 
@@ -66,7 +68,7 @@ export class DuelCommand implements ICommand {
 				return;
 			case 'invalid-stake':
 				await interaction.reply({
-					content: DUEL_STAKE_TOO_LOW(DUEL_STAKE_MIN.toLocaleString()),
+					content: DUEL_STAKE_TOO_LOW(formatNumber(DUEL_STAKE_MIN)),
 					ephemeral: true,
 				});
 				return;
@@ -84,7 +86,7 @@ export class DuelCommand implements ICommand {
 				return;
 		}
 
-		const wagerLine = created.stake > 0 ? DUEL_WAGER_LINE(created.stake.toLocaleString()) : DUEL_CASUAL_LINE;
+		const wagerLine = created.stake > 0 ? DUEL_WAGER_LINE(formatNumber(created.stake)) : DUEL_CASUAL_LINE;
 		const buttons = new ActionRowBuilder<ButtonBuilder>().addComponents(
 			new ButtonBuilder()
 				.setCustomId(`duel:accept:${created.duelId}`)
@@ -138,7 +140,7 @@ export class DuelCommand implements ICommand {
 				let outcomeLine = DUEL_DRAW;
 				if (!result.draw) {
 					outcomeLine = DUEL_WIN(result.winnerName ?? '');
-					if (result.stake > 0) outcomeLine += DUEL_POT((result.stake * 2).toLocaleString());
+					if (result.stake > 0) outcomeLine += DUEL_POT(formatNumber(result.stake * 2));
 				}
 				await sendBattleLog(
 					interaction,
@@ -166,11 +168,11 @@ export class DuelCommand implements ICommand {
 				.catch(() => undefined);
 		};
 		const recover = async (err: unknown): Promise<void> => {
-			logger.error({ err, duelId: created.duelId }, 'Duel interaction failed');
+			logger.error({ err, duelId: created.duelId }, DUEL_LOG_TEXT.interactionFailed);
 			collector.stop('error');
 			await interaction
 				.editReply({ content: GENERIC_ERROR, components: [] })
-				.catch((replyError: unknown) => logger.warn({ err: replyError }, 'Duel error reply failed'));
+				.catch((replyError: unknown) => logger.warn({ err: replyError }, DUEL_LOG_TEXT.errorReplyFailed));
 		};
 		collector.on('collect', (button) => handleButton(button).catch(recover));
 		collector.on('end', (_collected, reason) => handleEnd(reason).catch(recover));

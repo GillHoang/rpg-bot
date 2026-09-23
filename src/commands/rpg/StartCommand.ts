@@ -1,4 +1,22 @@
-import { START_STATS_TEXT } from '../../text/start.js';
+import { LOG_EVENT_TEXT } from '../../text/diagnostics.js';
+import { formatNumber } from '../../text/format.js';
+import {
+	START_STATS_TEXT,
+	START_AGREE_LABEL,
+	START_ALREADY_DONE,
+	START_BACK_LABEL,
+	START_CLASSES_TITLE,
+	START_CONFIRM_HEADER,
+	START_CONFIRM_LABEL,
+	START_CONFIRM_NOTE,
+	START_CREATE_FAILED,
+	START_DECLINE_LABEL,
+	START_DECLINED,
+	START_DESCRIPTION,
+	START_SEED_MISSING,
+	START_SUCCESS,
+	START_WELCOME,
+} from '../../text/start.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -16,22 +34,6 @@ import { CLASSES, CLASS_NAMES, computeClassStats } from '../../config/classes.js
 import { GRANT_BELIEF_SHARDS, GRANT_SILVER_CHESTS } from '../../config/starter.js';
 import { logger } from '../../utils/logger.js';
 import type { CombatClass } from '../../domain/entities/PlayerAccount.js';
-import {
-	START_AGREE_LABEL,
-	START_ALREADY_DONE,
-	START_BACK_LABEL,
-	START_CLASSES_TITLE,
-	START_CONFIRM_HEADER,
-	START_CONFIRM_LABEL,
-	START_CONFIRM_NOTE,
-	START_CREATE_FAILED,
-	START_DECLINE_LABEL,
-	START_DECLINED,
-	START_DESCRIPTION,
-	START_SEED_MISSING,
-	START_SUCCESS,
-	START_WELCOME,
-} from '../../text/start.js';
 
 /**
  * Onboarding một chạm thay cho cặp /register + /create: welcome (nút
@@ -70,9 +72,9 @@ function classDetail(combatClass: CombatClass): string {
 	const stats = computeClassStats(combatClass, 1);
 	return (
 		START_STATS_TEXT.baseStats(
-			stats.hp.toLocaleString(),
-			stats.atk.toLocaleString(),
-			stats.def.toLocaleString(),
+			formatNumber(stats.hp),
+			formatNumber(stats.atk),
+			formatNumber(stats.def),
 			stats.crit,
 		) + `_${cls.flavor}_\n${cls.passiveLine}`
 	);
@@ -142,7 +144,7 @@ export class StartCommand implements ICommand {
 				await this.handleButton(button, collector, flow);
 			} catch (error) {
 				// Lỗi ngoài luồng confirm (welcome/class/back) — không để unhandled rejection.
-				logger.error({ err: error, discordId: button.user.id }, 'start-button-failed');
+				logger.error({ err: error, discordId: button.user.id }, LOG_EVENT_TEXT.startButtonFailed);
 			} finally {
 				flow.busy = false;
 			}
@@ -208,7 +210,7 @@ export class StartCommand implements ICommand {
 					cls.emoji,
 					chosen,
 					cls.passiveName,
-					GRANT_BELIEF_SHARDS.toLocaleString(),
+					formatNumber(GRANT_BELIEF_SHARDS),
 					GRANT_SILVER_CHESTS,
 					result.weaponId,
 					result.armorId,
@@ -216,7 +218,7 @@ export class StartCommand implements ICommand {
 			);
 		} catch (error) {
 			// DB lỗi tạm thời — giữ nút Xác nhận, người chơi bấm lại là thử lại.
-			logger.error({ err: error, discordId: button.user.id }, 'start-confirm-failed');
+			logger.error({ err: error, discordId: button.user.id }, LOG_EVENT_TEXT.startConfirmFailed);
 			await interactionSafeEdit(button, START_CREATE_FAILED, flow.ended ? [] : confirmView(chosen).components);
 		}
 	}

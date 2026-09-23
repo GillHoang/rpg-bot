@@ -1,3 +1,4 @@
+import { ACCOUNT_ERROR_TEXT } from '../../text/diagnostics.js';
 export type CombatClass = 'Swordsman' | 'Fighter' | 'Mage' | 'Knight' | 'Archer';
 
 /**
@@ -23,14 +24,14 @@ export class PlayerAccount {
 
 	spend(amount: number): void {
 		if (!this.canAfford(amount)) {
-			throw new Error(`Insufficient credux: has ${this.credux}, needs ${amount}`);
+			throw new Error(ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount));
 		}
 		this.credux -= amount;
 	}
 
 	earn(amount: number): void {
 		if (!Number.isInteger(amount) || amount <= 0) {
-			throw new Error(`earn: amount must be a positive integer, got ${amount}`);
+			throw new Error(ACCOUNT_ERROR_TEXT.invalidEarning(amount));
 		}
 		this.credux += amount;
 	}

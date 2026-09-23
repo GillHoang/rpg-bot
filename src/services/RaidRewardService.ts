@@ -1,3 +1,4 @@
+import { RAID_REWARD_ERROR_TEXT } from '../text/diagnostics.js';
 import type { Executor } from '../db/client.js';
 import { RaidRewardStore, type RaidRewardBag } from '../repositories/RaidRewardStore.js';
 import { applyCombatExp } from '../config/combatExp.js';
@@ -45,8 +46,8 @@ export class RaidRewardService {
 	async grant(executor: Executor, discordId: string, grant: RaidRewardGrant): Promise<RaidRewardResult> {
 		const lockedBag = await this.store.lockBag(executor, discordId);
 		const character = await this.store.lockCharacter(executor, discordId);
-		if (!character) throw new Error(`grant: no user_character row for ${discordId}`);
-		if (!lockedBag) throw new Error(`grant: no users_bag row for ${discordId}`);
+		if (!character) throw new Error(RAID_REWARD_ERROR_TEXT.missingCharacter(discordId));
+		if (!lockedBag) throw new Error(RAID_REWARD_ERROR_TEXT.missingBag(discordId));
 		const bag = lockedBag;
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
 

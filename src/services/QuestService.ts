@@ -1,4 +1,25 @@
-import { QUEST_FLOW_TEXT } from '../text/quest.js';
+import { formatNumber } from '../text/format.js';
+import {
+	QUEST_PROGRESS_LINE,
+	QUEST_FLOW_TEXT,
+	DAILY_QUEST_LABELS,
+	QUEST_BONUS_SHARDS,
+	QUEST_BONUS_VALOR,
+	QUEST_CLAIM_ALREADY,
+	QUEST_CLAIM_NOT_READY,
+	QUEST_CLAIM_OK,
+	QUEST_DAILY_ALL_DONE,
+	QUEST_DAILY_HEADER,
+	QUEST_GRAND_CLAIMED,
+	QUEST_GRAND_READY,
+	QUEST_REFRESH_DONE,
+	QUEST_REFRESH_LIMIT,
+	QUEST_REGISTER_FIRST,
+	QUEST_WEEKLY_HEADER,
+	WEEKLY_QUEST_LABELS,
+} from '../text/quest.js';
+import { QUEST_ERROR_TEXT } from '../text/diagnostics.js';
+
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { QuestRepository } from '../repositories/QuestRepository.js';
@@ -21,23 +42,7 @@ import { createRng, createSecureSeed } from '../domain/combat/Rng.js';
 import { DailyCycle } from '../utils/dailyCycle.js';
 import { weekWindowAt } from '../config/ranked.js';
 import { ReputationService } from './ReputationService.js';
-import {
-	DAILY_QUEST_LABELS,
-	QUEST_BONUS_SHARDS,
-	QUEST_BONUS_VALOR,
-	QUEST_CLAIM_ALREADY,
-	QUEST_CLAIM_NOT_READY,
-	QUEST_CLAIM_OK,
-	QUEST_DAILY_ALL_DONE,
-	QUEST_DAILY_HEADER,
-	QUEST_GRAND_CLAIMED,
-	QUEST_GRAND_READY,
-	QUEST_REFRESH_DONE,
-	QUEST_REFRESH_LIMIT,
-	QUEST_REGISTER_FIRST,
-	QUEST_WEEKLY_HEADER,
-	WEEKLY_QUEST_LABELS,
-} from '../text/quest.js';
+
 import { ICONS } from '../text/icons.js';
 
 export type QuestRow = typeof dailyQuests.$inferSelect;
@@ -114,8 +119,7 @@ export class QuestService {
 		now = new Date(),
 		amount = 1,
 	): Promise<void> {
-		if (!Number.isSafeInteger(amount) || amount < 1)
-			throw new RangeError('Progress amount must be a positive integer');
+		if (!Number.isSafeInteger(amount) || amount < 1) throw new RangeError(QUEST_ERROR_TEXT.invalidProgress);
 		if (!(await this.lockPlayer(tx, discordId))) return;
 		const day = DailyCycle.keyAt(now);
 		const { key: week } = weekWindowAt(now);
@@ -231,7 +235,7 @@ export class QuestService {
 				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
 			});
 			await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
-			return QUEST_CLAIM_OK(WEEKLY_GRAND.credux.toLocaleString(), WEEKLY_GRAND.diamondChest);
+			return QUEST_CLAIM_OK(formatNumber(WEEKLY_GRAND.credux), WEEKLY_GRAND.diamondChest);
 		});
 	}
 
@@ -245,7 +249,7 @@ export class QuestService {
 			? ICONS.status.completed
 			: `${Math.min(quest.currentCount, quest.targetCount)}/${quest.targetCount}`;
 		const bonusLabel = bonusKind === 'shards' ? QUEST_BONUS_SHARDS(bonus) : QUEST_BONUS_VALOR(bonus);
-		return `${mark} — ${label} (+${quest.rewardCredux.toLocaleString()} Credux, +${bonusLabel})`;
+		return QUEST_PROGRESS_LINE(mark, label, formatNumber(quest.rewardCredux), bonusLabel);
 	}
 
 	private async ensureDailyQuests(tx: Executor, discordId: string, day: string): Promise<QuestRow[]> {

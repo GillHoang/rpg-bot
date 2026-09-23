@@ -2,7 +2,7 @@ import type { CombatClass } from '../domain/entities/PlayerAccount.js';
 
 /**
  * Text lore/passive của từng lớp nhân vật (tách từ config/classes.ts).
- * Phần số liệu (base/scaling/emoji) vẫn nằm ở config/classes.ts.
+ * Số liệu base/scaling nằm ở config/classes.ts; emoji lấy từ text/icons.ts.
  */
 export interface ClassText {
 	passiveName: string;

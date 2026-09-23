@@ -1,3 +1,4 @@
+import { CLEAR_COMMANDS_LOG_TEXT } from '../text/diagnostics.js';
 import { REST, Routes } from 'discord.js';
 import { env } from '../config/env.js';
 import { logger, flushErrorWebhook } from '../utils/logger.js';
@@ -9,14 +10,14 @@ try {
 	const rest = new REST().setToken(env.DISCORD_TOKEN);
 	if (scope.global) {
 		await rest.put(Routes.applicationCommands(env.DISCORD_CLIENT_ID), { body: [] });
-		logger.info('Global slash commands cleared.');
+		logger.info(CLEAR_COMMANDS_LOG_TEXT.globalCleared);
 	}
 	if (scope.guildId) {
 		await rest.put(Routes.applicationGuildCommands(env.DISCORD_CLIENT_ID, scope.guildId), { body: [] });
-		logger.info({ guildId: scope.guildId }, 'Guild slash commands cleared.');
+		logger.info({ guildId: scope.guildId }, CLEAR_COMMANDS_LOG_TEXT.guildCleared);
 	}
 } catch (error) {
-	logger.error({ err: error }, 'Failed to clear slash commands');
+	logger.error({ err: error }, CLEAR_COMMANDS_LOG_TEXT.failed);
 	await flushErrorWebhook();
 	process.exit(1);
 }

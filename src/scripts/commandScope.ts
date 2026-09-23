@@ -1,3 +1,4 @@
+import { COMMAND_SCOPE_ERROR_TEXT } from '../text/diagnostics.js';
 export interface CommandScope {
 	global: boolean;
 	guildId: string | null;
@@ -18,25 +19,26 @@ function readScopeFlags(args: string[], allowAll: boolean) {
 		} else if (arg === '--all' && allowAll && !all) {
 			all = true;
 		} else {
-			throw new Error(`Unknown or repeated argument: ${arg}`);
+			throw new Error(COMMAND_SCOPE_ERROR_TEXT.unknownArgument(arg));
 		}
 	}
 	return { guildId, global, all };
 }
 
 function readGuildId(value: string | undefined, previous: string | undefined): string {
-	if (previous !== undefined) throw new Error('Specify --guild only once.');
-	if (!value || !/^\d+$/.test(value)) throw new Error('--guild requires a numeric guild ID.');
+	if (previous !== undefined) throw new Error(COMMAND_SCOPE_ERROR_TEXT.repeatedGuild);
+	if (!value || !/^\d+$/.test(value)) throw new Error(COMMAND_SCOPE_ERROR_TEXT.guildRequired);
 	return value;
 }
 
 /** Parse before making any Discord API request. Explicit flags override the environment. */
 export function parseCommandScope(args: string[], defaultGuildId?: string, allowAll = false): CommandScope {
 	const { guildId, global, all } = readScopeFlags(args, allowAll);
-	if (global && (guildId !== undefined || all)) throw new Error('--global cannot be combined with --guild or --all.');
+	if (global && (guildId !== undefined || all)) throw new Error(COMMAND_SCOPE_ERROR_TEXT.incompatibleGlobal);
 	if (global) return { global: true, guildId: null };
 	const resolvedGuild = guildId ?? defaultGuildId;
-	if (resolvedGuild !== undefined && !/^\d+$/.test(resolvedGuild)) throw new Error('Invalid default guild ID.');
-	if (all && !resolvedGuild) throw new Error('--all requires --guild <id> or DEPLOY_GUILD_ID.');
+	if (resolvedGuild !== undefined && !/^\d+$/.test(resolvedGuild))
+		throw new Error(COMMAND_SCOPE_ERROR_TEXT.invalidDefaultGuild);
+	if (all && !resolvedGuild) throw new Error(COMMAND_SCOPE_ERROR_TEXT.allRequiresGuild);
 	return { global: all || resolvedGuild === undefined, guildId: resolvedGuild ?? null };
 }

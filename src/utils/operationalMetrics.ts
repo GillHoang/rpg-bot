@@ -1,3 +1,4 @@
+import { LOG_EVENT_TEXT } from '../text/diagnostics.js';
 import { logger } from './logger.js';
 export type FailureKind = 'transaction' | 'deadlock' | 'serialization' | 'observer' | 'missing_atomic_progress';
 const failures: Record<FailureKind, number> = {
@@ -10,7 +11,7 @@ const failures: Record<FailureKind, number> = {
 /** Bounded in-process counters; structured logs can be aggregated across restarts. */
 export function recordFailure(kind: FailureKind): void {
 	failures[kind]++;
-	logger.warn({ metric: 'gameplay_failure_total', kind, count: failures[kind] }, 'gameplay-failure');
+	logger.warn({ metric: 'gameplay_failure_total', kind, count: failures[kind] }, LOG_EVENT_TEXT.gameplayFailure);
 }
 export function failureCounts(): Readonly<Record<FailureKind, number>> {
 	return { ...failures };

@@ -1,3 +1,4 @@
+import { ASCENSION_ERROR_TEXT } from '../text/diagnostics.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
 import { AscensionRepository } from '../repositories/AscensionRepository.js';
@@ -63,7 +64,7 @@ export class AscensionService {
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(`addSigil: no users_bag row for ${discordId}`);
+			if (!bag) throw new Error(ASCENSION_ERROR_TEXT.sigilMissingBag(discordId));
 			const have = bag[field];
 			if (have < next.essence) return { status: 'insufficient-essence', needed: next.essence, have };
 
@@ -97,7 +98,7 @@ export class AscensionService {
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(`ascend: no users_bag row for ${discordId}`);
+			if (!bag) throw new Error(ASCENSION_ERROR_TEXT.ascendMissingBag(discordId));
 			const essenceHave = bag[field];
 			if (essenceHave < cost.essence || bag.credux < cost.credux) {
 				return { status: 'insufficient-resources', neededEssence: cost.essence, neededCredux: cost.credux };

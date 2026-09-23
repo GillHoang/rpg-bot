@@ -1,4 +1,13 @@
-import { CASINO_SESSION_TEXT } from '../text/casino.js';
+import { formatNumber } from '../text/format.js';
+import {
+	CASINO_SESSION_TEXT,
+	CASINO_SESSION_BAD_BET,
+	CASINO_SESSION_BUSY,
+	CASINO_SESSION_INSUFFICIENT,
+	CASINO_SESSION_NO_REGISTER,
+	CASINO_SESSION_NOT_FOUND,
+	CASINO_SETTLE_LINE,
+} from '../text/casino.js';
 import { GameplayProgressCoordinator } from './gameplayProgress.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -14,14 +23,6 @@ import {
 	type StoredGame,
 } from '../domain/casino/InteractiveGame.js';
 import { MAX_BET } from '../config/casinoPayouts.js';
-import {
-	CASINO_SESSION_BAD_BET,
-	CASINO_SESSION_BUSY,
-	CASINO_SESSION_INSUFFICIENT,
-	CASINO_SESSION_NO_REGISTER,
-	CASINO_SESSION_NOT_FOUND,
-	CASINO_SETTLE_LINE,
-} from '../text/casino.js';
 
 export type SessionView =
 	| { status: 'ok'; sessionId: string; game: InteractiveGame; done: boolean; text: string; revision: number }
@@ -165,7 +166,7 @@ export class CasinoSessionService {
 			game,
 			done: true,
 			revision: stored.actions.length,
-			text: CASINO_SETTLE_LINE(view.text, view.result, view.payout.toLocaleString(), after.toLocaleString()),
+			text: CASINO_SETTLE_LINE(view.text, view.result, formatNumber(view.payout), formatNumber(after)),
 		};
 	}
 	async recoverExpired(): Promise<void> {

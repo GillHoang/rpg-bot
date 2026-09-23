@@ -1,4 +1,5 @@
-import { LOOT_SEED_TEXT } from '../text/loot.js';
+import { LOOT_GEAR_RECEIVED, LOOT_SEED_TEXT } from '../text/loot.js';
+
 import { randomUUID } from 'node:crypto';
 import type { Executor } from '../db/client.js';
 import { choose, GEAR_STATS } from '../config/chestLoot.js';
@@ -20,7 +21,7 @@ export class LootGrantService {
 		const rune = choose(pool, rng);
 		const runeUid = `r_${randomUUID()}`;
 		await this.repo.insertRune(tx, { discordId: id, runeUid, runeId: rune.runeId });
-		return `${rune.name} (${rune.tier}) · ID: ${runeUid}`;
+		return LOOT_GEAR_RECEIVED(rune.name, rune.tier, runeUid);
 	}
 
 	async gear(tx: Executor, id: string, tier: keyof typeof GEAR_STATS, rng: () => number) {
@@ -40,7 +41,7 @@ export class LootGrantService {
 				nativeSockets: [null],
 				oppositeSockets: [null],
 			});
-			return `${row.name} (${tier}) · ID: ${uid}`;
+			return LOOT_GEAR_RECEIVED(row.name, tier, uid);
 		}
 		const row = choose(await this.repo.findArmorPool(tx, tier), rng);
 		const hp = randInt(rng, stats.hp),
@@ -56,6 +57,6 @@ export class LootGrantService {
 			nativeSockets: [null],
 			oppositeSockets: [null],
 		});
-		return `${row.name} (${tier}) · ID: ${uid}`;
+		return LOOT_GEAR_RECEIVED(row.name, tier, uid);
 	}
 }

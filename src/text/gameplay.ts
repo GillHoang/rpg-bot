@@ -69,11 +69,12 @@ export const GAMEPLAY_TEXT = {
 		`> ${ICONS.economy.wallet} **${credux}** xu · ${ICONS.economy.shards} **${shards}** kim cương\n`,
 	gearRow: (name: string | number, enhancement: string | number): string => `**${name}** · +${enhancement}`,
 	unequipped: 'Chưa trang bị',
-	deityRow: (name: string | number, sigils: string | number): string => `✦ **${name}** · ${sigils} Sigil`,
+	deityRow: (name: string | number, sigils: string | number): string =>
+		`${ICONS.deity.companion} **${name}** · ${sigils} Sigil`,
 	noDeities: 'Chưa có thần đồng hành',
 	profile: 'Nhân vật',
 	equipmentSection: (weapon: string | number, armor: string | number): string =>
-		`\n**Đang sử dụng**\n⚔️ Vũ khí: ${weapon}\n🛡️ Giáp: ${armor}\n`,
+		`\n**Đang sử dụng**\n${ICONS.gear.weapon} Vũ khí: ${weapon}\n${ICONS.gear.armor} Giáp: ${armor}\n`,
 	deitiesSection: (deities: string | number): string => `\n**Thần đồng hành**\n${deities}\n`,
 	combatStats: (hp: string | number, atk: string | number, def: string | number): string =>
 		`\nHP ${hp} · ATK ${atk} · DEF ${def}`,

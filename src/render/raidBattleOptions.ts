@@ -1,7 +1,6 @@
-import { RAID_FOOTER_TEXT } from '../text/raid.js';
-import type { RaidResult } from '../services/RaidService.js';
-import type { BattleLogPagerOptions } from './BattleLogPager.js';
+import { formatNumber } from '../text/format.js';
 import {
+	RAID_FOOTER_TEXT,
 	RAID_DRAW,
 	RAID_LOSE,
 	RAID_REWARD_CREDUX,
@@ -10,6 +9,9 @@ import {
 	RAID_REWARD_SHARDS,
 	RAID_WIN,
 } from '../text/raid.js';
+import type { RaidResult } from '../services/RaidService.js';
+import type { BattleLogPagerOptions } from './BattleLogPager.js';
+
 import { ICONS } from '../text/icons.js';
 
 export function raidBattleOptions(
@@ -24,8 +26,8 @@ export function raidBattleOptions(
 
 	const headerLines = [
 		outcomeLine,
-		RAID_REWARD_EXP(expGained.toLocaleString()),
-		credux > 0 ? RAID_REWARD_CREDUX(credux.toLocaleString()) : null,
+		RAID_REWARD_EXP(formatNumber(expGained)),
+		credux > 0 ? RAID_REWARD_CREDUX(formatNumber(credux)) : null,
 		shards > 0 ? RAID_REWARD_SHARDS(shards) : null,
 		gotChest ? `${ICONS.reward.droppedChest} +1 ${result.chestName}` : null,
 		result.gearDrop,

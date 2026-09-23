@@ -1,3 +1,4 @@
+import { SCHEDULER_LOG_TEXT } from '../text/diagnostics.js';
 import { MaintenanceRepository } from '../repositories/MaintenanceRepository.js';
 import { DuelService } from '../services/DuelService.js';
 import { logger } from '../utils/logger.js';
@@ -34,10 +35,10 @@ export class Scheduler {
 	private async sweep(): Promise<void> {
 		try {
 			const expired = await this.duels.expireStale();
-			if (expired > 0) logger.info({ expired }, 'Expired pending duels swept');
+			if (expired > 0) logger.info({ expired }, SCHEDULER_LOG_TEXT.duelsSwept);
 			await this.maintenance.clearExpiredRankedLocks(new Date());
 		} catch (error) {
-			logger.error({ error }, 'Scheduler sweep failed');
+			logger.error({ error }, SCHEDULER_LOG_TEXT.sweepFailed);
 		}
 	}
 }

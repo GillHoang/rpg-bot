@@ -1,3 +1,4 @@
+import { DEPLOY_COMMANDS_LOG_TEXT } from '../text/diagnostics.js';
 import { REST, Routes } from 'discord.js';
 import { CommandRegistry } from '../core/CommandRegistry.js';
 import { registerAllCommands } from '../core/registerAllCommands.js';
@@ -31,13 +32,13 @@ try {
 
 	if (guildId) {
 		await rest.put(Routes.applicationGuildCommands(env.DISCORD_CLIENT_ID, guildId), { body });
-		logger.info(`Deployed ${body.length} command(s) to guild ${guildId}.`);
+		logger.info(DEPLOY_COMMANDS_LOG_TEXT.guildDeployed(body.length, guildId));
 	} else {
 		await rest.put(Routes.applicationCommands(env.DISCORD_CLIENT_ID), { body });
-		logger.info(`Deployed ${body.length} global slash command(s).`);
+		logger.info(DEPLOY_COMMANDS_LOG_TEXT.globalDeployed(body.length));
 	}
 } catch (error) {
-	logger.error({ err: error }, 'Failed to deploy commands');
+	logger.error({ err: error }, DEPLOY_COMMANDS_LOG_TEXT.failed);
 	await flushErrorWebhook();
 	process.exit(1);
 }

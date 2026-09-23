@@ -1,3 +1,5 @@
+import { LOG_EVENT_TEXT, START_ERROR_TEXT } from '../text/diagnostics.js';
+
 import type { Executor } from '../db/client.js';
 import type { PersistenceContext } from '../application/ports/PersistenceContext.js';
 import { defaultPersistence } from '../infrastructure/persistence/defaultPersistence.js';
@@ -120,13 +122,13 @@ export class StartService {
 			await this.cosmetics.grantBaseInTx(tx, discordId);
 
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(`start: no users_bag row for ${discordId}`);
+			if (!bag) throw new Error(START_ERROR_TEXT.missingBag(discordId));
 			await this.queries.updateStarterBalances(tx, discordId, {
 				beliefShards: bag.beliefShards + GRANT_BELIEF_SHARDS,
 				silverChest: bag.silverChest + GRANT_SILVER_CHESTS,
 			});
 
-			logger.info({ user: discordId, username, combatClass, weaponId, armorId }, 'onboarding-start');
+			logger.info({ user: discordId, username, combatClass, weaponId, armorId }, LOG_EVENT_TEXT.onboardingStart);
 			return { status: 'ok', weaponId, armorId };
 		});
 	}

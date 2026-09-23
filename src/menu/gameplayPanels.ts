@@ -1,3 +1,5 @@
+import { formatNumber } from '../text/format.js';
+import { ICONS } from '../text/icons.js';
 import { GAMEPLAY_TEXT } from '../text/gameplay.js';
 import { enhancementPlus } from '../utils/enhancementDisplay.js';
 import { escapeMarkdown } from 'discord.js';
@@ -14,7 +16,7 @@ import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { MenuAction } from './menuIds.js';
 
-const n = (value: number) => Number(value).toLocaleString('en-US', { maximumFractionDigits: 3 });
+const n = (value: number) => formatNumber(Number(value));
 const button = (action: MenuAction, label: string, disabled = false): GamePanel['buttons'][number] => ({
 	action,
 	label,
@@ -72,7 +74,7 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 					'rewardValor' in row
 						? GAMEPLAY_TEXT.valorReward(row.rewardValor)
 						: GAMEPLAY_TEXT.shardReward(row.rewardBeliefShards);
-				const progress = row.completed ? '✅' : `${row.currentCount}/${row.targetCount}`;
+				const progress = row.completed ? ICONS.status.completed : `${row.currentCount}/${row.targetCount}`;
 				return GAMEPLAY_TEXT.questRow(progress, label, n(row.rewardCredux), bonus);
 			})
 			.join('\n');

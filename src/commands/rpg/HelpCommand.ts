@@ -1,4 +1,16 @@
-import { HELP_FLOW_TEXT } from '../../text/help.js';
+import { LOG_EVENT_TEXT } from '../../text/diagnostics.js';
+import {
+	HELP_FLOW_TEXT,
+	HELP_BETA_NOTICE,
+	HELP_DESCRIPTION,
+	HELP_FOOTER,
+	HELP_NEXT_LABEL,
+	HELP_PAGE_INDICATOR,
+	HELP_PAGES,
+	HELP_PAGER_TTL_MS,
+	HELP_PREV_LABEL,
+	HELP_TITLE,
+} from '../../text/help.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -12,17 +24,6 @@ import {
 } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { logger } from '../../utils/logger.js';
-import {
-	HELP_BETA_NOTICE,
-	HELP_DESCRIPTION,
-	HELP_FOOTER,
-	HELP_NEXT_LABEL,
-	HELP_PAGE_INDICATOR,
-	HELP_PAGES,
-	HELP_PAGER_TTL_MS,
-	HELP_PREV_LABEL,
-	HELP_TITLE,
-} from '../../text/help.js';
 
 const prevCustomId = (page: number): string => `help:prev:${page}`;
 const nextCustomId = (page: number): string => `help:next:${page}`;
@@ -86,7 +87,7 @@ export class HelpCommand implements ICommand {
 				const page = Math.min(Math.max(Number(pageRaw) + (action === 'next' ? 1 : -1), 1), total);
 				await button.update({ embeds: [helpEmbed(page)], components: [pagerRow(page, total)] });
 			} catch (error) {
-				logger.error({ err: error, discordId: button.user.id }, 'help-page-failed');
+				logger.error({ err: error, discordId: button.user.id }, LOG_EVENT_TEXT.helpPageFailed);
 				await button.reply({ content: HELP_FLOW_TEXT.failed, ephemeral: true }).catch(() => undefined);
 			}
 		});

@@ -59,3 +59,6 @@ export const QUEST_CLAIM_OK = (creux: string, diamonds: number): string =>
 export const QUEST_FLOW_TEXT = {
 	dayChanged: 'Đã sang ngày mới. Hãy xem lại nhiệm vụ trước khi đổi.',
 };
+
+export const QUEST_PROGRESS_LINE = (mark: string, label: string, credux: string, bonus: string): string =>
+	`${mark} — ${label} (+${credux} Credux, +${bonus})`;

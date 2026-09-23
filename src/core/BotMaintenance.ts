@@ -1,3 +1,4 @@
+import { MAINTENANCE_LOG_TEXT } from '../text/diagnostics.js';
 import { CasinoSessionService } from '../services/CasinoSessionService.js';
 import { Scheduler } from './Scheduler.js';
 import { logger } from '../utils/logger.js';
@@ -39,7 +40,7 @@ export class BotMaintenance {
 		try {
 			await this.sessions.recoverExpired();
 		} catch (error) {
-			logger.error({ error }, 'Casino expiry recovery failed');
+			logger.error({ error }, MAINTENANCE_LOG_TEXT.casinoRecoveryFailed);
 		} finally {
 			this.recovering = false;
 		}
