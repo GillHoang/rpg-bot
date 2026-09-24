@@ -2,7 +2,7 @@ import { RUNES_TEXT } from '../../../shared/ui/text/catalog/runes.js';
 /**
  * SEED DATA — rune_roster
  * ---------------------------------------------------------------------------
- * Text hiển thị: src/text/catalog/runes.ts; chạy pnpm db:seed sau khi sửa.
+ * Text hiển thị: src/shared/ui/text/catalog/runes.ts; chạy pnpm db:seed sau khi sửa.
  *
  * lane: 'native' (khớp socket gốc của gear) | 'opposite' (socket chéo)
  * effectKey hợp lệ (config/runes.ts):

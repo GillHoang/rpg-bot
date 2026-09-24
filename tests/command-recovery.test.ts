@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { CommandRegistry } from '../src/app/CommandRegistry.js';
 
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
 function fixture(deferred = false, replied = false) {
 	const value = {

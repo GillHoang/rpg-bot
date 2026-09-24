@@ -3,12 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
 
 const service = vi.hoisted(() => ({ start: vi.fn() }));
-vi.mock('../src/services/StartService.js', () => ({
+vi.mock('../src/modules/identity/application/StartService.js', () => ({
 	StartService: class {
 		start = service.start;
 	},
 }));
-vi.mock('../src/utils/logger.js', () => ({ logger: { error: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { error: vi.fn() } }));
 import { StartCommand } from '../src/modules/identity/presentation/StartCommand.js';
 
 function fixture(id: string) {

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MessageFlags, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 
-vi.mock('../src/utils/logger.js', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
 import { MenuRouter } from '../src/modules/menu/MenuRouter.js';
 import { MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/modules/menu/menuIds.js';

@@ -89,7 +89,7 @@ export interface QuestDependencies {
  * cron, quest xuất hiện đúng lúc người chơi chạm vào hệ thống. Progress đến
  * qua coordinator trong transaction hành động (`progressInTx`), hoàn thành tự cộng thưởng trong cùng giao dịch.
  * Đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand claim được.
- * Toàn bộ wording nằm ở src/text/quest.ts.
+ * Toàn bộ wording nằm ở src/shared/ui/text/quest.ts.
  */
 
 export class QuestService {

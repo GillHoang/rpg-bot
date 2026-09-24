@@ -5,7 +5,7 @@ import { SEED_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
  *   npm run db:seed
  *
  * Chạy SAU `npm run db:migrate`. Mọi string/text dữ liệu nằm ở
- * `src/text/catalog/*.ts` — sửa text ở đó rồi chạy lại script này.
+ * `src/shared/ui/text/catalog/*.ts` — sửa text ở đó rồi chạy lại script này.
  *
  * Chế độ upsert theo khóa chính (`onConflictDoUpdate`): seed có thể chạy
  * lại bao nhiêu lần cũng không nhân bản row; row người chơi tạo sau đó

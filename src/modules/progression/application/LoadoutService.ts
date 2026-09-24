@@ -37,7 +37,7 @@ export interface LoadoutDependencies {
 
 /**
  * Facade cho /equip và /preset switch. Deity nhận slot 1/2/3 (kind:
- * deity|deity2|deity3) — pantheon M7. Wording nằm ở src/text/loadout.ts.
+ * deity|deity2|deity3) — pantheon M7. Wording nằm ở src/shared/ui/text/loadout.ts.
  */
 
 export class LoadoutService {

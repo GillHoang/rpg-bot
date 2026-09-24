@@ -57,7 +57,7 @@ export interface CosmeticDependencies {
  * equipped_skins / user_character.equipped_title_id. Cosmetic tier gate theo
  * believer level (config/reputation.ts). Grant helpers dùng được trong tx —
  * Duel/Ranked/Raid/PvpShop gọi trực tiếp, command dùng facade ngoài tx.
- * Wording nằm ở src/text/cosmetic.ts.
+ * Wording nằm ở src/shared/ui/text/cosmetic.ts.
  */
 
 export class CosmeticService {

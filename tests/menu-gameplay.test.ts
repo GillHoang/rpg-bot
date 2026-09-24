@@ -7,7 +7,7 @@ vi.mock('../src/db/client.js', async () => {
 	const { createTestDatabase } = await import('./helpers/database.js');
 	return createTestDatabase();
 });
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
 import { MenuGameplayService } from '../src/modules/menu/MenuGameplayService.js';

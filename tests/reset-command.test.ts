@@ -3,11 +3,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
 
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 const owners = vi.hoisted(() => ({ isOwner: vi.fn(() => true) }));
-vi.mock('../src/core/owners.js', () => ({ isOwner: owners.isOwner }));
+vi.mock('../src/app/owners.js', () => ({ isOwner: owners.isOwner }));
 const reset = vi.hoisted(() => ({ countAll: vi.fn(), resetAll: vi.fn(), audit: vi.fn() }));
-vi.mock('../src/services/ResetService.js', () => ({
+vi.mock('../src/modules/system/application/ResetService.js', () => ({
 	ResetService: class {
 		countAll = reset.countAll;
 		resetAll = reset.resetAll;

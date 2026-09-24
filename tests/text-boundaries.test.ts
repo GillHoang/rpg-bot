@@ -15,7 +15,7 @@ describe('text and emoji boundaries', () => {
 		"const icon = '🇻🇳';",
 		"const icon = '1️⃣';",
 	])('rejects emoji literals and decoded escape sequences: %s', (source) => {
-		expect(findTextViolations(source, 'src/text/newFeature.ts').join('\n')).toContain('Move emoji');
+		expect(findTextViolations(source, 'src/shared/ui/text/newFeature.ts').join('\n')).toContain('Move emoji');
 	});
 
 	it.each([
@@ -24,25 +24,25 @@ describe('text and emoji boundaries', () => {
 		"throw new Error('Could not load player');",
 		"logger.error('Could not update profile');",
 	])('rejects embedded presentation and diagnostic copy: %s', (source) => {
-		expect(findTextViolations(source, 'src/commands/Example.ts').join('\n')).toContain('Move display/diagnostic');
+		expect(findTextViolations(source, 'src/modules/economy/presentation/Example.ts').join('\n')).toContain('Move display/diagnostic');
 	});
 
 	it('allows prose in text modules and emoji definitions in the registry', () => {
-		expect(findTextViolations("export const title = 'Nhận thưởng';", 'src/text/newFeature.ts')).toEqual([]);
-		expect(findTextViolations("export const icon = '🎉';", 'src/text/icons.ts')).toEqual([]);
+		expect(findTextViolations("export const title = 'Nhận thưởng';", 'src/shared/ui/text/newFeature.ts')).toEqual([]);
+		expect(findTextViolations("export const icon = '🎉';", 'src/shared/ui/text/icons.ts')).toEqual([]);
 	});
 
 	it('does not confuse comments, regexes, SQL and protocol IDs with display copy', () => {
 		const source =
 			"// 🎉 Nhận thưởng\nconst pattern = /🎉/u; const id = 'menu:v1:home'; const query = sql`select * from users`;";
-		expect(findTextViolations(source, 'src/repositories/Example.ts')).toEqual([]);
+		expect(findTextViolations(source, 'src/modules/progression/infrastructure/Example.ts')).toEqual([]);
 	});
 
 	it('requires the shared formatter even when a locale was supplied', () => {
 		expect(
-			findTextViolations("const amount = value.toLocaleString('vi-VN');", 'src/render/Example.ts'),
+			findTextViolations("const amount = value.toLocaleString('vi-VN');", 'src/shared/ui/render/Example.ts'),
 		).toHaveLength(1);
-		expect(findTextViolations('const amount = formatNumber(value);', 'src/render/Example.ts')).toEqual([]);
+		expect(findTextViolations('const amount = formatNumber(value);', 'src/shared/ui/render/Example.ts')).toEqual([]);
 	});
 
 	it('keeps content modules safe for bootstrap without forbidding type-only contracts', () => {
@@ -82,8 +82,8 @@ describe('text and emoji boundaries', () => {
 			"import env, { type Env } from '../config/env.js';",
 			"import { type Env, env } from '../config/env.js';",
 		])
-			expect(findTextViolations(source, 'src/text/example.ts')).toHaveLength(1);
-		expect(findTextViolations("import { type Env } from '../config/env.js';", 'src/text/example.ts')).toEqual([]);
+			expect(findTextViolations(source, 'src/shared/ui/text/example.ts')).toHaveLength(1);
+		expect(findTextViolations("import { type Env } from '../shared/config/env.js';", 'src/shared/ui/text/example.ts')).toEqual([]);
 		const violations = findTextViolations('logger.error({ err }, `Could not load ${id}`);', 'src/example.ts');
 		expect(violations.some((message) => message.includes('Move log messages'))).toBe(true);
 		expect(violations.some((message) => message.includes('Move display/diagnostic'))).toBe(true);

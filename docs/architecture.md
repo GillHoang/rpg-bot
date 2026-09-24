@@ -1,64 +1,72 @@
-# Architecture (target: modular monolith)
+# Architecture (modular monolith)
 
 ```
 src/
+  index.ts              # process signals only; bootstrap lives in app/
   app/                  # sole composition root
-    container.ts        # builds the whole graph (sole composition root)
-    bot.ts              # registry + events + client wiring; index.ts only handles signals
-    events.ts           # subscribeDomainEvents (core/ re-exports for compat)
+    container.ts        # builds the whole collaborator graph (no I/O, no timers)
+    bot.ts              # registry + events + client wiring
+    events.ts           # subscribeDomainEvents (quest/believer observers)
+    DiscordBot.ts CommandRegistry.ts Scheduler.ts BotMaintenance.ts owners.ts
+    registerAllCommands.ts
+  modules/              # one feature = one vertical slice (public barrel: index.ts)
+    identity/           # start, profile, class-change
+    economy/            # balance, daily (ClaimDailyUseCase), chest/open, loot-grant
+    combat-shared/      # BattleEngine, strategies, CombatSetup, stat assembly
+    pve/                # raid hunt/boss, encounter, rewards
+    pvp/                # duel, ranked, pvp-shop
+    progression/        # summon (RunSummonUseCase), deity/sigil/ascend, enhance,
+                        # socket, loadout, inventory, gear/rune
+    meta/               # quest, reputation/believer, cosmetic/title, season
+    casino/             # 4 one-shot games + blackjack/crash sessions
+    menu/               # /menu orchestration only (router + gameplay service + panels)
+    system/             # health, reset, ping, admin
   shared/
-    kernel/             # Result, AppError, UseCase, EventBus, IUnitOfWork/PersistenceContext, Rng, Clock
-    discord/            # ICommand + CommandRegistry (only shared scope importing discord.js)
-    ui/                 # formatNumber, ICONS, battle-log / inventory pager helpers
-    config/             # truly-global config only (env)
-  modules/              # one feature = one public barrel (index.ts)
-  db/tables/            # schema split per module; schema.ts is the barrel
+    kernel/             # Result, AppError, UseCase, EventBus, IUnitOfWork,
+                        # PersistenceContext, Rng, Clock
+    discord/            # ICommand + CommandRegistry re-export
+    ui/                 # text/ (wording), render/ (canvas, pagers)
+    config/             # balance data (loot, gacha, ranked, quest, blessings…)
+    utils/              # logger, RNG helpers, cycles, formatters
+    progress/           # GameplayProgressCoordinator (cross-module quest/EXP)
+  db/                   # client, defaultPersistence, DrizzleUnitOfWork,
+                        # schema barrel + tables/<module>.ts, migrations
+  scripts/              # ops tooling (deploy/clear commands, season rollover)
+  seed/                 # seed runner (data lives in modules/*/seed/)
 ```
 
-## Layers (dependency flows inward only)
+Each slice is layered internally:
 
 ```
-presentation (commands/menu/render) -> application (use-cases) -> domain (pure rules)
-                                     -> infrastructure (drizzle) via ports
+presentation/ (discord commands) -> application/ (use-cases, services)
+                                   -> domain/ (pure rules)
+                                   -> infrastructure/ (drizzle repositories)
 ```
 
 ## Rules
 
-1. `domain/` and `shared/kernel/`: no runtime `discord.js`/`drizzle-orm`/`src/db/` (type-only db ports allowed).
+1. `modules/*/domain/` and `shared/kernel/`: no runtime `discord.js`/`drizzle-orm`/`src/db/` (type-only db ports allowed).
 2. `shared/discord/`: the only shared scope importing `discord.js`.
-3. `application/` (module use-cases): one public `execute(input): Promise<Result>`; DB only via ports + `IUnitOfWork`.
-4. `infrastructure/`: only place with runtime `drizzle-orm` / `src/db/` imports.
-5. `presentation/`: thin — parse interaction, call use-case, render reply. No SQL.
-6. RNG via `shared/kernel/rng.ts`; feature balance in `modules/<name>/config.ts`; global env in `shared/config`.
-7. Display/diagnostic copy lives in `src/text/`; FK actions (`set null`) and audit actions (`Deity Pull`) are allowlisted technical strings.
+3. Module use-cases: one public `execute(input): Promise<Result>`; DB only via ports + `IUnitOfWork`.
+4. `modules/*/infrastructure/` + `db/`: the only places with runtime drizzle/db imports.
+5. `modules/*/presentation/`: thin — parse interaction, call use-case, render reply. No SQL.
+6. RNG via `shared/kernel`; display copy in `shared/ui/text` (checked by `pnpm check:text`).
+7. Cross-module imports are allowed but must go through the target's public barrel or a port — never deep-link around it without reason.
 
-## Modules
+## Adding a feature (checklist)
 
-| Module | Status | Tables (`src/db/tables/`) |
-|---|---|---|
-| `economy` | ✅ migrated: `ClaimDailyUseCase` owns the daily transaction; `DailyService` is a compat adapter; `GetBalanceUseCase` projects balance | `economy.ts` (gameLogs) |
-| `combat-shared` | ✅ facade + `CombatSetup` (assemble → combatant → strategy → resolve); Raid/Duel/Ranked share one instance via `combat` option | — (engine is stateless) |
-| `progression` | 🔶 summon migrated (`RunSummonUseCase`; `SummonService` adapter; command via `progressionModule.runSummon`); deity/enhance/socket/loadout/inventory next | `progression.ts` |
-| `identity` | facade: Start/ClassChange/Profile | `identity.ts` |
-| `pve` | facade: Raid/Reward/Encounter | `pve.ts` |
-| `pvp` | facade: Duel/Ranked/Shop | `pvp.ts` |
-| `meta` | facade: Quest/Reputation/Cosmetic/Season | `meta.ts` |
-| `casino` | facade: Casino/Sessions/Games | `casino.ts` |
-| `menu` | facade: Router/GameplayService (orchestration only) | `menu.ts` |
-| `system` | facade: Health/Reset/Scheduler/Maintenance | `system.ts` |
-
-`src/db/schema.ts` is a barrel over `src/db/tables/*.ts` (59 tables, verified identical
-columns + FK targets vs the old single file). `drizzle.config.ts` still points at the barrel.
+1. Domain rule in `modules/<name>/domain/` (pure, unit-tested, no I/O).
+2. Repository in `modules/<name>/infrastructure/` (drizzle only here).
+3. Use-case in `modules/<name>/application/` with `execute()` returning `Result`.
+4. Command in `modules/<name>/presentation/` (thin) + one line in `app/registerAllCommands.ts`.
+5. Export the public surface from `modules/<name>/index.ts`; wire shared collaborators in `app/container.ts`.
+6. Balance numbers in `shared/config/` (or module `config/`), wording in `shared/ui/text/`, seed rows in `modules/<name>/seed/`.
 
 ## Migration status
 
-- P1 done: `shared/kernel/`, `app/container.ts` (sole root; `src/application/` deleted).
-- P2 done: economy fully migrated (`ClaimDailyUseCase` + `GetBalanceUseCase`; `services/DailyService.ts` deleted).
-- P3 done: combat-shared facade + shared wiring into Raid/Duel/Ranked.
-- P4 done: schema split per module + facade barrels + `app/bot.ts`,
-  `app/events.ts`, `shared/discord|ui|config` per the target sketch.
-- P5 done: all re-export shims removed — `core/EventBus.ts`, `core/ICommand.ts`,
-  `core/subscribeDomainEvents.ts`, `services/SummonService.ts` deleted; every importer
-  points at `shared/kernel`, `shared/discord`, `app/*` or `modules/*` directly.
-- Next (per-feature, incremental): move each legacy service transaction body into a
-  module use-case (same pattern as `ClaimDailyUseCase`/`RunSummonUseCase`), then delete the legacy service.
+- P1–P5 done: kernel, container-as-root, economy + summon use-cases, combat-shared,
+  schema split, app bootstrap, all shared barrels.
+- P6 done: full consolidation — 16 top-level `src/` dirs → 6
+  (`app db modules scripts seed shared`); all re-export shims deleted.
+- Next (per-feature, incremental): move each remaining legacy service transaction body
+  into a module use-case (same pattern as `ClaimDailyUseCase`/`RunSummonUseCase`).

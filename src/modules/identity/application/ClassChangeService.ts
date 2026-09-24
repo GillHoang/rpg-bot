@@ -25,7 +25,7 @@ export interface ClassChangeDependencies {
  * /class change — tiêu 1 Change-Class Token (users_bag.change_class) để đổi
  * class. Giữ nguyên level/exp/gear/deity/preset: stat assembly dựng lại từ
  * computeClassStats(class, level) nên chỉ base class stat thay đổi.
- * Wording nằm ở src/text/class.ts.
+ * Wording nằm ở src/shared/ui/text/class.ts.
  */
 
 export class ClassChangeService {

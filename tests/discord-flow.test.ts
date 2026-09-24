@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
 
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 const casino = vi.hoisted(() => ({ start: vi.fn(), act: vi.fn() }));
-vi.mock('../src/services/CasinoSessionService.js', () => ({
+vi.mock('../src/modules/casino/application/CasinoSessionService.js', () => ({
 	CasinoSessionService: class { start = casino.start; act = casino.act; },
 }));
 import { interactiveCasino } from '../src/modules/casino/presentation/interactiveCasino.js';

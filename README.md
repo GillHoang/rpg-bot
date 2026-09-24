@@ -137,45 +137,45 @@ Lịch sử thiết kế và port được lưu tại [port-history.md](docs/por
 
 ## Kiến trúc
 
-Các thư mục dưới `src/`:
+Các thư mục dưới `src/` (6 folder + entrypoint):
 
 ```
-commands/    Discord layer — mỗi slash command 1 class ICommand tự chứa
-services/    Điều phối nghiệp vụ và transaction, khóa bag/character
-             trước khi đọc–ghi để bảo vệ read–modify–write
-repositories/ Truy cập dữ liệu theo bảng; service cũng có query trong transaction
-domain/      Engine thuần: combat (BattleEngine, Strategy theo class,
-             Decorator rune + deity blessing), casino (Strategy 4 game
-             một-lượt + session Blackjack/Crash)
-menu/        Router/session cho /menu, điều phối gameplay và dựng panel
-render/      Canvas, component và phân trang inventory/log chiến đấu
-config/      Toàn bộ balance số liệu (loot, gacha, ranked, quest, blessings…)
-core/        CommandRegistry (Singleton), EventBus (Observer), Scheduler
-seed/data/   Dữ liệu seed sửa được — upsert, không xoá dữ liệu chơi
-text/        Wording tiếng Việt hiển thị cho người chơi
+app/        Composition root duy nhất: container (dựng toàn bộ graph),
+            bot (wiring registry/events/client), DiscordBot, CommandRegistry,
+            Scheduler, BotMaintenance
+modules/    Mỗi tính năng 1 slice dọc: application/ (use-case + service),
+            presentation/ (slash command), infrastructure/ (repository),
+            domain/ (rule thuần), config/·seed/ (số liệu + dữ liệu mẫu)
+shared/     kernel/ (Result, EventBus, UnitOfWork, RNG, Clock),
+            discord/ (ICommand), ui/ (text wording + render canvas/pager),
+            config/ (balance số liệu), utils/, progress/
+db/         Kết nối, schema tách theo module (tables/), migrations
+scripts/    Tooling vận hành (deploy/clear commands, rollover season)
+seed/       Seed runner — upsert, không xoá dữ liệu chơi
 ```
 
 Nguyên tắc nổi bật:
 
 - **EventBus observer**: quest progress và believer EXP là subscriber thuần
-  (`core/subscribeDomainEvents.ts`) — combat/economy chỉ emit sự kiện
+  (`app/events.ts`) — combat/economy chỉ emit sự kiện
   (`battle.won`, `summon.done`, `chest.opened`…), không import quest code.
 - **Decorator combat**: rune và deity blessing bọc quanh class strategy,
   chain được, engine và 5 class gốc không biết chúng tồn tại.
-- **Phân chia combat**: [BattleEngine](src/domain/combat/BattleEngine.ts) giữ
-  API và điều phối hiệp; [BattleAttack](src/domain/combat/BattleAttack.ts)
-  xử lý đòn đánh, [CombatStatusEffects](src/domain/combat/CombatStatusEffects.ts)
-  xử lý trạng thái, [combatRules](src/domain/combat/combatRules.ts) giữ giới hạn
+- **Phân chia combat**: [BattleEngine](src/modules/combat-shared/domain/BattleEngine.ts) giữ
+  API và điều phối hiệp; [BattleAttack](src/modules/combat-shared/domain/BattleAttack.ts)
+  xử lý đòn đánh, [CombatStatusEffects](src/modules/combat-shared/domain/CombatStatusEffects.ts)
+  xử lý trạng thái, [combatRules](src/modules/combat-shared/domain/combatRules.ts) giữ giới hạn
   hiệp và hệ số sudden-death.
 - **Khởi tạo nhân vật chiến đấu**: raid, duel và ranked dùng chung
-  [combatantFactory](src/services/combatantFactory.ts), sao chép stat vào trạng
+  [CombatSetup](src/modules/combat-shared/application/CombatSetup.ts) (assemble →
+  combatant → strategy), sao chép stat vào trạng
   thái riêng cho từng trận và bọc strategy theo thứ tự class → rune → blessing.
 - **Trình bày tách khỏi điều phối**: `MenuGameplayService` đọc dữ liệu và gọi
-  nghiệp vụ; [gameplayPanels](src/menu/gameplayPanels.ts) dựng panel/log từ
-  snapshot. [InventoryPager](src/render/InventoryPager.ts) dựng view và phân
+  nghiệp vụ; [gameplayPanels](src/modules/menu/gameplayPanels.ts) dựng panel/log từ
+  snapshot. [InventoryPager](src/shared/ui/render/InventoryPager.ts) dựng view và phân
   tích ID nút; `InventoryCommand` xử lý interaction và vòng đời collector.
 - **Seeded RNG bắt buộc**: mọi lựa chọn weighted dùng `wrand` qua
-  `src/utils/weightedRandom.ts` với RNG từ `domain/combat/Rng.ts` (seed
+  `src/shared/utils/weightedRandom.ts` với RNG từ `shared/kernel` (seed
   entropy cao từ crypto) — không `Math.random()`; cùng seed replay được.
   `wrand` 1.2.0 được import trực tiếp từ `wrand/lib/randomPicker.js` vì
   entry point published trỏ tới file thiếu.

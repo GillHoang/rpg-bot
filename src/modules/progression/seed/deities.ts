@@ -2,7 +2,7 @@ import { DEITIES_TEXT } from '../../../shared/ui/text/catalog/deities.js';
 /**
  * SEED DATA — deity_roster
  * ---------------------------------------------------------------------------
- * Text hiển thị: src/text/catalog/deities.ts; chạy pnpm db:seed sau khi sửa.
+ * Text hiển thị: src/shared/ui/text/catalog/deities.ts; chạy pnpm db:seed sau khi sửa.
  * Sửa xong chạy `npm run db:seed` — seed chạy theo chế độ "upsert" nên sẽ
  * cập nhật row đã có theo khóa chính (deityId), KHÔNG tạo bản sao.
  *

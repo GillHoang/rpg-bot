@@ -18,7 +18,7 @@ export interface Gate {
 	modifier: GateModifier;
 }
 
-/** Tên Gate ở src/text/portals.ts (GATE_NAMES) — config chỉ giữ dữ liệu thuần. */
+/** Tên Gate ở src/shared/ui/text/portals.ts (GATE_NAMES) — config chỉ giữ dữ liệu thuần. */
 export const GATES: readonly Gate[] = [
 	{ id: 1, name: 'forest', minLevel: 1, bossLevel: 12, modifier: 'none' },
 	{ id: 2, name: 'ruins', minLevel: 15, bossLevel: 26, modifier: 'tanky' },

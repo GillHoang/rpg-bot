@@ -1,6 +1,6 @@
 /**
  * Presentation helpers shared by commands, menu panels and pagers.
- * Wording/icons stay in `src/text/`; canvas/pagination stay in `src/render/` —
+ * Wording/icons stay in `src/shared/ui/text/`; canvas/pagination stay in `src/render/` —
  * this barrel is the single import path for new presentation code.
  */
 export { formatNumber } from './text/format.js';

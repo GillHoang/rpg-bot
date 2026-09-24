@@ -1,6 +1,6 @@
 import { ICONS } from './icons.js';
 
-/** Tầng tối đa mỗi Gate — đồng bộ với TIERS_PER_GATE ở src/config/portals.ts. */
+/** Tầng tối đa mỗi Gate — đồng bộ với TIERS_PER_GATE ở src/shared/config/portals.ts. */
 const TIERS = 10;
 
 interface GateTierLike {

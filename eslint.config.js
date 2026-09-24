@@ -16,28 +16,26 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/domain/**/*.ts', 'src/shared/**/*.ts'],
+    files: ['src/domain/**/*.ts', 'src/shared/kernel/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          // Type-only db contracts (Transaction/Executor) are how ports stay
-          // decoupled; runtime db access is still banned (matches architecture.test.ts).
           paths: [
             {
               name: 'discord.js',
-              message: 'domain/shared-kernel must not depend on discord.js — keep it in presentation.',
+              message: 'domain/kernel must not depend on discord.js — keep it in presentation.',
             },
             {
               name: 'drizzle-orm',
-              message: 'domain/shared-kernel must not depend on drizzle-orm — keep it in infrastructure.',
+              message: 'domain/kernel must not depend on drizzle-orm — keep it in infrastructure.',
             },
           ],
           patterns: [
             {
               group: ['**/db/*'],
               allowTypeImports: true,
-              message: 'domain/shared-kernel must not import src/db — depend on ports instead.',
+              message: 'domain/kernel must not import src/db — depend on ports instead.',
             },
           ],
         },
@@ -68,8 +66,54 @@ export default tseslint.config(
     },
   },
   {
-    // Presentation stays thin: no direct SQL from commands/menu/render.
-    files: ['src/commands/**/*.ts', 'src/menu/**/*.ts', 'src/render/**/*.ts'],
+    // Support scopes (ui/utils/config): discord.js allowed for builders and
+    // webhook delivery; no drizzle or runtime db access (type-only db ok).
+    files: ['src/shared/ui/**/*.ts', 'src/shared/utils/**/*.ts', 'src/shared/config/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'drizzle-orm',
+              message: 'shared support code must not depend on drizzle-orm — keep it in modules/*/infrastructure.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['**/db/*'],
+              allowTypeImports: true,
+              message: 'shared support code must not access src/db at runtime.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Cross-module progress wiring: may use db defaults like the container.
+    files: ['src/shared/progress/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'discord.js',
+              message: 'shared/progress must not depend on discord.js — keep it in presentation.',
+            },
+            {
+              name: 'drizzle-orm',
+              message: 'shared/progress must not depend on drizzle-orm — keep it in modules/*/infrastructure.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Presentation stays thin: no direct SQL from module presentation layers.
+    files: ['src/modules/*/presentation/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

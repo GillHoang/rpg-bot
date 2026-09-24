@@ -2,7 +2,7 @@ import { WEAPONS_TEXT } from '../../../shared/ui/text/catalog/weapons.js';
 /**
  * SEED DATA — weapon_roster
  * ---------------------------------------------------------------------------
- * Text hiển thị: src/text/catalog/weapons.ts; chạy pnpm db:seed sau khi sửa.
+ * Text hiển thị: src/shared/ui/text/catalog/weapons.ts; chạy pnpm db:seed sau khi sửa.
  *
  * Tier hợp lệ: Common | Rare | Mythic | Legendary | Supreme
  *   (Common chỉ dùng roster — gear người chơi thường là Rare trở lên)

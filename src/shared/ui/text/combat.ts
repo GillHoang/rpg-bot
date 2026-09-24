@@ -4,7 +4,7 @@
  *   [ LIFEST] 🩸 gdeer hút 79 HP
  * Tag được pad cố định 8 ký tự để thẳng cột trong codeblock Discord.
  * Tên riêng (blessing, rune, hiệu lực như Dizzy/CRIT/HP) giữ nguyên.
- * Icon nằm trong src/text/icons.ts — không viết unicode literal tại đây.
+ * Icon nằm trong src/shared/ui/text/icons.ts — không viết unicode literal tại đây.
  */
 import { ICONS } from './icons.js';
 

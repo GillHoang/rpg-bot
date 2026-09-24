@@ -35,7 +35,7 @@ type LockedBag = Awaited<ReturnType<PvpShopRepository['lockBag']>>[number];
 /**
  * /pvp shop — Valor Medals → item (M7). Cosmetic/title giới hạn 1 lần mỗi
  * season qua bảng pvp_shop_purchases; season được tạo lazily giống ranked.
- * Wording nằm ở src/text/pvp.ts.
+ * Wording nằm ở src/shared/ui/text/pvp.ts.
  */
 
 export class PvpShopService {

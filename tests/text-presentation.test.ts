@@ -6,7 +6,7 @@ import { ESSENCE_BAG_DEF_SEED } from '../src/modules/progression/seed/runeEconom
 import { RUNE_SEED } from '../src/modules/progression/seed/runes.js';
 
 afterEach(() => {
-	vi.doUnmock('../src/text/icons.js');
+	vi.doUnmock('../src/shared/ui/text/icons.js');
 	vi.doUnmock('@napi-rs/canvas');
 	vi.resetModules();
 });
@@ -33,7 +33,7 @@ describe('content rendering', () => {
 	});
 
 	it('propagates custom icon overrides into menu, help and gameplay text', async () => {
-		vi.doMock('../src/text/icons.js', async (importOriginal) => {
+		vi.doMock('../src/shared/ui/text/icons.js', async (importOriginal) => {
 			const original = await importOriginal<typeof import('../src/shared/ui/text/icons.js')>();
 			return {
 				...original,

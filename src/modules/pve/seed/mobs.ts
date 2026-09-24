@@ -2,7 +2,7 @@ import { MOBS_TEXT } from '../../../shared/ui/text/catalog/mobs.js';
 /**
  * SEED DATA — mob_roster
  * ---------------------------------------------------------------------------
- * Text hiển thị: src/text/catalog/mobs.ts; chạy pnpm db:seed sau khi sửa.
+ * Text hiển thị: src/shared/ui/text/catalog/mobs.ts; chạy pnpm db:seed sau khi sửa.
  *
  * mobType : 'regular' (mob thường trong /raid) | 'elite' | 'boss'
  *           — RaidService hiện chỉ roll mobType='regular'.

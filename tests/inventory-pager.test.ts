@@ -6,14 +6,14 @@ const { repo, logger } = vi.hoisted(() => ({
 	repo: { bag: vi.fn(), count: vi.fn(), list: vi.fn() },
 	logger: { error: vi.fn() },
 }));
-vi.mock('../src/services/InventoryService.js', () => ({
+vi.mock('../src/modules/progression/application/InventoryService.js', () => ({
 	InventoryService: class {
 		bag = repo.bag;
 		count = repo.count;
 		list = repo.list;
 	},
 }));
-vi.mock('../src/utils/logger.js', () => ({ logger }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger }));
 
 import { InventoryCommand } from '../src/modules/progression/presentation/InventoryCommand.js';
 import { buildInventoryView, INVENTORY_CATEGORIES, parseInventoryAction } from '../src/shared/ui/render/InventoryPager.js';

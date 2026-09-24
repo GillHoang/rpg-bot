@@ -2,7 +2,7 @@ import { ARMORS_TEXT } from '../../../shared/ui/text/catalog/armors.js';
 /**
  * SEED DATA — armor_roster
  * ---------------------------------------------------------------------------
- * Text hiển thị: src/text/catalog/armors.ts; chạy pnpm db:seed sau khi sửa.
+ * Text hiển thị: src/shared/ui/text/catalog/armors.ts; chạy pnpm db:seed sau khi sửa.
  *
  * Tier hợp lệ: Common | Rare | Mythic | Legendary | Supreme
  * type: 'Heavy' | 'Medium' | 'Light'
