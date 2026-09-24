@@ -14,6 +14,8 @@ import { MENU_QUEST_LABELS } from '../text/menu.js';
 import { renderProgressBar } from '../utils/progressBar.js';
 import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
+import { GATES, TIERS_PER_GATE } from '../config/portals.js';
+import { GATE_TEXT } from '../text/portals.js';
 import type { MenuAction } from './menuIds.js';
 
 const n = (value: number) => formatNumber(Number(value), 'vi-VN');
@@ -211,6 +213,14 @@ export function logPages(result: MenuBattle): string[] {
 	});
 }
 
+export function battleContinueButton(battle: MenuBattle): GamePanel['buttons'][number] | undefined {
+	if (battle.boss || !battle.portal) return undefined;
+	if (battle.battle.outcome !== 'player_win') return button('continue', GATE_TEXT.retryTier);
+	if (battle.portal.tier < TIERS_PER_GATE) return button('continue', GATE_TEXT.nextTier);
+	if (battle.portal.gate < GATES.length) return button('continue', GATE_TEXT.nextGate);
+	return undefined;
+}
+
 export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {
 	const r = session.battle;
 	if (!r)
@@ -220,6 +230,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			buttons: [button('hunt', GAMEPLAY_TEXT.hunt)],
 		};
 	if (session.screen.kind === 'log') {
+		const continuation = battleContinueButton(r);
 		const pages = r.battle.roundLogs;
 		const page = Math.max(0, Math.min(pages.length - 1, session.screen.page));
 		return {
@@ -230,6 +241,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 				button('prev', GAMEPLAY_TEXT.previous, page === 0),
 				button('next', GAMEPLAY_TEXT.next, page >= pages.length - 1),
 				button('last', GAMEPLAY_TEXT.last, page >= pages.length - 1),
+				...(continuation ? [continuation] : []),
 				...(!r.boss ? [button('hunt', GAMEPLAY_TEXT.hunt)] : []),
 			],
 		};

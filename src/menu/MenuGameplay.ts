@@ -29,7 +29,10 @@ export interface GamePanel {
 	withAvatar?: boolean;
 	grouped?: boolean;
 }
-export type MenuBattle = Extract<RaidResult, { status: 'ok' }> & { boss: boolean };
+export type MenuBattle = Extract<RaidResult, { status: 'ok' }> & {
+	boss: boolean;
+	portal?: { gate: number; tier: number };
+};
 export interface MenuGameplay {
 	render(session: MenuSession): Promise<GamePanel | undefined>;
 	act(session: MenuSession, action: MenuAction, username: string, value?: string): Promise<MenuScreen>;

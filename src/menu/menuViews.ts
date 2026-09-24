@@ -24,6 +24,7 @@ import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
 import { CLASS_NAMES } from '../config/classes.js';
 import { buildBattleLogPage } from '../render/BattleLogPager.js';
 import { raidBattleOptions } from '../render/raidBattleOptions.js';
+import { battleContinueButton } from './gameplayPanels.js';
 
 function normalize(value: string): string {
 	return value
@@ -127,6 +128,7 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 }
 
 function battleMenuView(session: MenuSession, battle: NonNullable<MenuSession['battle']>) {
+	const continuation = battleContinueButton(battle);
 	const container = buildBattleLogPage(
 		raidBattleOptions(battle, battle.boss, session.playerName ?? MENU_VIEW_TEXT.player),
 		session.screen.kind === 'log' ? session.screen.page : battle.battle.roundLogs.length - 1,
@@ -144,6 +146,7 @@ function battleMenuView(session: MenuSession, battle: NonNullable<MenuSession['b
 	const rows = [
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
 			gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
+			...(continuation ? [gameplayButton(session, continuation, ICONS.menu.hunt)] : []),
 			...(!battle.boss
 				? [gameplayButton(session, { action: 'hunt', label: GATE_TEXT.chooseGate }, ICONS.menu.hunt)]
 				: []),
@@ -199,6 +202,7 @@ function addSectionSelector(
 	screen: MenuSession['screen'],
 	id: (action: MenuAction) => string,
 ): void {
+	if (screen.kind === 'gateSelect' || screen.kind === 'gateTiers') return;
 	if (session.gamePanel?.grouped || session.gamePanel?.classes) return;
 	container.addActionRowComponents(
 		new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
@@ -231,6 +235,7 @@ function addTopicSelector(container: ContainerBuilder, topics: number[], id: (ac
 }
 
 function addHelpActions(container: ContainerBuilder, session: MenuSession, id: (action: MenuAction) => string): void {
+	if (session.screen.kind === 'gateSelect' || session.screen.kind === 'gateTiers') return;
 	if (session.gamePanel?.grouped || session.gamePanel?.classes) return;
 	container.addActionRowComponents(
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -269,7 +274,9 @@ function addNavigation(container: ContainerBuilder, session: MenuSession, screen
 				.setStyle(ButtonStyle.Danger),
 		),
 	);
-	container.addTextDisplayComponents((t) => t.setContent(MENU_TEXT.footer));
+	if (screen.kind !== 'gateSelect' && screen.kind !== 'gateTiers') {
+		container.addTextDisplayComponents((t) => t.setContent(MENU_TEXT.footer));
+	}
 }
 
 export function menuView(session: MenuSession) {

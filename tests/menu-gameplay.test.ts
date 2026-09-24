@@ -110,6 +110,62 @@ function checkPayload(payload: unknown) {
 }
 
 describe('phase 2 menu', () => {
+	it.each([
+		{ gate: 1, tier: 2, outcome: 'player_win' as const, label: 'Tầng tiếp theo', next: 3 },
+		{ gate: 1, tier: 2, outcome: 'enemy_win' as const, label: 'Đánh lại tầng này', next: 2 },
+		{ gate: 1, tier: 2, outcome: 'draw' as const, label: 'Đánh lại tầng này', next: 2 },
+		{ gate: 1, tier: 10, outcome: 'player_win' as const, label: 'Gate tiếp theo', next: 0 },
+		{ gate: 5, tier: 10, outcome: 'player_win' as const, label: undefined, next: 0 },
+	])('continues gate $gate tier $tier after $outcome', async ({ gate, tier, outcome, label, next }) => {
+		await start();
+		await db
+			.update(s.userCharacter)
+			.set({
+				combatLevel: 75,
+				gate1TiersCleared: 10,
+				gate2TiersCleared: 10,
+				gate3TiersCleared: 10,
+				gate4TiersCleared: 10,
+				gate5TiersCleared: 10,
+			})
+			.where(eq(s.userCharacter.discordId, id));
+		vi.spyOn(BattleEngine.prototype, 'resolve').mockReturnValue({
+			outcome,
+			rounds: 1,
+			log: [],
+			roundLogs: [],
+			playerHpRemaining: 1,
+			enemyHpRemaining: 0,
+		});
+		const run = vi.spyOn(RaidService.prototype, 'run');
+		const game = new MenuGameplayService();
+		const session = new MenuSessionStore().create(id);
+		session.screen = { kind: 'gateTiers' };
+		session.gateId = gate;
+		session.screen = await game.act(session, 'fight', id, String(tier));
+		expect(session.battle?.portal).toEqual({ gate, tier });
+		const panel = await game.render(session);
+		expect(panel?.buttons.find((b) => b.action === 'continue')?.label).toBe(label);
+		if (!label) return;
+		session.revision++;
+		if (next) {
+			// A cooldown attempt keeps the completed battle as the source of the next target.
+			session.screen = await game.act(session, 'continue', id);
+			expect(session.battle?.portal).toEqual({ gate, tier });
+			await db.delete(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id));
+			session.revision++;
+		}
+		session.screen = await game.act(session, 'continue', id);
+		if (next) {
+			expect(run).toHaveBeenLastCalledWith(id, false, expect.objectContaining({ gate, tier: next }));
+			expect(session.battle?.portal).toEqual({ gate, tier: next });
+		} else {
+			expect(session.screen.kind).toBe('gateTiers');
+			expect(session.gateId).toBe(gate + 1);
+			expect(run).toHaveBeenCalledTimes(1);
+		}
+	});
+
 	it('opens gates on every hunt entry and fights only the clicked unlocked tier', async () => {
 		await start();
 		await db
@@ -437,7 +493,7 @@ describe('phase 2 menu', () => {
 		expect(battlePayload.components[0].type).toBe(17);
 		expect(battlePayload.components[1].type).toBe(1);
 		expect(battlePayload.components).toHaveLength(2);
-		expect(battlePayload.components[1].components).toHaveLength(2);
+		expect(battlePayload.components[1].components).toHaveLength(3);
 		expect(parseMenuId(battlePayload.components[1].components[0].custom_id)?.action).toBe('home');
 		await click('hunt');
 		expect(JSON.stringify(view)).toContain('Gate 1');

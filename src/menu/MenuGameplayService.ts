@@ -228,6 +228,23 @@ export class MenuGameplayService implements MenuGameplay {
 				}
 				session.portalGate = Number(value);
 				return this.fight(session, false);
+			case 'continue': {
+				const battle = session.battle;
+				if (!battle?.portal || battle.boss || !['result', 'log'].includes(session.screen.kind)) {
+					return { kind: 'gateSelect' };
+				}
+				const { gate, tier } = battle.portal;
+				const won = battle.battle.outcome === 'player_win';
+				if (won && tier === TIERS_PER_GATE) {
+					if (gate >= GATES.length) return { kind: 'gateSelect' };
+					session.gateId = gate + 1;
+					session.portalGate = undefined;
+					return { kind: 'gateTiers' };
+				}
+				session.gateId = gate;
+				session.portalGate = won ? tier + 1 : tier;
+				return this.fight(session, false);
+			}
 			case 'result':
 				return { kind: 'result' };
 			case 'log':
@@ -298,7 +315,14 @@ export class MenuGameplayService implements MenuGameplay {
 			...(!boss ? { gate: session.gateId, tier: session.portalGate } : {}),
 		});
 		if (r.status === 'ok') {
-			session.battle = { ...r, boss };
+			session.battle = {
+				...r,
+				boss,
+				portal:
+					!boss && session.gateId !== undefined && session.portalGate !== undefined
+						? { gate: session.gateId, tier: session.portalGate }
+						: undefined,
+			};
 			// Win clears the fought tier: drop the tier number so the next render
 			// falls back to defaultGateTier (the tier just unlocked), keeping the gate.
 			if (!boss && r.battle.outcome === 'player_win') session.portalGate = undefined;

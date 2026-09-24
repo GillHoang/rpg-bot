@@ -16,6 +16,7 @@ export const GAME_ACTIONS = [
 	'claim',
 	'hunt',
 	'fight',
+	'continue',
 	'boss',
 	'confirm',
 	'cancel',
