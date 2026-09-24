@@ -110,10 +110,10 @@ export class MenuGameplayService implements MenuGameplay {
 				panel.body,
 			].join('\n');
 			panel.buttons = [
-				panel.buttons[0]!,
 				...GATES.map((g) => ({
 					action: 'gate' as MenuAction,
 					label: `Gate ${g.id}`,
+					value: String(g.id),
 					disabled: !gateUnlocked(g, gatesCleared, level),
 				})),
 				...panel.buttons.slice(1),
@@ -140,35 +140,14 @@ export class MenuGameplayService implements MenuGameplay {
 				.filter(Boolean)
 				.join('\n');
 			panel.buttons = [
-				{ action: 'hunt', label: GATE_TEXT.enter, disabled: selected.number > gateCleared + 1 },
+				...tiers.map((tier) => ({
+					action: 'fight' as const,
+					label: GATE_TEXT.fightTier(tier.number),
+					value: String(tier.number),
+					disabled: !gateUnlocked(gate, gatesCleared, level) || tier.number > gateCleared + 1,
+				})),
+				{ action: 'hunt', label: GATE_TEXT.chooseGate },
 				...panel.buttons.slice(1),
-			];
-			panel.selectors = [
-				{
-					action: 'gate',
-					placeholder: GATE_TEXT.chooseGate,
-					options: GATES.map((g) => ({
-						label: GATE_TEXT.gateRow(
-							g.id,
-							g.name,
-							g.modifier,
-							g.minLevel,
-							gatesCleared[g.id - 1] ?? 0,
-							level,
-						),
-						value: String(g.id),
-						default: g.id === gate.id,
-					})),
-				},
-				{
-					action: 'portal',
-					placeholder: GATE_TEXT.chooseTier,
-					options: tiers.map((t) => ({
-						label: GATE_TEXT.tierRow(t, gateCleared),
-						value: String(t.number),
-						default: t.number === selected.number,
-					})),
-				},
 			];
 			return panel;
 		}
@@ -207,6 +186,7 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'casino':
 				return { kind: 'section', section: action };
 			case 'battle':
+			case 'hunt':
 				// Săn quái luôn mở lại màn chọn Gate (session mới từ đầu, như yêu cầu).
 				session.gateId = undefined;
 				session.portalGate = undefined;
@@ -241,7 +221,12 @@ export class MenuGameplayService implements MenuGameplay {
 				return this.cancelConfirmation(session.screen);
 			case 'confirm':
 				return this.confirm(session, username);
-			case 'hunt':
+			case 'fight':
+				if (session.screen.kind !== 'gateTiers' || !/^(?:[1-9]|10)$/.test(value ?? '')) {
+					session.notice = GATE_TEXT.invalid;
+					return { kind: 'gateSelect' };
+				}
+				session.portalGate = Number(value);
 				return this.fight(session, false);
 			case 'result':
 				return { kind: 'result' };

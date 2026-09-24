@@ -75,10 +75,13 @@ function fixture(kind: 'command' | 'button' | 'select', customId = '', values: s
 	};
 	return { raw, interaction: raw as unknown as Interaction, command: raw as unknown as ChatInputCommandInteraction };
 }
-function action(payload: unknown, name: string): string {
+function action(payload: unknown, name: string, value?: string): string {
 	const json = JSON.stringify(payload);
 	const ids = [...json.matchAll(/"custom_id":"([^"]+)"/g)].map((m) => m[1]);
-	const result = ids.find((value) => parseMenuId(value)?.action === name);
+	const result = ids.find((id) => {
+		const parsed = parseMenuId(id);
+		return parsed?.action === name && (value === undefined || parsed.nonce === value);
+	});
 	if (!result) throw new Error(`Missing ${name}: ${json}`);
 	return result;
 }
@@ -107,6 +110,43 @@ function checkPayload(payload: unknown) {
 }
 
 describe('phase 2 menu', () => {
+	it('opens gates on every hunt entry and fights only the clicked unlocked tier', async () => {
+		await start();
+		await db
+			.update(s.userCharacter)
+			.set({ combatLevel: 15, gate1TiersCleared: 3, gate2TiersCleared: 1 })
+			.where(eq(s.userCharacter.discordId, id));
+		const run = vi.spyOn(RaidService.prototype, 'run');
+		const router = new MenuRouter(undefined, new MenuGameplayService());
+		const open = fixture('command');
+		await router.open(open.command);
+		const home = open.raw.editReply.mock.calls[0][0];
+		const entry = fixture('button', action(home, 'hunt'));
+		await router.handle(entry.interaction);
+		const gates = entry.raw.editReply.mock.calls[0][0];
+		checkPayload(gates);
+		expect(run).not.toHaveBeenCalled();
+		const choose = fixture('button', action(gates, 'gate', '2'));
+		await router.handle(choose.interaction);
+		const tiers = choose.raw.editReply.mock.calls[0][0];
+		checkPayload(tiers);
+		expect(JSON.stringify(tiers)).toContain('Gate 2');
+		expect(JSON.stringify(tiers)).toContain('Đánh tầng 10');
+		const locked = fixture('button', action(tiers, 'fight', '3'));
+		await router.handle(locked.interaction);
+		expect(locked.raw.reply).toHaveBeenCalled();
+		expect(run).not.toHaveBeenCalled();
+		const fight = fixture('button', action(tiers, 'fight', '2'));
+		await router.handle(fight.interaction);
+		expect(run).toHaveBeenCalledExactlyOnceWith(id, false, expect.objectContaining({ gate: 2, tier: 2 }));
+		const reopen = fixture('button', action(home, 'hunt'));
+		await router.handle(reopen.interaction);
+		const fresh = reopen.raw.editReply.mock.calls[0][0];
+		expect(action(fresh, 'gate', '1')).toBeTruthy();
+		expect(JSON.stringify(fresh)).not.toContain('Đánh tầng');
+		expect(run).toHaveBeenCalledTimes(1);
+	});
+
 	it.each([
 		{ options: { gate: 2 }, cleared: [10, 3, 0, 0, 0], gate: 2, tier: 4 },
 		{ options: { tier: 3 }, cleared: [10, 3, 0, 0, 0], gate: 2, tier: 3 },
@@ -207,17 +247,24 @@ describe('phase 2 menu', () => {
 		session.gateId = 1;
 		await game.render(session);
 		expect(session.portalGate).toBe(cleared + 1);
-		session.screen = await game.act(session, 'hunt', id);
+		session.screen = await game.act(session, 'fight', id, String(cleared + 1));
 		expect(session.screen.kind).toBe('result');
 		if (cleared === 3) {
 			const lobbySession = { ...session, screen: { kind: 'gateTiers' } as const };
 			const lobby = await game.render(lobbySession);
 			expect(lobbySession.portalGate).toBe(5);
-			expect(lobby?.buttons.find((button) => button.action === 'hunt')?.disabled).toBe(false);
+			expect(lobby?.buttons.find((button) => button.action === 'fight' && button.value === '5')?.disabled).toBe(
+				false,
+			);
 		}
 		await db.delete(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id));
 		session.revision++;
 		session.screen = await game.act(session, 'hunt', id);
+		expect(session.screen.kind).toBe('gateSelect');
+		expect(session.gateId).toBeUndefined();
+		expect(session.portalGate).toBeUndefined();
+		session.screen = await game.act(session, 'gate', id, '1');
+		session.screen = await game.act(session, 'fight', id, String(cleared + 2));
 		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(character.gate1TiersCleared).toBe(cleared + 2);
 	});
@@ -378,6 +425,11 @@ describe('phase 2 menu', () => {
 		expect(JSON.stringify(view)).toContain('Đã nhận daily');
 		await click('quests');
 		await click('hunt');
+		expect(JSON.stringify(view)).toContain('Gate 1');
+		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
+		await click('gate');
+		expect(JSON.stringify(view)).toContain('Đánh tầng 10');
+		await click('fight');
 		expect(JSON.stringify(view)).toContain('HP');
 		expect(JSON.stringify(view)).not.toContain('Chọn khu vực');
 		expect(JSON.stringify(view)).not.toContain('Menu riêng tư');
@@ -388,6 +440,9 @@ describe('phase 2 menu', () => {
 		expect(battlePayload.components[1].components).toHaveLength(2);
 		expect(parseMenuId(battlePayload.components[1].components[0].custom_id)?.action).toBe('home');
 		await click('hunt');
+		expect(JSON.stringify(view)).toContain('Gate 1');
+		await click('gate');
+		await click('fight');
 		expect(JSON.stringify(view)).toContain('giây nữa để đánh lại');
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(1);
 		const journal = JSON.stringify(view);
@@ -529,7 +584,12 @@ describe('phase 2 menu', () => {
 		const router = new MenuRouter(new MenuSessionStore(), game);
 		const open = fixture('command');
 		await router.open(open.command);
-		const huntId = action(open.raw.editReply.mock.calls[0][0], 'hunt');
+		const entry = fixture('button', action(open.raw.editReply.mock.calls[0][0], 'hunt'));
+		await router.handle(entry.interaction);
+		const gate = fixture('button', action(entry.raw.editReply.mock.calls[0][0], 'gate'));
+		await router.handle(gate.interaction);
+		act.mockClear();
+		const huntId = action(gate.raw.editReply.mock.calls[0][0], 'fight');
 		const first = fixture('button', huntId);
 		first.raw.editReply.mockRejectedValueOnce(new Error('network'));
 		await router.handle(first.interaction);

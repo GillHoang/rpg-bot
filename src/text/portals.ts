@@ -31,6 +31,7 @@ export const GATE_TEXT = {
 	chooseGate: 'Chọn Gate (Cửa)',
 	chooseTier: 'Chọn tầng',
 	enter: 'Vào tầng',
+	fightTier: (tier: number) => `Đánh tầng ${tier}${tier === TIERS ? ' · Boss' : ''}`,
 	description: 'Săn quái theo Gate và tầng; tầng 10 là boss của Gate',
 	gateOption: 'Gate muốn vào (1-5)',
 	tierOption: 'Tầng muốn đánh trong Gate (1-10)',

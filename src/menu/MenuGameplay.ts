@@ -12,7 +12,14 @@ export type GameplayScreen =
 export interface GamePanel {
 	title: string;
 	body: string;
-	buttons: { action: MenuAction; label: string; disabled?: boolean; danger?: boolean; group?: string }[];
+	buttons: {
+		action: MenuAction;
+		label: string;
+		value?: string;
+		disabled?: boolean;
+		danger?: boolean;
+		group?: string;
+	}[];
 	selectors?: {
 		action: 'portal' | 'gate';
 		placeholder: string;

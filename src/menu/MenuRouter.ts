@@ -131,7 +131,7 @@ export class MenuRouter {
 		parsed: NonNullable<ReturnType<typeof parseMenuId>>,
 	): Promise<void> {
 		if ((GAME_ACTIONS as readonly string[]).includes(parsed.action)) {
-			await this.handleGameplay(interaction, session, parsed.action);
+			await this.handleGameplay(interaction, session, parsed.action, parsed.nonce);
 			return;
 		}
 		session.notice = undefined;
@@ -144,6 +144,7 @@ export class MenuRouter {
 		interaction: MenuInteraction,
 		session: MenuSession,
 		action: MenuAction,
+		value?: string,
 	): Promise<void> {
 		const classSelect =
 			action === 'class' &&
@@ -158,7 +159,8 @@ export class MenuRouter {
 				(s) => s.action === action && s.options.some((o) => o.value === interaction.values[0]),
 			);
 		const button =
-			interaction.isButton() && session.gamePanel?.buttons.some((b) => b.action === action && !b.disabled);
+			interaction.isButton() &&
+			session.gamePanel?.buttons.some((b) => b.action === action && b.value === value && !b.disabled);
 		if (!this.gameplay || (!classSelect && !portalSelect && !button)) {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
@@ -172,7 +174,7 @@ export class MenuRouter {
 			session,
 			action,
 			interaction.user.username,
-			interaction.isStringSelectMenu() ? interaction.values[0] : undefined,
+			interaction.isStringSelectMenu() ? interaction.values[0] : value,
 		);
 		// Do not carry old confirmations through a gameplay action.
 		await this.navigate(interaction, session, next, []);

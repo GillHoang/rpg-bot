@@ -85,11 +85,9 @@ function viewContent(session: MenuSession) {
 function gameplayButton(session: MenuSession, button: GamePanel['buttons'][number], emoji?: string) {
 	let style = ButtonStyle.Secondary;
 	if (button.danger) style = ButtonStyle.Danger;
-	else if (['confirm', 'profile', 'hunt'].includes(button.action)) style = ButtonStyle.Primary;
-	// Gate buttons are labeled Gate 1-5; the nonce slot carries the gate number.
-	const nonce = button.label.startsWith('Gate ') ? button.label.slice(5) : undefined;
+	else if (['confirm', 'profile', 'hunt', 'fight'].includes(button.action)) style = ButtonStyle.Primary;
 	const component = new ButtonBuilder()
-		.setCustomId(menuId(session.id, session.revision, button.action, nonce))
+		.setCustomId(menuId(session.id, session.revision, button.action, button.value))
 		.setLabel(button.label)
 		.setDisabled(!!button.disabled)
 		.setStyle(style);
@@ -147,7 +145,7 @@ function battleMenuView(session: MenuSession, battle: NonNullable<MenuSession['b
 		new ActionRowBuilder<ButtonBuilder>().addComponents(
 			gameplayButton(session, { action: 'home', label: MENU_TEXT.home }, MENU_TEXT.home_emoji),
 			...(!battle.boss
-				? [gameplayButton(session, { action: 'hunt', label: GATE_TEXT.enter }, ICONS.menu.hunt)]
+				? [gameplayButton(session, { action: 'hunt', label: GATE_TEXT.chooseGate }, ICONS.menu.hunt)]
 				: []),
 		),
 	];
