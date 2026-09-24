@@ -7,12 +7,12 @@ const emoji = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\u20e3|✦|<a?:\
 const vietnamese = /[À-ÖØ-öø-ÿĂăĐđĨĩŨũƠơƯư\u1EA0-\u1EF9]/u;
 const displayMethods = new Set(['setLabel', 'setDescription', 'setTitle', 'setPlaceholder', 'setContent']);
 
-/** Narrow exceptions for technical strings, never a file-wide suppression. */
+const TEXT_DIRS = ['src/text/', 'src/shared/ui/text/'];
+const isTextModule = (file) => TEXT_DIRS.some((dir) => file.startsWith(dir));
 const technicalStrings = new Map([
-	['src/db/schema.ts', new Set(['set null'])],
-	['src/repositories/QuestRepository.ts', new Set(['no key update'])],
-	['src/services/SummonService.ts', new Set(['Deity Pull'])], // Persisted audit action.
-	['src/utils/errorWebhook.ts', new Set(['[REDACTED WEBHOOK]'])], // Redaction marker.
+	['src/modules/meta/infrastructure/QuestRepository.ts', new Set(['no key update'])],
+	['src/modules/progression/application/RunSummonUseCase.ts', new Set(['Deity Pull'])], // Persisted audit action.
+	['src/shared/utils/errorWebhook.ts', new Set(['[REDACTED WEBHOOK]'])], // Redaction marker.
 ]);
 
 function isSql(node) {
@@ -25,10 +25,12 @@ function isSql(node) {
 
 function isTechnicalString(node, file, value) {
 	if (technicalStrings.get(file)?.has(value) || isSql(node)) return true;
-	if (file === 'src/render/ProfileCardRenderer.ts' && /^(?:bold |italic )?\d+px sans-serif$/.test(value)) return true;
+	// FK actions live in schema tables wherever they are grouped.
+	if ((file === 'src/db/schema.ts' || file.startsWith('src/db/tables/')) && value === 'set null') return true;
+	if (file === 'src/shared/ui/render/ProfileCardRenderer.ts' && /^(?:bold |italic )?\d+px sans-serif$/.test(value)) return true;
 	// Persisted audit details are not display copy; changing them can affect consumers.
-	if (file === 'src/services/LootService.ts' && /^(Open |Rune bag )$/.test(value)) return true;
-	if (file === 'src/services/ResetService.ts' && /^(reset | users)$/.test(value)) return true;
+	if (file === 'src/modules/economy/application/LootService.ts' && /^(Open |Rune bag )$/.test(value)) return true;
+	if (file === 'src/modules/system/application/ResetService.ts' && /^(reset | users)$/.test(value)) return true;
 	return false;
 }
 
@@ -43,7 +45,7 @@ function inspectTextImport(node, file, report) {
 	if (!ts.isStringLiteral(node.moduleSpecifier) || isTypeOnlyImport(node.importClause)) return;
 	const specifier = node.moduleSpecifier.text;
 	const target = posix.normalize(posix.join(posix.dirname(file), specifier));
-	if (!specifier.startsWith('.') || !target.startsWith('src/text/')) {
+	if (!specifier.startsWith('.') || !isTextModule(target)) {
 		report(node, 'Text modules must not depend on runtime code outside src/text.');
 	}
 }
@@ -90,7 +92,7 @@ function containsEnglishProse(value) {
 
 function inspectLiteral(node, file, inText, report) {
 	const value = node.text;
-	if (file !== 'src/text/icons.ts' && emoji.test(value)) report(node, 'Move emoji to src/text/icons.ts.');
+	if (file !== 'src/shared/ui/text/icons.ts' && emoji.test(value)) report(node, 'Move emoji to src/shared/ui/text/icons.ts.');
 	if (inText || isTechnicalString(node, file, value)) return;
 	if (vietnamese.test(value) || containsEnglishProse(value) || (isDisplayArgument(node) && /\p{L}/u.test(value))) {
 		report(node, 'Move display/diagnostic text to a named src/text module.');
@@ -99,8 +101,8 @@ function inspectLiteral(node, file, inText, report) {
 
 function inspectCall(node, file, inText, report) {
 	if (!ts.isPropertyAccessExpression(node.expression)) return;
-	if (node.expression.name.text === 'toLocaleString' && file !== 'src/text/format.ts') {
-		report(node, 'Use formatNumber from src/text/format.ts.');
+	if (node.expression.name.text === 'toLocaleString' && file !== 'src/shared/ui/text/format.ts') {
+		report(node, 'Use formatNumber from src/shared/ui/text/format.ts.');
 	}
 	if (inText || node.expression.expression.getText() !== 'logger') return;
 	const message = node.arguments.at(-1);
@@ -108,7 +110,7 @@ function inspectCall(node, file, inText, report) {
 		message &&
 		(ts.isStringLiteral(message) || ts.isNoSubstitutionTemplateLiteral(message) || ts.isTemplateExpression(message))
 	) {
-		report(message, 'Move log messages and stable log event names to src/text/diagnostics.ts.');
+		report(message, 'Move log messages and stable log event names to src/shared/ui/text/diagnostics.ts.');
 	}
 }
 
@@ -135,7 +137,7 @@ export function findTextViolations(source, file) {
 		const { line, character } = tree.getLineAndCharacterOfPosition(node.getStart());
 		violations.push(`${file}:${line + 1}:${character + 1}: ${reason}`);
 	};
-	visitTree(tree, file, file.startsWith('src/text/'), report);
+	visitTree(tree, file, isTextModule(file), report);
 	return violations;
 }
 

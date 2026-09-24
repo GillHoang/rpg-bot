@@ -1,4 +1,4 @@
-import { COMMAND_SCOPE_ERROR_TEXT } from '../text/diagnostics.js';
+import { COMMAND_SCOPE_ERROR_TEXT } from '../shared/ui/text/diagnostics.js';
 export interface CommandScope {
 	global: boolean;
 	guildId: string | null;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { GamePanel, MenuBattle } from '../src/menu/MenuGameplay.js';
-import type { ProfileCardData } from '../src/render/ProfileCardRenderer.js';
-import type { QuestSnapshot } from '../src/services/QuestService.js';
+import type { GamePanel, MenuBattle } from '../src/modules/menu/MenuGameplay.js';
+import type { ProfileCardData } from '../src/shared/ui/render/ProfileCardRenderer.js';
+import type { QuestSnapshot } from '../src/modules/meta/application/QuestService.js';
 import {
 	battleLobbyPanel,
 	battlePanel,
@@ -11,7 +11,7 @@ import {
 	onboardingPanel,
 	profilePanel,
 	questsPanel,
-} from '../src/menu/gameplayPanels.js';
+} from '../src/modules/menu/gameplayPanels.js';
 
 const profile: ProfileCardData = {
 	username: '*Hero*',

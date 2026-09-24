@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ICONS, UNICODE_ICONS } from '../src/text/icons.js';
-import { formatNumber } from '../src/text/format.js';
-import { PROFILE_CLASS_ICONS } from '../src/text/profile.js';
-import { ESSENCE_BAG_DEF_SEED } from '../src/seed/data/runeEconomy.js';
-import { RUNE_SEED } from '../src/seed/data/runes.js';
+import { ICONS, UNICODE_ICONS } from '../src/shared/ui/text/icons.js';
+import { formatNumber } from '../src/shared/ui/text/format.js';
+import { PROFILE_CLASS_ICONS } from '../src/shared/ui/text/profile.js';
+import { ESSENCE_BAG_DEF_SEED } from '../src/modules/progression/seed/runeEconomy.js';
+import { RUNE_SEED } from '../src/modules/progression/seed/runes.js';
 
 afterEach(() => {
 	vi.doUnmock('../src/text/icons.js');
@@ -34,7 +34,7 @@ describe('content rendering', () => {
 
 	it('propagates custom icon overrides into menu, help and gameplay text', async () => {
 		vi.doMock('../src/text/icons.js', async (importOriginal) => {
-			const original = await importOriginal<typeof import('../src/text/icons.js')>();
+			const original = await importOriginal<typeof import('../src/shared/ui/text/icons.js')>();
 			return {
 				...original,
 				ICONS: {
@@ -45,10 +45,10 @@ describe('content rendering', () => {
 				},
 			};
 		});
-		const { MENU_TEXT } = await import('../src/text/menu.js');
-		const { HELP_PAGES } = await import('../src/text/help.js');
-		const { GAMEPLAY_TEXT } = await import('../src/text/gameplay.js');
-		const { PROFILE_CLASS_ICONS: canvasClasses } = await import('../src/text/profile.js');
+		const { MENU_TEXT } = await import('../src/shared/ui/text/menu.js');
+		const { HELP_PAGES } = await import('../src/shared/ui/text/help.js');
+		const { GAMEPLAY_TEXT } = await import('../src/shared/ui/text/gameplay.js');
+		const { PROFILE_CLASS_ICONS: canvasClasses } = await import('../src/shared/ui/text/profile.js');
 		expect(MENU_TEXT.home_emoji).toBe('<:home:123456789012345678>');
 		expect(HELP_PAGES.map((page) => page.body).join('\n')).toContain('<:sword:123456789012345678> **Swordsman**');
 		expect(GAMEPLAY_TEXT.equipmentSection('Sword', 'Armor')).toContain(
@@ -75,7 +75,7 @@ describe('content rendering', () => {
 		vi.doMock('@napi-rs/canvas', () => ({
 			createCanvas: () => ({ getContext: () => context, toBuffer: () => Buffer.from('png') }),
 		}));
-		const { renderProfileCard } = await import('../src/render/ProfileCardRenderer.js');
+		const { renderProfileCard } = await import('../src/shared/ui/render/ProfileCardRenderer.js');
 		renderProfileCard({
 			username: 'Player',
 			combatClass: 'Swordsman',

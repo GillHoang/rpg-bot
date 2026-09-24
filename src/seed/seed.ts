@@ -1,4 +1,4 @@
-import { SEED_LOG_TEXT } from '../text/diagnostics.js';
+import { SEED_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 /**
  * Seed runner — nạp dữ liệu seed vào PostgreSQL.
  *
@@ -12,7 +12,7 @@ import { SEED_LOG_TEXT } from '../text/diagnostics.js';
  * (users, user_deities...) KHÔNG BAO GIỜ bị xoá.
  */
 import { db, pool } from '../db/client.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 import {
 	deityRoster,
 	mobRoster,
@@ -25,15 +25,15 @@ import {
 	titleCatalog,
 	rankedReward,
 } from '../db/schema.js';
-import { DEITY_SEED } from './data/deities.js';
-import { MOB_SEED } from './data/mobs.js';
-import { WEAPON_SEED } from './data/weapons.js';
-import { ARMOR_SEED } from './data/armors.js';
-import { RUNE_SEED } from './data/runes.js';
-import { SOCKET_UNLOCK_COST_SEED, ESSENCE_BAG_DEF_SEED } from './data/runeEconomy.js';
-import { COSMETIC_SEED } from './data/cosmetics.js';
-import { TITLE_SEED } from './data/titles.js';
-import { RANKED_REWARD_SEED } from './data/rankedRewards.js';
+import { DEITY_SEED } from '../modules/progression/seed/deities.js';
+import { MOB_SEED } from '../modules/pve/seed/mobs.js';
+import { WEAPON_SEED } from '../modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../modules/progression/seed/armors.js';
+import { RUNE_SEED } from '../modules/progression/seed/runes.js';
+import { SOCKET_UNLOCK_COST_SEED, ESSENCE_BAG_DEF_SEED } from '../modules/progression/seed/runeEconomy.js';
+import { COSMETIC_SEED } from '../modules/meta/seed/cosmetics.js';
+import { TITLE_SEED } from '../modules/meta/seed/titles.js';
+import { RANKED_REWARD_SEED } from '../modules/pvp/seed/rankedRewards.js';
 
 const counts = await db.transaction(async (tx) => {
 	for (const row of DEITY_SEED) {

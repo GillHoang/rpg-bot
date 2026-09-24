@@ -10,25 +10,25 @@ vi.mock('../src/db/client.js', async () => {
 vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() } }));
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { MenuGameplayService } from '../src/menu/MenuGameplayService.js';
-import { MenuRouter } from '../src/menu/MenuRouter.js';
-import { MenuSessionStore } from '../src/menu/MenuSessionStore.js';
-import { menuId, parseMenuId } from '../src/menu/menuIds.js';
-import { StartService } from '../src/services/StartService.js';
-import { DailyService } from '../src/services/DailyService.js';
-import { RaidService } from '../src/services/RaidService.js';
-import { QuestService } from '../src/services/QuestService.js';
-import { ReputationService } from '../src/services/ReputationService.js';
-import { DailyCycle } from '../src/utils/dailyCycle.js';
-import { subscribeDomainEvents } from '../src/core/subscribeDomainEvents.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
-import { MOB_SEED } from '../src/seed/data/mobs.js';
-import { COSMETIC_SEED } from '../src/seed/data/cosmetics.js';
-import { TITLE_SEED } from '../src/seed/data/titles.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { MonsterEncounterService } from '../src/services/MonsterEncounterService.js';
-import { findGateTier } from '../src/config/portals.js';
+import { MenuGameplayService } from '../src/modules/menu/MenuGameplayService.js';
+import { MenuRouter } from '../src/modules/menu/MenuRouter.js';
+import { MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
+import { menuId, parseMenuId } from '../src/modules/menu/menuIds.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { ClaimDailyUseCase } from '../src/modules/economy/application/ClaimDailyUseCase.js';
+import { RaidService } from '../src/modules/pve/application/RaidService.js';
+import { QuestService } from '../src/modules/meta/application/QuestService.js';
+import { ReputationService } from '../src/modules/meta/application/ReputationService.js';
+import { DailyCycle } from '../src/shared/utils/dailyCycle.js';
+import { subscribeDomainEvents } from '../src/app/events.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
+import { COSMETIC_SEED } from '../src/modules/meta/seed/cosmetics.js';
+import { TITLE_SEED } from '../src/modules/meta/seed/titles.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { MonsterEncounterService } from '../src/modules/pve/application/MonsterEncounterService.js';
+import { findGateTier } from '../src/shared/config/portals.js';
 
 let id: string;
 let sequence = 0;
@@ -443,7 +443,7 @@ describe('phase 2 menu', () => {
 	});
 
 	it('does not create an account when starter seed is missing', async () => {
-		const { GearRepository } = await import('../src/repositories/GearRepository.js');
+		const { GearRepository } = await import('../src/modules/progression/infrastructure/GearRepository.js');
 		vi.spyOn(GearRepository.prototype, 'findWeaponRosterIdByName').mockResolvedValueOnce(null);
 		expect((await start()).status).toBe('starter-gear-missing');
 		expect(await bag()).toBeUndefined();
@@ -548,7 +548,7 @@ describe('phase 2 menu', () => {
 			rewardBeliefShards: 7,
 			questDate: DailyCycle.keyAt(),
 		});
-		const daily = new DailyService();
+		const daily = new ClaimDailyUseCase();
 		expect((await daily.claim(id, new Date())).status).toBe('ok');
 		const first = await bag();
 		const [quest] = await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, id));
@@ -563,7 +563,7 @@ describe('phase 2 menu', () => {
 		await start();
 		const before = await bag();
 		vi.spyOn(ReputationService.prototype, 'awardInTx').mockRejectedValueOnce(new Error('failure'));
-		await expect(new DailyService().claim(id, new Date())).rejects.toThrow('failure');
+		await expect(new ClaimDailyUseCase().claim(id, new Date())).rejects.toThrow('failure');
 		expect(await bag()).toEqual(before);
 		const [user] = await db.select().from(s.users).where(eq(s.users.discordId, id));
 		expect(user.lastDailyClaimDate).not.toBe(DailyCycle.keyAt());

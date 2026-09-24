@@ -9,12 +9,12 @@ const defaultQuery = vi.hoisted(() =>
 	}),
 );
 vi.mock('../src/db/client.js', () => ({ db: { select: defaultQuery, transaction: defaultQuery }, pool: {} }));
-import { InventoryService } from '../src/services/InventoryService.js';
-import type { InventoryDataRepository } from '../src/repositories/InventoryDataRepository.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
-import { RUNE_SEED } from '../src/seed/data/runes.js';
-import { DEITY_SEED } from '../src/seed/data/deities.js';
+import { InventoryService } from '../src/modules/progression/application/InventoryService.js';
+import type { InventoryDataRepository } from '../src/modules/progression/infrastructure/InventoryDataRepository.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { RUNE_SEED } from '../src/modules/progression/seed/runes.js';
+import { DEITY_SEED } from '../src/modules/progression/seed/deities.js';
 
 let first: TestDatabase;
 let second: TestDatabase;

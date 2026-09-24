@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PROGRESS_BAR_EMOJIS, renderProgressBar } from '../src/utils/progressBar.js';
+import { PROGRESS_BAR_EMOJIS, renderProgressBar } from '../src/shared/utils/progressBar.js';
 
 const { blue, green } = PROGRESS_BAR_EMOJIS.full;
 const { yellow } = PROGRESS_BAR_EMOJIS.partial;

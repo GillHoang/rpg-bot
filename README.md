@@ -235,7 +235,7 @@ pnpm build    # compile + kiểm tra import của dist
 
 ## Kiến trúc OOP/SOLID
 
-`src/application/createApplicationServices.ts` khởi tạo một bộ service dùng chung cho commands, menu, event và tác vụ nền. Các lớp nhận dependency qua constructor với contract chỉ gồm những method cần dùng. `PersistenceContext` và `DrizzleUnitOfWork` giữ ranh giới giao dịch rõ ràng; truy vấn SQL nằm trong repository.
+`src/app/container.ts` khởi tạo một bộ service dùng chung cho commands, menu, event và tác vụ nền. Các lớp nhận dependency qua constructor với contract chỉ gồm những method cần dùng. `PersistenceContext` (`shared/kernel/persistence.ts`) và `DrizzleUnitOfWork` giữ ranh giới giao dịch rõ ràng; truy vấn SQL nằm trong repository.
 
 Combat dùng Strategy/Decorator và các policy attack/status có thể thay thế. Inventory, deity, monster selection và reward calculation được tách khỏi truy vấn DB. `BotMaintenance`/`Scheduler` quản lý start/stop và vòng đời timer. Hàm tính toán thuần và cấu hình vẫn giữ dạng hàm/dữ liệu.
 

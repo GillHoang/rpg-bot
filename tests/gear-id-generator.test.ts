@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Executor } from '../src/db/client.js';
-import { GearIdGenerator } from '../src/utils/idGenerator.js';
+import { GearIdGenerator } from '../src/shared/utils/idGenerator.js';
 
 // Only identity is relevant to these port tests; no database operation may be performed on the handle.
 const executor = Object.freeze({}) as Executor;

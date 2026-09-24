@@ -10,10 +10,10 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { StartService } from '../src/services/StartService.js';
-import { ResetService } from '../src/services/ResetService.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { ResetService } from '../src/modules/system/application/ResetService.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
 
 beforeAll(async () => {
 	const { testClient } = (await import('../src/db/client.js')) as unknown as TestDatabase;

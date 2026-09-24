@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ButtonInteraction, ChatInputCommandInteraction, MessageEditOptions } from 'discord.js';
-import type { InventoryService } from '../src/services/InventoryService.js';
+import type { InventoryService } from '../src/modules/progression/application/InventoryService.js';
 
 const { repo, logger } = vi.hoisted(() => ({
 	repo: { bag: vi.fn(), count: vi.fn(), list: vi.fn() },
@@ -15,10 +15,10 @@ vi.mock('../src/services/InventoryService.js', () => ({
 }));
 vi.mock('../src/utils/logger.js', () => ({ logger }));
 
-import { InventoryCommand } from '../src/commands/rpg/InventoryCommand.js';
-import { buildInventoryView, INVENTORY_CATEGORIES, parseInventoryAction } from '../src/render/InventoryPager.js';
-import { GENERIC_ERROR, NOT_REGISTERED } from '../src/text/common.js';
-import { INVENTORY_PAGER_TTL_MS } from '../src/text/inventory.js';
+import { InventoryCommand } from '../src/modules/progression/presentation/InventoryCommand.js';
+import { buildInventoryView, INVENTORY_CATEGORIES, parseInventoryAction } from '../src/shared/ui/render/InventoryPager.js';
+import { GENERIC_ERROR, NOT_REGISTERED } from '../src/shared/ui/text/common.js';
+import { INVENTORY_PAGER_TTL_MS } from '../src/shared/ui/text/inventory.js';
 
 const bag = {
 	credux: 100,

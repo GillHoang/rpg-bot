@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
-import type { PersistenceContext } from '../src/application/ports/PersistenceContext.js';
-import { createApplicationServices } from '../src/application/createApplicationServices.js';
-import { registerAllCommands } from '../src/core/registerAllCommands.js';
-import { CommandRegistry } from '../src/core/CommandRegistry.js';
-import { EventBus } from '../src/core/EventBus.js';
-import { subscribeDomainEvents } from '../src/core/subscribeDomainEvents.js';
-import { menuRouter } from '../src/menu/menuRuntime.js';
+import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
+import { createAppContainer } from '../src/app/container.js';
+import { registerAllCommands } from '../src/app/registerAllCommands.js';
+import { CommandRegistry } from '../src/app/CommandRegistry.js';
+import { EventBus } from '../src/shared/kernel/EventBus.js';
+import { subscribeDomainEvents } from '../src/app/events.js';
+import { menuRouter } from '../src/modules/menu/menuRuntime.js';
 
 vi.mock('../src/db/client.js', () => ({
 	db: new Proxy(
@@ -41,8 +41,8 @@ function context(): PersistenceContext {
 describe('application composition', () => {
 	it('constructs isolated graphs without I/O or timers and registers the injected menu', async () => {
 		const timer = vi.spyOn(globalThis, 'setInterval');
-		const first = createApplicationServices({ persistence: context() });
-		const second = createApplicationServices({ persistence: context() });
+		const first = createAppContainer({ persistence: context() });
+		const second = createAppContainer({ persistence: context() });
 		expect(first.events).not.toBe(second.events);
 		expect(first.menu).not.toBe(second.menu);
 		expect(first.daily).not.toBe(second.daily);
@@ -62,8 +62,8 @@ describe('application composition', () => {
 	});
 
 	it('isolates event observers and skips progression already applied in the transaction', () => {
-		const first = createApplicationServices({ persistence: context() });
-		const second = createApplicationServices({ persistence: context() });
+		const first = createAppContainer({ persistence: context() });
+		const second = createAppContainer({ persistence: context() });
 		const progress = vi.spyOn(first.quests, 'progress').mockResolvedValue();
 		const award = vi.spyOn(first.reputation, 'award').mockResolvedValue({ granted: 0, newLevel: null });
 		subscribeDomainEvents(first.events);

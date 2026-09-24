@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { choose, rollChance } from '../src/utils/weightedRandom.js';
-import { createRng } from '../src/domain/combat/Rng.js';
-import { rollCrit } from '../src/domain/combat/DamageCalculator.js';
-import { rollRaidChest } from '../src/config/raidLoot.js';
-import { CoinTossGame } from '../src/domain/casino/games/CoinTossGame.js';
-import { DiceRollGame } from '../src/domain/casino/games/DiceRollGame.js';
+import { choose, rollChance } from '../src/shared/utils/weightedRandom.js';
+import { createRng } from '../src/modules/combat-shared/domain/Rng.js';
+import { rollCrit } from '../src/modules/combat-shared/domain/DamageCalculator.js';
+import { rollRaidChest } from '../src/shared/config/raidLoot.js';
+import { CoinTossGame } from '../src/modules/casino/domain/games/CoinTossGame.js';
+import { DiceRollGame } from '../src/modules/casino/domain/games/DiceRollGame.js';
 
 describe('unified outcome selection', () => {
 	it('handles impossible/guaranteed outcomes and clamps stat probabilities', () => {

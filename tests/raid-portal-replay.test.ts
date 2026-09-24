@@ -1,10 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { ChatInputCommandInteraction } from 'discord.js';
-import type { RaidResult, RaidService } from '../src/services/RaidService.js';
+import type { RaidResult, RaidService } from '../src/modules/pve/application/RaidService.js';
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
 vi.mock('../src/render/BattleLogPager.js', () => ({ sendBattleLog: vi.fn() }));
-import { sendBattleLog } from '../src/render/BattleLogPager.js';
-import { RaidCommand } from '../src/commands/rpg/RaidCommand.js';
+import { sendBattleLog } from '../src/shared/ui/render/BattleLogPager.js';
+import { RaidCommand } from '../src/modules/pve/presentation/RaidCommand.js';
 
 beforeEach(() => vi.clearAllMocks());
 it.each(['player_win', 'enemy_win', 'draw'] as const)('replay after %s only advances on a win', async (outcome) => {

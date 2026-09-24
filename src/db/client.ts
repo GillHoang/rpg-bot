@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import * as schema from './schema.js';
-import { env } from '../config/env.js';
+import { env } from '../shared/config/env.js';
 
 /**
  * Single shared Postgres pool + drizzle instance.

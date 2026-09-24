@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { weekWindowAt } from '../src/config/ranked.js';
+import { weekWindowAt } from '../src/shared/config/ranked.js';
 
 it('includes ISO week year, including December/January boundaries', () => {
 	expect(weekWindowAt(new Date('2021-01-01T00:00:00Z')).key).toBe('2020-W53');

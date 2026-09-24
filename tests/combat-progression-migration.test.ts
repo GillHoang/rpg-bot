@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { getTableConfig } from 'drizzle-orm/pg-core';
 import { createTestDatabase } from './helpers/database.js';
 import * as s from '../src/db/schema.js';
-import { MAX_COMBAT_LEVEL } from '../src/config/combatExp.js';
+import { MAX_COMBAT_LEVEL } from '../src/shared/config/combatExp.js';
 
 it('upgrades populated EXP columns and level limits without losing existing progress', async () => {
 	const { db, testClient } = createTestDatabase();

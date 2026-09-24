@@ -1,8 +1,8 @@
-import { LOG_EVENT_TEXT, SEASON_CLI_TEXT } from '../text/diagnostics.js';
+import { LOG_EVENT_TEXT, SEASON_CLI_TEXT } from '../shared/ui/text/diagnostics.js';
 
-import { SeasonService } from '../services/SeasonService.js';
+import { SeasonService } from '../modules/meta/application/SeasonService.js';
 import { pool } from '../db/client.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../shared/utils/logger.js';
 
 try {
 	const expectedId = Number(process.argv[2]);

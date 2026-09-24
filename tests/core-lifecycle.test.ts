@@ -3,26 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events, type Client, type Interaction } from 'discord.js';
 
 const log = vi.hoisted(() => ({ info: vi.fn(), error: vi.fn(), warn: vi.fn() }));
-vi.mock('../src/utils/logger.js', () => ({ logger: log }));
-vi.mock('../src/config/env.js', () => ({ env: { DISCORD_TOKEN: 'lifecycle-token' } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: log }));
+vi.mock('../src/shared/config/env.js', () => ({ env: { DISCORD_TOKEN: 'lifecycle-token' } }));
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
-vi.mock('../src/services/CasinoSessionService.js', () => ({
+vi.mock('../src/modules/casino/application/CasinoSessionService.js', () => ({
 	CasinoSessionService: class {
 		constructor() {
 			throw new Error('Use injected sessions');
 		}
 	},
 }));
-vi.mock('../src/services/DuelService.js', () => ({
+vi.mock('../src/modules/pvp/application/DuelService.js', () => ({
 	DuelService: class {
 		constructor() {
 			throw new Error('Use injected duels');
 		}
 	},
 }));
-import { BotMaintenance } from '../src/core/BotMaintenance.js';
-import { Scheduler } from '../src/core/Scheduler.js';
-import { DiscordBot } from '../src/core/DiscordBot.js';
+import { BotMaintenance } from '../src/app/BotMaintenance.js';
+import { Scheduler } from '../src/app/Scheduler.js';
+import { DiscordBot } from '../src/app/DiscordBot.js';
 
 beforeEach(() => {
 	vi.useFakeTimers();

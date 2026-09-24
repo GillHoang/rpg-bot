@@ -1,9 +1,9 @@
-import { DEPLOY_COMMANDS_LOG_TEXT } from '../text/diagnostics.js';
+import { DEPLOY_COMMANDS_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 import { REST, Routes } from 'discord.js';
-import { CommandRegistry } from '../core/CommandRegistry.js';
-import { registerAllCommands } from '../core/registerAllCommands.js';
-import { env } from '../config/env.js';
-import { logger, flushErrorWebhook } from '../utils/logger.js';
+import { CommandRegistry } from '../app/CommandRegistry.js';
+import { registerAllCommands } from '../app/registerAllCommands.js';
+import { env } from '../shared/config/env.js';
+import { logger, flushErrorWebhook } from '../shared/utils/logger.js';
 import { parseCommandScope } from './commandScope.js';
 
 /**

@@ -3,8 +3,8 @@ import { expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createTestDatabase } from './helpers/database.js';
 import { rankedLogs, users } from '../src/db/schema.js';
-import { RankedRepository } from '../src/repositories/RankedRepository.js';
-import { weekWindowAt } from '../src/config/ranked.js';
+import { RankedRepository } from '../src/modules/pvp/infrastructure/RankedRepository.js';
+import { weekWindowAt } from '../src/shared/config/ranked.js';
 import type { Executor } from '../src/db/client.js';
 
 it('preserves UTC history and weekly boundaries across database session timezones', async () => {

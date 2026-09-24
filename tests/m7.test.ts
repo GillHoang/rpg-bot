@@ -10,31 +10,31 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { StartService } from '../src/services/StartService.js';
-import { SummonService } from '../src/services/SummonService.js';
-import { LootService } from '../src/services/LootService.js';
-import { LoadoutService } from '../src/services/LoadoutService.js';
-import { StatAssemblyService } from '../src/services/StatAssemblyService.js';
-import { QuestService } from '../src/services/QuestService.js';
-import { ReputationService } from '../src/services/ReputationService.js';
-import { DuelService, DUEL_STAKE_MIN } from '../src/services/DuelService.js';
-import { RankedService } from '../src/services/RankedService.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { PvpShopService } from '../src/services/PvpShopService.js';
-import { CosmeticService } from '../src/services/CosmeticService.js';
-import { ClassChangeService } from '../src/services/ClassChangeService.js';
-import { ProfileService } from '../src/services/ProfileService.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
-import { RUNE_SEED } from '../src/seed/data/runes.js';
-import { DEITY_SEED } from '../src/seed/data/deities.js';
-import { MOB_SEED } from '../src/seed/data/mobs.js';
-import { ESSENCE_BAG_DEF_SEED, SOCKET_UNLOCK_COST_SEED } from '../src/seed/data/runeEconomy.js';
-import { COSMETIC_SEED } from '../src/seed/data/cosmetics.js';
-import { TITLE_SEED } from '../src/seed/data/titles.js';
-import { RANKED_REWARD_SEED } from '../src/seed/data/rankedRewards.js';
-import { subscribeDomainEvents } from '../src/core/subscribeDomainEvents.js';
-import * as rngModule from '../src/domain/combat/Rng.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { RunSummonUseCase } from '../src/modules/progression/application/RunSummonUseCase.js';
+import { LootService } from '../src/modules/economy/application/LootService.js';
+import { LoadoutService } from '../src/modules/progression/application/LoadoutService.js';
+import { StatAssemblyService } from '../src/modules/combat-shared/application/StatAssemblyService.js';
+import { QuestService } from '../src/modules/meta/application/QuestService.js';
+import { ReputationService } from '../src/modules/meta/application/ReputationService.js';
+import { DuelService, DUEL_STAKE_MIN } from '../src/modules/pvp/application/DuelService.js';
+import { RankedService } from '../src/modules/pvp/application/RankedService.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { PvpShopService } from '../src/modules/pvp/application/PvpShopService.js';
+import { CosmeticService } from '../src/modules/meta/application/CosmeticService.js';
+import { ClassChangeService } from '../src/modules/identity/application/ClassChangeService.js';
+import { ProfileService } from '../src/modules/identity/application/ProfileService.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { RUNE_SEED } from '../src/modules/progression/seed/runes.js';
+import { DEITY_SEED } from '../src/modules/progression/seed/deities.js';
+import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
+import { ESSENCE_BAG_DEF_SEED, SOCKET_UNLOCK_COST_SEED } from '../src/modules/progression/seed/runeEconomy.js';
+import { COSMETIC_SEED } from '../src/modules/meta/seed/cosmetics.js';
+import { TITLE_SEED } from '../src/modules/meta/seed/titles.js';
+import { RANKED_REWARD_SEED } from '../src/modules/pvp/seed/rankedRewards.js';
+import { subscribeDomainEvents } from '../src/app/events.js';
+import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 
 let id: string;
 let sequence = 0;
@@ -297,7 +297,7 @@ describe('M7 ranked', () => {
 describe('M7 relics, rune bags and new chests', () => {
 	it('pulls forced tiers with relics without touching pity or shards', async () => {
 		await db.update(s.usersBag).set({ sacredRelics: 2, supremeRelics: 1 }).where(eq(s.usersBag.discordId, id));
-		const result = await new SummonService().run(id, 2, 'sacred');
+		const result = await new RunSummonUseCase().run(id, 2, 'sacred');
 		if (result.status !== 'ok') throw new Error(`relic pull failed: ${result.status}`);
 		expect(result.pulls.every((p) => p.tier === 'Mythic' || p.tier === 'Legendary' || p.tier === 'Supreme')).toBe(true);
 		expect((await bag()).sacredRelics).toBe(0);
@@ -306,10 +306,10 @@ describe('M7 relics, rune bags and new chests', () => {
 		expect(grants).toHaveLength(2);
 		const [pity] = await db.select().from(s.pityCounters).where(eq(s.pityCounters.discordId, id));
 		expect(pity?.pityCount ?? 0).toBe(0); // pity untouched
-		expect(await new SummonService().run(id, 1, 'sacred')).toEqual({
+		expect(await new RunSummonUseCase().run(id, 1, 'sacred')).toEqual({
 			status: 'insufficient-relics', relic: 'sacred', needed: 1, have: 0,
 		});
-		const supreme = await new SummonService().run(id, 1, 'supreme');
+		const supreme = await new RunSummonUseCase().run(id, 1, 'supreme');
 		if (supreme.status !== 'ok') throw new Error('supreme relic failed');
 		expect(['Legendary', 'Supreme']).toContain(supreme.pulls[0].tier);
 	});

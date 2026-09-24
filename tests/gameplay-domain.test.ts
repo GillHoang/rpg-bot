@@ -1,18 +1,18 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chance, rollChest } from '../src/config/chestLoot.js';
-import { resolveRoll } from '../src/config/gachaRates.js';
-import { createRng } from '../src/domain/combat/Rng.js';
-import { newDeck } from '../src/domain/casino/CardDeck.js';
-import { SlotMachineGame } from '../src/domain/casino/games/SlotMachineGame.js';
-import { replayGame } from '../src/domain/casino/InteractiveGame.js';
-import { CrashSession } from '../src/domain/casino/CrashSession.js';
-import { BlackjackSession } from '../src/domain/casino/BlackjackSession.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { RuneStrategyDecorator } from '../src/domain/combat/RuneStrategyDecorator.js';
-import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { computeSigilStats } from '../src/config/ascension.js';
+import { chance, rollChest } from '../src/shared/config/chestLoot.js';
+import { resolveRoll } from '../src/shared/config/gachaRates.js';
+import { createRng } from '../src/modules/combat-shared/domain/Rng.js';
+import { newDeck } from '../src/modules/casino/domain/CardDeck.js';
+import { SlotMachineGame } from '../src/modules/casino/domain/games/SlotMachineGame.js';
+import { replayGame } from '../src/modules/casino/domain/InteractiveGame.js';
+import { CrashSession } from '../src/modules/casino/domain/CrashSession.js';
+import { BlackjackSession } from '../src/modules/casino/domain/BlackjackSession.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { RuneStrategyDecorator } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
+import { NullClassStrategy } from '../src/modules/combat-shared/domain/classes/NullClassStrategy.js';
+import { MonsterStrategy } from '../src/modules/combat-shared/domain/classes/MonsterStrategy.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { computeSigilStats } from '../src/shared/config/ascension.js';
 
 describe('seeded weighted randomness', () => {
 	it('never calls Math.random and replays the same full deck without duplicates', () => {

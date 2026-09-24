@@ -46,14 +46,14 @@ describe('text and emoji boundaries', () => {
 	});
 
 	it('keeps content modules safe for bootstrap without forbidding type-only contracts', () => {
-		expect(findTextViolations("import { env } from '../config/env.js';", 'src/text/example.ts')).toHaveLength(1);
-		expect(findTextViolations("import { ICONS } from './icons.js';", 'src/text/example.ts')).toEqual([]);
+		expect(findTextViolations("import { env } from '../shared/config/env.js';", 'src/shared/ui/text/example.ts')).toHaveLength(1);
+		expect(findTextViolations("import { ICONS } from './icons.js';", 'src/shared/ui/text/example.ts')).toEqual([]);
 		expect(
 			findTextViolations(
-				"import type { PlayerAccount } from '../domain/entities/PlayerAccount.js';",
-				'src/text/example.ts',
+				"import type { PlayerAccount } from '../../../modules/identity/domain/PlayerAccount.js';",
+				'src/shared/ui/text/example.ts',
 			),
-		).toEqual([]);
+			).toEqual([]);
 	});
 
 	it.each([

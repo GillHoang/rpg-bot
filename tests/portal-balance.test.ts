@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MonsterEncounterService } from '../src/services/MonsterEncounterService.js';
-import { MOB_SEED } from '../src/seed/data/mobs.js';
-import { CLASS_NAMES, computeClassStats } from '../src/config/classes.js';
-import { STARTER_ARMOR, STARTER_WEAPON } from '../src/config/starter.js';
-import { GEAR_STATS } from '../src/config/chestLoot.js';
-import { computeWeaponCurrAtk, computeArmorCurrStats } from '../src/config/enhancement.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { ClassStrategyRegistry } from '../src/domain/combat/ClassStrategyRegistry.js';
-import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
+import { MonsterEncounterService } from '../src/modules/pve/application/MonsterEncounterService.js';
+import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
+import { CLASS_NAMES, computeClassStats } from '../src/shared/config/classes.js';
+import { STARTER_ARMOR, STARTER_WEAPON } from '../src/shared/config/starter.js';
+import { GEAR_STATS } from '../src/shared/config/chestLoot.js';
+import { computeWeaponCurrAtk, computeArmorCurrStats } from '../src/shared/config/enhancement.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { ClassStrategyRegistry } from '../src/modules/combat-shared/domain/ClassStrategyRegistry.js';
+import { MonsterStrategy } from '../src/modules/combat-shared/domain/classes/MonsterStrategy.js';
 import type { Executor } from '../src/db/client.js';
 
 const executor = {} as Executor;

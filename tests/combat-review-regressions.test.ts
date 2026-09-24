@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BattleAttackResolver } from '../src/domain/combat/BattleAttack.js';
-import { CombatStatusEffectProcessor } from '../src/domain/combat/CombatStatusEffects.js';
-import { createCombatant, type DebuffTag } from '../src/domain/combat/CombatantState.js';
-import { DeityBlessingDecorator } from '../src/domain/combat/DeityBlessingDecorator.js';
-import { wrapWithRunes } from '../src/domain/combat/RuneStrategyDecorator.js';
-import { ArcherStrategy } from '../src/domain/combat/classes/ArcherStrategy.js';
-import { FighterStrategy } from '../src/domain/combat/classes/FighterStrategy.js';
-import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
-import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import { combatTag, COMBAT_TAGS } from '../src/text/combat.js';
+import { BattleAttackResolver } from '../src/modules/combat-shared/domain/BattleAttack.js';
+import { CombatStatusEffectProcessor } from '../src/modules/combat-shared/domain/CombatStatusEffects.js';
+import { createCombatant, type DebuffTag } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { DeityBlessingDecorator } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
+import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
+import { ArcherStrategy } from '../src/modules/combat-shared/domain/classes/ArcherStrategy.js';
+import { FighterStrategy } from '../src/modules/combat-shared/domain/classes/FighterStrategy.js';
+import { MonsterStrategy } from '../src/modules/combat-shared/domain/classes/MonsterStrategy.js';
+import { NullClassStrategy } from '../src/modules/combat-shared/domain/classes/NullClassStrategy.js';
+import { combatTag, COMBAT_TAGS } from '../src/shared/ui/text/combat.js';
 
 function setup() {
 	const make = (name: string) => createCombatant({ name, combatClass: null, hp: 1000, atk: 100, def: 0, crit: 0 });

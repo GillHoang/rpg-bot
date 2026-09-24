@@ -1,6 +1,6 @@
 import pino from 'pino';
 import { describe, expect, it, vi } from 'vitest';
-import { ErrorWebhook } from '../src/utils/errorWebhook.js';
+import { ErrorWebhook } from '../src/shared/utils/errorWebhook.js';
 
 describe('error webhook', () => {
 	it.each([

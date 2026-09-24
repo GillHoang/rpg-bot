@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { BattleEngine, SUDDEN_DEATH_START, suddenDeathMultiplier } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import { wrapWithBlessings } from '../src/domain/combat/DeityBlessingDecorator.js';
-import { blessingStrength, resonanceBonus } from '../src/config/blessings.js';
-import { eloDelta } from '../src/config/ranked.js';
+import { BattleEngine, SUDDEN_DEATH_START, suddenDeathMultiplier } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { NullClassStrategy } from '../src/modules/combat-shared/domain/classes/NullClassStrategy.js';
+import { wrapWithBlessings } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
+import { blessingStrength, resonanceBonus } from '../src/shared/config/blessings.js';
+import { eloDelta } from '../src/shared/config/ranked.js';
 
 describe('elo', () => {
 	it('rounds half-point draw deltas symmetrically', () => {

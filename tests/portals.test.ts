@@ -6,7 +6,7 @@ import {
 	gateUnlocked,
 	highestAccessibleGate,
 	findGateTier,
-} from '../src/config/portals.js';
+} from '../src/shared/config/portals.js';
 
 describe('gate tier defaults', () => {
 	it.each([

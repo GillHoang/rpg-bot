@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { MessageFlags } from 'discord.js';
-import { HELP_PAGES } from '../src/text/help.js';
-import { MENU_SECTIONS, type MenuSection } from '../src/text/menu.js';
-import { MenuSessionStore, type MenuScreen } from '../src/menu/MenuSessionStore.js';
-import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/menu/menuIds.js';
-import { helpMatches, menuView, recoveryView, searchModal } from '../src/menu/menuViews.js';
-import { buildBattleLogPage } from '../src/render/BattleLogPager.js';
-import { raidBattleOptions } from '../src/render/raidBattleOptions.js';
-import { battlePanel } from '../src/menu/gameplayPanels.js';
+import { HELP_PAGES } from '../src/shared/ui/text/help.js';
+import { MENU_SECTIONS, type MenuSection } from '../src/shared/ui/text/menu.js';
+import { MenuSessionStore, type MenuScreen } from '../src/modules/menu/MenuSessionStore.js';
+import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/modules/menu/menuIds.js';
+import { helpMatches, menuView, recoveryView, searchModal } from '../src/modules/menu/menuViews.js';
+import { buildBattleLogPage } from '../src/shared/ui/render/BattleLogPager.js';
+import { raidBattleOptions } from '../src/shared/ui/render/raidBattleOptions.js';
+import { battlePanel } from '../src/modules/menu/gameplayPanels.js';
 
 describe('menu payloads', () => {
 	it('renders every journal round identically to raid hunt, including pager controls', () => {

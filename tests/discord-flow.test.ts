@@ -8,9 +8,9 @@ const casino = vi.hoisted(() => ({ start: vi.fn(), act: vi.fn() }));
 vi.mock('../src/services/CasinoSessionService.js', () => ({
 	CasinoSessionService: class { start = casino.start; act = casino.act; },
 }));
-import { interactiveCasino } from '../src/commands/casino/interactiveCasino.js';
-import { registerAllCommands } from '../src/core/registerAllCommands.js';
-import { CommandRegistry } from '../src/core/CommandRegistry.js';
+import { interactiveCasino } from '../src/modules/casino/presentation/interactiveCasino.js';
+import { registerAllCommands } from '../src/app/registerAllCommands.js';
+import { CommandRegistry } from '../src/app/CommandRegistry.js';
 
 function fixture() {
 	const collector = new EventEmitter() as EventEmitter & { stop: ReturnType<typeof vi.fn> };

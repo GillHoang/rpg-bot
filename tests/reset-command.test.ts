@@ -14,7 +14,7 @@ vi.mock('../src/services/ResetService.js', () => ({
 		audit = reset.audit;
 	},
 }));
-import { ResetCommand } from '../src/commands/admin/ResetCommand.js';
+import { ResetCommand } from '../src/modules/system/presentation/ResetCommand.js';
 
 function fixture() {
 	const collector = new EventEmitter() as EventEmitter & { stop: ReturnType<typeof vi.fn> };

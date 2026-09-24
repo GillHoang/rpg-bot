@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { ClassStrategyRegistry } from '../src/domain/combat/ClassStrategyRegistry.js';
-import { wrapWithRunes } from '../src/domain/combat/RuneStrategyDecorator.js';
-import { wrapWithBlessings } from '../src/domain/combat/DeityBlessingDecorator.js';
-import type { IncomingHit, StrategyContext } from '../src/domain/combat/IClassStrategy.js';
-import type { CombatClass } from '../src/domain/entities/PlayerAccount.js';
-import type { AssembledPlayer } from '../src/services/StatAssemblyService.js';
-import { createPlayerCombatant, createPlayerStrategy } from '../src/services/combatantFactory.js';
-import { COMBAT_STRIKE_EMOJIS } from '../src/text/combat.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { ClassStrategyRegistry } from '../src/modules/combat-shared/domain/ClassStrategyRegistry.js';
+import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
+import { wrapWithBlessings } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
+import type { IncomingHit, StrategyContext } from '../src/modules/combat-shared/domain/IClassStrategy.js';
+import type { CombatClass } from '../src/modules/identity/domain/PlayerAccount.js';
+import type { AssembledPlayer } from '../src/modules/combat-shared/application/StatAssemblyService.js';
+import { createPlayerCombatant, createPlayerStrategy } from '../src/modules/combat-shared/application/combatantFactory.js';
+import { COMBAT_STRIKE_EMOJIS } from '../src/shared/ui/text/combat.js';
 
 // Importing the pure factory must not initialize the production database.
 vi.mock('../src/db/client.js', () => {

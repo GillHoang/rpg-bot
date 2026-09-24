@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ButtonInteraction, ChatInputCommandInteraction } from 'discord.js';
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
 vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
-import { DuelCommand } from '../src/commands/rpg/DuelCommand.js';
+import { DuelCommand } from '../src/modules/pvp/presentation/DuelCommand.js';
 
 async function fixture() {
 	let collect!: (button: ButtonInteraction) => Promise<void>;

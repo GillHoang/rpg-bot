@@ -32,10 +32,10 @@ const files = sources();
 const pathOf = (file: ts.SourceFile) => relative(root, file.fileName).replaceAll('\\', '/');
 
 describe('application dependency boundaries', () => {
-	it('keeps SQL and runtime database imports in persistence or database entry points', () => {
+	it('keeps SQL and runtime database imports in infrastructure or database entry points', () => {
 		const violations = files.flatMap((file) => {
 			const path = pathOf(file);
-			if (/^(repositories|db|infrastructure|seed|scripts)\//.test(path)) return [];
+			if (/^(modules\/[^/]+\/infrastructure|db|seed|scripts)\//.test(path)) return [];
 			return runtimeImports(file)
 				.filter(
 					(dependency) =>
@@ -46,18 +46,19 @@ describe('application dependency boundaries', () => {
 		expect(violations).toEqual([]);
 	});
 
-	it('keeps domain rules independent of application, persistence, Discord, and environment setup', () => {
+	it('keeps domain rules independent of infrastructure, Discord, and environment setup', () => {
 		const violations = files
-			.filter((file) => pathOf(file).startsWith('domain/'))
+			.filter((file) => pathOf(file).includes('/domain/'))
 			.flatMap((file) =>
 				runtimeImports(file)
 					.filter(
 						(dependency) =>
-							/\/(application|services|repositories|infrastructure|core|db|menu|commands)\//.test(
+							/\/(application|infrastructure|persistence|presentation|discord|db|app)\//.test(
 								dependency,
 							) ||
-							/\/config\/env\.js$/.test(dependency) ||
-							dependency === 'discord.js',
+							/\/shared\/config\/env\.js$/.test(dependency) ||
+							dependency === 'discord.js' ||
+							dependency.startsWith('drizzle-orm'),
 					)
 					.map((dependency) => `${pathOf(file)}: ${dependency}`),
 			);
@@ -66,7 +67,7 @@ describe('application dependency boundaries', () => {
 
 	it('does not construct hidden application collaborators inside use cases or command methods', () => {
 		const violations: string[] = [];
-		for (const file of files.filter((source) => /^(services|commands)\//.test(pathOf(source)))) {
+		for (const file of files.filter((source) => /^modules\/[^/]+\/(application|presentation)\//.test(pathOf(source)))) {
 			const visit = (node: ts.Node): void => {
 				if (ts.isMethodDeclaration(node) && node.body) {
 					const inspect = (child: ts.Node): void => {

@@ -10,11 +10,11 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { StartService } from '../src/services/StartService.js';
-import { RankedService } from '../src/services/RankedService.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { RankedService } from '../src/modules/pvp/application/RankedService.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
 
 let id: string;
 let opponent: string;

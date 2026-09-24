@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MessageFlags, type ChatInputCommandInteraction, type ButtonInteraction } from 'discord.js';
-import { BattleEngine, type BattleResult } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import { buildBattleLogPage, sendBattleLog } from '../src/render/BattleLogPager.js';
-import { COMBAT_STRIKE_EMOJIS } from '../src/text/combat.js';
+import { BattleEngine, type BattleResult } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { NullClassStrategy } from '../src/modules/combat-shared/domain/classes/NullClassStrategy.js';
+import { buildBattleLogPage, sendBattleLog } from '../src/shared/ui/render/BattleLogPager.js';
+import { COMBAT_STRIKE_EMOJIS } from '../src/shared/ui/text/combat.js';
 
 const strategy = { playerStrategy: new NullClassStrategy(), enemyStrategy: new NullClassStrategy() };
 

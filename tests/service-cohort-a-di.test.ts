@@ -1,28 +1,28 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
-import type { PersistenceContext } from '../src/application/ports/PersistenceContext.js';
+import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
 import type { Transaction } from '../src/db/client.js';
 import { createTestDatabase, migrateTestDatabase } from './helpers/database.js';
 import * as s from '../src/db/schema.js';
-import { StartService } from '../src/services/StartService.js';
-import { ProfileService } from '../src/services/ProfileService.js';
-import { DailyService } from '../src/services/DailyService.js';
-import { EconomyService } from '../src/services/EconomyService.js';
-import { QuestService } from '../src/services/QuestService.js';
-import { ReputationService } from '../src/services/ReputationService.js';
-import { CosmeticService } from '../src/services/CosmeticService.js';
-import { ClassChangeService } from '../src/services/ClassChangeService.js';
-import { SummonService } from '../src/services/SummonService.js';
-import { AscensionService } from '../src/services/AscensionService.js';
-import { GameplayProgressCoordinator } from '../src/services/gameplayProgress.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
-import { DEITY_SEED } from '../src/seed/data/deities.js';
-import { COSMETIC_SEED } from '../src/seed/data/cosmetics.js';
-import { TITLE_SEED } from '../src/seed/data/titles.js';
-import { believerLevelCost } from '../src/config/reputation.js';
-import { DailyCycle } from '../src/utils/dailyCycle.js';
-import * as rngModule from '../src/domain/combat/Rng.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { ProfileService } from '../src/modules/identity/application/ProfileService.js';
+import { ClaimDailyUseCase } from '../src/modules/economy/application/ClaimDailyUseCase.js';
+import { EconomyService } from '../src/modules/economy/application/EconomyService.js';
+import { QuestService } from '../src/modules/meta/application/QuestService.js';
+import { ReputationService } from '../src/modules/meta/application/ReputationService.js';
+import { CosmeticService } from '../src/modules/meta/application/CosmeticService.js';
+import { ClassChangeService } from '../src/modules/identity/application/ClassChangeService.js';
+import { RunSummonUseCase } from '../src/modules/progression/application/RunSummonUseCase.js';
+import { AscensionService } from '../src/modules/progression/application/AscensionService.js';
+import { GameplayProgressCoordinator } from '../src/shared/progress/gameplayProgress.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { DEITY_SEED } from '../src/modules/progression/seed/deities.js';
+import { COSMETIC_SEED } from '../src/modules/meta/seed/cosmetics.js';
+import { TITLE_SEED } from '../src/modules/meta/seed/titles.js';
+import { believerLevelCost } from '../src/shared/config/reputation.js';
+import { DailyCycle } from '../src/shared/utils/dailyCycle.js';
+import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 
 // A service falling back to the global database fails immediately; no real pool exists.
 vi.mock('../src/db/client.js', () => ({
@@ -98,7 +98,7 @@ describe('service cohort A persistence isolation', () => {
 	it('commits daily rewards and default quest/reputation progress together without a nested unit of work', async () => {
 		const run = vi.spyOn(persistence.unitOfWork, 'run');
 		const emit = vi.fn();
-		const service = new DailyService(undefined, { emit }, { persistence });
+		const service = new ClaimDailyUseCase(undefined, { emit }, { persistence });
 		expect((await service.claim(id, new Date())).status).toBe('ok');
 		expect(run).toHaveBeenCalledTimes(1);
 		expect(emit).toHaveBeenCalledExactlyOnceWith(
@@ -119,7 +119,7 @@ describe('service cohort A persistence isolation', () => {
 			persistence,
 			reputation: { awardInTx: vi.fn().mockRejectedValue(new Error('progress rejected')) },
 		});
-		const service = new DailyService(undefined, { emit }, { persistence, progress });
+		const service = new ClaimDailyUseCase(undefined, { emit }, { persistence, progress });
 		await expect(service.claim(id, new Date())).rejects.toThrow('progress rejected');
 		expect(await bag()).toEqual(before);
 		const [user] = await isolated.db.select().from(s.users).where(eq(s.users.discordId, id));
@@ -209,7 +209,7 @@ describe('service cohort A persistence isolation', () => {
 
 	it('preserves summon debit, duplicate essence and sigil payment through named repositories', async () => {
 		const emit = vi.fn();
-		const summon = new SummonService(undefined, undefined, { emit }, { persistence });
+		const summon = new RunSummonUseCase(undefined, undefined, { emit }, { persistence });
 		const first = await summon.run(id, 1);
 		expect(first.status).toBe('ok');
 		const second = await summon.run(id, 1);

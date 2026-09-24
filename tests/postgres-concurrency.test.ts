@@ -6,22 +6,22 @@ import { eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
 import * as s from '../src/db/schema.js';
-import { DrizzleUnitOfWork } from '../src/infrastructure/persistence/DrizzleUnitOfWork.js';
-import { StartService } from '../src/services/StartService.js';
-import { DailyService } from '../src/services/DailyService.js';
-import { RankedService } from '../src/services/RankedService.js';
-import { RaidService } from '../src/services/RaidService.js';
-import { CasinoService } from '../src/services/CasinoService.js';
-import { CasinoGameRegistry } from '../src/domain/casino/CasinoGameRegistry.js';
-import { RankedRepository } from '../src/repositories/RankedRepository.js';
-import { ResetService } from '../src/services/ResetService.js';
-import { ResetRepository } from '../src/repositories/ResetRepository.js';
-import { SeasonService } from '../src/services/SeasonService.js';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { WEAPON_SEED } from '../src/seed/data/weapons.js';
-import { ARMOR_SEED } from '../src/seed/data/armors.js';
-import { MOB_SEED } from '../src/seed/data/mobs.js';
-import type { PersistenceContext } from '../src/application/ports/PersistenceContext.js';
+import { DrizzleUnitOfWork } from '../src/db/DrizzleUnitOfWork.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
+import { ClaimDailyUseCase } from '../src/modules/economy/application/ClaimDailyUseCase.js';
+import { RankedService } from '../src/modules/pvp/application/RankedService.js';
+import { RaidService } from '../src/modules/pve/application/RaidService.js';
+import { CasinoService } from '../src/modules/casino/application/CasinoService.js';
+import { CasinoGameRegistry } from '../src/modules/casino/domain/CasinoGameRegistry.js';
+import { RankedRepository } from '../src/modules/pvp/infrastructure/RankedRepository.js';
+import { ResetService } from '../src/modules/system/application/ResetService.js';
+import { ResetRepository } from '../src/modules/system/infrastructure/ResetRepository.js';
+import { SeasonService } from '../src/modules/meta/application/SeasonService.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
+import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
+import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
 
 // Only an explicitly supplied disposable test server may be used; never DATABASE_URL/.env.
 const url = process.env.TEST_DATABASE_URL;
@@ -111,7 +111,7 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 		return new RankedService(undefined, undefined, undefined, undefined, { persistence, queries });
 	}
 	it('claims daily exactly once under simultaneous requests', async () => {
-		const daily = new DailyService(undefined, undefined, { persistence });
+		const daily = new ClaimDailyUseCase(undefined, undefined, { persistence });
 		const results = await Promise.all([daily.claim('a'), daily.claim('a')]);
 		expect(results.map((r) => r.status).sort()).toEqual(['already-claimed', 'ok']);
 		expect((await db.select().from(s.users).where(eq(s.users.discordId, 'a')))[0].overallStreak).toBe(1);

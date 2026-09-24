@@ -2,11 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { MessageFlags, type ChatInputCommandInteraction, type Interaction } from 'discord.js';
 
 vi.mock('../src/utils/logger.js', () => ({ logger: { error: vi.fn(), warn: vi.fn() } }));
-import { MenuRouter } from '../src/menu/MenuRouter.js';
-import { MenuSessionStore } from '../src/menu/MenuSessionStore.js';
-import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/menu/menuIds.js';
-import { MENU_TEXT } from '../src/text/menu.js';
-import { MenuCommand } from '../src/commands/rpg/MenuCommand.js';
+import { MenuRouter } from '../src/modules/menu/MenuRouter.js';
+import { MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
+import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/modules/menu/menuIds.js';
+import { MENU_TEXT } from '../src/shared/ui/text/menu.js';
+import { MenuCommand } from '../src/modules/menu/presentation/MenuCommand.js';
 
 function fixture(kind: 'command' | 'button' | 'select' | 'modal', customId = '', userId = 'alice', messageId = 'm1') {
 	const i = {

@@ -10,11 +10,11 @@ vi.mock('../src/db/client.js', async () => {
 });
 import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
-import { UserRepository } from '../src/repositories/UserRepository.js';
-import { QUEST_REFRESH_DONE } from '../src/text/quest.js';
-import { QuestService } from '../src/services/QuestService.js';
-import { DailyCycle } from '../src/utils/dailyCycle.js';
-import * as rngModule from '../src/domain/combat/Rng.js';
+import { UserRepository } from '../src/modules/identity/infrastructure/UserRepository.js';
+import { QUEST_REFRESH_DONE } from '../src/shared/ui/text/quest.js';
+import { QuestService } from '../src/modules/meta/application/QuestService.js';
+import { DailyCycle } from '../src/shared/utils/dailyCycle.js';
+import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 
 let id: string;
 let sequence = 0;

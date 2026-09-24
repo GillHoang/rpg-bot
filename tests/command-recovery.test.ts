@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { CommandRegistry } from '../src/core/CommandRegistry.js';
+import { CommandRegistry } from '../src/app/CommandRegistry.js';
 
 vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 

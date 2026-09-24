@@ -1,7 +1,7 @@
-import { CLEAR_COMMANDS_LOG_TEXT } from '../text/diagnostics.js';
+import { CLEAR_COMMANDS_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 import { REST, Routes } from 'discord.js';
-import { env } from '../config/env.js';
-import { logger, flushErrorWebhook } from '../utils/logger.js';
+import { env } from '../shared/config/env.js';
+import { logger, flushErrorWebhook } from '../shared/utils/logger.js';
 import { parseCommandScope } from './commandScope.js';
 
 /** Clear only the selected scope. --all clears global plus the specified/default guild. */

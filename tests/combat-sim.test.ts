@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { ClassStrategyRegistry } from '../src/domain/combat/ClassStrategyRegistry.js';
-import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
-import { NullClassStrategy } from '../src/domain/combat/classes/NullClassStrategy.js';
-import type { CombatantState } from '../src/domain/combat/CombatantState.js';
-import type { StrategyContext } from '../src/domain/combat/IClassStrategy.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { ClassStrategyRegistry } from '../src/modules/combat-shared/domain/ClassStrategyRegistry.js';
+import { MonsterStrategy } from '../src/modules/combat-shared/domain/classes/MonsterStrategy.js';
+import { NullClassStrategy } from '../src/modules/combat-shared/domain/classes/NullClassStrategy.js';
+import type { CombatantState } from '../src/modules/combat-shared/domain/CombatantState.js';
+import type { StrategyContext } from '../src/modules/combat-shared/domain/IClassStrategy.js';
 
 class ObservingStrategy extends NullClassStrategy {
 	constructor(private readonly enemies: CombatantState[]) {

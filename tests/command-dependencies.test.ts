@@ -1,10 +1,10 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
-import type { InventoryService } from '../src/services/InventoryService.js';
-import type { CasinoSessionService } from '../src/services/CasinoSessionService.js';
-import type { SocketService } from '../src/services/SocketService.js';
-import type { EnhancementService } from '../src/services/EnhancementService.js';
+import type { InventoryService } from '../src/modules/progression/application/InventoryService.js';
+import type { CasinoSessionService } from '../src/modules/casino/application/CasinoSessionService.js';
+import type { SocketService } from '../src/modules/progression/application/SocketService.js';
+import type { EnhancementService } from '../src/modules/progression/application/EnhancementService.js';
 
 const defaultQuery = vi.hoisted(() =>
 	vi.fn(() => {
@@ -22,20 +22,20 @@ vi.mock('../src/db/client.js', () => ({
 	},
 	pool: {},
 }));
-vi.mock('../src/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
+vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 
-import { BalanceCommand } from '../src/commands/economy/BalanceCommand.js';
-import { PingCommand } from '../src/commands/admin/PingCommand.js';
-import { CasinoCommand } from '../src/commands/casino/CasinoCommand.js';
-import { InteractiveCasinoController } from '../src/commands/casino/interactiveCasino.js';
-import { InventoryCommand, DeitiesCommand } from '../src/commands/rpg/InventoryCommand.js';
-import { EquipCommand, PresetCommand } from '../src/commands/rpg/LoadoutCommand.js';
-import { OpenCommand, RunesCommand } from '../src/commands/rpg/LootCommand.js';
-import { EnhanceCommand } from '../src/commands/rpg/EnhanceCommand.js';
-import { SocketCommand } from '../src/commands/rpg/SocketCommand.js';
-import { MenuCommand } from '../src/commands/rpg/MenuCommand.js';
-import { PlayerAccount } from '../src/domain/entities/PlayerAccount.js';
-import { HealthService } from '../src/services/HealthService.js';
+import { BalanceCommand } from '../src/modules/economy/presentation/BalanceCommand.js';
+import { PingCommand } from '../src/modules/system/presentation/PingCommand.js';
+import { CasinoCommand } from '../src/modules/casino/presentation/CasinoCommand.js';
+import { InteractiveCasinoController } from '../src/modules/casino/presentation/interactiveCasino.js';
+import { InventoryCommand, DeitiesCommand } from '../src/modules/progression/presentation/InventoryCommand.js';
+import { EquipCommand, PresetCommand } from '../src/modules/progression/presentation/LoadoutCommand.js';
+import { OpenCommand, RunesCommand } from '../src/modules/progression/presentation/LootCommand.js';
+import { EnhanceCommand } from '../src/modules/progression/presentation/EnhanceCommand.js';
+import { SocketCommand } from '../src/modules/progression/presentation/SocketCommand.js';
+import { MenuCommand } from '../src/modules/menu/presentation/MenuCommand.js';
+import { PlayerAccount } from '../src/modules/identity/domain/PlayerAccount.js';
+import { HealthService } from '../src/modules/system/application/HealthService.js';
 
 function interaction(options: Record<string, string | number> = {}) {
 	const raw = {

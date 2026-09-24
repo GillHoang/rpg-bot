@@ -9,7 +9,7 @@ vi.mock('../src/services/StartService.js', () => ({
 	},
 }));
 vi.mock('../src/utils/logger.js', () => ({ logger: { error: vi.fn() } }));
-import { StartCommand } from '../src/commands/rpg/StartCommand.js';
+import { StartCommand } from '../src/modules/identity/presentation/StartCommand.js';
 
 function fixture(id: string) {
 	const collector = Object.assign(new EventEmitter(), { stop: vi.fn() });

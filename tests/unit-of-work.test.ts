@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { db, Transaction } from '../src/db/client.js';
-import { DrizzleUnitOfWork } from '../src/infrastructure/persistence/DrizzleUnitOfWork.js';
+import { DrizzleUnitOfWork } from '../src/db/DrizzleUnitOfWork.js';
 
 describe('Drizzle unit of work contract', () => {
 	it('passes the original callback to the adapter and returns only after commit', async () => {

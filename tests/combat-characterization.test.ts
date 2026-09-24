@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
-import { createCombatant } from '../src/domain/combat/CombatantState.js';
-import { ClassStrategyRegistry } from '../src/domain/combat/ClassStrategyRegistry.js';
-import { wrapWithRunes } from '../src/domain/combat/RuneStrategyDecorator.js';
-import { wrapWithBlessings } from '../src/domain/combat/DeityBlessingDecorator.js';
-import { MonsterStrategy } from '../src/domain/combat/classes/MonsterStrategy.js';
-import type { CombatClass } from '../src/domain/entities/PlayerAccount.js';
+import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { ClassStrategyRegistry } from '../src/modules/combat-shared/domain/ClassStrategyRegistry.js';
+import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
+import { wrapWithBlessings } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
+import { MonsterStrategy } from '../src/modules/combat-shared/domain/classes/MonsterStrategy.js';
+import type { CombatClass } from '../src/modules/identity/domain/PlayerAccount.js';
 
 const classes: Array<CombatClass | null> = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer', null];
 const seeds = [1, 7, 42, 12345];

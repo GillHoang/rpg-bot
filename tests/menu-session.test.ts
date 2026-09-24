@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MenuCapacityError, MenuSessionStore } from '../src/menu/MenuSessionStore.js';
+import { MenuCapacityError, MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
 
 describe('menu session store', () => {
 	it('binds independent sessions to their owner and message', () => {

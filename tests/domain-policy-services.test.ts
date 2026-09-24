@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Executor } from '../src/db/client.js';
-import type { MonsterRosterRepository, MonsterRosterRow } from '../src/repositories/MonsterRosterRepository.js';
-import type { RaidRewardStore } from '../src/repositories/RaidRewardStore.js';
-import type { DeityDataRepository, DeityRosterRow } from '../src/repositories/DeityDataRepository.js';
-import { MonsterEncounterService } from '../src/services/MonsterEncounterService.js';
-import { RaidRewardService, type RaidRewardGrant } from '../src/services/RaidRewardService.js';
-import { DeityService } from '../src/services/DeityService.js';
+import type { MonsterRosterRepository, MonsterRosterRow } from '../src/modules/pve/infrastructure/MonsterRosterRepository.js';
+import type { RaidRewardStore } from '../src/modules/pve/infrastructure/RaidRewardStore.js';
+import type { DeityDataRepository, DeityRosterRow } from '../src/modules/progression/infrastructure/DeityDataRepository.js';
+import { MonsterEncounterService } from '../src/modules/pve/application/MonsterEncounterService.js';
+import { RaidRewardService, type RaidRewardGrant } from '../src/modules/pve/application/RaidRewardService.js';
+import { DeityService } from '../src/modules/progression/application/DeityService.js';
 
 // The injected repositories must receive this caller-owned executor unchanged.
 const executor = Object.freeze({ context: 'caller-transaction' }) as unknown as Executor;
