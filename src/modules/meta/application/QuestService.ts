@@ -37,13 +37,14 @@ import {
 	type QuestType,
 } from '../../../shared/config/quests.js';
 import { randInt } from '../../../shared/config/raidLoot.js';
-import { choose } from '../../../shared/utils/weightedRandom.js';
+import { pickQuestTemplates } from './QuestTemplatePicker.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
 import { weekWindowAt } from '../../../shared/config/ranked.js';
 import { ReputationService } from './ReputationService.js';
 
 import { ICONS } from '../../../shared/ui/text/icons.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type QuestRow = typeof dailyQuests.$inferSelect;
 export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
@@ -59,6 +60,7 @@ export interface QuestSnapshot {
 
 export interface QuestDependencies {
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<
 		QuestRepository,
 		| 'findWeeklyGrand'
@@ -94,6 +96,7 @@ export interface QuestDependencies {
 
 export class QuestService {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
 	private readonly queries: NonNullable<QuestDependencies['queries']>;
 	constructor(
@@ -101,6 +104,7 @@ export class QuestService {
 		options: QuestDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence });
 		this.queries = options.queries ?? new QuestRepository();
 	}
@@ -108,7 +112,7 @@ export class QuestService {
 	/** Standalone administrative/test entry; gameplay uses progressInTx. */
 	async progress(discordId: string, questType: QuestType, amount = 1): Promise<void> {
 		await this.persistence.unitOfWork.run(async (tx) =>
-			this.progressInTx(tx, discordId, questType, new Date(), amount),
+			this.progressInTx(tx, discordId, questType, this.clock.now(), amount),
 		);
 	}
 
@@ -116,17 +120,18 @@ export class QuestService {
 		tx: Executor,
 		discordId: string,
 		questType: QuestType,
-		now = new Date(),
+		now: Date | undefined = undefined,
 		amount = 1,
 	): Promise<void> {
+		const at = now ?? this.clock.now();
 		if (!Number.isSafeInteger(amount) || amount < 1) throw new RangeError(QUEST_ERROR_TEXT.invalidProgress);
 		if (!(await this.lockPlayer(tx, discordId))) return;
-		const day = DailyCycle.keyAt(now);
-		const { key: week } = weekWindowAt(now);
+		const day = DailyCycle.keyAt(at);
+		const { key: week } = weekWindowAt(at);
 		await this.ensureDailyQuests(tx, discordId, day);
 		await this.ensureWeeklyQuests(tx, discordId, week);
-		await this.bumpDaily(tx, discordId, day, questType, now, amount);
-		await this.bumpWeekly(tx, discordId, week, questType, now, amount);
+		await this.bumpDaily(tx, discordId, day, questType, at, amount);
+		await this.bumpWeekly(tx, discordId, week, questType, at, amount);
 	}
 
 	async view(discordId: string): Promise<string> {
@@ -157,8 +162,9 @@ export class QuestService {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return null;
-			const day = DailyCycle.keyAt();
-			const { key: week } = weekWindowAt();
+			const at = this.clock.now();
+			const day = DailyCycle.keyAt(at);
+			const { key: week } = weekWindowAt(at);
 			const dailies = await this.ensureDailyQuests(tx, discordId, day);
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			const [grand] = await this.queries.findWeeklyGrand(tx, discordId, week);
@@ -188,7 +194,7 @@ export class QuestService {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
-			const day = DailyCycle.keyAt();
+			const day = DailyCycle.keyAt(this.clock.now());
 			if (expectedDay && expectedDay !== day) return QUEST_FLOW_TEXT.dayChanged;
 			if (user.lastQuestRefreshDate === day) return QUEST_REFRESH_LIMIT;
 			await this.queries.deleteIncompleteDailyQuests(tx, discordId, day);
@@ -222,7 +228,7 @@ export class QuestService {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return QUEST_REGISTER_FIRST;
-			const { key: week } = weekWindowAt();
+			const { key: week } = weekWindowAt(this.clock.now());
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
 			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return QUEST_CLAIM_NOT_READY;
 			const [bag] = await this.queries.lockRewardBag(tx, discordId);
@@ -290,20 +296,13 @@ export class QuestService {
 		return this.queries.listWeeklyQuests(tx, discordId, week);
 	}
 
-	/** `count` distinct templates from `pool` — no duplicate types. */
+	/** `count` distinct templates from `pool` — delegates to QuestTemplatePicker (SRP). */
 	private rollTemplates(
 		pool: readonly QuestTemplate[],
 		rng: () => number,
 		count: number = QUESTS_PER_CYCLE,
 	): QuestTemplate[] {
-		const remaining = [...pool];
-		const picked: QuestTemplate[] = [];
-		for (let i = 0; i < count && remaining.length > 0; i++) {
-			const template = choose(remaining, rng);
-			remaining.splice(remaining.indexOf(template), 1);
-			picked.push(template);
-		}
-		return picked;
+		return pickQuestTemplates(pool, rng, count);
 	}
 
 	private async bumpDaily(

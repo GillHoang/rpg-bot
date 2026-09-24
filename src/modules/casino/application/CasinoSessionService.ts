@@ -16,6 +16,7 @@ import type { activeCasinoSessions } from '../../../db/schema.js';
 import { randomUUID } from 'node:crypto';
 import type { Executor } from '../../../db/client.js';
 import { createSecureSeed } from '../../combat-shared/domain/Rng.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import { replayGame, type InteractiveGame, type CasinoAction, type StoredGame } from '../domain/InteractiveGame.js';
 import { MAX_BET } from '../../../shared/config/casinoPayouts.js';
 
@@ -25,6 +26,7 @@ export type SessionView =
 export interface CasinoSessionDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<
 		CasinoSessionRepository,
 		| 'lockBag'
@@ -42,6 +44,7 @@ export interface CasinoSessionDependencies {
 export class CasinoSessionService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly queries: Pick<
 		CasinoSessionRepository,
 		| 'lockBag'
@@ -57,6 +60,7 @@ export class CasinoSessionService {
 
 	constructor(options: CasinoSessionDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.queries = options.queries ?? new CasinoSessionRepository();
 	}
@@ -80,7 +84,7 @@ export class CasinoSessionService {
 				balanceBefore: bag.credux,
 				balanceAfterDebit: bag.credux - bet,
 				stateJson: stored,
-				expiresAt: new Date(Date.now() + 60000),
+				expiresAt: new Date(this.clock.now().getTime() + 60000),
 			});
 			await this.queries.updateBag(tx, id, { credux: bag.credux - bet });
 			return this.resolve(tx, session, stored);
@@ -104,7 +108,7 @@ export class CasinoSessionService {
 						session.payout ?? 0,
 					),
 				};
-			const next = Date.now() >= session.expiresAt.getTime() ? 'timeout' : action;
+			const next = this.clock.now().getTime() >= session.expiresAt.getTime() ? 'timeout' : action;
 			if (next !== 'timeout' && expectedRevision !== undefined && expectedRevision !== stored.actions.length)
 				return this.resolve(tx, session, stored);
 			if (
@@ -124,7 +128,7 @@ export class CasinoSessionService {
 		const game = s.game as InteractiveGame;
 		const view = replayGame(game, s.betAmount, stored);
 		if (!view.done) {
-			await this.queries.updateSession(tx, s.sessionId, { stateJson: stored, updatedAt: new Date() });
+			await this.queries.updateSession(tx, s.sessionId, { stateJson: stored, updatedAt: this.clock.now() });
 			return {
 				status: 'ok',
 				sessionId: s.sessionId,
@@ -142,7 +146,7 @@ export class CasinoSessionService {
 			status: 'settled',
 			payout: view.payout,
 			balanceAfter: after,
-			updatedAt: new Date(),
+			updatedAt: this.clock.now(),
 		});
 		await this.queries.insertLog(tx, {
 			discordId: s.discordId,
@@ -154,7 +158,7 @@ export class CasinoSessionService {
 			balanceAfter: after,
 			metadata: { sessionId: s.sessionId, actions: stored.actions },
 		});
-		await this.progress.apply(tx, s.discordId, 'casino', new Date());
+		await this.progress.apply(tx, s.discordId, 'casino', this.clock.now());
 		return {
 			status: 'ok',
 			sessionId: s.sessionId,
@@ -165,7 +169,7 @@ export class CasinoSessionService {
 		};
 	}
 	async recoverExpired(): Promise<void> {
-		const expired = await this.queries.findExpiredSessions(this.persistence.executor, new Date());
+		const expired = await this.queries.findExpiredSessions(this.persistence.executor, this.clock.now());
 		for (const s of expired) await this.act(s.discordId, s.sessionId, 'timeout');
 	}
 }

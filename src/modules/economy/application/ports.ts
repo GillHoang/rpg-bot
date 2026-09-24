@@ -5,6 +5,7 @@ import type { GameplayProgressCoordinator } from '../../../shared/progress/gamep
 import type { DailyRepository } from '../infrastructure/DailyRepository.js';
 import type { EconomyService } from './EconomyService.js';
 import type { InventoryService } from '../../progression/application/InventoryService.js';
+import type { Clock } from '../../../shared/kernel/clock.js';
 import type { ClaimDailyResult } from './types.js';
 
 export type { ClaimDailyResult };
@@ -29,6 +30,7 @@ export type TxExecutor = Executor;
 export interface ClaimDailyOptions {
 	persistence?: PersistenceContext;
 	progress?: ProgressPort;
+	clock?: Clock;
 }
 
 export type BalanceQueryPort = Pick<EconomyService, 'getAccount'>;

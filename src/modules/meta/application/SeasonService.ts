@@ -3,17 +3,23 @@ import type { Transaction } from '../../../db/client.js';
 import { SeasonRepository } from '../infrastructure/SeasonRepository.js';
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 /** Explicit administrator rollover; expiry alone does not reset shop quotas or ratings. */
 export class SeasonService {
+	private readonly clock: Clock;
 	constructor(
 		private readonly persistence: PersistenceContext = defaultPersistence,
 		private readonly queries = new SeasonRepository(),
-	) {}
-	async ensureActive(tx: Transaction, now = new Date()) {
+		clock: Clock = systemClock,
+	) {
+		this.clock = clock;
+	}
+	async ensureActive(tx: Transaction, now: Date | undefined = undefined) {
+		const at = now ?? this.clock.now();
 		await this.queries.lock(tx);
 		const active = await this.queries.active(tx);
-		return active ?? this.create(tx, now);
+		return active ?? this.create(tx, at);
 	}
 	private async create(tx: Transaction, now: Date) {
 		const count = await this.queries.count(tx);
@@ -25,14 +31,15 @@ export class SeasonService {
 		});
 		return created;
 	}
-	async rollover(expectedSeasonId: number, now = new Date()) {
+	async rollover(expectedSeasonId: number, now: Date | undefined = undefined) {
+		const at = now ?? this.clock.now();
 		return this.persistence.unitOfWork.run(async (tx) => {
 			await this.queries.lock(tx);
 			const active = await this.queries.active(tx);
 			if (active?.seasonId !== expectedSeasonId) return { status: 'stale' as const };
-			if (now < active.endsAt) return { status: 'not-due' as const };
+			if (at < active.endsAt) return { status: 'not-due' as const };
 			await this.queries.close(tx, active.seasonId);
-			return { status: 'ok' as const, season: await this.create(tx, now) };
+			return { status: 'ok' as const, season: await this.create(tx, at) };
 		});
 	}
 }

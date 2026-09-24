@@ -9,6 +9,7 @@ import { EnhancementRepository } from '../infrastructure/EnhancementRepository.j
 import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../../../shared/config/enhancement.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type EnhanceResult =
 	| { status: 'not-found' }
@@ -20,6 +21,7 @@ export type EnhanceResult =
 export interface EnhancementDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<EnhancementStateRepository, 'lockBag'>;
 }
 
@@ -33,6 +35,7 @@ export interface EnhancementDependencies {
 export class EnhancementService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly repo: Pick<
 		EnhancementRepository,
 		'findGear' | 'getCredux' | 'spendCredux' | 'applyWeaponSuccess' | 'applyArmorSuccess'
@@ -49,9 +52,10 @@ export class EnhancementService {
 		options: EnhancementDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new EnhancementRepository();
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new EnhancementStateRepository();
 	}
 
@@ -68,7 +72,7 @@ export class EnhancementService {
 			if (credux < attempt.cost) return { status: 'insufficient-credux', needed: attempt.cost, have: credux };
 
 			await this.repo.spendCredux(tx, discordId, attempt.cost);
-			await this.progress.apply(tx, discordId, 'enhance', new Date());
+			await this.progress.apply(tx, discordId, 'enhance', this.clock.now());
 
 			const rng = createRng(createSecureSeed());
 			const succeeded = rollChance(attempt.successRate, rng);

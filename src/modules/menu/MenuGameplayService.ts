@@ -13,6 +13,8 @@ import { GAMEPLAY_NOTICE } from '../../shared/ui/text/gameplay.js';
 import { MenuPlayerRepository, type MenuPlayerState } from './infrastructure/MenuPlayerRepository.js';
 import type { PersistenceContext } from '../../shared/kernel/persistence.js';
 import { defaultPersistence } from '../../db/defaultPersistence.js';
+import { systemClock, type Clock } from '../../shared/kernel/clock.js';
+import { AppError } from '../../shared/kernel/Result.js';
 import { CLASS_NAMES } from '../../shared/config/classes.js';
 import { ProfileService, type ProfileSummaryData } from '../identity/application/ProfileService.js';
 import { StartService } from '../identity/application/StartService.js';
@@ -33,9 +35,11 @@ import {
 	profilePanel,
 	questsPanel,
 } from './gameplayPanels.js';
+import { routeStatelessAction, navigateBattleLogPage, assertBattleLogNavigable } from './MenuActionRouter.js';
 
 export interface MenuGameplayDependencies {
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	players?: Pick<MenuPlayerRepository, 'findState'>;
 }
 
@@ -43,6 +47,7 @@ export interface MenuGameplayDependencies {
 const SECTION_KIND: Record<string, string> = { character: 'profile', daily: 'quests', battle: 'battle' };
 
 export class MenuGameplayService implements MenuGameplay {
+	private readonly clock: Clock;
 	private readonly players: Pick<MenuPlayerRepository, 'findState'>;
 	private readonly profiles: Pick<ProfileService, 'get'>;
 	private readonly start: Pick<StartService, 'start'>;
@@ -59,6 +64,7 @@ export class MenuGameplayService implements MenuGameplay {
 		options: MenuGameplayDependencies = {},
 	) {
 		const persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.players = options.players ?? new MenuPlayerRepository(persistence.executor);
 		this.profiles = profiles ?? new ProfileService(undefined, undefined, undefined, { persistence });
 		this.start = start ?? new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
@@ -80,12 +86,12 @@ export class MenuGameplayService implements MenuGameplay {
 		const profile = await this.profiles.get(session.ownerId, 'summary');
 		if (profile.status !== 'ok') return onboardingPanel();
 		const user = await this.players.findState(session.ownerId);
-		const day = DailyCycle.keyAt();
+		const day = DailyCycle.keyAt(this.clock.now());
 		const dailyDone = user?.lastDailyClaimDate === day;
 		const bossDone = user?.lastBossAttackDate === day;
 		if (kind === 'quests') {
 			const snapshot = await this.quests.snapshot(session.ownerId);
-			if (!snapshot) throw new Error(MENU_ERROR_TEXT.playerDisappeared);
+			if (!snapshot) throw new AppError('MENU_PLAYER_DISAPPEARED', MENU_ERROR_TEXT.playerDisappeared);
 			return questsPanel(snapshot, dailyDone);
 		}
 		if (kind === 'gateSelect') return this.gateSelectPanel(session, profile.data, user, bossDone);
@@ -201,36 +207,16 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 
 	async act(session: MenuSession, action: MenuAction, username: string, value?: string): Promise<MenuScreen> {
+		// SRP: stateless routing lives in MenuActionRouter; this facade only
+		// handles stateful actions needing collaborators/clock.
+		const routed = routeStatelessAction(session, action, value);
+		if (routed) return routed;
 		switch (action) {
-			case 'inventory':
-			case 'deity':
-			case 'shop':
-			case 'casino':
-				return { kind: 'section', section: action };
-			case 'battle':
-			case 'hunt':
-				// Săn quái luôn mở lại màn chọn Gate (session mới từ đầu, như yêu cầu).
-				session.gateId = undefined;
-				session.portalGate = undefined;
-				return { kind: 'gateSelect' };
-			case 'gate':
-				// Chọn Gate — nonce slot trên custom_id mang số Gate (1-5).
-				session.gateId = Number(value);
-				session.portalGate = undefined;
-				return { kind: 'gateTiers' };
-			case 'portal':
-				// Selector tầng trên màn tier (value = số tầng).
-				session.portalGate = Number(value);
-				return { kind: 'gateTiers' };
 			case 'class': {
 				const combatClass = CLASS_NAMES.find((c) => c === value);
-				if (!combatClass) throw new Error(MENU_ERROR_TEXT.invalidClass);
+				if (!combatClass) throw new AppError('MENU_INVALID_CLASS', MENU_ERROR_TEXT.invalidClass);
 				return { kind: 'confirm', operation: 'start', combatClass };
 			}
-			case 'profile':
-				return { kind: 'profile' };
-			case 'quests':
-				return { kind: 'quests' };
 			case 'daily':
 				return this.claimDaily(session);
 			case 'claim':
@@ -238,7 +224,7 @@ export class MenuGameplayService implements MenuGameplay {
 				return { kind: 'quests' };
 			case 'reroll':
 			case 'boss':
-				return { kind: 'confirm', operation: action, day: DailyCycle.keyAt() };
+				return { kind: 'confirm', operation: action, day: DailyCycle.keyAt(this.clock.now()) };
 			case 'cancel':
 				return this.cancelConfirmation(session.screen);
 			case 'confirm':
@@ -267,31 +253,23 @@ export class MenuGameplayService implements MenuGameplay {
 				session.portalGate = won ? tier + 1 : tier;
 				return this.fight(session, false);
 			}
-			case 'result':
-				return { kind: 'result' };
-			case 'log':
-				return { kind: 'log', page: Math.max(0, (session.battle?.battle.roundLogs.length ?? 1) - 1) };
+			// NOTE: result/log route statelessly via MenuActionRouter above.
 			case 'first':
 			case 'last':
 			case 'prev':
 			case 'next':
 				return this.navigateBattleLog(session, action);
 			default:
-				throw new Error(MENU_ERROR_TEXT.unknownAction);
+				throw new AppError('MENU_UNKNOWN_ACTION', MENU_ERROR_TEXT.unknownAction);
 		}
 	}
 
 	private navigateBattleLog(session: MenuSession, action: 'first' | 'last' | 'prev' | 'next'): MenuScreen {
-		if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
-			throw new Error(MENU_ERROR_TEXT.missingBattleLog);
-		const lastPage = Math.max(0, session.battle.battle.roundLogs.length - 1);
+		assertBattleLogNavigable(session);
+		const total = session.battle!.battle.roundLogs.length;
+		const lastPage = Math.max(0, total - 1);
 		const currentPage = session.screen.kind === 'log' ? session.screen.page : lastPage;
-		let page = currentPage;
-		if (action === 'first') page = 0;
-		else if (action === 'last') page = lastPage;
-		else if (action === 'next') page += 1;
-		else page -= 1;
-		return { kind: 'log', page: Math.max(0, Math.min(lastPage, page)) };
+		return { kind: 'log', page: navigateBattleLogPage(total, currentPage, action) };
 	}
 
 	private async claimDaily(session: MenuSession): Promise<MenuScreen> {
@@ -315,7 +293,7 @@ export class MenuGameplayService implements MenuGameplay {
 
 	private async confirm(session: MenuSession, username: string): Promise<MenuScreen> {
 		const s = session.screen;
-		if (s.kind !== 'confirm') throw new Error(MENU_ERROR_TEXT.missingConfirmation);
+		if (s.kind !== 'confirm') throw new AppError('MENU_MISSING_CONFIRMATION', MENU_ERROR_TEXT.missingConfirmation);
 		if (s.operation === 'start') {
 			const r = await this.start.start(session.ownerId, username, s.combatClass);
 			if (r.status === 'ok') session.notice = GAMEPLAY_NOTICE.created;
@@ -353,7 +331,7 @@ export class MenuGameplayService implements MenuGameplay {
 		if (r.status === 'boss-locked' || r.status === 'portal-locked') session.notice = r.message;
 		else if (r.status === 'cooldown') {
 			session.notice = GAMEPLAY_NOTICE.cooldown(
-				Math.max(1, Math.ceil((r.retryAt.getTime() - Date.now()) / 1000)),
+				Math.max(1, Math.ceil((r.retryAt.getTime() - this.clock.now().getTime()) / 1000)),
 			);
 			return session.battle ? { kind: 'result' } : { kind: 'gateTiers' };
 		} else if (r.status === 'already-processed') session.notice = GAMEPLAY_NOTICE.alreadyProcessed;
@@ -363,4 +341,6 @@ export class MenuGameplayService implements MenuGameplay {
 	}
 }
 
+/** @deprecated Import the service from `createAppContainer` instead of this
+ * module-level singleton; it exists only for legacy presentation imports. */
 export const menuGameplay = new MenuGameplayService();

@@ -1,11 +1,5 @@
-import {
-	GATES,
-	findGateTier,
-	defaultGateTier,
-	highestAccessibleGate,
-	gateUnlocked,
-	type GateTier,
-} from '../../../shared/config/portals.js';
+import { selectGateTier } from './RaidGatePolicy.js';
+import type { GateTier } from '../../../shared/config/portals.js';
 import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
 import { LOOT_CHEST_NAMES } from '../../../shared/ui/text/loot.js';
@@ -17,6 +11,8 @@ import {
 } from '../../../shared/ui/text/raid.js';
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import type { Clock } from '../../../shared/kernel/clock.js';
+import { systemClock } from '../../../shared/kernel/clock.js';
 import { RaidRepository } from '../infrastructure/RaidRepository.js';
 import type { Transaction } from '../../../db/client.js';
 import { PlayerAccountRepository } from '../../identity/infrastructure/PlayerAccountRepository.js';
@@ -97,6 +93,7 @@ export interface RaidDependencies {
 	statAssembly?: Pick<StatAssemblyService, 'assemble'>;
 	cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>;
 	events?: Pick<EventBus, 'emit'>;
+	clock?: Clock;
 
 	persistence?: PersistenceContext;
 	queries?: Pick<
@@ -169,6 +166,7 @@ function raidMonsterName(gateTier: GateTier | undefined, monsterStats: MonsterSt
 
 export class RaidService {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	private readonly monsters: Pick<MonsterEncounterService, 'pickForLevel'>;
 	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
@@ -195,7 +193,9 @@ export class RaidService {
 	private readonly loot: Pick<LootGrantService, 'gear'>;
 
 	constructor(options: RaidDependencies = {}) {
+		// Compatibility fallback: production must inject via createAppContainer.
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.accounts = options.accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.monsters = options.monsters ?? new MonsterEncounterService();
 		this.characters = options.characters ?? new UserCharacterRepository();
@@ -205,7 +205,7 @@ export class RaidService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = options.events ?? EventBus.getInstance();
+		this.events = options.events ?? new EventBus();
 		this.queries = options.queries ?? new RaidRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
@@ -250,6 +250,7 @@ export class RaidService {
 			actorId: discordId,
 			mode: boss ? 'boss' : 'raid',
 			actionId: options.requestId,
+			now: this.clock.now(),
 		});
 		const now = action.now;
 		const day = DailyCycle.keyAt(now);
@@ -316,19 +317,9 @@ export class RaidService {
 		if (boss) return {};
 		const [cooldown] = await this.queries.lockHuntCooldown(tx, discordId);
 		if (cooldown && cooldown.readyAt > now) return { status: 'cooldown', retryAt: cooldown.readyAt };
-		const selectedGate =
-			options.gate === undefined
-				? highestAccessibleGate(gatesCleared)
-				: GATES.find((gate) => gate.id === options.gate);
-		const tier =
-			selectedGate &&
-			findGateTier(selectedGate.id, options.tier ?? defaultGateTier(gatesCleared, selectedGate).number);
-		if (!tier) return { status: 'portal-locked', message: GATE_TEXT.invalid };
-		if (!gateUnlocked(tier.gate, gatesCleared, level))
-			return { status: 'portal-locked', message: GATE_TEXT.locked(tier.gate.minLevel) };
-		if (tier.number > (gatesCleared[tier.gate.id - 1] ?? 0) + 1)
-			return { status: 'portal-locked', message: GATE_TEXT.tierLocked() };
-		return { tier };
+		// SRP: pure gate/tier rules live in RaidGatePolicy; this method only
+		// handles the hunt-cooldown lock then delegates.
+		return selectGateTier(gatesCleared, level, options.gate, options.tier);
 	}
 
 	/** Chọn quái theo cấp mục tiêu (cấp tầng portal, fallback về cấp người chơi). */

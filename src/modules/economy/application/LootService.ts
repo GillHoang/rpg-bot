@@ -8,6 +8,8 @@ import { LootRepository } from '../infrastructure/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../../../shared/config/chestLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { AppError } from '../../../shared/kernel/Result.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import {
 	OPEN_BAD_COUNT,
 	OPEN_HINT,
@@ -43,6 +45,7 @@ export interface LootDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	grants?: Pick<LootGrantService, 'rune' | 'gear'>;
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<LootInventoryRepository, 'updateBag'>;
 }
 
@@ -52,12 +55,14 @@ export class LootService {
 	private readonly grants: Pick<LootGrantService, 'rune' | 'gear'>;
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly repo: Pick<LootRepository, 'lockBag' | 'log' | 'bags'>;
 	private readonly events: Pick<EventBus, 'emit'>;
 	private readonly queries: Pick<LootInventoryRepository, 'updateBag'>;
 
 	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new LootRepository();
 		// Preserve earlier positional collaborators that supplied both storage and grants.
@@ -66,7 +71,7 @@ export class LootService {
 			(repo?.rune && repo.gear
 				? { rune: repo.rune.bind(repo), gear: repo.gear.bind(repo) }
 				: new LootGrantService());
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new LootInventoryRepository();
 	}
 	async open(id: string, key: ChestKey, count: number): Promise<string> {
@@ -122,7 +127,7 @@ export class LootService {
 				supremeRelics: bag.supremeRelics + relics.supremeRelics,
 			});
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
-			await this.progress.apply(tx, id, 'open_chest', new Date(), count);
+			await this.progress.apply(tx, id, 'open_chest', this.clock.now(), count);
 			return (
 				OPEN_RESULT(count, table.label, formatNumber(creux), shards) +
 				(items.length ? '\n' + items.join('\n') : '') +
@@ -149,7 +154,7 @@ export class LootService {
 				!offer.runePool.length ||
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
-				throw new Error(RUNE_POOL_INVALID);
+				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, { [key]: bag[key] - 1 });
 			return RUNE_BAG_OPENED(bagKey, item) + RUNE_BAG_HINT;
@@ -183,7 +188,7 @@ export class LootService {
 				!offer.runePool.length ||
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
-				throw new Error(RUNE_POOL_INVALID);
+				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, {
 				credux: bag.credux - offer.creduxCost,

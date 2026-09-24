@@ -15,7 +15,9 @@ import { BattleEngine, type BattleResult } from '../../combat-shared/domain/Batt
 import { createBattleActionContext } from '../../combat-shared/domain/BattleActionContext.js';
 import { PlayerCombatantFactory } from '../../combat-shared/application/combatantFactory.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
-import { BRACKETS, RANKED, bracketFor, eloDelta, weekWindowAt, type Bracket } from '../../../shared/config/ranked.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
+import { applyElo, resolveRatingChange as resolveRatingChangePure } from './RankedRatingService.js';
+import { RANKED, bracketFor, weekWindowAt, type Bracket } from '../../../shared/config/ranked.js';
 import {
 	RANKED_NOT_REGISTERED,
 	RANKED_SHIELD_OFF,
@@ -65,6 +67,8 @@ export type RankedClaimResult =
 export interface RankedDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
+	seasons?: Pick<SeasonService, 'ensureActive'>;
+	clock?: import('../../../shared/kernel/clock.js').Clock;
 	queries?: Pick<
 		RankedRepository,
 		| 'findUser'
@@ -97,8 +101,9 @@ export interface RankedDependencies {
 
 export class RankedService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
-	private readonly seasons = new SeasonService();
+	private readonly seasons: Pick<SeasonService, 'ensureActive'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
 	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
@@ -130,6 +135,8 @@ export class RankedService {
 		options: RankedDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
+		this.seasons = options.seasons ?? new SeasonService(this.persistence);
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.statAssembly =
@@ -137,7 +144,7 @@ export class RankedService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new RankedRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
@@ -158,7 +165,7 @@ export class RankedService {
 			if (!opponentRow) return { status: 'no-opponent' };
 			const opponentAccount = await this.accounts.findByIdWithExecutor(tx, opponentRow.discordId);
 			if (!opponentAccount) return { status: 'no-opponent' };
-			const action = createBattleActionContext({ actorId: discordId, mode: 'ranked' });
+			const action = createBattleActionContext({ actorId: discordId, mode: 'ranked', now: this.clock.now() });
 
 			const [lock] = await this.queries.createFightLock(tx, {
 				discordId,
@@ -197,17 +204,15 @@ export class RankedService {
 			else if (draw) score = 0.5;
 
 			const ratingBefore = me.pvpRating;
+			// SRP: Elo + shield rules live in RankedRatingService (via wrapper below).
 			const meChange = this.resolveRatingChange(
 				ratingBefore,
-				Math.max(0, ratingBefore + eloDelta(ratingBefore, opponentRow.pvpRating, score)),
+				applyElo(ratingBefore, opponentRow.pvpRating, score),
 				me.pvpDemotionShield,
 			);
 			const opponentChange = this.resolveRatingChange(
 				opponentRow.pvpRating,
-				Math.max(
-					0,
-					opponentRow.pvpRating + eloDelta(opponentRow.pvpRating, ratingBefore, (1 - score) as 0 | 0.5 | 1),
-				),
+				applyElo(opponentRow.pvpRating, ratingBefore, (1 - score) as 0 | 0.5 | 1),
 				opponentRow.pvpDemotionShield,
 			);
 			const ratingAfter = meChange.rating;
@@ -282,7 +287,7 @@ export class RankedService {
 			if (!bag) return { status: 'not-registered' };
 			const [me] = await this.queries.lockCharacter(tx, discordId);
 			if (!me) return { status: 'not-registered' };
-			const { key: week, startsAt } = weekWindowAt();
+			const { key: week, startsAt } = weekWindowAt(this.clock.now());
 			if (me.lastWeeklyClaimWeek === week) return { status: 'already-claimed' };
 
 			const [fight] = await this.queries.findWeeklyFight(tx, discordId, startsAt);
@@ -329,7 +334,7 @@ export class RankedService {
 		const [me] = await this.queries.findCharacter(this.persistence.executor, discordId);
 		if (!me) return RANKED_NOT_REGISTERED;
 		const bracket = bracketFor(me.pvpRating);
-		const { week, key, endsAt } = weekWindowAt();
+		const { week, key, endsAt } = weekWindowAt(this.clock.now());
 		const claimed = me.lastWeeklyClaimWeek === key;
 		return (
 			RANKED_STATS_HEADER(me.pvpRating, bracket.name, me.pvpPeak) +
@@ -346,30 +351,15 @@ export class RankedService {
 	}
 
 	/**
-	 * Bracket guard applied identically to both fighters: falling out of a
-	 * bracket (decisive loss or a draw that still crosses the line) is
-	 * cushioned once by the demotion shield — rating drops only to the old
-	 * bracket's floor and the shield breaks; any promotion re-arms it.
+	 * Bracket guard — delegates to RankedRatingService (SRP). Kept as a thin
+	 * wrapper for backward-compatible imports in tests.
 	 */
 	private resolveRatingChange(
 		beforeRating: number,
 		rawAfterRating: number,
 		hadShield: boolean,
 	): { rating: number; shield: boolean; shieldUsed: boolean; promoted: boolean } {
-		const before = bracketFor(beforeRating);
-		const after = bracketFor(rawAfterRating);
-		const index = (b: Bracket) => BRACKETS.findIndex((x) => x.name === b.name);
-		let rating = rawAfterRating;
-		let shieldUsed = false;
-		if (index(after) < index(before) && hadShield) {
-			rating = before.min;
-			shieldUsed = true;
-		}
-		const promoted = index(after) > index(before);
-		let shield = hadShield;
-		if (promoted) shield = true;
-		else if (shieldUsed) shield = false;
-		return { rating, shield, shieldUsed, promoted };
+		return resolveRatingChangePure(beforeRating, rawAfterRating, hadShield);
 	}
 
 	/** Persist both fighters' rating/record/log rows for one ranked fight. */

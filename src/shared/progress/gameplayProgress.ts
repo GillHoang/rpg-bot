@@ -29,20 +29,29 @@ export class GameplayProgressCoordinator {
 		now: Date,
 		amount = 1,
 	): Promise<void> {
-		// Final Boss gate counts toward raid_win quests but awards its own reputation.
+		// OCP registry: special mappings live here; any other QuestType
+		// passes through unchanged so new quest types work without edits.
 		let questType: QuestType | null;
 		if (type === 'final_boss_win') questType = 'raid_win';
 		else if (type === 'ranked_win') questType = null;
-		else questType = type;
+		else questType = type as QuestType;
 		if (questType) await this.quests.progressInTx(tx, discordId, questType, now, amount);
-		if (
-			type === 'daily' ||
-			type === 'raid_win' ||
-			type === 'final_boss_win' ||
-			type === 'duel_win' ||
-			type === 'ranked_win'
-		) {
-			await this.reputation.awardInTx(tx, discordId, type, now);
+		if (PROGRESS_REPUTATION_TYPES.has(type)) {
+			await this.reputation.awardInTx(
+				tx,
+				discordId,
+				type as Parameters<ReputationService['awardInTx']>[2],
+				now,
+			);
 		}
 	}
 }
+
+/** Events that also award believer reputation. Register new types here. */
+const PROGRESS_REPUTATION_TYPES: ReadonlySet<string> = new Set([
+	'daily',
+	'raid_win',
+	'final_boss_win',
+	'duel_win',
+	'ranked_win',
+]);

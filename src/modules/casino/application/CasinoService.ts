@@ -7,6 +7,7 @@ import type { CasinoOutcome } from '../domain/ICasinoGame.js';
 import { MAX_BET } from '../../../shared/config/casinoPayouts.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type PlayResult =
 	| { status: 'not-registered' }
@@ -17,6 +18,7 @@ export type PlayResult =
 export interface CasinoDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
+	clock?: Clock;
 }
 
 /**
@@ -29,6 +31,7 @@ export interface CasinoDependencies {
 export class CasinoService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly repo: Pick<CasinoRepository, 'getCredux' | 'settle'>;
 	private readonly events: Pick<EventBus, 'emit'>;
 
@@ -38,9 +41,10 @@ export class CasinoService {
 		options: CasinoDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new CasinoRepository();
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 	}
 
 	async play(discordId: string, game: StatelessCasinoGameKey, bet: number, choice?: string): Promise<PlayResult> {
@@ -62,7 +66,7 @@ export class CasinoService {
 				metadata: outcome.metadata,
 			});
 
-			await this.progress.apply(tx, discordId, 'casino', new Date());
+			await this.progress.apply(tx, discordId, 'casino', this.clock.now());
 			return { status: 'ok', outcome, balanceAfter };
 		});
 

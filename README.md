@@ -225,7 +225,7 @@ pnpm build    # compile + kiểm tra import của dist
 - Số liệu M7 (blessing, pantheon/resonance, Elo/bracket, quest, believer EXP,
   relic, rune bag drop, Diamond/Genesis chest, PVP shop):
   [docs/m7-implementation.md](docs/m7-implementation.md) — toàn bộ là mặc định
-  mới, chỉnh trong `src/config/` (`blessings.ts`, `ranked.ts`, `quests.ts`,
+  mới, chỉnh trong `src/shared/config/` (`blessings.ts`, `ranked.ts`, `quests.ts`,
   `reputation.ts`, `pvpShop.ts`, `chestLoot.ts`, `raidLoot.ts`, `gachaRates.ts`).
 - Một số quy ước: stat rune theo fraction của seed (`0.05` = 5%); Aegis chặn
   đúng một đòn/trận; 10 Sigil = 100% base stat; Ascension không cộng stat hay

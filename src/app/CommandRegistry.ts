@@ -4,6 +4,7 @@ import { COMMAND_RECOVERY_TEXT, GENERIC_ERROR } from '../shared/ui/text/common.j
 import type { AutocompleteInteraction, ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../shared/discord/command.js';
 import { logger } from '../shared/utils/logger.js';
+import { AppError } from '../shared/kernel/Result.js';
 
 /**
  * Application registry mapping command name -> ICommand instance.
@@ -57,15 +58,18 @@ export class CommandRegistry {
 		try {
 			await command.execute(interaction);
 		} catch (error) {
+			// Central error boundary: AppError carries a user-safe message,
+			// unknown errors fall back to GENERIC_ERROR and are logged with stack.
+			const userMessage = error instanceof AppError ? error.message : GENERIC_ERROR;
 			logger.error({ err: error, command: interaction.commandName }, COMMAND_LOG_TEXT.executionFailed);
 			// The fallback reply itself can throw (e.g. the interaction already
 			// expired -> DiscordAPIError Unknown interaction); swallow it so a
 			// failed command never escalates into an unhandled rejection that
 			// kills the process.
 			try {
-				const payload = { content: GENERIC_ERROR, ephemeral: true };
+				const payload = { content: userMessage, ephemeral: true };
 				if (interaction.deferred && !interaction.replied) {
-					await interaction.editReply({ content: GENERIC_ERROR, components: [] });
+					await interaction.editReply({ content: userMessage, components: [] });
 				} else if (interaction.replied) {
 					await interaction.followUp(payload);
 				} else {

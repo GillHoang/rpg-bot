@@ -6,3 +6,9 @@ export interface Clock {
 export const systemClock: Clock = {
 	now: () => new Date(),
 };
+
+/** Deterministic clock for tests — always returns a copy of `fixed`. */
+export function fixedClock(fixed: Date): Clock {
+	const at = fixed.getTime();
+	return { now: () => new Date(at) };
+}

@@ -1,0 +1,65 @@
+import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
+import type { MenuAction } from './menuIds.js';
+import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
+
+/**
+ * SRP extraction from MenuGameplayService: pure, stateless action routing.
+ * No DB, no clock, no collaborators — returns the next screen for actions
+ * that never touch persistence. Stateful actions (daily/claim/reroll/
+ * confirm/fight/continue/log-nav) stay in the service facade.
+ */
+export function routeStatelessAction(
+	session: MenuSession,
+	action: MenuAction,
+	value?: string,
+): MenuScreen | null {
+	switch (action) {
+		case 'inventory':
+		case 'deity':
+		case 'shop':
+		case 'casino':
+			return { kind: 'section', section: action };
+		case 'battle':
+		case 'hunt':
+			session.gateId = undefined;
+			session.portalGate = undefined;
+			return { kind: 'gateSelect' };
+		case 'gate':
+			session.gateId = Number(value);
+			session.portalGate = undefined;
+			return { kind: 'gateTiers' };
+		case 'portal':
+			session.portalGate = Number(value);
+			return { kind: 'gateTiers' };
+		case 'profile':
+			return { kind: 'profile' };
+		case 'quests':
+			return { kind: 'quests' };
+		case 'result':
+			return { kind: 'result' };
+		case 'log':
+			return { kind: 'log', page: Math.max(0, (session.battle?.battle.roundLogs.length ?? 1) - 1) };
+		default:
+			return null;
+	}
+}
+
+/** Pager math for the battle log — pure, unit-testable. */
+export function navigateBattleLogPage(
+	totalRounds: number,
+	currentPage: number,
+	action: 'first' | 'last' | 'prev' | 'next',
+): number {
+	const lastPage = Math.max(0, totalRounds - 1);
+	let page = currentPage;
+	if (action === 'first') page = 0;
+	else if (action === 'last') page = lastPage;
+	else if (action === 'next') page += 1;
+	else page -= 1;
+	return Math.max(0, Math.min(lastPage, page));
+}
+
+export function assertBattleLogNavigable(session: MenuSession): void {
+	if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
+		throw new Error(MENU_ERROR_TEXT.missingBattleLog);
+}

@@ -71,7 +71,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.characters = characters ?? new UserCharacterRepository();
 		this.deities = deities ?? new DeityService();
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new SummonRepository();
 	}
 

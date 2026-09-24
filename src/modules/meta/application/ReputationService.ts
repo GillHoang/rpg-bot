@@ -11,6 +11,7 @@ import {
 } from '../../../shared/config/reputation.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
 import { CosmeticService } from './CosmeticService.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export interface BelieverAwardResult {
 	granted: number;
@@ -19,6 +20,7 @@ export interface BelieverAwardResult {
 
 export interface ReputationDependencies {
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<ReputationRepository, 'lockCharacter' | 'updateProgress'>;
 	cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>;
 }
@@ -31,10 +33,12 @@ export interface ReputationDependencies {
 
 export class ReputationService {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly queries: NonNullable<ReputationDependencies['queries']>;
 	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
 	constructor(options: ReputationDependencies = {}) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.queries = options.queries ?? new ReputationRepository();
 		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
 	}
@@ -47,10 +51,11 @@ export class ReputationService {
 		tx: Executor,
 		discordId: string,
 		source: BelieverExpSource,
-		now = new Date(),
+		now: Date | undefined = undefined,
 	): Promise<BelieverAwardResult> {
+		const at = now ?? this.clock.now();
 		const amount = BELIEVER_EXP_SOURCES[source];
-		const today = DailyCycle.keyAt(now);
+		const today = DailyCycle.keyAt(at);
 		const [character] = await this.queries.lockCharacter(tx, discordId);
 		if (!character) return { granted: 0, newLevel: null };
 

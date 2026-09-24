@@ -4,16 +4,33 @@ import type { IUnitOfWork } from '../shared/kernel/persistence.js';
 
 /** Adapts the existing Drizzle transaction without changing its lock semantics. */
 export class DrizzleUnitOfWork implements IUnitOfWork {
-	constructor(private readonly database: Pick<typeof db, 'transaction'>) {}
+	private readonly maxRetries: number;
+	constructor(
+		private readonly database: Pick<typeof db, 'transaction'>,
+		options: { maxRetries?: number } = {},
+	) {
+		this.maxRetries = options.maxRetries ?? 3;
+	}
 
-	run<T>(work: (transaction: Transaction) => Promise<T>): Promise<T> {
-		return this.database.transaction(work).catch((error: unknown) => {
-			recordFailure('transaction');
-			const wrapped = error as { code?: string; cause?: { code?: string } };
-			const code = wrapped?.code ?? wrapped?.cause?.code;
-			if (code === '40P01') recordFailure('deadlock');
-			if (code === '40001') recordFailure('serialization');
-			throw error;
-		});
+	async run<T>(work: (transaction: Transaction) => Promise<T>): Promise<T> {
+		let attempt = 0;
+		for (;;) {
+			try {
+				return await this.database.transaction(work);
+			} catch (error: unknown) {
+				recordFailure('transaction');
+				const wrapped = error as { code?: string; cause?: { code?: string } };
+				const code = wrapped?.code ?? wrapped?.cause?.code;
+				if (code === '40P01') recordFailure('deadlock');
+				if (code === '40001') recordFailure('serialization');
+				const retryable = code === '40P01' || code === '40001';
+				attempt += 1;
+				if (!retryable || attempt > this.maxRetries) throw error;
+				// Exponential backoff with jitter: 25/50/100ms — keeps lock
+				// contention from turning into a thundering herd.
+				const delay = 25 * 2 ** (attempt - 1) + Math.random() * 10;
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
 	}
 }

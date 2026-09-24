@@ -1,4 +1,5 @@
 import { ECONOMY_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { defaultPersistence } from '../../../db/defaultPersistence.js';
 
@@ -33,7 +34,7 @@ export class EconomyService {
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 	}
 
 	async getAccount(discordId: string): Promise<PlayerAccount | null> {
@@ -45,7 +46,7 @@ export class EconomyService {
 		// updates. `earn()` itself rejects amount <= 0 / non-integer.
 		const account = await this.persistence.unitOfWork.run(async (tx) => {
 			const acc = await this.accounts.findByIdWithExecutor(tx, discordId);
-			if (!acc) throw new Error(ECONOMY_ERROR_TEXT.missingAccount(discordId));
+			if (!acc) throw new AppError('ECONOMY_MISSING_ACCOUNT', ECONOMY_ERROR_TEXT.missingAccount(discordId));
 			acc.earn(amount);
 			await this.accounts.saveCreduxWithExecutor(tx, acc);
 			return acc;

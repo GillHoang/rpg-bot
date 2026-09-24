@@ -2,6 +2,7 @@ import { SCHEDULER_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 import { MaintenanceRepository } from '../modules/system/infrastructure/MaintenanceRepository.js';
 import { DuelService } from '../modules/pvp/application/DuelService.js';
 import { logger } from '../shared/utils/logger.js';
+import { systemClock, type Clock } from '../shared/kernel/clock.js';
 
 const SWEEP_INTERVAL_MS = 30_000;
 
@@ -20,6 +21,7 @@ export class Scheduler {
 			MaintenanceRepository,
 			'clearExpiredRankedLocks'
 		> = new MaintenanceRepository(),
+		private readonly clock: Clock = systemClock,
 	) {}
 
 	start(): void {
@@ -34,9 +36,9 @@ export class Scheduler {
 
 	private async sweep(): Promise<void> {
 		try {
-			const expired = await this.duels.expireStale();
+			const expired = await this.duels.expireStale(this.clock.now());
 			if (expired > 0) logger.info({ expired }, SCHEDULER_LOG_TEXT.duelsSwept);
-			await this.maintenance.clearExpiredRankedLocks(new Date());
+			await this.maintenance.clearExpiredRankedLocks(this.clock.now());
 		} catch (error) {
 			logger.error({ error }, SCHEDULER_LOG_TEXT.sweepFailed);
 		}

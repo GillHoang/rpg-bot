@@ -1,5 +1,7 @@
 import type { PersistenceContext } from '../shared/kernel/persistence.js';
 import { defaultPersistence } from '../db/defaultPersistence.js';
+import type { Clock } from '../shared/kernel/clock.js';
+import { systemClock } from '../shared/kernel/clock.js';
 import { EventBus } from '../shared/kernel/EventBus.js';
 import { BotMaintenance } from './BotMaintenance.js';
 import { Scheduler } from './Scheduler.js';
@@ -55,6 +57,7 @@ import type { CombatSetup as CombatSetupType } from '../modules/combat-shared/ap
 export interface ApplicationOptions {
 	persistence?: PersistenceContext;
 	events?: EventBus;
+	clock?: Clock;
 	/** Allows the compatibility bootstrap to keep its existing lazy menu store. */
 	menu?: MenuRouter;
 }
@@ -111,6 +114,7 @@ export interface AppContainer {
 export function createAppContainer(options: ApplicationOptions = {}): AppContainer {
 	const persistence = options.persistence ?? defaultPersistence;
 	const events = options.events ?? new EventBus();
+	const clock = options.clock ?? systemClock;
 	const accounts = new PlayerAccountRepository(persistence.executor);
 	const characters = new UserCharacterRepository();
 	const gear = new GearRepository();
@@ -118,8 +122,8 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 	const deities = new DeityService();
 	const lootRepository = new LootRepository();
 	const cosmetics = new CosmeticService({ persistence });
-	const reputation = new ReputationService({ persistence, cosmetics });
-	const quests = new QuestService(reputation, { persistence });
+	const reputation = new ReputationService({ persistence, clock, cosmetics });
+	const quests = new QuestService(reputation, { persistence, clock });
 	const progress = new GameplayProgressCoordinator({ persistence, quests, reputation });
 	const statAssembly = new StatAssemblyService(gear, deities, runes, { persistence });
 	const engine = new BattleEngine();
@@ -129,7 +133,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 	const start = new StartService(new UserRepository(), characters, gear, new PresetRepository(), cosmetics, {
 		persistence,
 	});
-	const daily = new ClaimDailyUseCase(undefined, events, { persistence, progress });
+	const daily = new ClaimDailyUseCase(undefined, events, { persistence, progress, clock });
 	const economy = new EconomyService(accounts, events, { persistence });
 	const profile = new ProfileService(accounts, characters, statAssembly, { persistence });
 	const raid = new RaidService({
@@ -140,6 +144,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		statAssembly,
 		cosmetics,
 		events,
+		clock,
 		persistence,
 		engine,
 		factory,
@@ -149,20 +154,22 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 	});
 	const duel = new DuelService(accounts, characters, statAssembly, cosmetics, events, {
 		persistence,
+		clock,
 		engine,
 		factory,
 		combat: combatSetup,
 	});
 	const ranked = new RankedService(accounts, statAssembly, cosmetics, events, {
 		persistence,
+		clock,
 		engine,
 		factory,
 		combat: combatSetup,
 	});
-	const casinoSessions = new CasinoSessionService({ persistence });
-	const menuGameplay = new MenuGameplayService(profile, start, daily, quests, raid, { persistence });
+	const casinoSessions = new CasinoSessionService({ persistence, clock });
+	const menuGameplay = new MenuGameplayService(profile, start, daily, quests, raid, { persistence, clock });
 	const menu = options.menu ?? new MenuRouter(new MenuSessionStore(), menuGameplay);
-	const scheduler = new Scheduler(duel, new MaintenanceRepository(persistence.executor));
+	const scheduler = new Scheduler(duel, new MaintenanceRepository(persistence.executor), clock);
 	const maintenance = new BotMaintenance(casinoSessions, scheduler, menu);
 	const summon = new RunSummonUseCase(characters, deities, events, { persistence });
 	const inventory = new InventoryService(persistence.executor);
@@ -186,12 +193,12 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		ascension: new AscensionService(deities, { persistence }),
 		summon,
 		classChange: new ClassChangeService({ persistence }),
-		casino: new CasinoService(undefined, events, { persistence }),
+		casino: new CasinoService(undefined, events, { persistence, clock }),
 		pvpShop: new PvpShopService(cosmetics, { persistence }),
-		loot: new LootService(lootRepository, events, { persistence, grants }),
+		loot: new LootService(lootRepository, events, { persistence, grants, clock }),
 		loadout: new LoadoutService({ persistence }),
 		socket: new SocketService(runes, gear, { persistence }),
-		enhancement: new EnhancementService(undefined, events, { persistence }),
+		enhancement: new EnhancementService(undefined, events, { persistence, clock }),
 		reset: new ResetService({ persistence }),
 		inventory,
 		health: new HealthService(persistence.executor),

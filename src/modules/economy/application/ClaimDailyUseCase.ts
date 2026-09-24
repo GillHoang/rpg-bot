@@ -10,6 +10,7 @@ import { ECONOMY_CONFIG } from '../config.js';
 import { ECONOMY_MODULE_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import type { ClaimDailyOptions, DailyEventsPort, DailyRepoPort, ProgressPort } from './ports.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import type { ClaimDailyResult } from './types.js';
 
 export interface ClaimDailyInput {
@@ -24,6 +25,7 @@ export interface ClaimDailyInput {
  */
 export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyResult> {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly repo: DailyRepoPort;
 	private readonly events: DailyEventsPort;
 	private readonly progress: ProgressPort;
@@ -34,8 +36,9 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 		options: ClaimDailyOptions = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.repo = repo ?? new DailyRepository();
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 	}
 
@@ -60,7 +63,7 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 			if (!state) return { status: 'not-registered' };
 
 			// Menu actions may wait on another transaction across the daily reset.
-			const claimTime = input.now ?? new Date();
+			const claimTime = input.now ?? this.clock.now();
 			const todayKey = DailyCycle.keyAt(claimTime);
 			const yesterdayKey = DailyCycle.yesterdayKeyAt(claimTime);
 

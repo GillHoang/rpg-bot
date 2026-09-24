@@ -16,7 +16,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['src/domain/**/*.ts', 'src/shared/kernel/**/*.ts'],
+    files: ['src/modules/*/domain/**/*.ts', 'src/shared/kernel/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

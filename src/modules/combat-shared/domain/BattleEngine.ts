@@ -2,7 +2,7 @@ import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext } from './IClassStrategy.js';
 import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
-import { createRng } from './Rng.js';
+import { createRng, createSecureSeed } from './Rng.js';
 import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
 import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
 import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
@@ -67,10 +67,12 @@ export class BattleEngine {
 	resolve(
 		player: CombatantState,
 		enemy: CombatantState,
-		seed: number = Date.now(),
+		seed: number | undefined = undefined,
 		overrides?: { playerStrategy?: IClassStrategy; enemyStrategy?: IClassStrategy },
 	): BattleResult {
-		const rng = createRng(seed);
+		// Unpredictable by default (crypto seed); deterministic replays pass
+		// an explicit seed instead of relying on wall-clock milliseconds.
+		const rng = createRng(seed ?? createSecureSeed());
 		const roundLogs: BattleRoundLog[] = [];
 		const playerStrategy = overrides?.playerStrategy ?? ClassStrategyRegistry.forClass(player.combatClass);
 		const enemyStrategy = overrides?.enemyStrategy ?? ClassStrategyRegistry.forClass(enemy.combatClass);

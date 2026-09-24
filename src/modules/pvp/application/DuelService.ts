@@ -17,6 +17,7 @@ import { createBattleActionContext } from '../../combat-shared/domain/BattleActi
 import { PlayerCombatantFactory } from '../../combat-shared/application/combatantFactory.js';
 import type { IClassStrategy } from '../../combat-shared/domain/IClassStrategy.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
 
 export const DUEL_STAKE_MIN = 1_000;
@@ -56,6 +57,7 @@ type CharacterRow = typeof userCharacter.$inferSelect;
 export interface DuelDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence?: PersistenceContext;
+	clock?: import('../../../shared/kernel/clock.js').Clock;
 	queries?: Pick<
 		DuelRepository,
 		| 'createDuel'
@@ -93,6 +95,7 @@ export interface DuelDependencies {
 export class DuelService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly accounts: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	private readonly characters: Pick<UserCharacterRepository, 'hasCharacter'>;
 	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
@@ -129,6 +132,7 @@ export class DuelService {
 		options: DuelDependencies = {},
 	) {
 		this.persistence = options.persistence ?? defaultPersistence;
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.characters = characters ?? new UserCharacterRepository();
@@ -137,7 +141,7 @@ export class DuelService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = events ?? EventBus.getInstance();
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new DuelRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
@@ -166,7 +170,7 @@ export class DuelService {
 
 			const duelId = randomUUID();
 			const lockToken = randomUUID();
-			const expiresAt = new Date(Date.now() + DUEL_EXPIRES_SECONDS * 1000);
+			const expiresAt = new Date(this.clock.now().getTime() + DUEL_EXPIRES_SECONDS * 1000);
 			await this.queries.createDuel(tx, {
 				duelId,
 				lockToken,
@@ -204,7 +208,7 @@ export class DuelService {
 		if (!user) return { status: 'not-registered', who };
 		if (!(await this.characters.hasCharacter(tx, id))) return { status: 'no-character', who };
 		const [participant] = await this.queries.findParticipant(tx, id);
-		if (participant && participant.expiresAt > new Date()) return { status: 'busy', who };
+		if (participant && participant.expiresAt > this.clock.now()) return { status: 'busy', who };
 		if (participant) await this.queries.deleteDuel(tx, participant.duelId);
 		return null;
 	}
@@ -225,7 +229,7 @@ export class DuelService {
 			const loaded = await this.loadAcceptableDuel(tx, duelId, acceptorId);
 			if ('error' in loaded) return loaded.error;
 			const duel = loaded.duel;
-			const action = createBattleActionContext({ actorId: acceptorId, mode: 'duel', actionId: duel.duelId });
+			const action = createBattleActionContext({ actorId: acceptorId, mode: 'duel', actionId: duel.duelId, now: this.clock.now() });
 
 			const stake = duel.stake ?? 0;
 			const bags = await this.lockBags(tx, duel.challengerId, duel.opponentId, stake);
@@ -281,7 +285,7 @@ export class DuelService {
 	): Promise<{ duel: DuelRow } | { error: DuelAcceptResult }> {
 		const [duel] = await this.queries.lockDuel(tx, duelId);
 		if (duel?.status !== 'pending') return { error: { status: 'not-found' } };
-		if (duel.expiresAt <= new Date()) return { error: { status: 'expired' } };
+		if (duel.expiresAt <= this.clock.now()) return { error: { status: 'expired' } };
 		if (acceptorId !== duel.opponentId) return { error: { status: 'not-opponent' } };
 		return { duel };
 	}
@@ -431,7 +435,7 @@ export class DuelService {
 	}
 
 	/** Scheduler sweep — drop expired pending duels (participants cascade). */
-	async expireStale(now: Date = new Date()): Promise<number> {
+	async expireStale(now: Date = this.clock.now()): Promise<number> {
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const rows = await this.queries.deleteExpiredDuels(tx, now);
 			return rows.length;
