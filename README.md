@@ -76,7 +76,7 @@ scheduler trong bot chỉ quét dọn duel hết hạn và lock treo mỗi 30 gi
 
 ## Lệnh
 
-`/menu` mở bảng riêng tư: tạo nhân vật, xem tổng quan, nhận daily, xem/đổi quest,
+`/menu` mở bảng công khai: tạo nhân vật, xem tổng quan, nhận daily, xem/đổi quest,
 nhận thưởng tuần, săn quái, xác nhận đánh boss và đọc log từng hiệp bằng nút/select.
 Hướng dẫn có modal tìm kiếm. Kho đồ, deity, PvP, casino và shop vẫn dùng lệnh bên dưới.
 Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) · [Menu giai đoạn 2](docs/menu-phase-2.md).
@@ -131,6 +131,13 @@ Meta dài hạn (M7):
 | `/quest view` · `refresh` · `claim` | 3 quest daily + 3 weekly sinh tự động, progress trong transaction của hành động; đủ 3 daily → +1 Sacred Relic; đủ 3 weekly → Weekly Grand (100k + Diamond Chest); refresh 1 lần/ngày |
 | `/cosmetic list` · `equip id:<#>` | Cosmetics theo category (profile/battle/battle_result/summon), tier gate theo believer level |
 | `/title list` · `equip id:<#>` | Title kiếm qua duel đầu tiên, hạ Bakunawa, thăng bracket ranked, hoặc mua bằng valor |
+
+Admin (chỉ owner trong `OWNER_DISCORD_IDS`):
+
+| Lệnh | Chức năng |
+| --- | --- |
+| `/reset all` | Xoá TOÀN BỘ data người chơi + log (giữ seed/catalog), preview số user + nút xác nhận 60 giây |
+| `/reset user target:@user` | Xoá sạch data đúng 1 user trong 1 transaction (preview số rows + nút xác nhận), ghi audit vào dev_logs |
 
 Cơ chế gameplay và trạng thái triển khai: [gameplay-implementation.md](docs/gameplay-implementation.md).
 Lịch sử thiết kế và port được lưu tại [port-history.md](docs/port-history.md).

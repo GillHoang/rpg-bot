@@ -6,17 +6,25 @@ vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
 vi.mock('../src/shared/utils/logger.js', () => ({ logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } }));
 const owners = vi.hoisted(() => ({ isOwner: vi.fn(() => true) }));
 vi.mock('../src/app/owners.js', () => ({ isOwner: owners.isOwner }));
-const reset = vi.hoisted(() => ({ countAll: vi.fn(), resetAll: vi.fn(), audit: vi.fn() }));
+const reset = vi.hoisted(() => ({
+	countAll: vi.fn(),
+	resetAll: vi.fn(),
+	countUser: vi.fn(),
+	resetUser: vi.fn(),
+	audit: vi.fn(),
+}));
 vi.mock('../src/modules/system/application/ResetService.js', () => ({
 	ResetService: class {
 		countAll = reset.countAll;
 		resetAll = reset.resetAll;
+		countUser = reset.countUser;
+		resetUser = reset.resetUser;
 		audit = reset.audit;
 	},
 }));
 import { ResetCommand } from '../src/modules/system/presentation/ResetCommand.js';
 
-function fixture() {
+function fixture(subcommand = 'all') {
 	const collector = new EventEmitter() as EventEmitter & { stop: ReturnType<typeof vi.fn> };
 	collector.stop = vi.fn((reason: string) => collector.emit('end', [], reason));
 	const channel = { createMessageComponentCollector: vi.fn(() => collector) };
@@ -26,6 +34,10 @@ function fixture() {
 		deferReply: vi.fn().mockResolvedValue(undefined),
 		editReply: vi.fn().mockResolvedValue(undefined),
 		id: 'interaction-1',
+		options: {
+			getSubcommand: vi.fn(() => subcommand),
+			getUser: vi.fn(() => ({ id: 'target-9', username: 'Victim' })),
+		},
 	};
 	return { i, interaction: i as unknown as ChatInputCommandInteraction, collector, channel };
 }
@@ -112,5 +124,63 @@ describe('ResetCommand confirm flow', () => {
 		await new ResetCommand().execute(f.interaction);
 		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('Không có dữ liệu người chơi nào để reset.');
 		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
+	});
+});
+
+describe('ResetCommand user flow', () => {
+	it('non-owner caller gets refused before any DB call', async () => {
+		const f = fixture('user');
+		owners.isOwner.mockReturnValue(false);
+		await new ResetCommand().execute(f.interaction);
+		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('Lệnh này chỉ dành cho chủ bot.');
+		expect(reset.countUser).not.toHaveBeenCalled();
+		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
+	});
+
+	it('unknown user short-circuits before showing buttons', async () => {
+		const f = fixture('user');
+		reset.countUser.mockResolvedValue(0);
+		await new ResetCommand().execute(f.interaction);
+		expect(reset.countUser).toHaveBeenCalledTimes(1);
+		expect(reset.countUser).toHaveBeenCalledWith('target-9');
+		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('User này chưa từng chơi — không có dữ liệu nào để xoá.');
+		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
+	});
+
+	it('preview counts rows, confirm wipes exactly that target', async () => {
+		const f = fixture('user');
+		reset.countUser.mockResolvedValue(250);
+		reset.resetUser.mockResolvedValue({ status: 'ok', deletedRows: 250 });
+		await new ResetCommand().execute(f.interaction);
+		expect(f.i.editReply).toHaveBeenCalledWith(
+			expect.objectContaining({ content: expect.stringContaining('250') }),
+		);
+		const button = press(f.collector, { customId: 'reset:user-confirm:target-9' });
+		await vi.waitFor(() => expect(button.editReply).toHaveBeenCalled());
+		expect(reset.resetUser).toHaveBeenCalledExactlyOnceWith('owner-1', 'target-9');
+		expect(button.editReply).toHaveBeenCalledWith(
+			expect.objectContaining({ content: expect.stringContaining('250') }),
+		);
+	});
+
+	it('cancel leaves the target untouched', async () => {
+		const f = fixture('user');
+		reset.countUser.mockResolvedValue(250);
+		await new ResetCommand().execute(f.interaction);
+		press(f.collector, { customId: 'reset:user-cancel' });
+		await vi.waitFor(() => expect(f.collector.stop).toHaveBeenCalledWith('cancelled'));
+		expect(reset.resetUser).not.toHaveBeenCalled();
+	});
+
+	it('vanished target at confirm time reports not-found', async () => {
+		const f = fixture('user');
+		reset.countUser.mockResolvedValue(250);
+		reset.resetUser.mockResolvedValue({ status: 'not-found' });
+		await new ResetCommand().execute(f.interaction);
+		const button = press(f.collector, { customId: 'reset:user-confirm:target-9' });
+		await vi.waitFor(() => expect(button.editReply).toHaveBeenCalled());
+		expect(button.editReply).toHaveBeenCalledWith(
+			expect.objectContaining({ content: 'User này chưa từng chơi — không có dữ liệu nào để xoá.' }),
+		);
 	});
 });

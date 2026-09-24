@@ -88,12 +88,17 @@ describe('portal equipment balance', () => {
 			expect(upgraded[index]).toBeGreaterThan(80);
 		}
 	});
-	it('prevents leveling alone from trivializing late portals', async () => {
-		const starter = await winRates(80, 80, false, 'starter', 1);
-		const upgraded = await winRates(80, 80, false, 'Supreme', 11);
-		for (let index = 0; index < CLASS_NAMES.length; index++) {
-			expect(starter[index]).toBeLessThan(20);
-			expect(upgraded[index]).toBeGreaterThan(50);
-		}
-	});
+	it(
+		'prevents leveling alone from trivializing late portals',
+		async () => {
+			const starter = await winRates(80, 80, false, 'starter', 1);
+			const upgraded = await winRates(80, 80, false, 'Supreme', 11);
+			for (let index = 0; index < CLASS_NAMES.length; index++) {
+				expect(starter[index]).toBeLessThan(20);
+				expect(upgraded[index]).toBeGreaterThan(50);
+			}
+		},
+		// CPU-bound: thousands of full level-80 battle simulations; slow hosts need headroom.
+		30_000,
+	);
 });

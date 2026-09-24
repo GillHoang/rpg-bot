@@ -153,6 +153,7 @@ export const RAID_REWARD_ERROR_TEXT = {
 /** services/ResetService */
 export const RESET_ERROR_TEXT = {
 	missingAdministrator: 'Reset requires an administrator ID',
+	invalidTarget: 'Reset target must be a numeric Discord ID',
 } as const;
 
 /** services/SocketService */

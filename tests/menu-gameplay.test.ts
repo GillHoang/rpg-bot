@@ -324,6 +324,26 @@ describe('phase 2 menu', () => {
 		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(character.gate1TiersCleared).toBe(cleared + 2);
 	});
+	it('locks every tier above cleared+1: fresh players see only floor 1 enabled and forged clicks are rejected', async () => {
+		await start();
+		const game = new MenuGameplayService();
+		const session = new MenuSessionStore().create(id);
+		session.screen = { kind: 'gateTiers' };
+		session.gateId = 1;
+		const panel = await game.render(session);
+		const fights = panel.buttons.filter((button) => button.action === 'fight');
+		expect(fights).toHaveLength(10);
+		for (const button of fights) {
+			expect(button.disabled).toBe(button.value !== '1');
+		}
+		// Forged click on locked floor 5: lock notice, no battle, no cooldown spent.
+		session.screen = await game.act(session, 'fight', id, '5');
+		expect(session.screen.kind).toBe('gateTiers');
+		expect(session.battle).toBeUndefined();
+		expect(session.notice).toContain('Tầng chưa mở');
+		expect(await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id))).toHaveLength(0);
+		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
+	});
 	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
 		await start();
 		const router = new MenuRouter(undefined, new MenuGameplayService());

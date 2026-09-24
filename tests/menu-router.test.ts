@@ -79,7 +79,7 @@ describe('menu router', () => {
 			const click = fixture('button', action(root.view, 'help'));
 			click.raw.editReply.mockResolvedValueOnce({ id: `child-${index}` });
 			await router.handle(click.interaction);
-			expect(click.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+			expect(click.raw.deferReply).toHaveBeenCalledWith();
 			expect(click.raw.deferUpdate).not.toHaveBeenCalled();
 			const view = click.raw.editReply.mock.calls[0]![0];
 			expect(parseMenuId(action(view, 'home'))!.id).not.toBe(parseMenuId(action(root.view, 'help'))!.id);
@@ -89,10 +89,10 @@ describe('menu router', () => {
 			expect(topic.raw.deferUpdate).toHaveBeenCalledOnce();
 		}
 	});
-	it('opens an ephemeral V2 menu through /menu and leaves legacy interactions alone', async () => {
+	it('opens a public V2 menu through /menu and leaves legacy interactions alone', async () => {
 		const router = new MenuRouter();
 		const f = await opened(router);
-		expect(f.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+		expect(f.raw.deferReply).toHaveBeenCalledWith();
 		expect(json(f.view).flags).toBe(MessageFlags.IsComponentsV2);
 		const legacy = fixture('button', 'duel:accept:abc');
 		expect(await router.handle(legacy.interaction)).toBe(false);
@@ -163,7 +163,7 @@ describe('menu router', () => {
 		const modalId = json(button.raw.showModal.mock.calls[0]![0]).custom_id as string;
 		const modal = fixture('modal', modalId);
 		await router.handle(modal.interaction);
-		expect(modal.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+		expect(modal.raw.deferReply).toHaveBeenCalledWith();
 		expect(modal.raw.deferUpdate).not.toHaveBeenCalled();
 		expect(ids(modal.raw.editReply.mock.calls[0]![0]).some((id) => parseMenuId(id)?.action === 'topic')).toBe(true);
 		const replay = fixture('modal', modalId);
@@ -244,7 +244,7 @@ describe('menu router', () => {
 		await pending;
 	});
 
-	it('offers a fresh private menu after expiry or restart without replaying the action', async () => {
+	it('offers a fresh public menu after expiry or restart without replaying the action', async () => {
 		let now = 0;
 		const router = new MenuRouter(new MenuSessionStore(() => now, 100));
 		const f = await opened(router);
@@ -258,7 +258,7 @@ describe('menu router', () => {
 		}
 		const reopen = fixture('button', MENU_OPEN_ID, 'alice', 'new-message');
 		await router.handle(reopen.interaction);
-		expect(reopen.raw.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
+		expect(reopen.raw.deferReply).toHaveBeenCalledWith();
 	});
 
 	it('closes only its own session and retires its old buttons', async () => {

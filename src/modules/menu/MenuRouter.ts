@@ -273,7 +273,7 @@ export class MenuRouter {
 	}
 
 	private async acknowledge(interaction: MenuInteraction, session: MenuSession): Promise<void> {
-		if (!session.messageId) await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		if (!session.messageId) await interaction.deferReply();
 		else await interaction.deferUpdate();
 	}
 
@@ -303,7 +303,7 @@ export class MenuRouter {
 	}
 
 	private async notice(interaction: MenuInteraction | ChatInputCommandInteraction, text: string): Promise<void> {
-		const payload = { ...recoveryView(text), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral } as const;
+		const payload = { ...recoveryView(text), flags: MessageFlags.IsComponentsV2 } as const;
 		try {
 			if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
 			else await interaction.reply(payload);

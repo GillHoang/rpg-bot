@@ -83,6 +83,36 @@ describe('ResetService', () => {
 		expect(result).toEqual({ status: 'nothing-to-reset' });
 	});
 
+	it('resetUser() wipes exactly one user and leaves the other untouched', async () => {
+		const start = new StartService();
+		for (const id of ['900000000000000001', '900000000000000002']) {
+			const result = await start.start(id, id, 'Knight');
+			if (result.status !== 'ok') throw new Error(result.status);
+		}
+		const reset = new ResetService();
+		const rows = await reset.countUser('900000000000000002');
+		expect(rows).toBeGreaterThan(0);
+
+		const result = await reset.resetUser('developer', '900000000000000002');
+		expect(result).toEqual({ status: 'ok', deletedRows: rows });
+
+		const users = await db.select().from(s.users);
+		expect(users.map((u) => u.discordId)).toEqual(['900000000000000001']);
+		expect(await db.select().from(s.usersBag)).toHaveLength(1);
+		expect(await db.select().from(s.userCharacter)).toHaveLength(1);
+		// Audit row lands in dev_logs without deleting history.
+		const logs = await db.select().from(s.devLogs);
+		expect(logs.at(-1)).toMatchObject({ actionType: 'reset_user', targetDiscordId: '900000000000000002' });
+
+		expect(await reset.resetUser('developer', '900000000000000002')).toEqual({ status: 'not-found' });
+		expect(await reset.countUser('900000000000000002')).toBe(0);
+		await expect(reset.resetUser('developer', 'not-a-snowflake!')).rejects.toThrow();
+		await expect(reset.resetUser('', '900000000000000001')).rejects.toThrow();
+
+		// Restore empty state for the following tests.
+		expect(await reset.resetUser('developer', '900000000000000001')).toMatchObject({ status: 'ok' });
+	});
+
 	it('resets cleanly a second time after players re-register', async () => {
 		const start = new StartService();
 		const result = await start.start('reset-c', 'reset-c', 'Mage');
