@@ -110,13 +110,19 @@ describe('MonsterEncounterService', () => {
 		const service = new MonsterEncounterService(roster);
 		expect(await service.pickForLevel(executor, 2, rng)).toEqual({
 			name: 'Small',
-			hp: 1489,
-			atk: 140,
-			def: 65,
+			hp: 967,
+			atk: 188,
+			def: 55,
 			crit: 5,
+			spd: 95,
+			acc: 0,
+			eva: 0,
+			ten: 0,
 			mobType: 'regular',
 			skillKey: 'none',
 			immunityTags: ['poison'],
+			affixes: [],
+			regenPct: 0,
 		});
 		expect(roster.listForEncounter).toHaveBeenCalledExactlyOnceWith(executor, false);
 		expect(rng).toHaveBeenCalledTimes(2);
@@ -131,13 +137,19 @@ describe('MonsterEncounterService', () => {
 		const rng = vi.fn(() => 0.99);
 		expect(await new MonsterEncounterService(roster).pickForLevel(executor, 2, rng)).toEqual({
 			name: 'Elite',
-			hp: 1728,
-			atk: 129,
-			def: 52,
+			hp: 1121,
+			atk: 173,
+			def: 44,
 			crit: 5,
+			spd: 102,
+			acc: 0,
+			eva: 3,
+			ten: 15,
 			mobType: 'elite',
 			skillKey: 'none',
 			immunityTags: ['poison'],
+			affixes: [],
+			regenPct: 0,
 		});
 		expect(rng).toHaveBeenCalledTimes(2);
 	});
@@ -155,9 +167,15 @@ describe('MonsterEncounterService', () => {
 			atk: 120,
 			def: 60,
 			crit: 5,
+			spd: 113,
+			acc: 0,
+			eva: 5,
+			ten: 40,
 			mobType: 'boss',
 			skillKey: 'moon_threshold',
 			immunityTags: [],
+			affixes: [],
+			regenPct: 0,
 		});
 		expect(roster.listForEncounter).toHaveBeenCalledExactlyOnceWith(executor, true);
 		expect(rng).toHaveBeenCalledOnce();
@@ -174,7 +192,7 @@ describe('MonsterEncounterService', () => {
 		const service = new MonsterEncounterService(roster);
 		expect(await service.pickForLevel(executor, 0, rng)).toBeNull();
 		expect(rng).not.toHaveBeenCalled();
-		expect(await service.pickForLevel(executor, 0, rng)).toMatchObject({ hp: 2400, atk: 198, def: 91 });
+		expect(await service.pickForLevel(executor, 0, rng)).toMatchObject({ hp: 1500, atk: 256, def: 74 });
 	});
 });
 

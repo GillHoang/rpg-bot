@@ -45,7 +45,7 @@ describe('combat-shared module (facade + setup)', () => {
 		const container = createAppContainer({ persistence: context() as never });
 		expect(container.combatShared.engine).toBeInstanceOf(BattleEngine);
 		expect(container.combatShared.setup).toBeInstanceOf(CombatSetup);
-		expect(container.combatShared.setup.resolve).toBeDefined();
+		expect(container.combatShared.setup.resolve).toEqual(expect.any(Function));
 	});
 
 	it('shares one combat setup across raid/duel/ranked with explicit overrides winning', async () => {

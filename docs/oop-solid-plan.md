@@ -73,6 +73,32 @@ Pure arithmetic helpers, immutable configuration and text formatting remain func
   (pure gate render), `MenuActionRouter` (stateless routing + pager math) and
   `MenuBattleFlow` (daily/confirm/fight flows).
 
+## PvE battle overhaul (2026-09-25)
+
+- Damage v2 (`DamageCalculator`/`BattleAttack`): mitigation `DEF/(DEF+600)`
+  capped 75%, additive armor-pen capped 60%, per-skill variance windows,
+  crit ×2.0 unchanged; `OutgoingHit.varianceRange`, `ResolvedHit.missed`.
+- Blood-moon pacing (`combatRules`): rounds 31–40 deal +10%/round (cap ×2.0)
+  and drain 2% max HP from both sides instead of ×2^(round−30).
+- New stats (`CombatantState`/`StatAssembly`/`classes.ts`): SPD (deterministic
+  first strike, ties roll bias), ACC/EVA (95% +1%/pt clamped 80–100% via
+  `rollHit`), TEN (flat shrug chance vs stun/paralyze/dizzy via `applyDebuff`
+  choke point); mob secondaries derived in `MonsterEncounterService` (no migration).
+- Class reworks (auto-battle compatible): Swordsman hemorrhage detonate,
+  conditional Fighter Bash + execution + stun-ward, Mage spellweave consume,
+  Knight Bulwark + Second Wind, alternating Archer aimed shots.
+- Monster AI (`MonsterStrategy`): round rotation, telegraphed heavies,
+  4 flavor skills implemented, elite affix pool, Bakunawa 3 phases with DOT
+  shed + devour cycle; `slow` tag, venom cap 25%, conditional cleanses.
+- Runes/deity (P8): pen cap respected, 8%/round heal budget (`cappedHeal`),
+  2-per-battle immunity budget, blessings from all pantheon slots weighted
+  1/0.5/0.25 with max-merge, new swiftness/eagle-eye/frost runes (+ seeds).
+- Encounter retune (glass-cannon mobs, steep early difficulty slope) keeps
+  portal-balance green; characterization snapshots re-baselined after review.
+- Full suite: **477 passed / 7 skipped** (+21 new exploit-guard tests);
+  typecheck + lint + text-boundaries + dist import check pass; 7-test
+  multi-connection Postgres suite verified green against a live database.
+
 ## Compatibility
 
 Original positional constructor arguments remain supported with optional trailing dependency options. The unused InventoryRepository, DeityRepository, MonsterRepository and RaidRewardRepository aliases were removed on 2026-09-23; tests now import the policy services directly. LootService still honors legacy injected rune/gear methods, with explicit grant overrides taking precedence.

@@ -168,7 +168,13 @@ describe('service cohort A persistence isolation', () => {
 		expect(titles).toHaveLength(1);
 		await cosmetics.equipTitle(id, titles[0].titleId);
 		const profile = await new ProfileService(undefined, undefined, undefined, { persistence }).get(id);
-		expect(profile.status === 'ok' && profile.data.title).toBeTruthy();
+		expect(profile.status).toBe('ok');
+		if (profile.status !== 'ok') throw new Error('unreachable');
+		const [catalog] = await isolated.db
+			.select()
+			.from(s.titleCatalog)
+			.where(eq(s.titleCatalog.titleId, titles[0].titleId));
+		expect(profile.data.title).toBe(catalog.display);
 	});
 
 	it('uses the injected account repository executor and emits currency events only after commit', async () => {

@@ -19,12 +19,14 @@ export interface StrategyContext {
 export interface OutgoingHit {
 	/** Additive damage-% rider, summed into hitMultiplier(crit, damagePct). Fighter +50, Knight +30, etc. */
 	damagePctBonus: number;
-	/** Fraction of the defender's DEF to ignore (Archer: 0.25). */
+	/** Fraction of the defender's DEF to ignore (Archer: 0.25). Capped by effectivePierce() at resolve time. */
 	armorPierceFraction: number;
 	/** When set, replaces the normal crit/damagePct multiplier entirely (Mage Overcharge). */
 	forcedMultiplier: number | null;
 	/** When true, a crit can never happen on this hit (Mage Overcharge round). */
 	suppressCrit: boolean;
+	/** Per-skill variance window, default [0.9, 1.1] (see rollVariance). */
+	varianceRange: readonly [number, number];
 }
 
 export interface IncomingHit {
@@ -35,6 +37,8 @@ export interface IncomingHit {
 export interface ResolvedHit {
 	damageDealt: number;
 	crit: boolean;
+	/** True when the attack missed outright (ACC/EVA) — no damage, hooks treat it as a zero-damage hit. */
+	missed: boolean;
 	/** Set by a strategy's onHitLanded to chain one bonus attack (Archer double attack). */
 	triggerExtraAttack: boolean;
 }

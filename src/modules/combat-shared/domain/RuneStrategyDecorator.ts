@@ -1,8 +1,8 @@
 import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import type { RuneEffectKey } from '../../../shared/config/runes.js';
-import { combatDisplayName, findDebuff } from './CombatantState.js';
-import { COMBAT_RUNE_THORNS, COMBAT_RUNE_VAMPIRIC, COMBAT_RUNE_VENOM } from '../../../shared/ui/text/combat.js';
+import { combatDisplayName, findDebuff, applyDebuff, cappedHeal, immunityMultiplier } from './CombatantState.js';
+import { COMBAT_FROST, COMBAT_RUNE_THORNS, COMBAT_RUNE_VAMPIRIC, COMBAT_RUNE_VENOM } from '../../../shared/ui/text/combat.js';
 
 /**
  * Decorator pattern: wraps any IClassStrategy (a real class passive, or
@@ -46,7 +46,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 		this.inner.prepareIncomingHit(ctx, hit);
 		if (this.effectKey === 'warding') hit.reductionFraction = Math.max(hit.reductionFraction, this.value);
 		if (this.effectKey === 'aegis_rune' && !ctx.self.flags.aegis_used) {
-			hit.reductionFraction = 1;
+			hit.reductionFraction = Math.max(hit.reductionFraction, immunityMultiplier(ctx.self));
 			ctx.self.flags.aegis_used = true;
 		}
 	}
@@ -56,9 +56,8 @@ export class RuneStrategyDecorator implements IClassStrategy {
 		if (resolved.damageDealt <= 0) return;
 
 		if (this.effectKey === 'vampiric') {
-			const healed = Math.floor(resolved.damageDealt * this.value);
+			const healed = cappedHeal(ctx.self, Math.floor(resolved.damageDealt * this.value));
 			if (healed > 0) {
-				ctx.self.hp = Math.min(ctx.self.maxHp, ctx.self.hp + healed);
 				ctx.log(COMBAT_RUNE_VAMPIRIC(combatDisplayName(ctx.self), formatNumber(healed)));
 			}
 		} else if (this.effectKey === 'venom') {
@@ -66,9 +65,10 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			const existing = findDebuff(ctx.enemy, 'venom');
 			if (existing) {
 				existing.turnsLeft = 2;
-				existing.value += value;
+				// P5 cap: stacked venom never exceeds 25% of the victim's max HP.
+				existing.value = Math.min(Math.floor(ctx.enemy.maxHp * 0.25), existing.value + value);
 			} else {
-				ctx.enemy.debuffs.push({ tag: 'venom', turnsLeft: 2, value });
+				applyDebuff(ctx.enemy, { tag: 'venom', turnsLeft: 2, value }, ctx.rng, ctx.log);
 			}
 			ctx.log(COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), formatNumber(value)));
 		} else if (this.effectKey === 'blight') {
@@ -76,7 +76,10 @@ export class RuneStrategyDecorator implements IClassStrategy {
 			if (existing) {
 				existing.value = Math.max(existing.value, this.value);
 				existing.turnsLeft = 1;
-			} else ctx.enemy.debuffs.push({ tag: 'blight', turnsLeft: 1, value: this.value });
+			} else applyDebuff(ctx.enemy, { tag: 'blight', turnsLeft: 1, value: this.value }, ctx.rng, ctx.log);
+		} else if (this.effectKey === 'frost') {
+			applyDebuff(ctx.enemy, { tag: 'slow', turnsLeft: 1, value: this.value }, ctx.rng, ctx.log);
+			ctx.log(COMBAT_FROST(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy)));
 		}
 	}
 

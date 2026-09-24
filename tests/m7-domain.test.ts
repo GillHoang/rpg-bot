@@ -33,11 +33,12 @@ describe('elo', () => {
 });
 
 describe('sudden death', () => {
-	it('multiplies damage ×2 per round past 30 and logs the header once', () => {
+	it('ramps damage +10% per round past 30 (blood-moon enrage) and logs the header once', () => {
 		expect(suddenDeathMultiplier(1)).toBe(1);
 		expect(suddenDeathMultiplier(SUDDEN_DEATH_START)).toBe(1);
-		expect(suddenDeathMultiplier(SUDDEN_DEATH_START + 1)).toBe(2);
-		expect(suddenDeathMultiplier(SUDDEN_DEATH_START + 3)).toBe(8);
+		expect(suddenDeathMultiplier(SUDDEN_DEATH_START + 1)).toBeCloseTo(1.1, 10);
+		expect(suddenDeathMultiplier(SUDDEN_DEATH_START + 3)).toBeCloseTo(1.3, 10);
+		expect(suddenDeathMultiplier(40)).toBeCloseTo(2.0, 10);
 
 		// Two nigh-unkillable walls grind to round 40 — sudden death must fire.
 		const wall = () =>

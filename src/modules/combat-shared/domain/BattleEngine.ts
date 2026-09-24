@@ -1,12 +1,18 @@
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import type { CombatantState, Debuff } from './CombatantState.js';
+import { combatDisplayName, effectiveSpd } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext } from './IClassStrategy.js';
 import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
 import { createRng, createSecureSeed } from './Rng.js';
 import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
 import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
-import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
-import { COMBAT_ROUND_HEADER, COMBAT_SUDDEN_DEATH_HEADER } from '../../../shared/ui/text/combat.js';
+import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier, BLOOD_MOON_PCT } from './combatRules.js';
+import {
+	COMBAT_BLOOD_MOON,
+	COMBAT_ROUND_HEADER,
+	COMBAT_SUDDEN_DEATH_HEADER,
+} from '../../../shared/ui/text/combat.js';
+import { formatNumber } from '../../../shared/ui/text/format.js';
 
 export { SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
 
@@ -115,6 +121,10 @@ export class BattleEngine {
 		const { player, enemy, playerStrategy, enemyStrategy, rng, log } = ctx;
 		log.push(COMBAT_ROUND_HEADER(round));
 		if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
+		if (round > SUDDEN_DEATH_START) this.bloodMoonPrice(ctx);
+		// P8 heal budget resets every round for both sides.
+		player.flags.healed_this_round = 0;
+		enemy.flags.healed_this_round = 0;
 
 		playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 		enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
@@ -132,6 +142,17 @@ export class BattleEngine {
 		this.closeRound(ctx, round);
 	}
 
+	/** Blood-moon price: both sides bleed 2% max HP at the start of enrage rounds. */
+	private bloodMoonPrice(ctx: RoundContext): void {
+		for (const side of [ctx.player, ctx.enemy]) {
+			if (side.hp <= 0) continue;
+			const price = Math.floor(side.maxHp * BLOOD_MOON_PCT);
+			if (price <= 0) continue;
+			side.hp = Math.max(0, side.hp - price);
+			ctx.log.push(COMBAT_BLOOD_MOON(combatDisplayName(side), formatNumber(price)));
+		}
+	}
+
 	/** End-of-round bookkeeping, skipped entirely once either side has fallen. */
 	private closeRound(ctx: RoundContext, round: number): void {
 		const { player, enemy } = ctx;
@@ -141,7 +162,8 @@ export class BattleEngine {
 		this.endOfRound(enemy, player, ctx.enemyStrategy, round, ctx);
 	}
 
-	/** Initiative: the holder of a higher `initiative_bias` flag (Tailwind blessing) is more likely to act first; even footing is 50/50. */
+	/** Initiative (P2): faster effective SPD acts first; ties fall back to the
+	 * initiative-bias roll (Tailwind blessing, swift affix). */
 	private turnOrder(ctx: RoundContext): Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> {
 		const { player, enemy, playerStrategy, enemyStrategy, rng } = ctx;
 		const playerBias = (player.flags.initiative_bias as number) ?? 0;
@@ -159,6 +181,9 @@ export class BattleEngine {
 			enemyStrategy,
 			playerStrategy,
 		];
+		const playerSpd = effectiveSpd(player);
+		const enemySpd = effectiveSpd(enemy);
+		if (playerSpd !== enemySpd) return playerSpd > enemySpd ? [playerTurn, enemyTurn] : [enemyTurn, playerTurn];
 		return playerFirst ? [playerTurn, enemyTurn] : [enemyTurn, playerTurn];
 	}
 

@@ -97,12 +97,13 @@ describe('combat progression', () => {
 		new RuneStrategyDecorator(new NullClassStrategy(), 'vampiric', 0.1).onHitLanded(ctx, { damageDealt: 100, crit: false, triggerExtraAttack: false });
 		expect(self.hp).toBe(510);
 	});
-	it('Bakunawa enters Eclipse below half HP and ignores stun', () => {
+	it('Bakunawa phases stir below two-thirds HP, Eclipse below half, and ignores stun', () => {
 		const self = fighter('Bakunawa'), enemy = fighter('p');
 		const strategy = new MonsterStrategy('moon_threshold');
 		const ctx = { self, enemy, round: 1, rng: () => 0.5, log: () => {} };
 		const hit = () => ({ damagePctBonus: 0, armorPierceFraction: 0, forcedMultiplier: null, suppressCrit: false });
-		self.hp = 500; const before = hit(); strategy.prepareOutgoingHit(ctx, before); expect(before.damagePctBonus).toBe(0);
+		self.hp = 700; const calm = hit(); strategy.prepareOutgoingHit(ctx, calm); expect(calm.damagePctBonus).toBe(0);
+		self.hp = 500; const before = hit(); strategy.prepareOutgoingHit(ctx, before); expect(before.damagePctBonus).toBe(20);
 		self.hp = 499; const after = hit(); strategy.prepareOutgoingHit(ctx, after); expect(after.damagePctBonus).toBe(50);
 		self.immunityTags = ['stun']; self.debuffs.push({ tag: 'stun', value: 0, turnsLeft: 3 });
 		const battle = new BattleEngine().resolve(enemy, self, 42, { enemyStrategy: strategy });

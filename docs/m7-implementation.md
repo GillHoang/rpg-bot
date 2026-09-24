@@ -17,8 +17,8 @@ Ba quyết định phạm vi do người dùng chốt:
 
 ## Checklist triển khai
 
-- [x] Sudden-death sau round 30 (damage ×2 mỗi round, 31–40) + initiative roll
-      theo cờ `initiative_bias` trong `BattleEngine`.
+- [x] Blood-moon sau round 30 (+10% damage/round tới ×2.0 + trừ 2% maxHP hai
+      bên) + đi trước theo SPD (hòa mới roll `initiative_bias`) trong `BattleEngine`.
 - [x] Deity blessing decorator (8 blessing key đã seed), pantheon slot 2/3
       (trọng số 50%/25%) + resonance mythology trong StatAssembly;
       `/equip kind:deity2|deity3`.
@@ -55,8 +55,10 @@ Ba quyết định phạm vi do người dùng chốt:
 | solar_fury | +6%×strength damage mỗi đòn |
 | mountain_grace | Dưới 50% HP: −35%×strength damage vào |
 | sky_sovereign | 1 lần/trận hoá giải trọn đòn (binary) |
-| Blessing nguồn | Chỉ deity slot 1 của preset active |
-| Sudden death | Round 31–40: mọi damage ×2^(round−30); hết round 40 tiebreak HP% |
+| Blessing nguồn | Mọi slot pantheon theo trọng số (slot 1 full, 2 ×0.5, 3 ×0.25); trùng key lấy max |
+| Miễn nhiễm chồng lớp | aegis/veil/sovereign chia budget 2 lần/trận; lần thứ 3 trở đi chỉ giảm 50% |
+| Hồi máu | Mọi nguồn hồi (vampiric/regen/blessing/feast) chia budget 8% maxHP/round |
+| Sudden death | Round 31–40 blood-moon: damage +10%/round (tối đa ×2.0) + hai bên mất 2% maxHP/round; hết round 40 tiebreak HP% |
 | Duel | Stake ≥ 1.000; trừ cược khi accept, winner ăn 2× stake; draw hoàn cả hai; hết hạn 60s; 1 duel pending mỗi người |
 | Elo | K=32 zero-sum, cả hai bên đều đổi rating |
 | Bracket | Mortal <1100, Champion 1100, Demigod 1400, Ascendant 1700, Divine ≥2000 |
@@ -103,8 +105,9 @@ Ba quyết định phạm vi do người dùng chốt:
   audit này bảng tồn tại nhưng không bao giờ được ghi; `highest_raid_streak`
   tính từ đuôi raid_logs, `ranked` cũng đã cộng `pvp_wins`/`pvp_losses` cho
   cả hai đấu thủ.
-- Tailwind của cả hai bên cộng trừ qua `initiative_bias` — mob thường không có
-  bias nên deity tailwind luôn có lợi trong raid.
+- Tailwind cộng bias qua `initiative_bias` — chỉ còn là tiebreak khi SPD hai
+  bên bằng nhau; quái có SPD riêng theo tier (regular 95 / elite 102 / boss
+  110 + level) nên tailwind không còn auto-đi-trước trong raid.
 - Draw ở duel (double KO) hoàn cược cho cả hai và không ghi `pvp_logs`.
 - `ranked_reward.season_end_payload` để trống — trao cuối mùa chưa có cơ chế.
 

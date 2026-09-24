@@ -107,8 +107,8 @@ describe('ResetService', () => {
 
 		expect(await reset.resetUser('developer', '900000000000000002')).toEqual({ status: 'not-found' });
 		expect(await reset.countUser('900000000000000002')).toBe(0);
-		await expect(reset.resetUser('developer', 'not-a-snowflake!')).rejects.toThrow();
-		await expect(reset.resetUser('', '900000000000000001')).rejects.toThrow();
+		await expect(reset.resetUser('developer', 'not-a-snowflake!')).rejects.toThrow('numeric Discord ID');
+		await expect(reset.resetUser('', '900000000000000001')).rejects.toThrow('administrator ID');
 
 		// Restore empty state for the following tests.
 		expect(await reset.resetUser('developer', '900000000000000001')).toMatchObject({ status: 'ok' });

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BattleAttackResolver } from '../src/modules/combat-shared/domain/BattleAttack.js';
 import { CombatStatusEffectProcessor } from '../src/modules/combat-shared/domain/CombatStatusEffects.js';
-import { createCombatant, type DebuffTag } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { createCombatant, applyDebuff, type DebuffTag } from '../src/modules/combat-shared/domain/CombatantState.js';
 import { DeityBlessingDecorator } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
 import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
 import { ArcherStrategy } from '../src/modules/combat-shared/domain/classes/ArcherStrategy.js';
@@ -23,7 +23,7 @@ describe('combat review regressions', () => {
 		{ archer: true, runes: 2, pierce: 0.55 },
 		{ archer: false, runes: 2, pierce: 0.3 },
 		{ archer: true, runes: 6, pierce: 1 },
-	])('Piercing stacks and caps at 100%: $archer Archer, $runes runes', ({ archer, runes, pierce }) => {
+	])('Piercing stacks and caps at 60%: $archer Archer, $runes runes', ({ archer, runes, pierce }) => {
 		const ctx = setup();
 		ctx.enemy.def = 1200;
 		ctx.rng.mockReturnValue(0.5); // Fixed variance, no crit or Archer follow-up.
@@ -35,7 +35,18 @@ describe('combat review regressions', () => {
 		strategy.prepareOutgoingHit(ctx, hit);
 		expect(hit.armorPierceFraction).toBeCloseTo(pierce);
 		new BattleAttackResolver().executeStrike(ctx.self, ctx.enemy, strategy, new NullClassStrategy(), ctx);
-		expect(ctx.enemy.hp).toBe(1000 - Math.floor(100 / (2 - pierce)));
+		// P1 formula (K=600, pen cap 60%) + Archer aimed alternating shots:
+		// the manual prepare above counts as shot 1, so the strike resolves
+		// as an aimed shot (45% pierce, +20% damage) for Archer cases.
+		const aimed = new Map([
+			['false-1', 963],
+			['true-0', 943],
+			['true-1', 934],
+			['true-2', 934],
+			['false-2', 959],
+			['true-6', 934],
+		]);
+		expect(ctx.enemy.hp).toBe(aimed.get(`${archer}-${runes}`));
 	});
 
 	it.each([
@@ -88,8 +99,7 @@ describe('combat review regressions', () => {
 		expect(ctx.self.hp).toBe(hp === 1 ? 0 : 974);
 	});
 
-	it.each(['bleed', 'burn', 'venom'] as DebuffTag[])('%s expires even when its damage rounds to zero', (tag) => {
-		for (const [value, warding] of [
+	it.each(['bleed', 'burn', 'venom'] as DebuffTag[])('%s expires even when its damage rounds to zero', (tag) => {		for (const [value, warding] of [
 			[0, 0],
 			[1, 0.25],
 			[10, 1],
@@ -138,8 +148,24 @@ describe('combat review regressions', () => {
 			const strategy = new DeityBlessingDecorator(new NullClassStrategy(), 'moon_devourer', 1);
 			new BattleAttackResolver().executeStrike(ctx.self, ctx.enemy, strategy, new NullClassStrategy(), ctx);
 			expect(ctx.enemy.hp).toBe(820);
-			expect(ctx.rng).toHaveBeenCalledTimes(active ? 2 : 3);
+			// P2 hit roll consumes one RNG call between the devour roll and variance.
+			expect(ctx.rng).toHaveBeenCalledTimes(active ? 3 : 4);
 			expect(ctx.log.mock.calls.some(([line]) => line.includes(combatTag(COMBAT_TAGS.CRIT)))).toBe(!active);
 		},
 	);
+
+	it.each([
+		[0, false],
+		[100, true],
+	])('tenacity %i shrugs hard CC: %s', (ten, shrugged) => {
+		const target = createCombatant({ name: 'T', combatClass: null, hp: 100, atk: 10, def: 10, crit: 0, ten });
+		const log: string[] = [];
+		const applied = applyDebuff(target, { tag: 'stun', turnsLeft: 1, value: 0 }, () => 0.5, (m) => log.push(m));
+		expect(shrugged ? applied === null : applied !== null).toBe(true);
+		expect(target.debuffs).toHaveLength(shrugged ? 0 : 1);
+		expect(log.some((line) => line.includes('kháng hiệu ứng'))).toBe(shrugged);
+		// DOTs ignore tenacity entirely.
+		const dot = applyDebuff(target, { tag: 'burn', turnsLeft: 2, value: 10 }, () => 0.5);
+		expect(dot).not.toBeNull();
+	});
 });

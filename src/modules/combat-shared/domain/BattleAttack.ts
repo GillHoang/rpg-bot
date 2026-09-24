@@ -2,12 +2,13 @@ import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { CombatantState } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
-import { mitigate, rollVariance, rollCrit, hitMultiplier } from './DamageCalculator.js';
+import { mitigate, rollVariance, rollCrit, rollHit, hitMultiplier, effectivePierce } from './DamageCalculator.js';
 import { suddenDeathMultiplier } from './combatRules.js';
 import {
 	COMBAT_DEFEATED_SUFFIX,
 	COMBAT_GUARD,
 	COMBAT_HIT,
+	COMBAT_MISS,
 	COMBAT_STRIKE_EMOJIS,
 	COMBAT_TAGS,
 } from '../../../shared/ui/text/combat.js';
@@ -50,8 +51,18 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 			armorPierceFraction: 0,
 			forcedMultiplier: null,
 			suppressCrit: false,
+			varianceRange: [0.9, 1.1],
 		};
 		atkStrategy.prepareOutgoingHit(ctx, hit);
+
+		// P2 hit roll: a miss skips guard/mitigation hooks (aegis, veil and
+		// sovereign are not consumed) and resolves as a zero-damage hit.
+		if (!rollHit(ctx.rng, attacker.acc, defender.eva)) {
+			ctx.log(COMBAT_MISS(combatDisplayName(attacker), combatDisplayName(defender)));
+			const missed: ResolvedHit = { damageDealt: 0, crit: false, missed: true, triggerExtraAttack: false };
+			atkStrategy.onHitLanded(ctx, missed);
+			return missed;
+		}
 
 		const incoming: IncomingHit = { reductionFraction: 0 };
 		const defCtx: StrategyContext = {
@@ -70,9 +81,9 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		const defDownPct = findDebuff(defender, 'def_down')?.value ?? 0;
 
 		const effAtk = attacker.atk * (1 - atkDownPct);
-		const effDef = defender.def * (1 - defDownPct) * (1 - hit.armorPierceFraction);
+		const effDef = defender.def * (1 - defDownPct) * (1 - effectivePierce(hit.armorPierceFraction));
 
-		const variance = rollVariance(ctx.rng);
+		const variance = rollVariance(ctx.rng, hit.varianceRange);
 		const crit = !hit.suppressCrit && hit.forcedMultiplier == null && rollCrit(ctx.rng, attacker.crit);
 
 		let amount: number;
@@ -101,7 +112,7 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 			ctx.log(COMBAT_GUARD(combatDisplayName(defender), Math.round(incoming.reductionFraction * 100)));
 		}
 
-		const resolved: ResolvedHit = { damageDealt: dealt, crit, triggerExtraAttack: false };
+		const resolved: ResolvedHit = { damageDealt: dealt, crit, missed: false, triggerExtraAttack: false };
 		atkStrategy.onHitLanded(ctx, resolved);
 
 		if (defender.hp > 0) {

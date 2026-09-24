@@ -59,6 +59,10 @@ describe('assembled player combatant factory', () => {
 			atk: 390,
 			def: 170,
 			crit: 23,
+			spd: 100,
+			acc: 0,
+			eva: 0,
+			ten: 0,
 			debuffs: [],
 			flags: {},
 		});
@@ -143,7 +147,7 @@ describe('assembled player combatant factory', () => {
 		expect(incoming(first).reductionFraction).toBe(0);
 		expect(second.self.flags).toEqual({});
 		expect(incoming(second).reductionFraction).toBe(1);
-		expect(first.self.flags).toEqual({ aegis_used: true, blessing_sovereign_used: true });
+		expect(first.self.flags).toEqual({ aegis_used: true, blessing_sovereign_used: true, immunity_used: 2 });
 		expect(incoming(second).reductionFraction).toBe(0);
 	});
 });

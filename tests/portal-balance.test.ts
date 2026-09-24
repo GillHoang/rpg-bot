@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MonsterEncounterService } from '../src/modules/pve/application/MonsterEncounterService.js';
 import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
-import { CLASS_NAMES, computeClassStats } from '../src/shared/config/classes.js';
+import { CLASS_NAMES, computeClassSecondaryStats, computeClassStats } from '../src/shared/config/classes.js';
 import { STARTER_ARMOR, STARTER_WEAPON } from '../src/shared/config/starter.js';
 import { GEAR_STATS } from '../src/shared/config/chestLoot.js';
 import { computeWeaponCurrAtk, computeArmorCurrStats } from '../src/shared/config/enhancement.js';
@@ -25,7 +25,7 @@ async function winRates(
 	const rows = MOB_SEED.filter((row) => (finalBoss ? row.mobType === 'boss' : row.mobType === 'regular'));
 	const rates: number[] = [];
 	for (const combatClass of CLASS_NAMES) {
-		const stats = computeClassStats(combatClass, level);
+		const stats = { ...computeClassStats(combatClass, level), ...computeClassSecondaryStats(combatClass, level) };
 		const gear = tier === 'starter' ? null : GEAR_STATS[tier];
 		const armor = gear
 			? computeArmorCurrStats(
@@ -48,13 +48,14 @@ async function winRates(
 			for (let seed = 1; seed <= 100; seed++) {
 				const enemy = createCombatant({ ...mob, combatClass: null });
 				enemy.immunityTags = mob.immunityTags;
+				enemy.flags.regen_pct = mob.regenPct;
 				const result = engine.resolve(
 					createCombatant({ name: combatClass, combatClass, ...stats }),
 					enemy,
 					seed,
 					{
 						playerStrategy: ClassStrategyRegistry.forClass(combatClass),
-						enemyStrategy: new MonsterStrategy(mob.skillKey),
+						enemyStrategy: new MonsterStrategy(mob.skillKey, { affixes: mob.affixes }),
 					},
 				);
 				if (result.outcome === 'player_win') wins++;

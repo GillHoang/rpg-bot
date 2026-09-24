@@ -74,7 +74,7 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 	}
 
 	/**
-	 * Non-DOT status durations tick down too (stun/paralyze/atk_down/def_down/blight),
+	 * Non-DOT status durations tick down too (stun/paralyze/atk_down/def_down/blight/slow),
 	 * except ones added during the turns — those start counting next round.
 	 */
 	private tickStatusDurations(side: CombatantState, existingDebuffs: Set<Debuff>): void {

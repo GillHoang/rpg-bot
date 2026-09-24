@@ -21,13 +21,16 @@ export interface RuneSeed {
 		| 'precision'
 		| 'vitality'
 		| 'bulwark'
+		| 'swiftness'
+		| 'eagle-eye'
 		| 'vampiric'
 		| 'piercing'
 		| 'venom'
 		| 'blight'
 		| 'thorns'
 		| 'warding'
-		| 'aegis_rune';
+		| 'aegis_rune'
+		| 'frost';
 	tier: string;
 	value: number;
 	description: string;
@@ -200,6 +203,35 @@ export const RUNE_SEED: RuneSeed[] = [
 		tier: 'Supreme',
 		value: 0.15,
 		description: RUNES_TEXT['18'].description,
+		isAvailable: true,
+	},
+
+	// ── P8 battle overhaul: SPD/ACC stat runes + frost snare (append cuối) ──
+	{
+		name: RUNES_TEXT['19'].name,
+		lane: 'native',
+		effectKey: 'swiftness',
+		tier: 'Rare',
+		value: 0.05,
+		description: RUNES_TEXT['19'].description,
+		isAvailable: true,
+	},
+	{
+		name: RUNES_TEXT['20'].name,
+		lane: 'native',
+		effectKey: 'eagle-eye',
+		tier: 'Rare',
+		value: 0.03,
+		description: RUNES_TEXT['20'].description,
+		isAvailable: true,
+	},
+	{
+		name: RUNES_TEXT['21'].name,
+		lane: 'opposite',
+		effectKey: 'frost',
+		tier: 'Mythic',
+		value: 0.2,
+		description: RUNES_TEXT['21'].description,
 		isAvailable: true,
 	},
 ];

@@ -1,7 +1,12 @@
+import { formatNumber } from '../../../../shared/ui/text/format.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
-import { combatDisplayName, findDebuff } from '../CombatantState.js';
-import { COMBAT_SWORDSMAN_ATK_UP, COMBAT_SWORDSMAN_BLEED } from '../../../../shared/ui/text/combat.js';
+import { applyDebuff, combatDisplayName, findDebuff } from '../CombatantState.js';
+import {
+	COMBAT_SWORDSMAN_ATK_UP,
+	COMBAT_SWORDSMAN_BLEED,
+	COMBAT_SWORDSMAN_DETONATE,
+} from '../../../../shared/ui/text/combat.js';
 
 const BLEED_PCT_PER_STACK = 0.04;
 const BLEED_MAX_PCT = 0.2;
@@ -51,7 +56,7 @@ export class SwordsmanStrategy extends NullClassStrategy {
 			existing.value = Math.max(existing.value, value);
 			existing.stacks = stacks;
 		} else {
-			ctx.enemy.debuffs.push({ tag: 'bleed', turnsLeft: 2, value, stacks });
+			applyDebuff(ctx.enemy, { tag: 'bleed', turnsLeft: 2, value, stacks }, ctx.rng, ctx.log);
 		}
 		const pct = Math.round(Math.min(BLEED_MAX_PCT, stacks * BLEED_PCT_PER_STACK) * 100);
 		ctx.log(
@@ -63,5 +68,20 @@ export class SwordsmanStrategy extends NullClassStrategy {
 				pct,
 			),
 		);
+		// Hemorrhage payoff: a full 5-stack wound detonates for instant true
+		// damage on top of the ticking bleed (stacks are kept, not consumed).
+		if (stacks >= BLEED_MAX_STACKS && ctx.enemy.hp > 0) {
+			const burst = Math.floor(value);
+			if (burst > 0) {
+				ctx.enemy.hp = Math.max(0, ctx.enemy.hp - burst);
+				ctx.log(
+					COMBAT_SWORDSMAN_DETONATE(
+						combatDisplayName(ctx.self),
+						combatDisplayName(ctx.enemy),
+						formatNumber(burst),
+					),
+				);
+			}
+		}
 	}
 }

@@ -201,7 +201,7 @@ describe('phase 2 menu', () => {
 		const reopen = fixture('button', action(home, 'hunt'));
 		await router.handle(reopen.interaction);
 		const fresh = reopen.raw.editReply.mock.calls[0][0];
-		expect(action(fresh, 'gate', '1')).toBeTruthy();
+		expect(parseMenuId(action(fresh, 'gate', '1'))).toMatchObject({ action: 'gate', nonce: '1' });
 		expect(JSON.stringify(fresh)).not.toContain('Đánh tầng');
 		expect(run).toHaveBeenCalledTimes(1);
 	});

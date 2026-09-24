@@ -10,9 +10,16 @@ export interface MonsterStats {
 	atk: number;
 	def: number;
 	crit: number;
+	spd: number;
+	acc: number;
+	eva: number;
+	ten: number;
 	mobType: string;
 	skillKey: string;
 	immunityTags: string[];
+	/** Elite affixes + gate traits resolved at pick time (read by MonsterStrategy). */
+	affixes: string[];
+	regenPct: number;
 }
 
 /**
@@ -23,11 +30,11 @@ export interface MonsterStats {
  * +9~11/level) và mọi mob đều ra đòn như cỏ (bệnh "Pugot gây 6 HP").
  *
  *   mob = avg-class-curve(level) × hệ số loại:
- *     hp  × 3.2   (trận kéo 4-8 đòn mỗi bên thay vì 1-2 đòn one-shot)
- *     atk × 0.72  (sau mitigation còn ~55-70% → đe dọa thật nhưng không át player)
- *     def × 0.55
+ *     hp  × 2.8   (trận kéo 4-8 đòn mỗi bên thay vì 1-2 đòn one-shot)
+ *     atk × 0.68  (sau mitigation còn ~55-70% → đe dọa thật nhưng không át player)
+ *     def × 0.5
  *   Elite dày hơn ~45% và đánh đau hơn ~15% regular (hệ số nhân thêm).
- *   Gate difficulty adds 4% per monster level above 1, capped at 60%.
+ *   Gate difficulty rises 8% per monster level above 1, capped at +50%.
  *   Gate modifiers shift the monster's identity per gate (tanky/aggressive/...).
  *   Boss tier (tầng 10) uses this curve plus its own multipliers and boss skill.
  *   Daily Bakunawa keeps the seeded formula and its separate level-10 entry gate.
@@ -38,9 +45,9 @@ const AVG_CLASS_CURVE = {
 	def: (lv: number) => 165 + 61 * (lv - 1),
 };
 
-const REGULAR_SCALE = { hp: 3.2, atk: 0.72, def: 0.55 };
+const REGULAR_SCALE = { hp: 2.0, atk: 0.93, def: 0.45 };
 const ELITE_BONUS = { hp: 1.45, atk: 1.15, def: 1.0 };
-const FINAL_BOSS_BONUS = { hp: 1.25, atk: 1.15, def: 1.2 };
+const FINAL_BOSS_BONUS = { hp: 1.0, atk: 1.15, def: 1.2 };
 const NEUTRAL_BONUS = { hp: 1, atk: 1, def: 1 };
 
 /** Hệ số thưởng theo bậc encounter — tách riêng để tránh ternary lồng nhau. */
@@ -57,6 +64,35 @@ const GATE_MODIFIER_BONUS: Record<GateModifier, { hp: number; atk: number; def: 
 	regen: { hp: 1.35, atk: 0.95, def: 1.1 },
 	evasive: { hp: 1.1, atk: 1.1, def: 1.25 },
 };
+
+/** Elite affix pool (P4): trash variety in modifier gates + final-boss menace. */
+const AFFIX_POOL = ['vampiric', 'frenzy_echo', 'stone_skin', 'swift', 'tenacious'] as const;
+
+function rollAffixes(rng: () => number, count: number): string[] {
+	const pool = [...AFFIX_POOL];
+	const picked: string[] = [];
+	for (let i = 0; i < count && pool.length > 0; i++) {
+		const index = Math.floor(rng() * pool.length);
+		picked.push(pool.splice(index, 1)[0]!);
+	}
+	return picked;
+}
+
+/** Secondary stats + traits derived in code (no roster migration needed). */
+function secondaryStats(
+	lv: number,
+	mobType: string,
+	gateModifier: GateModifier,
+): { spd: number; acc: number; eva: number; ten: number; regenPct: number } {
+	const tier = mobType === 'boss' ? 2 : mobType === 'elite' ? 1 : 0;
+	return {
+		spd: Math.floor(95 + [0, 7, 15][tier]! + lv * 0.3),
+		acc: 0,
+		eva: [0, 3, 5][tier]! + (gateModifier === 'evasive' ? 10 : 0),
+		ten: [0, 15, 40][tier]!,
+		regenPct: gateModifier === 'regen' ? 0.03 : 0,
+	};
+}
 
 export class MonsterEncounterService {
 	constructor(
@@ -91,15 +127,18 @@ export class MonsterEncounterService {
 		const lv = Math.max(1, level);
 		if (boss && !finalBoss) {
 			// Daily Bakunawa retains its separate entry fee and seeded balance.
+			const sec = secondaryStats(lv, 'boss', gateModifier);
 			return {
 				name: row.name,
 				hp: Math.round(row.baseHp + row.hpPerLevel * lv),
 				atk: Math.round(row.baseAtk + row.atkPerLevel * lv),
 				def: Math.round(row.baseDef + row.defPerLevel * lv),
 				crit: row.baseCrit,
+				...sec,
 				mobType: row.mobType,
 				skillKey: row.skillKey,
 				immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
+				affixes: [],
 			};
 		}
 
@@ -108,8 +147,9 @@ export class MonsterEncounterService {
 		const shapeBase = type === 'elite' ? 1500 : 600;
 		const shape = finalBoss ? 1 : row.baseHp / shapeBase;
 		// Gate strength is fixed by its level, never by the player's equipment.
-		// Early gates remain farmable; later gates require equipment investment.
-		const difficulty = 1 + Math.min(0.6, (lv - 1) * 0.04);
+		// Steep early slope + low cap: low tiers stay demanding in starter
+		// gear while endgame stays reachable for geared builds.
+		const difficulty = 1 + Math.min(0.5, (lv - 1) * 0.08);
 		const modifier = GATE_MODIFIER_BONUS[gateModifier] ?? GATE_MODIFIER_BONUS.none!;
 		const bonus = tierBonus(finalBoss, type);
 		const scale = {
@@ -123,9 +163,18 @@ export class MonsterEncounterService {
 			atk: Math.round(AVG_CLASS_CURVE.atk(lv) * shape * scale.atk),
 			def: Math.round(AVG_CLASS_CURVE.def(lv) * shape * scale.def),
 			crit: row.baseCrit,
+			...secondaryStats(lv, row.mobType, gateModifier),
 			mobType: row.mobType,
 			skillKey: row.skillKey,
 			immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
+			// Regulars in modifier gates roll one affix; final bosses roll two.
+			// Elites keep their signature skill; daily boss stays seeded-pure.
+			affixes:
+				type === 'regular' && gateModifier !== 'none'
+					? rollAffixes(rng, 1)
+					: finalBoss
+						? rollAffixes(rng, 2)
+						: [],
 		};
 	}
 }

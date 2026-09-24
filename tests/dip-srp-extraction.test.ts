@@ -22,6 +22,9 @@ describe('DIP/SRP extractions', () => {
 		expect(selectGateTier([0, 0, 0, 0, 0], 1, 99)).toMatchObject({ status: 'portal-locked' });
 		const ok = selectGateTier([10, 0, 0, 0, 0], 50);
 		expect('tier' in ok).toBe(true);
+		if (!('tier' in ok) || !ok.tier) throw new Error('unreachable');
+		expect(ok.tier.gate.id).toBe(2);
+		expect(ok.tier.number).toBe(1);
 	});
 
 	it('fixedClock returns a stable instant', () => {

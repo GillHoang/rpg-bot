@@ -23,11 +23,11 @@ export const RUNES_TEXT = {
 	'6': {
 		name: 'Piercing Rune',
 		description:
-			'Adds 15 percentage points of DEF ignore, stacking with class passives and other Piercing Runes, up to 100%.',
+			'Adds 15 percentage points of DEF ignore, stacking with class passives and other Piercing Runes, capped at 60%.',
 	},
 	'7': {
 		name: 'Venom Rune',
-		description: 'Hits apply Venom: 3% max-HP damage per round, stacking.',
+		description: 'Hits apply Venom: 3% max-HP damage per round, stacking up to 25% max HP.',
 	},
 	'8': {
 		name: 'Blight Rune',
@@ -72,5 +72,17 @@ export const RUNES_TEXT = {
 	'18': {
 		name: 'Rune of Ruin',
 		description: '+15% ATK while socketed.',
+	},
+	'19': {
+		name: 'Rune of Swiftness',
+		description: '+5% SPD while socketed.',
+	},
+	'20': {
+		name: 'Rune of the Eagle',
+		description: '+3 accuracy while socketed.',
+	},
+	'21': {
+		name: 'Frost Rune',
+		description: 'Hits slow the enemy: −20% SPD for 1 round.',
 	},
 };

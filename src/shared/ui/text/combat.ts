@@ -28,6 +28,7 @@ export const COMBAT_TAGS = {
 	STUNN: ' STUNN',
 	BLESS: ' BLESS',
 	AEGIS: ' AEGIS',
+	MISS: '  MISS',
 	FRENZY: 'FRENZY',
 	ECLIPS: 'ECLIPS',
 } as const;
@@ -46,7 +47,10 @@ export const COMBAT_STRIKE_EMOJIS = {
 
 export const COMBAT_ROUND_HEADER = (round: number): string => `— Hiệp ${round} —`;
 export const COMBAT_SUDDEN_DEATH_HEADER = (multiplier: number): string =>
-	`${ICONS.effect.suddenDeath} TỬ CHIẾN — mọi sát thương nhân x${multiplier}!`;
+	`${ICONS.effect.suddenDeath} TỬ CHIẾN — huyết nguyệt lên: sát thương nhân x${multiplier}, hai bên mất 2% HP tối đa mỗi hiệp!`;
+
+export const COMBAT_BLOOD_MOON = (name: string, amount: string): string =>
+	`${combatTag(COMBAT_TAGS.ECLIPS)} Huyết nguyệt rút của ${name} __${amount} HP__.`;
 
 export const COMBAT_DEFEATED_SUFFIX = (name: string): string => ` — ${name} gục ngã!`;
 
@@ -59,6 +63,9 @@ export const COMBAT_HIT = (
 	defeatedSuffix: string,
 ): string => `${combatTag(tag)} ${strikeEmoji} ${attacker} đánh ${defender}, gây __${dealt} HP__.${defeatedSuffix}`;
 
+export const COMBAT_MISS = (attacker: string, defender: string): string =>
+	`${combatTag(COMBAT_TAGS.MISS)} ${attacker} đánh hụt ${defender}!`;
+
 export const COMBAT_GUARD = (defender: string, pct: number): string =>
 	`${combatTag(COMBAT_TAGS.GUARD)} ${defender} chặn __${pct}%__ sát thương.`;
 
@@ -70,6 +77,8 @@ export const COMBAT_UNABLE_TO_ACT = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.STUNN)} ${name} không thể hành động trong lượt này.`;
 export const COMBAT_ATTACK_MISSES_DIZZY = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.DIZZY)} Đòn đánh của ${name} bị trượt (Dizzy)!`;
+export const COMBAT_TENACITY_SHRUG = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.GUARD)} ${name} gồng mình kháng hiệu ứng khống chế!`;
 
 // --- Nội tại class ---
 export const COMBAT_SWORDSMAN_ATK_UP = (name: string, pct: number): string =>
@@ -90,6 +99,16 @@ export const COMBAT_KNIGHT_REGEN = (name: string, restored: string): string =>
 	`${combatTag(COMBAT_TAGS.REGEN)} ${ICONS.combatClass.knight} ${name} hồi __${restored} HP__.`;
 export const COMBAT_ARCHER_DOUBLE_ATTACK = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.combatClass.archer} ${name} kích hoạt Đánh Đôi!`;
+export const COMBAT_ARCHER_AIMED = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.combatClass.archer} ${name} ngắm bắn — xuyên sâu, chắc tay!`;
+export const COMBAT_SWORDSMAN_DETONATE = (name: string, enemy: string, amount: string): string =>
+	`${combatTag(COMBAT_TAGS.BLEED)} ${ICONS.combatClass.swordsman} ${name} kích nổ Chảy máu trên ${enemy}, gây thêm __${amount} HP__!`;
+export const COMBAT_MAGE_WEAVE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.combatClass.mage} ${name} dệt phép — Quá Tải cực đại!`;
+export const COMBAT_KNIGHT_BULWARK = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.GUARD)} ${ICONS.combatClass.knight} ${name} dựng khiên Bulwark!`;
+export const COMBAT_KNIGHT_SECOND_WIND = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.GUARD)} ${ICONS.combatClass.knight} ${name} gồng mình — xóa mọi hiệu ứng xấu!`;
 
 // --- Rune decorator ---
 export const COMBAT_RUNE_VAMPIRIC = (name: string, healed: string): string =>
@@ -98,6 +117,8 @@ export const COMBAT_RUNE_VENOM = (name: string, enemy: string, value: string): s
 	`${combatTag(COMBAT_TAGS.VENM)} ${ICONS.effect.venom} ${name} nhiễm độc ${enemy} (${value} HP mỗi lượt).`;
 export const COMBAT_RUNE_THORNS = (name: string, reflected: string): string =>
 	`${combatTag(COMBAT_TAGS.THORN)} ${ICONS.effect.thorns} ${name} phản lại __${reflected} HP__.`;
+export const COMBAT_FROST = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.DIZZY)} ${name} làm ${enemy} chậm chạp (−SPD 1 lượt)!`;
 
 // --- Deity blessing decorator ---
 export const COMBAT_BLESSING_GUARDIAN_LIGHT = (name: string, healed: string): string =>
@@ -120,6 +141,28 @@ export const COMBAT_BLESSING_SKY_SOVEREIGN = (name: string): string =>
 // --- Monster skills ---
 export const COMBAT_MONSTER_ECLIPSE = (): string =>
 	`${combatTag(COMBAT_TAGS.ECLIPS)} ${ICONS.effect.eclipse} Bakunawa bước vào Eclipse — sát thương +50%.`;
+export const COMBAT_MONSTER_PHASE_TWO = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.ECLIPS)} ${ICONS.effect.eclipse} ${name} chuyển pha — vảy trăng rực sáng!`;
+export const COMBAT_MONSTER_PHASE_THREE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.FRENZY)} ${ICONS.effect.frenzy} ${name} cuồng nộ tột cùng — sát thương +80%!`;
+export const COMBAT_MONSTER_SHED = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.GUARD)} ${name} rũ bỏ mọi hiệu ứng chảy máu/độc!`;
+export const COMBAT_MONSTER_DEVOUR_CHARGE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} đang tụ lực cho đòn kết liễu…`;
+export const COMBAT_MONSTER_DEVOUR = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.effect.feast} ${name} NGOẠM — đòn hủy diệt!`;
+export const COMBAT_MONSTER_LEAP = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} vồ từ huyết nguyệt xuống!`;
+export const COMBAT_MONSTER_CLIPPERS = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} xé tay ${enemy} — ATK giảm!`;
+export const COMBAT_MONSTER_HAZE = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.DIZZY)} Sương mù của ${name} làm ${enemy} choáng váng!`;
+export const COMBAT_MONSTER_SMOKE = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.BURN)} Khói xì gà của ${name} bóp nghẹt hồi phục của ${enemy}!`;
+export const COMBAT_MONSTER_REGEN = (name: string, healed: string): string =>
+	`${combatTag(COMBAT_TAGS.REGEN)} ${name} hồi __${healed} HP__ qua từng hiệp.`;
+export const COMBAT_MONSTER_SWIFT = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.BLESS)} ${name} nhanh như chớp — luôn tranh lượt trước!`;
 export const COMBAT_MONSTER_FRENZY = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.FRENZY)} ${ICONS.effect.frenzy} ${name} cuồng nộ — sát thương +40%.`;
 export const COMBAT_MONSTER_FEAST = (name: string, healed: string): string =>

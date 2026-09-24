@@ -1,6 +1,6 @@
 import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
-import { combatDisplayName } from './CombatantState.js';
+import { cappedHeal, combatDisplayName, immunityMultiplier } from './CombatantState.js';
 import { BLESSINGS, type BlessingKey } from '../../../shared/config/blessings.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import {
@@ -77,11 +77,17 @@ export class DeityBlessingDecorator implements IClassStrategy {
 			ctx.log(COMBAT_BLESSING_MOUNTAIN_GRACE(combatDisplayName(ctx.self)));
 		} else if (this.effectKey === 'lunar_veil' && ctx.self.flags.blessing_veil_active) {
 			ctx.self.flags.blessing_veil_active = false;
-			hit.reductionFraction = Math.max(hit.reductionFraction, BLESSINGS.lunar_veil.value * this.strength);
+			hit.reductionFraction = Math.max(
+				hit.reductionFraction,
+				BLESSINGS.lunar_veil.value * this.strength * immunityMultiplier(ctx.self),
+			);
 			ctx.log(COMBAT_BLESSING_LUNAR_VEIL(combatDisplayName(ctx.self)));
 		} else if (this.effectKey === 'sky_sovereign' && !ctx.self.flags.blessing_sovereign_used) {
 			ctx.self.flags.blessing_sovereign_used = true;
-			hit.reductionFraction = BLESSINGS.sky_sovereign.value;
+			hit.reductionFraction = Math.max(
+				hit.reductionFraction,
+				BLESSINGS.sky_sovereign.value * immunityMultiplier(ctx.self),
+			);
 			ctx.log(COMBAT_BLESSING_SKY_SOVEREIGN(combatDisplayName(ctx.self)));
 		}
 	}
@@ -100,12 +106,11 @@ export class DeityBlessingDecorator implements IClassStrategy {
 	onRoundEnd(ctx: StrategyContext): void {
 		this.inner.onRoundEnd(ctx);
 		if (this.effectKey === 'guardian_light' && ctx.self.hp > 0) {
-			const healed = Math.min(
-				ctx.self.maxHp - ctx.self.hp,
+			const healed = cappedHeal(
+				ctx.self,
 				Math.floor(ctx.self.maxHp * BLESSINGS.guardian_light.value * this.strength),
 			);
 			if (healed > 0) {
-				ctx.self.hp += healed;
 				ctx.log(COMBAT_BLESSING_GUARDIAN_LIGHT(combatDisplayName(ctx.self), formatNumber(healed)));
 			}
 		}

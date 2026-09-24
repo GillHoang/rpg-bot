@@ -22,6 +22,10 @@ export class PlayerCombatantFactory implements IPlayerCombatantFactory {
 			atk: assembled.stats.atk,
 			def: assembled.stats.def,
 			crit: assembled.stats.crit,
+			spd: assembled.stats.spd,
+			acc: assembled.stats.acc,
+			eva: assembled.stats.eva,
+			ten: assembled.stats.ten,
 		});
 	}
 

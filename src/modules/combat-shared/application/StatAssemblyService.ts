@@ -2,7 +2,7 @@ import { requirePersistence, type PersistenceContext } from '../../../shared/ker
 import { PlayerLoadoutQueryRepository } from '../../progression/infrastructure/PlayerLoadoutQueryRepository.js';
 import type { Executor } from '../../../db/client.js';
 import type { userPresets } from '../../../db/schema.js';
-import { computeClassStats } from '../../../shared/config/classes.js';
+import { computeClassStats, computeClassSecondaryStats } from '../../../shared/config/classes.js';
 import { STAT_EFFECT_KEYS, type RuneEffectKey } from '../../../shared/config/runes.js';
 import {
 	blessingStrength,
@@ -20,6 +20,10 @@ export interface AssembledPlayerStats {
 	hp: number;
 	def: number;
 	crit: number;
+	spd: number;
+	acc: number;
+	eva: number;
+	ten: number;
 }
 
 export interface AssembledBlessing {
@@ -35,11 +39,13 @@ export interface AssembledPlayer {
 	blessings: AssembledBlessing[];
 }
 
-const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct'> = {
+const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct' | 'spdPct' | 'accPts'> = {
 	sharpness: 'atkPct',
 	precision: 'critPts',
 	vitality: 'hpPct',
 	bulwark: 'defPct',
+	swiftness: 'spdPct',
+	'eagle-eye': 'accPts',
 };
 
 interface PantheonEntry {
@@ -73,7 +79,9 @@ export interface StatAssemblyDependencies {
  * compounded per-rune.
  *
  * DeityService computes current Sigil stats at read time. Ascension is
- * prestige only. Blessings come from the pantheon lead (slot 1) only;
+ * prestige only. Blessings come from every equipped pantheon slot, weighted
+ * by slot (slot 1 full, slot 2 ×0.5, slot 3 ×0.25 — same weights as stats);
+ * duplicate blessing keys merge by strongest strength.
  * strength = 0.5 + 0.05×sigils for scalable blessings, 1 for binary.
  */
 
@@ -104,6 +112,7 @@ export class StatAssemblyService {
 		suppliedPreset?: typeof userPresets.$inferSelect | null,
 	): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
+		const sec = computeClassSecondaryStats(combatClass, level);
 		const preset = suppliedPreset !== undefined ? suppliedPreset : await this.activePreset(executor, discordId);
 
 		const weapon = preset?.equippedWeaponId
@@ -116,7 +125,7 @@ export class StatAssemblyService {
 		const pantheon = await this.collectPantheon(executor, preset);
 		const resonance = resonanceBonus(pantheon.map((p) => p.info.mythology));
 		const deityStats = this.pantheonStats(pantheon, resonance);
-		const blessings = this.leadBlessing(pantheon);
+		const blessings = this.allBlessings(pantheon);
 		const { statMods, combatEffectRunes } = await this.collectRunes(executor, preset);
 
 		const baseAtk = cls.atk + (weapon?.currAtk ?? 0);
@@ -128,6 +137,10 @@ export class StatAssemblyService {
 			hp: Math.floor(baseHp * (1 + statMods.hpPct) + deityStats.hp),
 			def: Math.floor(baseDef * (1 + statMods.defPct) + deityStats.def),
 			crit: cls.crit + (weapon?.crit ?? 0) + statMods.critPts * 100,
+			spd: Math.floor(sec.spd * (1 + statMods.spdPct)),
+			acc: sec.acc + statMods.accPts * 100,
+			eva: sec.eva,
+			ten: sec.ten,
 		};
 
 		return { stats, combatEffectRunes, blessings };
@@ -171,22 +184,21 @@ export class StatAssemblyService {
 		};
 	}
 
-	private leadBlessing(pantheon: PantheonEntry[]): AssembledBlessing[] {
-		const lead = pantheon.find((p) => p.slot === 0);
-		if (!lead) return [];
-		return [
-			{
-				key: lead.info.blessingKey as BlessingKey,
-				strength: blessingStrength(lead.info.blessingScaling, lead.info.sigils),
-			},
-		];
+	private allBlessings(pantheon: PantheonEntry[]): AssembledBlessing[] {
+		const merged = new Map<BlessingKey, number>();
+		for (const { slot, info } of pantheon) {
+			const key = info.blessingKey as BlessingKey;
+			const strength = blessingStrength(info.blessingScaling, info.sigils) * PANTHEON_SLOT_WEIGHT[slot];
+			merged.set(key, Math.max(merged.get(key) ?? 0, strength));
+		}
+		return [...merged.entries()].map(([key, strength]) => ({ key, strength }));
 	}
 
 	private async collectRunes(
 		executor: Executor,
 		preset: typeof userPresets.$inferSelect | null,
 	): Promise<{
-		statMods: { atkPct: number; hpPct: number; defPct: number; critPts: number };
+		statMods: { atkPct: number; hpPct: number; defPct: number; critPts: number; spdPct: number; accPts: number };
 		combatEffectRunes: SocketedRuneEffect[];
 	}> {
 		const allEffects: SocketedRuneEffect[] = [
@@ -196,7 +208,7 @@ export class StatAssemblyService {
 			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(executor, preset.equippedArmorId) : []),
 		];
 
-		const statMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0 };
+		const statMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0, spdPct: 0, accPts: 0 };
 		const combatEffectRunes: SocketedRuneEffect[] = [];
 		for (const effect of allEffects) {
 			if ((STAT_EFFECT_KEYS as readonly RuneEffectKey[]).includes(effect.effectKey)) {

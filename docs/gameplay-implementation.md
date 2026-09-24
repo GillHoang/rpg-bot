@@ -26,6 +26,33 @@ Kiểm tra giao dịch đồng thời, thiếu seed phải rollback, quyền s�
 | Boss thắng | 25.000–50.000 Credux, 1.500–2.500 EXP trước scale, 100–200 shards, 1 Boss Treasure, 30% Mythic gear |
 | Boss thua | 150 EXP trước scale |
 | Bakunawa Eclipse | Dưới 50% HP: +50 điểm phần trăm damage bonus; miễn stun |
+
+> **Cải tổ battle PvE 2026-09-25** (auto-battle giữ nguyên, chỉ PvE; PvP balance
+> để phase sau — Elo/shield không đổi):
+> - Damage: mitigation `DEF/(DEF+600)` cap 75%, armor-pen cộng dồn cap 60%,
+>   variance theo skill (mặc định ±10%), crit ×2 giữ nguyên.
+> - Stat mới: SPD (đi trước; hòa mới roll bias), ACC/EVA (hit 95% +1%/điểm,
+>   kẹp 80–100%), TEN (tỉ lệ kháng thẳng stun/paralyze/dizzy).
+> - Class: Swordsman detonate bleed 5 stack; Fighter Bash có điều kiện
+>   (25%/50% khi dizzy, execution stun 2 dưới 30% HP, miễn stun-lock 2 round);
+>   Mage weave (tiêu debuff cũ lấy Overcharge 5.0 chắc chắn); Knight Bulwark
+>   (round 4: −75% + phản 25%) + Second Wind (xóa debuff dưới 30% HP 1 lần);
+>   Archer xen kẽ đánh thường/aimed (xuyên 45%, variance hẹp, +20%).
+> - Quái: rotation + telegraph; 4 skill flavor thành thật
+>   (leap/wing_clippers/trail_haze/cigar_smoke); elite affix pool cho regular
+>   gate modifier + final boss 2 affix; regen/evasive wire thật.
+> - Bakunawa 3 phase (P1 −12% vào + stir +20% dưới 2/3 HP; P2 eclipse +50%;
+>   P3 enrage +80% + devour telegraph ×3.0), shed DOT mỗi lần chuyển phase.
+> - Status: tag `slow` (frost rune), cleanse có điều kiện, venom cap 25% maxHP.
+> - Rune/deity: piercing tuân cap 60%, heal budget 8% maxHP/round, miễn nhiễm
+>   budget 2 lần/trận, blessing mọi slot pantheon (1/0.5/0.25, trùng key lấy
+>   max), rune mới swiftness/eagle-eye/frost (+ seed 19–21, Frost vào túi gb).
+> - Encounter: mob HP ×2.0 / ATK ×0.93 / DEF ×0.45 curve, difficulty
+>   +8%/level cap +50%; portal-balance giữ (gate 1 >60%, gate 4 starter <50%,
+>   final boss upgraded >80%, late upgraded >50%).
+> - Test kiểm toán exploit mới: `tests/exploit-guards.test.ts` (streak,
+>   bet validation, enhance-fail, ranked claim theo bracket, duel refund,
+>   boss-loss, crash EV, loot EV, DailyCycle 17:00 UTC).
 | Aswang Queen | Hồi 10% sát thương gây ra; miễn poison/venom |
 | Gear rơi | Weapon/armor 50/50; chọn đều roster có isAvailable đúng tier |
 | Rare gear | ATK 80–120, CRIT 2–4%; armor HP 400–600, DEF 40–60 |

@@ -1,24 +1,25 @@
 import { rollChance, choose } from '../../../../shared/utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import type { StrategyContext, OutgoingHit, ResolvedHit } from '../IClassStrategy.js';
-import { combatDisplayName, findDebuff } from '../CombatantState.js';
+import { applyDebuff, combatDisplayName, findDebuff } from '../CombatantState.js';
 import {
 	MAGE_OVERCHARGE_MULT,
 	MAGE_OVERCHARGE_HIGH_MULT,
 	MAGE_OVERCHARGE_HIGH_CHANCE,
 	MAGE_OVERCHARGE_EVERY,
 } from '../DamageCalculator.js';
-import { COMBAT_MAGE_OVERCHARGE } from '../../../../shared/ui/text/combat.js';
+import { COMBAT_MAGE_OVERCHARGE, COMBAT_MAGE_WEAVE } from '../../../../shared/ui/text/combat.js';
 
 type OverchargeDebuff = 'paralyze' | 'burn' | 'def_down' | 'atk_down';
 const OVERCHARGE_DEBUFFS: OverchargeDebuff[] = ['paralyze', 'burn', 'def_down', 'atk_down'];
 
 /**
- * Passive: Overcharge — ported from config/combat.js's OVERCHARGE_*
- * constants. Every 3rd round, the Mage's attack rolls a forced 4.0x
- * (60%) or 5.0x (40%) multiplier, cannot crit, and — if it lands —
- * applies one random 25%-chance debuff among Paralyze / Burn / DEF Down
- * / ATK Down.
+ * Passive: Overcharge + Spellweave — ported from config/combat.js's
+ * OVERCHARGE_* constants. Every 3rd round, the Mage's attack rolls a
+ * forced 4.0x (60%) or 5.0x (40%) multiplier, cannot crit, and — if it
+ * lands — applies one random debuff among Paralyze / Burn / DEF Down /
+ * ATK Down. Spellweave: if the enemy still carries a previous weave
+ * debuff, it is consumed for a guaranteed 5.0x instead of rolling.
  */
 export class MageStrategy extends NullClassStrategy {
 	override readonly key = 'Mage' as const;
@@ -26,10 +27,26 @@ export class MageStrategy extends NullClassStrategy {
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		if (ctx.round % MAGE_OVERCHARGE_EVERY !== 0) return;
 		hit.suppressCrit = true;
-		hit.forcedMultiplier = rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
+		const woven = this.consumeWeave(ctx);
+		hit.forcedMultiplier = woven
 			? MAGE_OVERCHARGE_HIGH_MULT
-			: MAGE_OVERCHARGE_MULT;
+			: rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
+				? MAGE_OVERCHARGE_HIGH_MULT
+				: MAGE_OVERCHARGE_MULT;
+		if (woven) ctx.log(COMBAT_MAGE_WEAVE(combatDisplayName(ctx.self)));
 		ctx.self.flags.mage_overcharge_this_hit = true;
+	}
+
+	/** Consume one pending weave debuff for a guaranteed max overcharge. */
+	private consumeWeave(ctx: StrategyContext): boolean {
+		const index = ctx.enemy.debuffs.findIndex((d) =>
+			(['paralyze', 'burn', 'def_down', 'atk_down'] as const).includes(
+				d.tag as (typeof OVERCHARGE_DEBUFFS)[number],
+			),
+		);
+		if (index < 0) return false;
+		ctx.enemy.debuffs.splice(index, 1);
+		return true;
 	}
 
 	override onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
@@ -41,7 +58,7 @@ export class MageStrategy extends NullClassStrategy {
 		ctx.log(COMBAT_MAGE_OVERCHARGE(combatDisplayName(ctx.self), pick));
 
 		if (pick === 'paralyze') {
-			ctx.enemy.debuffs.push({ tag: 'paralyze', turnsLeft: 1, value: 0 });
+			applyDebuff(ctx.enemy, { tag: 'paralyze', turnsLeft: 1, value: 0 }, ctx.rng, ctx.log);
 		} else if (pick === 'burn') {
 			const existing = findDebuff(ctx.enemy, 'burn');
 			const value = Math.floor(ctx.self.atk * 0.1);
@@ -49,10 +66,10 @@ export class MageStrategy extends NullClassStrategy {
 				existing.turnsLeft = 2;
 				existing.value = Math.max(existing.value, value);
 			} else {
-				ctx.enemy.debuffs.push({ tag: 'burn', turnsLeft: 2, value });
+				applyDebuff(ctx.enemy, { tag: 'burn', turnsLeft: 2, value }, ctx.rng, ctx.log);
 			}
 		} else {
-			ctx.enemy.debuffs.push({ tag: pick, turnsLeft: 1, value: 0.25 });
+			applyDebuff(ctx.enemy, { tag: pick, turnsLeft: 1, value: 0.25 }, ctx.rng, ctx.log);
 		}
 	}
 }

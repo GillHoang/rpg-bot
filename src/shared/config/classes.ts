@@ -72,3 +72,44 @@ export function computeClassStats(className: CombatClass, level: number): ClassS
 		crit: cls.base.crit + cls.scaling.crit * steps,
 	};
 }
+
+export interface ClassSecondaryStats {
+	spd: number;
+	acc: number;
+	eva: number;
+	ten: number;
+}
+
+/**
+ * Secondary battle stats (P2 rebalance): speed decides turn order,
+ * accuracy/evasion decide the hit roll, tenacity shortens hard CC.
+ * Archer is fast and accurate but fragile; Knight is slow but shrugs
+ * off control; the other three sit in the middle with their own lean.
+ */
+const CLASS_SECONDARY_BASE: Record<CombatClass, ClassSecondaryStats> = {
+	Swordsman: { spd: 105, acc: 0, eva: 0, ten: 0 },
+	Fighter: { spd: 100, acc: 0, eva: 0, ten: 10 },
+	Mage: { spd: 95, acc: 0, eva: 0, ten: 0 },
+	Knight: { spd: 85, acc: 0, eva: 0, ten: 25 },
+	Archer: { spd: 115, acc: 8, eva: 5, ten: 0 },
+};
+
+const CLASS_SECONDARY_SCALING: Record<CombatClass, ClassSecondaryStats> = {
+	Swordsman: { spd: 0.5, acc: 0, eva: 0, ten: 0 },
+	Fighter: { spd: 0.5, acc: 0, eva: 0, ten: 0 },
+	Mage: { spd: 0.5, acc: 0, eva: 0, ten: 0 },
+	Knight: { spd: 0.5, acc: 0, eva: 0, ten: 0 },
+	Archer: { spd: 0.5, acc: 0.2, eva: 0, ten: 0 },
+};
+
+export function computeClassSecondaryStats(className: CombatClass, level: number): ClassSecondaryStats {
+	const base = CLASS_SECONDARY_BASE[className];
+	const scaling = CLASS_SECONDARY_SCALING[className];
+	const steps = Math.max(1, level) - 1;
+	return {
+		spd: Math.floor(base.spd + scaling.spd * steps),
+		acc: base.acc + scaling.acc * steps,
+		eva: base.eva + scaling.eva * steps,
+		ten: base.ten + scaling.ten * steps,
+	};
+}

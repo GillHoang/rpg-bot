@@ -358,11 +358,16 @@ export class RaidService {
 			atk: monsterStats.atk,
 			def: monsterStats.def,
 			crit: monsterStats.crit,
+			spd: monsterStats.spd,
+			acc: monsterStats.acc,
+			eva: monsterStats.eva,
+			ten: monsterStats.ten,
 		});
 		monster.immunityTags = monsterStats.immunityTags;
+		monster.flags.regen_pct = monsterStats.regenPct;
 		return this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
-			enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
+			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, { affixes: monsterStats.affixes }),
 		});
 	}
 

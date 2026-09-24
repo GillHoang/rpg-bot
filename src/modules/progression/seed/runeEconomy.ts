@@ -59,6 +59,7 @@ export const ESSENCE_BAG_DEF_SEED: EssenceBagDefSeed[] = [
 			RUNES_TEXT['9'].name,
 			RUNES_TEXT['10'].name,
 			RUNES_TEXT['11'].name,
+			RUNES_TEXT['21'].name,
 		],
 	},
 	{

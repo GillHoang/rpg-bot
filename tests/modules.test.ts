@@ -93,3 +93,28 @@ describe('module facades', () => {
 		expect(Object.keys(mod).length).toBeGreaterThan(0);
 	});
 });
+
+describe('unbuilt tables', () => {
+	// Tables below exist in migrations but NOTHING outside src/db/* reads or
+	// writes them (verified 2026-09-25 by grepping src/modules, src/seed and
+	// src/app for each name): stripe/supporter billing, topgg votes, essence
+	// exchange, guild world-boss. The barrel-list test above must not be
+	// mistaken for coverage of them. Implementing any of these features
+	// starts by deleting its name here; renaming/removing the table breaks
+	// this test on purpose so the list cannot silently drift.
+	const KNOWN_UNBUILT = [
+		'stripeEvents',
+		'supporterGrants',
+		'supporterItemGrants',
+		'supporterTokenLedger',
+		'topggVoteEvents',
+		'essenceExchangeSubmissions',
+		'bossSpawnQueue',
+		'bossState',
+		'autoRaids',
+	];
+	it('tracks every table with no service, repository or seed consumer yet', () => {
+		for (const name of KNOWN_UNBUILT) expect(schema).toHaveProperty(name);
+		expect(KNOWN_UNBUILT).toHaveLength(9);
+	});
+});
