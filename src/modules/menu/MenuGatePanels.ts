@@ -70,7 +70,11 @@ export function gateSelectPanel(
 	return panel;
 }
 
-/** Màn tier trong một Gate: khóa tầng vượt quá `cleared + 1` (chỉ mở dần từng tầng). */
+/** Màn tier trong một Gate: khóa tầng vượt quá `cleared + 1` (chỉ mở dần từng tầng).
+ * Ghi chú hợp đồng: render được phép chuẩn hoá lựa chọn (gateId/portalGate
+ * mặc định) ngay trên session — có tính idempotent (tính lại cùng kết quả),
+ * và router luôn render trên bản copy rồi gán ngược, nên caller trực tiếp
+ * gọi render() phải coi session có thể đã đổi sau khi render xong. */
 export function gateTiersPanel(
 	session: MenuSession,
 	profile: ProfileSummaryData,

@@ -88,7 +88,7 @@ export const usersBag = pgTable(
 		discordId: text('discord_id')
 			.primaryKey()
 			.references(() => users.discordId),
-		credux: integer('credux').notNull().default(0),
+		credux: bigint('credux', { mode: 'number' }).notNull().default(0),
 		beliefShards: integer('belief_shards').notNull().default(0),
 		sacredRelics: integer('sacred_relics').notNull().default(0),
 		supremeRelics: integer('supreme_relics').notNull().default(0),
@@ -101,7 +101,7 @@ export const usersBag = pgTable(
 		mythicEssence: integer('mythic_essence').notNull().default(0),
 		legendaryEssence: integer('legendary_essence').notNull().default(0),
 		supremeEssence: integer('supreme_essence').notNull().default(0),
-		lifetimeCreduxEarned: integer('lifetime_credux_earned').notNull().default(0),
+		lifetimeCreduxEarned: bigint('lifetime_credux_earned', { mode: 'number' }).notNull().default(0),
 		lesserRuneBag: integer('lesser_rune_bag').notNull().default(0),
 		greaterRuneBag: integer('greater_rune_bag').notNull().default(0),
 		divineRuneBag: integer('divine_rune_bag').notNull().default(0),

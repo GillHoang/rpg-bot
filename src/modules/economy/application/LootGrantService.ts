@@ -30,7 +30,9 @@ export class LootGrantService {
 		const kind = choose(['weapon', 'armor'] as const, rng);
 		const uid = `${kind === 'weapon' ? 'w' : 'a'}_${randomUUID()}`;
 		if (kind === 'weapon') {
-			const row = choose(await this.repo.findWeaponPool(tx, tier), rng);
+			const pool = await this.repo.findWeaponPool(tx, tier);
+			if (!pool.length) throw new AppError('LOOT_EMPTY_POOL', LOOT_SEED_TEXT.emptyPool);
+			const row = choose(pool, rng);
 			const atk = randInt(rng, stats.atk);
 			await this.repo.insertWeapon(tx, {
 				discordId: id,
@@ -44,7 +46,9 @@ export class LootGrantService {
 			});
 			return LOOT_GEAR_RECEIVED(row.name, tier, uid);
 		}
-		const row = choose(await this.repo.findArmorPool(tx, tier), rng);
+		const pool = await this.repo.findArmorPool(tx, tier);
+		if (!pool.length) throw new AppError('LOOT_EMPTY_POOL', LOOT_SEED_TEXT.emptyPool);
+		const row = choose(pool, rng);
 		const hp = randInt(rng, stats.hp),
 			def = randInt(rng, stats.def);
 		await this.repo.insertArmor(tx, {

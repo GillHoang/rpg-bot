@@ -14,6 +14,7 @@ const SWEEP_INTERVAL_MS = 30_000;
  */
 export class Scheduler {
 	private timer?: ReturnType<typeof setInterval>;
+	private sweeping = false;
 
 	constructor(
 		private readonly duels: Pick<DuelService, 'expireStale'>,
@@ -32,12 +33,18 @@ export class Scheduler {
 	}
 
 	private async sweep(): Promise<void> {
+		// No re-entry: a hung sweep must never stack another one on top of
+		// it every 30s (same guard shape as BotMaintenance.recover).
+		if (this.sweeping) return;
+		this.sweeping = true;
 		try {
 			const expired = await this.duels.expireStale(this.clock.now());
 			if (expired > 0) logger.info({ expired }, SCHEDULER_LOG_TEXT.duelsSwept);
 			await this.maintenance.clearExpiredRankedLocks(this.clock.now());
 		} catch (error) {
 			logger.error({ error }, SCHEDULER_LOG_TEXT.sweepFailed);
+		} finally {
+			this.sweeping = false;
 		}
 	}
 }

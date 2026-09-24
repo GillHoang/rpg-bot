@@ -131,13 +131,19 @@ describe('commands accept narrow structural dependencies', () => {
 		expect(loot.shop).toHaveBeenCalledExactlyOnceWith('owner', undefined);
 	});
 
-	it('uses the injected account and bag readers without creating a default repository', async () => {
-		const economy = { getAccount: vi.fn(async () => new PlayerAccount('owner', 'Hero', 1, 0, 'Knight', 200)) };
-		const inventory = { bag: vi.fn<InventoryService['bag']>().mockResolvedValue(null) };
+	it('uses the injected balance use case without creating default repositories', async () => {
+		const execute = vi.fn(async () => ({
+			ok: true as const,
+			value: {
+				username: 'Hero',
+				credux: 200,
+				beliefShards: 0,
+				bag: null,
+			},
+		}));
 		const i = interaction();
-		await new BalanceCommand(economy, inventory).execute(i.command);
-		expect(economy.getAccount).toHaveBeenCalledExactlyOnceWith('owner');
-		expect(inventory.bag).toHaveBeenCalledExactlyOnceWith('owner');
+		await new BalanceCommand({ execute }).execute(i.command);
+		expect(execute).toHaveBeenCalledExactlyOnceWith({ discordId: 'owner' });
 		expect(i.raw.editReply.mock.calls[0][0]).toContain('200');
 	});
 

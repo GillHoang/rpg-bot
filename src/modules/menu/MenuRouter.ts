@@ -105,8 +105,8 @@ export class MenuRouter {
 			gamePanel: source.gamePanel,
 			avatarUrl: source.avatarUrl,
 			pendingModal: source.pendingModal,
-			portalId: source.portalId,
 			portalGate: source.portalGate,
+			gateId: source.gateId,
 			battle: source.battle,
 		});
 		source.pendingModal = null;
@@ -303,7 +303,13 @@ export class MenuRouter {
 	}
 
 	private async notice(interaction: MenuInteraction | ChatInputCommandInteraction, text: string): Promise<void> {
-		const payload = { ...recoveryView(text), flags: MessageFlags.IsComponentsV2 } as const;
+		// Error/recovery notices are always ephemeral: a forged or stale
+		// click (including clicks on another user's menu) must never let
+		// anyone spam public messages into the channel.
+		const payload = {
+			...recoveryView(text),
+			flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral,
+		} as const;
 		try {
 			if (interaction.deferred || interaction.replied) await interaction.followUp(payload);
 			else await interaction.reply(payload);

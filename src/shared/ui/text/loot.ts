@@ -47,6 +47,7 @@ export const OPEN_ITEM_RELIC = (relic: string): string => `+1 ${relic}`;
 /** Display text for services/LootGrantService. */
 export const LOOT_SEED_TEXT = {
 	missingRune: 'Thiếu rune trong seed shop.',
+	emptyPool: 'Kho rương đang bảo trì, thử lại sau.',
 };
 
 export const LOOT_CHEST_LABELS = {

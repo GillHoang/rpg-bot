@@ -3,6 +3,7 @@
  * Values mirror DailyRewardTable + schema defaults; new tuning edits here.
  */
 export const ECONOMY_CONFIG = {
-	dailyCycleTimeZone: 'Asia/Ho_Chi_Minh',
+	// NOTE: the daily-reset timezone lives in one place only —
+	// DailyCycle (shared/utils/dailyCycle.ts). Do not re-add a copy here.
 	monthlyCycleLength: 30,
 } as const;

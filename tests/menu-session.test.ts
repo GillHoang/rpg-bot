@@ -43,12 +43,39 @@ describe('menu session store', () => {
 		const a = store.create('a');
 		store.bind(a, 'm');
 		store.acquire(a.id, 'a', 'm', 0);
-		now = 200;
+		now = 50;
 		store.sweep();
 		expect(() => store.create('a')).toThrow(MenuCapacityError);
 		expect(store.acquire(a.id, 'a', 'm', 0).status).toBe('busy');
 		store.release(a);
+		now = 200;
 		store.sweep();
+		expect(store.acquire(a.id, 'a', 'm', 0).status).toBe('expired');
+	});
+
+	it('reaps a busy session whose handler leaked past several TTLs', () => {
+		let now = 0;
+		const store = new MenuSessionStore(() => now, 100, 3, 1);
+		const a = store.create('a');
+		store.bind(a, 'm');
+		store.acquire(a.id, 'a', 'm', 0);
+		now = 200;
+		store.sweep();
+		// Still held: a genuinely running dispatch must not lose its slot.
+		expect(() => store.create('a')).toThrow(MenuCapacityError);
+		// Handler never released: after 5 extra TTLs the slot is reclaimed.
+		now = 700;
+		store.sweep();
+		expect(() => store.create('a')).not.toThrow();
+	});
+
+	it('reports expired before busy for a stale busy session', () => {
+		let now = 0;
+		const store = new MenuSessionStore(() => now, 100);
+		const a = store.create('a');
+		store.bind(a, 'm');
+		store.acquire(a.id, 'a', 'm', 0);
+		now = 150;
 		expect(store.acquire(a.id, 'a', 'm', 0).status).toBe('expired');
 	});
 

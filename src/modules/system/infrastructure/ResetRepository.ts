@@ -103,59 +103,65 @@ VALUES (${devId}, 'reset_user', ${targetId}, ${detail})`);
 		for (const table of USER_TABLES) {
 			const [{ count }] = await executor
 				.execute<{ count: number }>(
-					sql.raw(`SELECT count(*)::int AS count FROM "${table}" WHERE discord_id = '${discordId}'`),
+					sql`SELECT count(*)::int AS count FROM ${sql.identifier(table)} WHERE discord_id = ${discordId}`,
 				)
 				.then((r) => r.rows as { count: number }[]);
 			total += count ?? 0;
 		}
 		const [{ count }] = await executor
 			.execute<{ count: number }>(
-				sql.raw(
-					`SELECT count(*)::int AS count FROM "pvp_logs" WHERE challenger_id = '${discordId}' OR opponent_id = '${discordId}' OR winner_id = '${discordId}'`,
-				),
+				sql`SELECT count(*)::int AS count FROM "pvp_logs" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId} OR winner_id = ${discordId}`,
 			)
 			.then((r) => r.rows as { count: number }[]);
 		total += count ?? 0;
 		const [{ count: wager }] = await executor
 			.execute<{ count: number }>(
-				sql.raw(
-					`SELECT count(*)::int AS count FROM "wager_logs" WHERE challenger_id = '${discordId}' OR opponent_id = '${discordId}' OR winner_id = '${discordId}'`,
-				),
+				sql`SELECT count(*)::int AS count FROM "wager_logs" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId} OR winner_id = ${discordId}`,
 			)
 			.then((r) => r.rows as { count: number }[]);
 		total += wager ?? 0;
 		const [{ count: ranked }] = await executor
 			.execute<{ count: number }>(
-				sql.raw(
-					`SELECT count(*)::int AS count FROM "ranked_logs" WHERE player_id = '${discordId}' OR opponent_id = '${discordId}'`,
-				),
+				sql`SELECT count(*)::int AS count FROM "ranked_logs" WHERE player_id = ${discordId} OR opponent_id = ${discordId}`,
 			)
 			.then((r) => r.rows as { count: number }[]);
-		return total + (ranked ?? 0);
+		total += ranked ?? 0;
+		// active_duels has no discord_id column — count by either seat.
+		const [{ count: duels }] = await executor
+			.execute<{ count: number }>(
+				sql`SELECT count(*)::int AS count FROM "active_duels" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId}`,
+			)
+			.then((r) => r.rows as { count: number }[]);
+		return total + (duels ?? 0);
 	}
 	/** Xoá toàn bộ dữ liệu một user trong đúng 1 transaction — FK lỗi là rollback hết. */
 	async deleteUserData(tx: Executor, discordId: string): Promise<number> {
 		let total = 0;
 		for (const table of USER_TABLES) {
-			const res = await tx.execute(sql.raw(`DELETE FROM "${table}" WHERE discord_id = '${discordId}'`));
+			const res = await tx.execute(
+				sql`DELETE FROM ${sql.identifier(table)} WHERE discord_id = ${discordId}`,
+			);
 			total += (res as unknown as { rowCount?: number }).rowCount ?? 0;
 		}
 		const pvp = await tx.execute(
-			sql.raw(
-				`DELETE FROM "pvp_logs" WHERE challenger_id = '${discordId}' OR opponent_id = '${discordId}' OR winner_id = '${discordId}'`,
-			),
+			sql`DELETE FROM "pvp_logs" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId} OR winner_id = ${discordId}`,
 		);
 		total += (pvp as unknown as { rowCount?: number }).rowCount ?? 0;
 		const wager = await tx.execute(
-			sql.raw(
-				`DELETE FROM "wager_logs" WHERE challenger_id = '${discordId}' OR opponent_id = '${discordId}' OR winner_id = '${discordId}'`,
-			),
+			sql`DELETE FROM "wager_logs" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId} OR winner_id = ${discordId}`,
 		);
 		total += (wager as unknown as { rowCount?: number }).rowCount ?? 0;
 		const ranked = await tx.execute(
-			sql.raw(`DELETE FROM "ranked_logs" WHERE player_id = '${discordId}' OR opponent_id = '${discordId}'`),
+			sql`DELETE FROM "ranked_logs" WHERE player_id = ${discordId} OR opponent_id = ${discordId}`,
 		);
 		total += (ranked as unknown as { rowCount?: number }).rowCount ?? 0;
+		// active_duels rows reference the user by seat, not discord_id — without
+		// this the opponent would keep an Accept button on a deleted duel.
+		// Runs after active_duel_participants (deleted in the loop above).
+		const duels = await tx.execute(
+			sql`DELETE FROM "active_duels" WHERE challenger_id = ${discordId} OR opponent_id = ${discordId}`,
+		);
+		total += (duels as unknown as { rowCount?: number }).rowCount ?? 0;
 		return total;
 	}
 }

@@ -134,6 +134,10 @@ describe('menu router', () => {
 			await router.handle(bad.interaction);
 			expect(JSON.stringify(bad.raw.reply.mock.calls)).toContain(reason);
 			expect(bad.raw.deferUpdate).not.toHaveBeenCalled();
+			// Error notices must stay ephemeral so nobody can spam the channel
+			// by clicking other users' (or stale) menu buttons.
+			const payload = bad.raw.reply.mock.calls[0]![0] as { flags?: number };
+			expect(payload.flags! & MessageFlags.Ephemeral).toBeTruthy();
 		}
 	});
 
@@ -302,5 +306,34 @@ describe('menu router', () => {
 		await router.open(f.command);
 		expect(JSON.stringify(f.raw.editReply.mock.calls)).toContain(MENU_TEXT.capacity);
 		expect(f.raw.followUp).not.toHaveBeenCalled();
+	});
+
+	it('carries the viewed gate into child sessions for fight actions', async () => {
+		const store = new MenuSessionStore();
+		const seen: Array<{ gateId?: number; action: string }> = [];
+		const panel = {
+			title: 't',
+			body: 'b',
+			buttons: [{ action: 'fight', label: 'x', value: '2' }],
+		};
+		const gameplay = {
+			render: vi.fn(async () => panel),
+			act: vi.fn(async (session: { gateId?: number }, action: string) => {
+				seen.push({ gateId: session.gateId, action });
+				return { kind: 'gateTiers' as const };
+			}),
+		};
+		const router = new MenuRouter(store, gameplay as never);
+		const session = store.create('alice');
+		session.launcher = true;
+		session.screen = { kind: 'gateTiers' };
+		session.gateId = 2;
+		session.portalGate = 2;
+		session.gamePanel = panel as never;
+		store.bind(session, 'm1');
+		const click = fixture('button', menuId(session.id, 0, 'fight', '2'), 'alice', 'm1');
+		await router.handle(click.interaction);
+		expect(gameplay.act).toHaveBeenCalledOnce();
+		expect(seen[0]).toEqual({ gateId: 2, action: 'fight' });
 	});
 });

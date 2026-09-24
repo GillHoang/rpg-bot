@@ -17,7 +17,7 @@ export interface BotOptions {
 export function createBot(container: AppContainer, options: BotOptions = {}): DiscordBot {
 	const registry = options.registry ?? new CommandRegistry();
 	registerAllCommands(container, registry);
-	// Quest progress + believer EXP are pure EventBus subscribers — wire once.
+	// Audit observers for committed domain events (idempotent per bus) — see events.ts.
 	subscribeDomainEvents(container.events);
 	return new DiscordBot({
 		client: options.client,

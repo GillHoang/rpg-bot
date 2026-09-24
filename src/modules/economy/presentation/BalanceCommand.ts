@@ -1,31 +1,26 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../../shared/discord/command.js';
-import { EconomyService } from '../application/EconomyService.js';
+import { GetBalanceUseCase } from '../application/GetBalanceUseCase.js';
 import { BALANCE_DESCRIPTION, BALANCE_SUCCESS } from '../../../shared/ui/text/balance.js';
 import { NO_CHARACTER } from '../../../shared/ui/text/common.js';
-import { InventoryService } from '../../progression/application/InventoryService.js';
 import { bagSummary } from '../../../shared/ui/text/inventory.js';
 
 export class BalanceCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('balance').setDescription(BALANCE_DESCRIPTION);
 
-	constructor(
-		private readonly economy: Pick<EconomyService, 'getAccount'>,
-		private readonly inventory: Pick<InventoryService, 'bag'>,
-	) {}
+	constructor(private readonly balance: Pick<GetBalanceUseCase, 'execute'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
-		const account = await this.economy.getAccount(interaction.user.id);
-
-		if (!account) {
+		const result = await this.balance.execute({ discordId: interaction.user.id });
+		if (!result.ok) throw result.error;
+		if (!result.value) {
 			await interaction.editReply({ content: NO_CHARACTER });
 			return;
 		}
-
-		const bag = await this.inventory.bag(interaction.user.id);
+		const { username, credux, bag } = result.value;
 		await interaction.editReply(
-			BALANCE_SUCCESS(account.username, account.credux) + (bag ? '\n' + bagSummary(bag) : ''),
+			BALANCE_SUCCESS(username, credux) + (bag ? '\n' + bagSummary(bag) : ''),
 		);
 	}
 }

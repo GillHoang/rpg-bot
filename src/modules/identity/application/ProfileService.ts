@@ -40,10 +40,14 @@ export class ProfileService {
 	async get(discordId: string, mode: 'summary'): Promise<ProfileSummaryResult>;
 	async get(discordId: string, mode?: 'detail'): Promise<ProfileResult>;
 	async get(discordId: string, mode: 'summary' | 'detail' = 'detail'): Promise<ProfileSummaryResult | ProfileResult> {
-		const account = await this.accounts.findById(discordId);
-		if (!account) return { status: 'not-registered' };
-		const [character] = await this.queries.findCharacter(this.persistence.executor, discordId);
-		if (!character) return { status: 'no-character' };
+		// All reads ride one transaction so the card can never mix a fresh
+		// class with a stale balance committed mid-read (display-only, but
+		// cheap to keep consistent).
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const account = await this.accounts.findById(discordId, tx);
+			if (!account) return { status: 'not-registered' };
+			const [character] = await this.queries.findCharacter(tx, discordId);
+			if (!character) return { status: 'no-character' };
 
 		const summary: ProfileSummaryData = {
 			username: account.username,
@@ -58,30 +62,22 @@ export class ProfileService {
 			pvpRating: character.pvpRating,
 		};
 		if (mode === 'summary') return { status: 'ok', data: summary };
-		const [preset] = await this.queries.findPreset(
-			this.persistence.executor,
-			discordId,
-			character.activePresetSlot,
-		);
+		const [preset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
 		const assembled = await this.statAssembly.assemble(
 			discordId,
 			account.combatClass,
 			account.combatLevel,
-			this.persistence.executor,
+			tx,
 			preset ?? null,
 		);
-		const loadout = await this.queries.findLoadout(
-			this.persistence.executor,
-			discordId,
-			character.activePresetSlot,
-			preset ?? null,
-		);
+		const loadout = await this.queries.findLoadout(tx, discordId, character.activePresetSlot, preset ?? null);
 		let title: string | null = null;
 		if (character?.equippedTitleId) {
-			const [row] = await this.queries.findTitleDisplay(this.persistence.executor, character.equippedTitleId);
+			const [row] = await this.queries.findTitleDisplay(tx, character.equippedTitleId);
 			title = row?.display ?? null;
 		}
 
 		return { status: 'ok', data: { ...summary, stats: assembled.stats, loadout, title } };
+		});
 	}
 }

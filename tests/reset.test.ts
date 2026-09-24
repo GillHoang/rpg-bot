@@ -13,6 +13,7 @@ import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
 import { StartService } from '../src/modules/identity/application/StartService.js';
 import { ResetService } from '../src/modules/system/application/ResetService.js';
+import { DuelService } from '../src/modules/pvp/application/DuelService.js';
 import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
 import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
 
@@ -112,6 +113,32 @@ describe('ResetService', () => {
 
 		// Restore empty state for the following tests.
 		expect(await reset.resetUser('developer', '900000000000000001')).toMatchObject({ status: 'ok' });
+	});
+
+	it('resetUser() removes a pending duel entirely so the opponent keeps no ghost Accept button', async () => {
+		const start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		for (const id of ['900000000000000003', '900000000000000004']) {
+			const result = await start.start(id, id, 'Fighter');
+			if (result.status !== 'ok') throw new Error(result.status);
+		}
+		const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
+		const created = await duels.create('900000000000000003', '900000000000000004', 0);
+		expect(created.status).toBe('ok');
+		expect(await db.select().from(s.activeDuels)).toHaveLength(1);
+
+		const reset = new ResetService({ persistence: testPersistence() });
+		expect(await reset.countUser('900000000000000003')).toBeGreaterThan(0);
+		const result = await reset.resetUser('developer', '900000000000000003');
+		expect(result.status).toBe('ok');
+		// Both the duel row (no discord_id column — matched by either seat)
+		// and the participant rows are gone; the opponent is untouched.
+		expect(await db.select().from(s.activeDuels)).toHaveLength(0);
+		expect(await db.select().from(s.activeDuelParticipants)).toHaveLength(0);
+		expect(await db.select().from(s.users)).toHaveLength(1);
+		expect(await reset.countUser('900000000000000004')).toBeGreaterThan(0);
+		await reset.resetUser('developer', '900000000000000004');
 	});
 
 	it('resets cleanly a second time after players re-register', async () => {

@@ -30,7 +30,9 @@ export class DailyRepository {
 	}
 
 	async getDailyState(executor: Executor, discordId: string): Promise<DailyState | null> {
-		const [row] = await executor.select().from(users).where(eq(users.discordId, discordId)).limit(1);
+		// Row-lock the state owner (users holds the streak fields): idempotency
+		// must not depend on the incidental usersBag lock taken by hasBag.
+		const [row] = await executor.select().from(users).where(eq(users.discordId, discordId)).limit(1).for('update');
 		if (!row) return null;
 		return {
 			monthlyStreak: row.monthlyStreak,

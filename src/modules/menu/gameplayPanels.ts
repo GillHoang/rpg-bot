@@ -188,6 +188,9 @@ export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; b
 	};
 }
 
+/** Character budget shared by logPages() and the single-page log view below. */
+export const MENU_LOG_PAGE_CHARS = 2800;
+
 /** Split long rounds instead of silently dropping combat events at the text limit. */
 export function logPages(result: MenuBattle): string[] {
 	return result.battle.roundLogs.flatMap((round) => {
@@ -202,7 +205,7 @@ export function logPages(result: MenuBattle): string[] {
 		const pages: string[] = [];
 		let page = '';
 		for (const character of text) {
-			if (page.length + character.length > 2800) {
+			if (page.length + character.length > MENU_LOG_PAGE_CHARS) {
 				pages.push(page);
 				page = '';
 			}
@@ -222,6 +225,10 @@ export function battleContinueButton(battle: MenuBattle): GamePanel['buttons'][n
 }
 
 export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {
+	// NOTE: menuView() renders result/log screens through battleMenuView()
+	// (BattleLogPager), so this title/body is shadowed in production — but the
+	// BUTTONS below stay live: handleGameplay whitelists click actions against
+	// session.gamePanel.buttons. Keep them in sync with battleMenuView.
 	const r = session.battle;
 	if (!r)
 		return {
@@ -235,7 +242,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 		const page = Math.max(0, Math.min(pages.length - 1, session.screen.page));
 		return {
 			title: GAMEPLAY_TEXT.logTitle(page + 1, Math.max(1, pages.length)),
-			body: pages[page]?.lines.join('\n').slice(-2800) || GAMEPLAY_TEXT.noLog,
+			body: pages[page]?.lines.join('\n').slice(-MENU_LOG_PAGE_CHARS) || GAMEPLAY_TEXT.noLog,
 			buttons: [
 				button('first', GAMEPLAY_TEXT.first, page === 0),
 				button('prev', GAMEPLAY_TEXT.previous, page === 0),

@@ -6,6 +6,8 @@ export const BOOT_LOG_TEXT = {
 	unhandledRejection: 'Unhandled promise rejection',
 	uncaughtException: 'Uncaught exception — exiting',
 	bootstrapFailed: 'Fatal error during bootstrap',
+	shutdown: 'Shutdown signal received, stopping bot',
+	poolShutdownFailed: 'Database pool shutdown failed',
 } as const;
 
 /** config/enhancement */
@@ -71,6 +73,7 @@ export const DI_ERROR_TEXT = {
 		'interactiveCasino requires an explicit InteractiveCasinoController (pass new InteractiveCasinoController(sessions))',
 	healthRequiresDatabase:
 		'HealthService requires an explicit HealthDatabase or probe (pass services.health from createAppContainer)',
+	doubleBotClient: 'DiscordBot already constructed for this Client (one bot per client)',
 } as const;
 
 /** menu/MenuGameplayService */
@@ -237,6 +240,7 @@ export const ACCOUNT_ERROR_TEXT = {
 	insufficientCredux: (balance: number, amount: number): string =>
 		`Insufficient credux: has ${balance}, needs ${amount}`,
 	invalidEarning: (amount: number): string => `earn: amount must be a positive integer, got ${amount}`,
+	invalidSpend: (amount: number): string => `spend: amount must be a positive integer, got ${amount}`,
 } as const;
 
 /** modules/economy */

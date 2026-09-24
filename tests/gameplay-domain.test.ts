@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { chance, rollChest } from '../src/shared/config/chestLoot.js';
+import { DailyRewardTable } from '../src/modules/economy/domain/DailyRewardTable.js';
 import { resolveRoll } from '../src/shared/config/gachaRates.js';
 import { createRng } from '../src/modules/combat-shared/domain/Rng.js';
 import { newDeck } from '../src/modules/casino/domain/CardDeck.js';
@@ -47,6 +48,20 @@ describe('seeded weighted randomness', () => {
 		const game = new SlotMachineGame();
 		const samples = [[0.001, 2000], [0.01, 1000], [0.04, 500], [0.1, 200], [0.3, 150], [0.8, 0]];
 		for (const [roll, payout] of samples) expect(game.play(100, () => roll).payout).toBe(payout);
+	});
+	it('pins the daily reward table and streak milestones', () => {
+		expect(DailyRewardTable.rewardForDay(1)).toMatchObject({ credux: 50000, shards: 100, chestColumn: 'silver_chest' });
+		expect(DailyRewardTable.rewardForDay(7)).toMatchObject({ credux: 250000, chestColumn: 'gold_chest' });
+		expect(DailyRewardTable.rewardForDay(14).credux).toBe(400000);
+		expect(DailyRewardTable.rewardForDay(21).credux).toBe(600000);
+		expect(DailyRewardTable.rewardForDay(28).credux).toBe(750000);
+		expect(DailyRewardTable.rewardForDay(29).credux).toBe(1000000);
+		expect(DailyRewardTable.rewardForDay(30)).toMatchObject({ credux: 1500000, shards: 1000, chestColumn: 'gold_chest' });
+		expect(DailyRewardTable.milestoneForStreak(14)).toBeNull();
+		expect(DailyRewardTable.milestoneForStreak(15)).toMatchObject({ chestColumn: 'boss_treasure_chest' });
+		expect(DailyRewardTable.milestoneForStreak(29)).toBeNull();
+		expect(DailyRewardTable.milestoneForStreak(30)).toMatchObject({ chestColumn: 'boss_golden_chest' });
+		expect(DailyRewardTable.milestoneForStreak(45)).toMatchObject({ chestColumn: 'boss_golden_chest' });
 	});
 });
 

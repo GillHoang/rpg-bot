@@ -24,6 +24,9 @@ export class PlayerAccount {
 	}
 
 	spend(amount: number): void {
+		if (!Number.isInteger(amount) || amount <= 0) {
+			throw new AppError('ACCOUNT_INVALID_SPEND', ACCOUNT_ERROR_TEXT.invalidSpend(amount));
+		}
 		if (!this.canAfford(amount)) {
 			throw new AppError('ACCOUNT_INSUFFICIENT_CREDUX', ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount));
 		}

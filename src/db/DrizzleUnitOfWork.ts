@@ -1,4 +1,5 @@
 import { recordFailure } from '../shared/utils/operationalMetrics.js';
+import { AppError } from '../shared/kernel/Result.js';
 import type { db, Transaction } from './client.js';
 import type { IUnitOfWork } from '../shared/kernel/persistence.js';
 
@@ -18,7 +19,10 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
 			try {
 				return await this.database.transaction(work);
 			} catch (error: unknown) {
-				recordFailure('transaction');
+				// Business AppErrors (validation, already-claimed, …) are
+				// expected control flow, not infrastructure incidents — only
+				// count genuine transaction failures toward the metric.
+				if (!(error instanceof AppError)) recordFailure('transaction');
 				const wrapped = error as { code?: string; cause?: { code?: string } };
 				const code = wrapped?.code ?? wrapped?.cause?.code;
 				if (code === '40P01') recordFailure('deadlock');

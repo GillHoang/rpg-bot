@@ -115,8 +115,12 @@ export class CasinoSessionService {
 				!(session.game === 'blackjack' ? ['hit', 'stand'] : ['push', 'cash']).includes(next)
 			)
 				return { status: 'error', text: CASINO_SESSION_TEXT.invalidAction };
-			stored.actions.push(next);
-			return this.resolve(tx, session, stored);
+			// Retry-safe: DrizzleUnitOfWork re-runs this whole closure on
+			// deadlock/serialization errors, so never mutate the row object
+			// in place — work on a copy or the retried run would push `next`
+			// a second time and corrupt the replay log.
+			const nextStored: StoredGame = { ...stored, actions: [...stored.actions, next] };
+			return this.resolve(tx, session, nextStored);
 		});
 	}
 	private async resolve(

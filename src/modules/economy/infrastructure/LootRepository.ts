@@ -58,4 +58,38 @@ export class LootRepository {
 	async log(tx: Executor, id: string, action: string, before: number, after: number) {
 		await tx.insert(gameLogs).values({ discordId: id, action, previousCredux: before, updatedCredux: after });
 	}
+	/**
+	 * One audit row per loot mutation with every touched counter, so a
+	 * "opened chest but got nothing" complaint can be replayed from the DB:
+	 * credux/shards/chest deltas always, essence/relic deltas when nonzero.
+	 */
+	async logLedger(
+		tx: Executor,
+		input: {
+			discordId: string;
+			action: string;
+			itemType?: string;
+			credux?: readonly [number, number];
+			shards?: readonly [number, number];
+			chest?: readonly [number, number];
+			essence?: readonly [number, number];
+			relic?: readonly [number, number];
+		},
+	): Promise<void> {
+		await tx.insert(gameLogs).values({
+			discordId: input.discordId,
+			action: input.action,
+			itemType: input.itemType ?? null,
+			previousCredux: input.credux?.[0] ?? null,
+			updatedCredux: input.credux?.[1] ?? null,
+			previousBeliefShards: input.shards?.[0] ?? null,
+			updatedBeliefShards: input.shards?.[1] ?? null,
+			previousChestCount: input.chest?.[0] ?? null,
+			updatedChestCount: input.chest?.[1] ?? null,
+			previousEssenceCount: input.essence?.[0] ?? null,
+			updatedEssenceCount: input.essence?.[1] ?? null,
+			previousRelicCount: input.relic?.[0] ?? null,
+			updatedRelicCount: input.relic?.[1] ?? null,
+		});
+	}
 }

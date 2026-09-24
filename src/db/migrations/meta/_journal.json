@@ -57,6 +57,13 @@
       "when": 1790247687846,
       "tag": "0007_ranked_log_timezone",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790278040749,
+      "tag": "0008_bigint-credux-headroom",
+      "breakpoints": true
     }
   ]
 }

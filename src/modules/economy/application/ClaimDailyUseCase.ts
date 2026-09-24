@@ -69,6 +69,11 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 			if (state.lastDailyClaimDate === todayKey) {
 				return { status: 'already-claimed', overall: state.overallStreak };
 			}
+			// A claim date in the future means the clock moved backwards —
+			// never reset the streak or pay out again on top of it.
+			if (state.lastDailyClaimDate !== null && state.lastDailyClaimDate > todayKey) {
+				return { status: 'already-claimed', overall: state.overallStreak };
+			}
 
 			const consecutive = state.lastDailyClaimDate === yesterdayKey;
 			const monthly = consecutive ? (state.monthlyStreak % ECONOMY_CONFIG.monthlyCycleLength) + 1 : 1;

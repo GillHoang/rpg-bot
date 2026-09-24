@@ -48,14 +48,15 @@ export interface LootDependencies {
 	queries?: Pick<LootInventoryRepository, 'updateBag'>;
 }
 
-type LootSource = Pick<LootRepository, 'lockBag' | 'log' | 'bags'> & Partial<Pick<LootGrantService, 'rune' | 'gear'>>;
+type LootSource = Pick<LootRepository, 'lockBag' | 'log' | 'logLedger' | 'bags' | 'findRunePool'> &
+	Partial<Pick<LootGrantService, 'rune' | 'gear'>>;
 
 export class LootService {
 	private readonly grants: Pick<LootGrantService, 'rune' | 'gear'>;
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly persistence: PersistenceContext;
 	private readonly clock: Clock;
-	private readonly repo: Pick<LootRepository, 'lockBag' | 'log' | 'bags'>;
+	private readonly repo: Pick<LootRepository, 'lockBag' | 'log' | 'logLedger' | 'bags' | 'findRunePool'>;
 	private readonly events: Pick<EventBus, 'emit'>;
 	private readonly queries: Pick<LootInventoryRepository, 'updateBag'>;
 
@@ -127,6 +128,44 @@ export class LootService {
 				supremeRelics: bag.supremeRelics + relics.supremeRelics,
 			});
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
+			await this.repo.logLedger(tx, {
+				discordId: id,
+				action: `Open ${count} ${key}`,
+				itemType: table.column,
+				credux: [bag.credux, bag.credux + creux],
+				shards: [bag.beliefShards, bag.beliefShards + shards],
+				chest: [bag[table.column], bag[table.column] - count],
+			});
+			for (const [tier, gained] of Object.entries({
+				epicEssence: essence.epicEssence - bag.epicEssence,
+				mythicEssence: essence.mythicEssence - bag.mythicEssence,
+				legendaryEssence: essence.legendaryEssence - bag.legendaryEssence,
+				supremeEssence: essence.supremeEssence - bag.supremeEssence,
+			})) {
+				if (gained > 0) {
+					const before = bag[tier as keyof typeof bag] as number;
+					await this.repo.logLedger(tx, {
+						discordId: id,
+						action: `Open ${count} ${key}`,
+						itemType: tier,
+						essence: [before, before + gained],
+					});
+				}
+			}
+			for (const [relic, gained] of Object.entries({
+				sacredRelics: relics.sacredRelics,
+				supremeRelics: relics.supremeRelics,
+			})) {
+				if (gained > 0) {
+					const before = bag[relic as keyof typeof bag] as number;
+					await this.repo.logLedger(tx, {
+						discordId: id,
+						action: `Open ${count} ${key}`,
+						itemType: relic,
+						relic: [before, before + gained],
+					});
+				}
+			}
 			await this.progress.apply(tx, id, 'open_chest', this.clock.now(), count);
 			return ok(
 				OPEN_RESULT(count, table.label, formatNumber(creux), shards) +
@@ -158,6 +197,12 @@ export class LootService {
 				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, { [key]: bag[key] - 1 });
+			await this.repo.logLedger(tx, {
+				discordId: id,
+				action: `Rune bag ${bagKey}`,
+				itemType: key,
+				chest: [bag[key], bag[key] - 1],
+			});
 			return ok(RUNE_BAG_OPENED(bagKey, item) + RUNE_BAG_HINT);
 		});
 	}
@@ -165,16 +210,21 @@ export class LootService {
 	async shop(id: string, key?: string): Promise<Result<string, AppError>> {
 		if (!key) {
 			const bags = await this.repo.bags(this.persistence.executor);
-			return ok(
-				bags
-					.map(
-						(b) =>
-							RUNES_SHOP_OFFER(b.bagKey, b.essenceCost, b.essenceTier, formatNumber(b.creduxCost)) +
-							'\n' +
-							RUNES_SHOP_POOL((b.runePool as string[]).join(', ')),
-					)
-					.join('\n\n') + RUNES_SHOP_FOOTER,
-			);
+			// Display the actually-grantable pool (isAvailable-filtered), not
+			// the raw seed list — the grant path charges full price, so the
+			// listing must never promise an unavailable rune.
+			const lines: string[] = [];
+			for (const b of bags) {
+				const available = await this.repo.findRunePool(this.persistence.executor, {
+					names: b.runePool as string[],
+				});
+				lines.push(
+					RUNES_SHOP_OFFER(b.bagKey, b.essenceCost, b.essenceTier, formatNumber(b.creduxCost)) +
+						'\n' +
+						RUNES_SHOP_POOL(available.map((r) => r.name).join(', ')),
+				);
+			}
+			return ok(lines.join('\n\n') + RUNES_SHOP_FOOTER);
 		}
 		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const bag = await this.repo.lockBag(tx, id);
@@ -202,6 +252,13 @@ export class LootService {
 				[field]: bag[field] - offer.essenceCost,
 			});
 			await this.repo.log(tx, id, `Rune bag ${key}`, bag.credux, bag.credux - offer.creduxCost);
+			await this.repo.logLedger(tx, {
+				discordId: id,
+				action: `Rune bag ${key}`,
+				itemType: field,
+				credux: [bag.credux, bag.credux - offer.creduxCost],
+				essence: [bag[field], bag[field] - offer.essenceCost],
+			});
 			return ok(RUNE_RECEIVED(item) + RUNE_RECEIVED_HINT);
 		});
 	}

@@ -42,8 +42,10 @@ export class ClassChangeService {
 			const [character] = await this.queries.lockCharacter(tx, discordId);
 			if (!character) return err(new AppError('CLASS_NO_CHARACTER', CLASS_NO_CHARACTER));
 			if (!bag) return err(new AppError('CLASS_NO_REGISTER', CLASS_NO_REGISTER));
-			if (bag.changeClass < 1) return err(new AppError('CLASS_NO_TOKEN', CLASS_NO_TOKEN));
+			// Same-class check first: re-selecting the current class is a
+			// no-op request, not a missing-token problem.
 			if (character.class === newClass) return err(new AppError('CLASS_SAME_CLASS', CLASS_SAME));
+			if (bag.changeClass < 1) return err(new AppError('CLASS_NO_TOKEN', CLASS_NO_TOKEN));
 			await this.queries.updateClass(tx, discordId, { class: newClass });
 			await this.queries.updateClassTokens(tx, discordId, { changeClass: bag.changeClass - 1 });
 			return ok(CLASS_CHANGED(newClass, bag.changeClass - 1));

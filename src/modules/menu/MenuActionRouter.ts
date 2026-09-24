@@ -4,10 +4,10 @@ import type { MenuAction } from './menuIds.js';
 import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
 
 /**
- * SRP extraction from MenuGameplayService: pure, stateless action routing.
- * No DB, no clock, no collaborators — returns the next screen for actions
- * that never touch persistence. Stateful actions (daily/claim/reroll/
- * confirm/fight/continue/log-nav) stay in the service facade.
+ * SRP extraction from MenuGameplayService: navigation actions that never
+ * touch persistence. Unlike render(), act() IS allowed to mutate the
+ * session — selection actions (hunt/gate/portal) normalize gateId/portalGate
+ * in place and return the next screen. Pure pager math lives below.
  */
 export function routeStatelessAction(
 	session: MenuSession,

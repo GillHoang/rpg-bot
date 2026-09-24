@@ -25,8 +25,7 @@ import { ResetCommand } from '../modules/system/presentation/ResetCommand.js';
 import { PingCommand } from '../modules/system/presentation/PingCommand.js';
 import { MenuCommand } from '../modules/menu/presentation/MenuCommand.js';
 import { InteractiveCasinoController } from '../modules/casino/presentation/interactiveCasino.js';
-import { createAppContainer, type ApplicationServices } from './container.js';
-import { EventBus } from '../shared/kernel/EventBus.js';
+import type { ApplicationServices } from './container.js';
 
 /** Services graph; module use-cases ride along on the container. */
 export type CommandServices = ApplicationServices;
@@ -36,14 +35,18 @@ export type CommandServices = ApplicationServices;
  * Both the bot bootstrap (index.ts) and `deploy:commands` call this, so a
  * newly ported command can never be registered at runtime but forgotten
  * in the Discord API (or vice versa). Adding a command = add one line here.
+ *
+ * Services are required explicitly (no default container): building a
+ * container is a visible, deliberate act — especially for the deploy
+ * script, which needs one even though it only reads command metadata.
  */
 export function registerAllCommands(
-	services: CommandServices = createAppContainer({ events: new EventBus() }),
+	services: CommandServices,
 	registry: Pick<CommandRegistry, 'register'>,
 ): void {
 	registry.register(new MenuCommand(services.menu));
 	registry.register(new StartCommand(services.start));
-	registry.register(new BalanceCommand(services.economy, services.inventory));
+	registry.register(new BalanceCommand(services.economyModule.getBalance));
 	registry.register(new DailyCommand(services.economyModule.claimDaily));
 	registry.register(new RaidCommand(services.raid));
 	registry.register(new SummonCommand(services.progressionModule.runSummon));

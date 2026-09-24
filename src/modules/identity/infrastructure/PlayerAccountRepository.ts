@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { type Executor } from '../../../db/client.js';
 import { users, userCharacter, usersBag } from '../../../db/schema.js';
 import { PlayerAccount, type CombatClass } from '../domain/PlayerAccount.js';
@@ -11,8 +11,8 @@ import type { Repository } from '../../../shared/kernel/repository.js';
 export class PlayerAccountRepository implements Repository<PlayerAccount, string> {
 	constructor(private readonly executor: Executor) {}
 
-	async findById(discordId: string): Promise<PlayerAccount | null> {
-		return this.findByIdWithExecutor(this.executor, discordId);
+	async findById(discordId: string, executor: Executor = this.executor): Promise<PlayerAccount | null> {
+		return this.findByIdWithExecutor(executor, discordId);
 	}
 
 	async findByIdWithExecutor(executor: Executor, discordId: string): Promise<PlayerAccount | null> {
@@ -47,5 +47,19 @@ export class PlayerAccountRepository implements Repository<PlayerAccount, string
 			.update(usersBag)
 			.set({ credux: account.credux })
 			.where(eq(usersBag.discordId, account.discordId));
+	}
+
+	/**
+	 * Atomic credit: increments in a single statement (with the new balance
+	 * RETURNED) so concurrent grants can never lost-update each other, no
+	 * row lock required. Returns null when the bag row does not exist.
+	 */
+	async addCreduxWithExecutor(executor: Executor, discordId: string, amount: number): Promise<number | null> {
+		const [row] = await executor
+			.update(usersBag)
+			.set({ credux: sql`${usersBag.credux} + ${amount}` })
+			.where(eq(usersBag.discordId, discordId))
+			.returning({ credux: usersBag.credux });
+		return row?.credux ?? null;
 	}
 }

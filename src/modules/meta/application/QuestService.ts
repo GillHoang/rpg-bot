@@ -159,6 +159,10 @@ export class QuestService {
 	}
 
 	async snapshot(discordId: string): Promise<QuestSnapshot | null> {
+		// Deliberate write-in-read: the first menu open of a day/week lazily
+		// generates that cycle's quests inside the same locked transaction
+		// (bag+user locks serialize concurrent opens). Callers must treat
+		// snapshot() as a normal mutating use-case, not a pure query.
 		return this.persistence.unitOfWork.run(async (tx) => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return null;

@@ -1,6 +1,8 @@
 import { DEPLOY_COMMANDS_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 import { REST, Routes } from 'discord.js';
 import { CommandRegistry } from '../app/CommandRegistry.js';
+import { createAppContainer } from '../app/container.js';
+import { EventBus } from '../shared/kernel/EventBus.js';
 import { registerAllCommands } from '../app/registerAllCommands.js';
 import { env } from '../shared/config/env.js';
 import { logger, flushErrorWebhook } from '../shared/utils/logger.js';
@@ -23,7 +25,10 @@ const COMMAND_NAME_DEV_ONLY = 'test';
 try {
 	const { guildId } = parseCommandScope(process.argv.slice(2), env.DEPLOY_GUILD_ID);
 	const registry = new CommandRegistry();
-	registerAllCommands(undefined, registry);
+	// Explicit container: only command metadata (.data) is read below, but
+	// commands take injected services, so a real (I/O-free at build time)
+	// graph is still required. Needs the full env, including DATABASE_URL.
+	registerAllCommands(createAppContainer({ events: new EventBus() }), registry);
 	const body = registry
 		.getAll()
 		.filter((c) => guildId !== null || c.data.name !== COMMAND_NAME_DEV_ONLY)

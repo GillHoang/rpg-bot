@@ -10,6 +10,8 @@ vi.mock('../src/modules/casino/application/CasinoSessionService.js', () => ({
 }));
 import { interactiveCasino, InteractiveCasinoController } from '../src/modules/casino/presentation/interactiveCasino.js';
 import { registerAllCommands } from '../src/app/registerAllCommands.js';
+import { createAppContainer } from '../src/app/container.js';
+import { EventBus } from '../src/shared/kernel/EventBus.js';
 import { CommandRegistry } from '../src/app/CommandRegistry.js';
 
 const controller = new InteractiveCasinoController(casino);
@@ -30,7 +32,7 @@ beforeEach(() => {
 describe('Discord gameplay surface', () => {
 	it('serializes all slash commands, including their new subcommands', () => {
 		const registry = new CommandRegistry();
-		registerAllCommands(undefined, registry);
+		registerAllCommands(createAppContainer({ events: new EventBus() }), registry);
 		const commands = registry.getAll().map(c => c.data.toJSON());
 		expect(commands.map(c => c.name)).toEqual(expect.arrayContaining(['inventory', 'deities', 'open', 'runes', 'equip', 'preset', 'raid', 'casino']));
 		expect(commands.find(c => c.name === 'casino')?.options?.map(o => o.name)).toEqual(expect.arrayContaining(['blackjack', 'crash', 'coin_toss', 'dice_roll', 'slot_machine', 'baccarat']));

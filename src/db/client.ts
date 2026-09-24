@@ -10,7 +10,14 @@ import { env } from '../shared/config/env.js';
  * connections. The pool caps concurrent connections so a burst of slash
  * commands can't exhaust the server.
  */
-export const pool = new Pool({ connectionString: env.DATABASE_URL, max: 10 });
+export const pool = new Pool({
+	connectionString: env.DATABASE_URL,
+	max: 10,
+	// Bound hung queries server-side: a stuck sweep/lock must fail fast
+	// instead of pinning pool connections forever (mirrors the test pool).
+	statement_timeout: 10_000,
+	lock_timeout: 5_000,
+});
 
 export const db = drizzle(pool, { schema });
 

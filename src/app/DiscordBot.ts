@@ -1,4 +1,4 @@
-import { BOT_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
+import { BOT_LOG_TEXT, DI_ERROR_TEXT } from '../shared/ui/text/diagnostics.js';
 import { Client, Events, GatewayIntentBits, type Interaction } from 'discord.js';
 import { CommandRegistry } from './CommandRegistry.js';
 import { BotMaintenance } from './BotMaintenance.js';
@@ -6,6 +6,7 @@ import { logger } from '../shared/utils/logger.js';
 import { env } from '../shared/config/env.js';
 import { menuRouter } from '../modules/menu/menuRuntime.js';
 import type { MenuRouter } from '../modules/menu/MenuRouter.js';
+import { AppError } from '../shared/kernel/Result.js';
 
 export interface DiscordBotDependencies {
 	client?: Client;
@@ -18,8 +19,12 @@ export interface DiscordBotDependencies {
  * Thin wrapper around discord.js Client. Owns only wiring/lifecycle;
  * all actual behaviour lives in ICommand implementations dispatched via
  * CommandRegistry (Command pattern) so this class never grows the way
- * a monolithic index.js typically does.
+ * a monolithic index.js typically does. One DiscordBot per Client —
+ * constructing twice on the same client would double-register every
+ * handler, so the second attempt fails fast.
  */
+const wiredClients = new WeakSet<object>();
+
 export class DiscordBot {
 	private readonly client: Client;
 	private readonly registry: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
@@ -28,6 +33,8 @@ export class DiscordBot {
 
 	constructor(options: DiscordBotDependencies) {
 		this.client = options.client ?? new Client({ intents: [GatewayIntentBits.Guilds] });
+		if (wiredClients.has(this.client)) throw new AppError('DI_DOUBLE_BOT_CLIENT', DI_ERROR_TEXT.doubleBotClient);
+		wiredClients.add(this.client);
 		this.registry = options.registry;
 		this.menu = options.menu ?? menuRouter;
 		this.maintenance = options.maintenance;

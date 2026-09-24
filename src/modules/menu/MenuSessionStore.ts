@@ -20,7 +20,6 @@ export interface MenuSession {
 	expiresAt: number;
 	busy: boolean;
 	pendingModal: string | null;
-	portalId?: string;
 	portalGate?: number;
 	/** Gate đang chọn ở màn tier (1-5). */
 	gateId?: number;
@@ -86,11 +85,11 @@ export class MenuSessionStore {
 		if (!session) return { status: 'expired' };
 		if (session.ownerId !== ownerId) return { status: 'forbidden' };
 		if (!messageId || session.messageId !== messageId) return { status: 'invalid' };
-		if (session.busy) return { status: 'busy' };
 		if (session.expiresAt <= this.now()) {
 			this.delete(id);
 			return { status: 'expired' };
 		}
+		if (session.busy) return { status: 'busy' };
 		if (session.revision !== revision) return { status: 'stale' };
 		session.busy = true;
 		return { status: 'ok', session };
@@ -109,8 +108,19 @@ export class MenuSessionStore {
 	}
 
 	sweep(): void {
+		const now = this.now();
 		for (const session of this.sessions.values()) {
-			if (!session.busy && session.expiresAt <= this.now()) this.delete(session.id);
+			if (!session.busy && session.expiresAt <= now) {
+				this.delete(session.id);
+				continue;
+			}
+			// A busy session whose handler leaked (never released) must not
+			// squat its slot forever: reap it after several extra TTLs past
+			// expiry. Genuine dispatches finish in seconds, so a multiple of
+			// the TTL is unambiguous. In-flight handlers keep their own object
+			// reference, so deleting the map entry cannot corrupt a running
+			// dispatch — it just frees the slot.
+			if (session.busy && session.expiresAt + 4 * this.ttlMs <= now) this.delete(session.id);
 		}
 	}
 }
