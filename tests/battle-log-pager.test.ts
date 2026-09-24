@@ -162,6 +162,7 @@ describe('battle log pager (Components V2)', () => {
 			);
 			const button = {
 				customId: 'battlelog:replay',
+				id: 'replay-first',
 				user: { id: 'owner' },
 				reply: vi.fn(),
 				deferUpdate: vi.fn(),
@@ -175,11 +176,13 @@ describe('battle log pager (Components V2)', () => {
 			expect(run).not.toHaveBeenCalled();
 			await collect(button as unknown as ButtonInteraction);
 			expect(run).toHaveBeenCalledTimes(1);
+			expect(run).toHaveBeenLastCalledWith('replay-first');
 			await collect(button as unknown as ButtonInteraction);
 			expect(run).toHaveBeenCalledTimes(1);
 			now.mockReturnValue(30000);
-			await collect(button as unknown as ButtonInteraction);
+			await collect({ ...button, id: 'replay-second' } as unknown as ButtonInteraction);
 			expect(run).toHaveBeenCalledTimes(2);
+			expect(run).toHaveBeenLastCalledWith('replay-second');
 		} finally {
 			now.mockRestore();
 		}

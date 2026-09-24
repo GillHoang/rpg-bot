@@ -179,6 +179,30 @@ describe('MonsterEncounterService', () => {
 });
 
 describe('RaidRewardService', () => {
+	it.each(['enemy_win', 'draw'] as const)('records boss %s without awarding victory counters', async (outcome) => {
+		const store = rewardStore();
+		await new RaidRewardService(store).grant(executor, 'owner', {
+			...grant,
+			boss: true,
+			battleType: 'boss',
+			enemyTier: 'boss',
+			outcome,
+			credux: 0,
+			shards: 0,
+			grantChest: false,
+		});
+		expect(store.updateCharacter).toHaveBeenCalledExactlyOnceWith(
+			executor,
+			'owner',
+			expect.objectContaining({ bossKills: 2, raidsWon: 3, raidsLost: outcome === 'enemy_win' ? 5 : 4 }),
+		);
+		expect(store.insertRaidLog).toHaveBeenCalledExactlyOnceWith(
+			executor,
+			expect.objectContaining({ battleType: 'boss', result: outcome === 'enemy_win' ? 'loss' : 'draw' }),
+		);
+		expect(store.updateBag).not.toHaveBeenCalled();
+	});
+
 	it('keeps lock order, multi-level EXP, currency/chest accounting and history writes', async () => {
 		const store = rewardStore();
 		const result = await new RaidRewardService(store).grant(executor, 'owner', grant);

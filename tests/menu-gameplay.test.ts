@@ -27,6 +27,8 @@ import { MOB_SEED } from '../src/seed/data/mobs.js';
 import { COSMETIC_SEED } from '../src/seed/data/cosmetics.js';
 import { TITLE_SEED } from '../src/seed/data/titles.js';
 import { BattleEngine } from '../src/domain/combat/BattleEngine.js';
+import { MonsterEncounterService } from '../src/services/MonsterEncounterService.js';
+import { findGateTier } from '../src/config/portals.js';
 
 let id: string;
 let sequence = 0;
@@ -105,6 +107,49 @@ function checkPayload(payload: unknown) {
 }
 
 describe('phase 2 menu', () => {
+	it.each([
+		{ options: { gate: 2 }, cleared: [10, 3, 0, 0, 0], gate: 2, tier: 4 },
+		{ options: { tier: 3 }, cleared: [10, 3, 0, 0, 0], gate: 2, tier: 3 },
+		{ options: { gate: 2, tier: 2 }, cleared: [10, 3, 0, 0, 0], gate: 2, tier: 2 },
+		{ options: {}, cleared: [10, 10, 10, 10, 10], gate: 1, tier: 10 },
+		{ options: { gate: 2 }, cleared: [10, 10, 0, 0, 0], gate: 2, tier: 10 },
+	])('resolves portal selection $options to gate $gate tier $tier', async ({ options, cleared, gate, tier }) => {
+		await start();
+		await db
+			.update(s.userCharacter)
+			.set({
+				combatLevel: 75,
+				gate1TiersCleared: cleared[0],
+				gate2TiersCleared: cleared[1],
+				gate3TiersCleared: cleared[2],
+				gate4TiersCleared: cleared[3],
+				gate5TiersCleared: cleared[4],
+			})
+			.where(eq(s.userCharacter.discordId, id));
+		const pick = vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel');
+		vi.spyOn(BattleEngine.prototype, 'resolve').mockReturnValue({
+			outcome: 'player_win',
+			rounds: 1,
+			log: [],
+			roundLogs: [],
+			playerHpRemaining: 1,
+			enemyHpRemaining: 0,
+		});
+		const raid = new RaidService();
+		expect((await raid.run(id, false, { ...options, requestId: 'portal-replay' })).status).toBe('ok');
+		expect(pick.mock.calls[0][1]).toBe(findGateTier(gate, tier)!.level);
+		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
+		expect(character[gate === 1 ? 'gate1TiersCleared' : 'gate2TiersCleared']).toBe(
+			Math.max(cleared[gate - 1], tier),
+		);
+		// Receipt protection must work independently of the cooldown.
+		await db.delete(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id));
+		expect((await raid.run(id, false, { ...options, requestId: 'portal-replay' })).status).toBe(
+			'already-processed',
+		);
+		expect(pick).toHaveBeenCalledTimes(1);
+	});
+
 	it('rejects invalid and locked gate attempts without consuming cooldown or writing rewards', async () => {
 		await start();
 		const before = await bag();
@@ -174,7 +219,7 @@ describe('phase 2 menu', () => {
 		session.revision++;
 		session.screen = await game.act(session, 'hunt', id);
 		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
-		expect(character.gate1TiersCleared).toBe(cleared + 1);
+		expect(character.gate1TiersCleared).toBe(cleared + 2);
 	});
 	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
 		await start();

@@ -30,7 +30,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 
 	onRoundStart(ctx: StrategyContext): void {
 		if (this.effectKey === 'warding') {
-			ctx.self.flags.warding_pct = this.value;
+			ctx.self.flags.warding_pct = Math.max(this.value, (ctx.self.flags.warding_pct as number) ?? 0);
 		}
 		this.inner.onRoundStart(ctx);
 	}
@@ -38,7 +38,7 @@ export class RuneStrategyDecorator implements IClassStrategy {
 	prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		this.inner.prepareOutgoingHit(ctx, hit);
 		if (this.effectKey === 'piercing') {
-			hit.armorPierceFraction = Math.max(hit.armorPierceFraction, this.value);
+			hit.armorPierceFraction = Math.min(1, hit.armorPierceFraction + this.value);
 		}
 	}
 

@@ -22,7 +22,8 @@ export const RUNES_TEXT = {
 	},
 	'6': {
 		name: 'Piercing Rune',
-		description: 'Ignore 15% of the target’s DEF.',
+		description:
+			'Adds 15 percentage points of DEF ignore, stacking with class passives and other Piercing Runes, up to 100%.',
 	},
 	'7': {
 		name: 'Venom Rune',

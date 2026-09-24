@@ -7,6 +7,11 @@ import { blessingStrength, resonanceBonus } from '../src/config/blessings.js';
 import { eloDelta } from '../src/config/ranked.js';
 
 describe('elo', () => {
+	it('rounds half-point draw deltas symmetrically', () => {
+		const difference = 400 * Math.log10(33 / 31);
+		expect(eloDelta(0, difference, 0.5)).toBe(1);
+		expect(eloDelta(difference, 0, 0.5)).toBe(-1);
+	});
 	it('is zero-sum: decisive deltas mirror, draws between equals move nothing', () => {
 		for (let rating = 800; rating <= 2200; rating += 100) {
 			expect(eloDelta(rating, rating, 1)).toBe(16);

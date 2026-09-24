@@ -33,7 +33,7 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		ctx: StrategyContext,
 	): void {
 		const resolved = this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
-		if (resolved.triggerExtraAttack && defender.hp > 0) {
+		if (resolved.triggerExtraAttack && defender.hp > 0 && attacker.hp > 0) {
 			this.performAttack(attacker, defender, atkStrategy, defStrategy, ctx);
 		}
 	}
@@ -73,7 +73,7 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		const effDef = defender.def * (1 - defDownPct) * (1 - hit.armorPierceFraction);
 
 		const variance = rollVariance(ctx.rng);
-		const crit = !hit.suppressCrit && rollCrit(ctx.rng, attacker.crit);
+		const crit = !hit.suppressCrit && hit.forcedMultiplier == null && rollCrit(ctx.rng, attacker.crit);
 
 		let amount: number;
 		if (hit.forcedMultiplier != null) {

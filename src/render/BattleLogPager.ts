@@ -35,7 +35,11 @@ export interface BattleLogPagerOptions {
 	headerLines: string[];
 	/** Optional line pinned to the bottom of every page. */
 	footerLine?: string;
-	replay?: { ownerId: string; cooldownMs: number; run: () => Promise<BattleLogPagerOptions | string> };
+	replay?: {
+		ownerId: string;
+		cooldownMs: number;
+		run: (requestId: string) => Promise<BattleLogPagerOptions | string>;
+	};
 }
 
 const PAGE_CUSTOM_IDS = {
@@ -200,7 +204,7 @@ export async function sendBattleLog(
 			replaying = true;
 			try {
 				await button.deferUpdate();
-				const result = await replay.run();
+				const result = await replay.run(button.id);
 				if (typeof result === 'string') {
 					await button.followUp({ content: result, flags: MessageFlags.Ephemeral });
 				} else {

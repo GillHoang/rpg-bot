@@ -1,19 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { GATES, TIERS_PER_GATE, defaultGateTier, gateUnlocked, highestAccessibleGate, findGateTier } from '../src/config/portals.js';
+import {
+	GATES,
+	TIERS_PER_GATE,
+	defaultGateTier,
+	gateUnlocked,
+	highestAccessibleGate,
+	findGateTier,
+} from '../src/config/portals.js';
 
 describe('gate tier defaults', () => {
 	it.each([
-		[[], 1, 1, 1],
-		[[1], 1, 1, 2],
-		[[5], 1, 1, 6],
-		[[9], 1, 1, 10],
-		[[10], 1, 1, 10],
-		[[10, 0], 1, 1, 1],
-		[[10, 3], 1, 1, 4],
-		[[0, 2], 1, 1, 1],
-	])('selects the next uncleared tier for gate gate=%i', (_a, gateId, _level, _tier) => {
+		[[], 1, 1],
+		[[1], 1, 2],
+		[[5], 1, 6],
+		[[9], 1, 10],
+		[[10], 1, 10],
+		[[10, 0], 2, 1],
+		[[10, 3], 2, 4],
+		[[0, 2], 1, 1],
+	])('selects the next uncleared tier for progress %j, gate %i', (cleared, gateId, tier) => {
 		const gate = GATES.find((g) => g.id === gateId)!;
-		expect(gate).toBeDefined();
+		expect(defaultGateTier(cleared, gate)).toEqual(findGateTier(gateId, tier));
+	});
+
+	it.each(GATES)('stays in gate $id after all its tiers are cleared', (gate) => {
+		expect(defaultGateTier([10, 10, 10, 10, 10], gate)).toEqual(findGateTier(gate.id, TIERS_PER_GATE));
 	});
 
 	it.each([

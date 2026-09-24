@@ -241,17 +241,14 @@ export class RaidService {
 			character.gate4TiersCleared,
 			character.gate5TiersCleared,
 		];
-		const explicitMode = options.gate !== undefined || options.tier !== undefined;
-		const gateTier = boss
-			? undefined
-			: explicitMode
-				? findGateTier(options.gate ?? highestAccessibleGate(gatesCleared).id, options.tier ?? 1)
-				: (() => {
-						const gate = highestAccessibleGate(gatesCleared);
-						return defaultGateTier(gatesCleared, gate);
-					})();
-		if (!boss && explicitMode && options.gate !== undefined && !GATES.some((g) => g.id === options.gate))
-			return { status: 'portal-locked', message: GATE_TEXT.invalid };
+		const selectedGate =
+			options.gate === undefined
+				? highestAccessibleGate(gatesCleared)
+				: GATES.find((gate) => gate.id === options.gate);
+		const gateTier =
+			boss || !selectedGate
+				? undefined
+				: findGateTier(selectedGate.id, options.tier ?? defaultGateTier(gatesCleared, selectedGate).number);
 		if (!boss && !gateTier) return { status: 'portal-locked', message: GATE_TEXT.invalid };
 		if (!boss && !gateUnlocked(gateTier!.gate, gatesCleared, account.combatLevel))
 			return { status: 'portal-locked', message: GATE_TEXT.locked(gateTier!.gate.minLevel) };

@@ -36,7 +36,8 @@ export class FighterStrategy extends NullClassStrategy {
 
 		ctx.enemy.debuffs.push(
 			{ tag: 'stun', turnsLeft: STUN_TURNS, value: 0 },
-			{ tag: 'dizzy', turnsLeft: 1, value: DIZZY_MISS_CHANCE },
+			// Keep the next-attack rider alive through the stunned round.
+			{ tag: 'dizzy', turnsLeft: STUN_TURNS + 1, value: DIZZY_MISS_CHANCE },
 		);
 		ctx.log(COMBAT_FIGHTER_BASH(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), STUN_TURNS));
 	}

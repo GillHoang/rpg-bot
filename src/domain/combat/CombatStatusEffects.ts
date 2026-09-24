@@ -59,6 +59,7 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 		for (const debuff of side.debuffs) {
 			if (!isDotTag(debuff.tag)) continue;
 			const tick = Math.floor(debuff.value * (1 - wardingPct));
+			debuff.turnsLeft -= 1;
 			if (tick <= 0) continue;
 			side.hp = Math.max(0, side.hp - tick);
 			log.push(
@@ -69,7 +70,6 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 					dotLabelOf(debuff.tag),
 				),
 			);
-			debuff.turnsLeft -= 1;
 		}
 	}
 

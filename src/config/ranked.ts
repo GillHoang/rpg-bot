@@ -41,7 +41,8 @@ export function bracketFor(rating: number): Bracket {
  */
 export function eloDelta(rating: number, opponentRating: number, score: 0 | 0.5 | 1): number {
 	const expected = 1 / (1 + 10 ** ((opponentRating - rating) / 400));
-	const raw = Math.round(RANKED.K * (score - expected));
+	const delta = RANKED.K * (score - expected);
+	const raw = Math.sign(delta) * Math.round(Math.abs(delta));
 	if (score === 1) return Math.max(1, raw);
 	if (score === 0) return Math.min(-1, raw);
 	return raw;

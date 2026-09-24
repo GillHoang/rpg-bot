@@ -33,9 +33,10 @@ it.each(['player_win', 'enemy_win', 'draw'] as const)('replay after %s only adva
 	} as unknown as ChatInputCommandInteraction;
 	await new RaidCommand({ run }).execute(interaction);
 	const options = vi.mocked(sendBattleLog).mock.calls[0][1];
-	await options.replay!.run();
+	await options.replay!.run('replay-interaction');
 	expect(run).toHaveBeenNthCalledWith(2, 'owner', false, {
 		gate: 4,
 		tier: outcome === 'player_win' ? undefined : 4,
+		requestId: 'replay-interaction',
 	});
 });

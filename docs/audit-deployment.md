@@ -22,6 +22,12 @@ Migration đã kiểm chứng trên PGlite với dữ liệu có sẵn; chưa ch
 
 Ranked: quest tham gia tăng một lần cho người gọi, kể cả thua/hòa; reputation thắng chỉ cấp cho winner. Cả hai bên đều ghi nhận kỷ lục chuỗi thắng và title khi thăng hạng. Menu mở riêng tư; menu và thông báo daily dùng định dạng số Việt Nam.
 
+## Migration 0007 và bản sửa portal/ranked 2026-09-24
+
+Chạy `pnpm db:migrate` trước khi khởi động code mới. Migration `0007_ranked_log_timezone` chuyển riêng `ranked_logs.timestamp` sang `timestamptz`, để log mới và điều kiện nhận thưởng tuần không phụ thuộc múi giờ session PostgreSQL. Migration diễn giải timestamp cũ là UTC, nhất quán với dữ liệu Date do ứng dụng ghi. Nếu database trước đây ghi `now()` trong session khác UTC, cần đối soát và chuẩn hóa những dòng đó trước khi chạy; timestamp không có timezone không đủ thông tin để tự xác định offset lịch sử. Migration chưa được chạy trên database ứng dụng.
+
+Portal mặc định chọn tầng chưa vượt tiếp theo trong Gate được chọn; Gate đã hoàn thành mặc định về chính tầng boss của Gate đó. Khi hoàn thành cả năm Gate, mặc định là Gate 1 tầng 10. Đánh lại qua nút Discord sử dụng interaction ID làm receipt. Bảng thưởng và chi phí portal giữ nguyên.
+
 ## Season
 
 Policy triển khai là chuyển mùa thủ công. endsAt là thời điểm sớm nhất được chuyển; hết hạn không tự reset quota shop. Quản trị chạy pnpm season:rollover <expected-active-season-id>. Lệnh khóa và kiểm tra lại mùa hiện tại; gọi lại cùng ID trả stale và không tạo mùa nữa. Mùa mới dài 30 ngày, quota shop gắn seasonId mới. Rating và thưởng cuối mùa giữ nguyên; không tự phát thêm thưởng hoặc reset rating.

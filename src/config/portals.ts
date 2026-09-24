@@ -58,8 +58,8 @@ export function findGateTier(gateId: number, tier: number): GateTier | undefined
  * `tiersClearedPerGate` là mảng số tầng đã vượt của Gate 1..5 (0 nếu chưa).
  */
 export function defaultGateTier(gatesCleared: readonly number[], gate: Gate): GateTier {
-	const cleared = Math.min(gatesCleared[gate.id - 1] ?? 0, TIERS_PER_GATE);
-	return GATE_TIERS.find((t) => t.gate.id === gate.id && t.number === cleared + 1) ?? GATE_TIERS.at(-1)!;
+	const tier = Math.min((gatesCleared[gate.id - 1] ?? 0) + 1, TIERS_PER_GATE);
+	return findGateTier(gate.id, tier)!;
 }
 
 /**

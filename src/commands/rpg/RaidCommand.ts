@@ -85,8 +85,8 @@ export class RaidCommand implements ICommand {
 			options.replay = {
 				ownerId: interaction.user.id,
 				cooldownMs: RAID_HUNT_COOLDOWN_SECONDS * 1000,
-				run: async () => {
-					const next = await this.raid.run(interaction.user.id, false, replaySelection);
+				run: async (requestId) => {
+					const next = await this.raid.run(interaction.user.id, false, { ...replaySelection, requestId });
 					if (next.status === 'ok') {
 						if (replaySelection.tier !== undefined && next.battle.outcome === 'player_win') {
 							// won the explicitly selected tier — advance to the default (next) tier

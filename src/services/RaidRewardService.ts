@@ -60,7 +60,8 @@ export class RaidRewardService {
 			lifetimeExp: character.lifetimeExp + Math.max(0, grant.expGain),
 			bossKills: character.bossKills + (grant.boss && won ? 1 : 0),
 			raidsWon: !grant.boss && won ? character.raidsWon + 1 : character.raidsWon,
-			raidsLost: !grant.boss && lost ? character.raidsLost + 1 : character.raidsLost,
+			// Shared defeat counter for regular raids and daily bosses; draws do not count.
+			raidsLost: lost ? character.raidsLost + 1 : character.raidsLost,
 		});
 
 		const creuxAfter = bag.credux + grant.credux;

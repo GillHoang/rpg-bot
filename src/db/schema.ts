@@ -551,7 +551,7 @@ export const rankedLogs = pgTable('ranked_logs', {
 	result: text('result').notNull(),
 	ratingBefore: integer('rating_before').notNull(),
 	ratingAfter: integer('rating_after').notNull(),
-	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: false })
+	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
 });

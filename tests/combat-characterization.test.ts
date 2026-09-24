@@ -11,7 +11,7 @@ import type { CombatClass } from '../src/domain/entities/PlayerAccount.js';
 const classes: Array<CombatClass | null> = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer', null];
 const seeds = [1, 7, 42, 12345];
 
-// Baseline updated for the reviewed round-count and fixed Tailwind corrections.
+// Baseline includes the reviewed round-count, Tailwind, and combat logic corrections.
 // Hash the complete logs, round snapshots and mutated combatants so even a
 // changed RNG call, hook order or remaining debuff is caught, without storing
 // thousands of repetitive log lines. Pin numeric formatting across host locales.

@@ -24,7 +24,7 @@ export class MonsterStrategy extends NullClassStrategy {
 		}
 		// Blood frenzy: below 40% HP the beast hits harder (M7 mob variety).
 		if (this.skill === 'blood_frenzy' && ctx.self.hp < ctx.self.maxHp * 0.4) {
-			hit.damagePctBonus += 0.4;
+			hit.damagePctBonus += 40;
 			if (!ctx.self.flags.frenzy_logged) {
 				ctx.self.flags.frenzy_logged = true;
 				ctx.log(COMBAT_MONSTER_FRENZY(combatDisplayName(ctx.self)));
