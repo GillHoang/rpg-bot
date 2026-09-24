@@ -1,5 +1,4 @@
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { PlayerLoadoutQueryRepository } from '../../progression/infrastructure/PlayerLoadoutQueryRepository.js';
 import type { Executor } from '../../../db/client.js';
 import type { userPresets } from '../../../db/schema.js';
@@ -57,7 +56,7 @@ interface PantheonEntry {
 }
 
 export interface StatAssemblyDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<PlayerLoadoutQueryRepository, 'findCharacter' | 'findPreset'>;
 }
 
@@ -88,9 +87,9 @@ export class StatAssemblyService {
 		gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'> | undefined = undefined,
 		deities: Pick<DeityService, 'findUserDeityAssemblyInfo'> | undefined = undefined,
 		runes: Pick<RuneRepository, 'findSocketedEffects'> | undefined = undefined,
-		options: StatAssemblyDependencies = {},
+		options: StatAssemblyDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'StatAssemblyService');
 		this.gear = gear ?? new GearRepository();
 		this.deities = deities ?? new DeityService();
 		this.runes = runes ?? new RuneRepository();

@@ -20,8 +20,7 @@ import {
 } from '../../../shared/ui/text/quest.js';
 import { QUEST_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { QuestRepository } from '../infrastructure/QuestRepository.js';
 import type { Executor } from '../../../db/client.js';
 import type { dailyQuests, weeklyQuests } from '../../../db/schema.js';
@@ -45,6 +44,7 @@ import { ReputationService } from './ReputationService.js';
 
 import { ICONS } from '../../../shared/ui/text/icons.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 
 export type QuestRow = typeof dailyQuests.$inferSelect;
 export type WeeklyQuestRow = typeof weeklyQuests.$inferSelect;
@@ -59,7 +59,7 @@ export interface QuestSnapshot {
 }
 
 export interface QuestDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 	queries?: Pick<
 		QuestRepository,
@@ -101,9 +101,9 @@ export class QuestService {
 	private readonly queries: NonNullable<QuestDependencies['queries']>;
 	constructor(
 		reputation: Pick<ReputationService, 'awardInTx'> | undefined = undefined,
-		options: QuestDependencies = {},
+		options: QuestDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'QuestService');
 		this.clock = options.clock ?? systemClock;
 		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence });
 		this.queries = options.queries ?? new QuestRepository();
@@ -124,7 +124,7 @@ export class QuestService {
 		amount = 1,
 	): Promise<void> {
 		const at = now ?? this.clock.now();
-		if (!Number.isSafeInteger(amount) || amount < 1) throw new RangeError(QUEST_ERROR_TEXT.invalidProgress);
+		if (!Number.isSafeInteger(amount) || amount < 1) throw new AppError('QUEST_INVALID_PROGRESS', QUEST_ERROR_TEXT.invalidProgress);
 		if (!(await this.lockPlayer(tx, discordId))) return;
 		const day = DailyCycle.keyAt(at);
 		const { key: week } = weekWindowAt(at);
@@ -134,9 +134,9 @@ export class QuestService {
 		await this.bumpWeekly(tx, discordId, week, questType, at, amount);
 	}
 
-	async view(discordId: string): Promise<string> {
+	async view(discordId: string): Promise<Result<string, AppError>> {
 		const snapshot = await this.snapshot(discordId);
-		if (!snapshot) return QUEST_REGISTER_FIRST;
+		if (!snapshot) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
 		const { day, week, dailies, weeklies } = snapshot;
 		const lines = dailies.map((q) =>
 			this.formatQuest(q, DAILY_QUEST_LABELS[q.questType as QuestType], 'shards', q.rewardBeliefShards),
@@ -148,13 +148,13 @@ export class QuestService {
 		const allWeekly = weeklies.length > 0 && weeklies.every((q) => q.completed);
 		let grandFooter = '';
 		if (allWeekly) grandFooter = snapshot.grandClaimed ? QUEST_GRAND_CLAIMED : QUEST_GRAND_READY;
-		return (
+		return ok(
 			QUEST_DAILY_HEADER(day) +
-			(lines.length ? '\n' + lines.join('\n') : '') +
-			(allDaily ? QUEST_DAILY_ALL_DONE(DAILY_ALL_COMPLETE_RELICS) : '') +
-			QUEST_WEEKLY_HEADER(week) +
-			(weeklyLines.length ? '\n' + weeklyLines.join('\n') : '') +
-			grandFooter
+				(lines.length ? '\n' + lines.join('\n') : '') +
+				(allDaily ? QUEST_DAILY_ALL_DONE(DAILY_ALL_COMPLETE_RELICS) : '') +
+				QUEST_WEEKLY_HEADER(week) +
+				(weeklyLines.length ? '\n' + weeklyLines.join('\n') : '') +
+				grandFooter,
 		);
 	}
 
@@ -190,13 +190,15 @@ export class QuestService {
 		return user ?? null;
 	}
 
-	async refresh(discordId: string, expectedDay?: string): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async refresh(discordId: string, expectedDay?: string): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const user = await this.lockPlayer(tx, discordId);
-			if (!user) return QUEST_REGISTER_FIRST;
+			if (!user) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
 			const day = DailyCycle.keyAt(this.clock.now());
-			if (expectedDay && expectedDay !== day) return QUEST_FLOW_TEXT.dayChanged;
-			if (user.lastQuestRefreshDate === day) return QUEST_REFRESH_LIMIT;
+			if (expectedDay && expectedDay !== day)
+				return err(new AppError('QUEST_DAY_CHANGED', QUEST_FLOW_TEXT.dayChanged));
+			if (user.lastQuestRefreshDate === day)
+				return err(new AppError('QUEST_REFRESH_LIMIT', QUEST_REFRESH_LIMIT));
 			await this.queries.deleteIncompleteDailyQuests(tx, discordId, day);
 			// Completed quests stay; reroll only tops the board back up to
 			// QUESTS_PER_CYCLE — ensureDailyQuests would see the kept rows and
@@ -220,28 +222,29 @@ export class QuestService {
 				);
 			}
 			await this.queries.updateRefreshState(tx, discordId, { questRefreshesToday: 1, lastQuestRefreshDate: day });
-			return QUEST_REFRESH_DONE;
+			return ok(QUEST_REFRESH_DONE);
 		});
 	}
 
-	async claimWeeklyGrand(discordId: string): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async claimWeeklyGrand(discordId: string): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const user = await this.lockPlayer(tx, discordId);
-			if (!user) return QUEST_REGISTER_FIRST;
+			if (!user) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
 			const { key: week } = weekWindowAt(this.clock.now());
 			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
-			if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return QUEST_CLAIM_NOT_READY;
+			if (weeklies.length === 0 || !weeklies.every((q) => q.completed))
+				return err(new AppError('QUEST_CLAIM_NOT_READY', QUEST_CLAIM_NOT_READY));
 			const [bag] = await this.queries.lockRewardBag(tx, discordId);
-			if (!bag) return QUEST_REGISTER_FIRST;
+			if (!bag) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
 			const [grand] = await this.queries.insertWeeklyGrand(tx, { discordId, questWeek: week, claimed: true });
-			if (!grand) return QUEST_CLAIM_ALREADY;
+			if (!grand) return err(new AppError('QUEST_CLAIM_ALREADY', QUEST_CLAIM_ALREADY));
 			await this.queries.updateWeeklyGrandBalances(tx, discordId, {
 				diamondChest: bag.diamondChest + WEEKLY_GRAND.diamondChest,
 				credux: bag.credux + WEEKLY_GRAND.credux,
 				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
 			});
 			await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
-			return QUEST_CLAIM_OK(formatNumber(WEEKLY_GRAND.credux), WEEKLY_GRAND.diamondChest);
+			return ok(QUEST_CLAIM_OK(formatNumber(WEEKLY_GRAND.credux), WEEKLY_GRAND.diamondChest));
 		});
 	}
 

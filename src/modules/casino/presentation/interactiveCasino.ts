@@ -9,6 +9,7 @@ import {
 import { CasinoSessionService, type SessionView } from '../application/CasinoSessionService.js';
 import type { CasinoAction, InteractiveGame } from '../domain/InteractiveGame.js';
 import { logger } from '../../../shared/utils/logger.js';
+import { DI_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import {
 	CASINO_CASH_OUT_LABEL,
 	CASINO_HIT_LABEL,
@@ -18,7 +19,7 @@ import {
 } from '../../../shared/ui/text/casino.js';
 
 export class InteractiveCasinoController {
-	constructor(private readonly sessions: Pick<CasinoSessionService, 'start' | 'act'> = new CasinoSessionService()) {}
+	constructor(private readonly sessions: Pick<CasinoSessionService, 'start' | 'act'>) {}
 
 	async execute(i: ChatInputCommandInteraction, game: InteractiveGame, bet: number): Promise<void> {
 		await i.deferReply();
@@ -93,13 +94,16 @@ export class InteractiveCasinoController {
 	}
 }
 
-const defaultController = new InteractiveCasinoController();
-
-/** Compatibility entry point for callers using the original function API. */
+/** Compatibility entry point: an explicit controller is required (no global service). */
 export async function interactiveCasino(
 	i: ChatInputCommandInteraction,
 	game: InteractiveGame,
 	bet: number,
+	controller?: InteractiveCasinoController,
 ): Promise<void> {
-	await defaultController.execute(i, game, bet);
+	if (!controller) {
+		const { AppError } = await import('../../../shared/kernel/Result.js');
+		throw new AppError('DI_MISSING_PERSISTENCE', DI_ERROR_TEXT.controllerRequired);
+	}
+	await controller.execute(i, game, bet);
 }

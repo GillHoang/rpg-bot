@@ -55,7 +55,7 @@ export class DuelCommand implements ICommand {
 				.setMinValue(0),
 		);
 
-	constructor(private readonly duels: Pick<DuelService, 'create' | 'decline' | 'accept'> = new DuelService()) {}
+	constructor(private readonly duels: Pick<DuelService, 'create' | 'decline' | 'accept'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		const opponent = interaction.options.getUser('opponent', true);

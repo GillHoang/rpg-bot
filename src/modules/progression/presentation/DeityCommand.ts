@@ -40,7 +40,7 @@ export class DeityCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly ascension: Pick<AscensionService, 'addSigil' | 'ascend'> = new AscensionService()) {}
+	constructor(private readonly ascension: Pick<AscensionService, 'addSigil' | 'ascend'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

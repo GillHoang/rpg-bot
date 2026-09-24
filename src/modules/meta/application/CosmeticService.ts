@@ -1,5 +1,5 @@
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { CosmeticRepository } from '../infrastructure/CosmeticRepository.js';
 import type { Executor } from '../../../db/client.js';
 
@@ -28,7 +28,7 @@ import {
 } from '../../../shared/ui/text/cosmetic.js';
 
 export interface CosmeticDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<
 		CosmeticRepository,
 		| 'findCosmeticByKey'
@@ -63,15 +63,15 @@ export interface CosmeticDependencies {
 export class CosmeticService {
 	private readonly persistence: PersistenceContext;
 	private readonly queries: NonNullable<CosmeticDependencies['queries']>;
-	constructor(options: CosmeticDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(options: CosmeticDependencies) {
+		this.persistence = requirePersistence(options, 'CosmeticService');
 		this.queries = options.queries ?? new CosmeticRepository();
 	}
 	// --- In-tx grant helpers (used by other services) ---
 
 	async grantCosmeticInTx(tx: Executor, discordId: string, cosmeticKey: string, source: string): Promise<boolean> {
 		const [catalog] = await this.queries.findCosmeticByKey(tx, cosmeticKey);
-		if (!catalog) throw new Error(COSMETIC_SEED_MISSING(cosmeticKey));
+		if (!catalog) throw new AppError('COSMETIC_SEED_MISSING', COSMETIC_SEED_MISSING(cosmeticKey));
 		const [row] = await this.queries.insertOwnedCosmetic(tx, { discordId, cosmeticId: catalog.cosmeticId, source });
 		return row != null;
 	}
@@ -87,96 +87,101 @@ export class CosmeticService {
 
 	async grantTitleInTx(tx: Executor, discordId: string, code: string): Promise<boolean> {
 		const [catalog] = await this.queries.findTitleByCode(tx, code);
-		if (!catalog) throw new Error(TITLE_SEED_MISSING(code));
+		if (!catalog) throw new AppError('TITLE_SEED_MISSING', TITLE_SEED_MISSING(code));
 		const [row] = await this.queries.insertOwnedTitle(tx, { discordId, titleId: catalog.titleId });
 		return row != null;
 	}
 
 	// --- Command facades ---
 
-	async listCosmetics(discordId: string): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async listCosmetics(discordId: string): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [character] = await this.queries.findCharacter(tx, discordId);
-			if (!character) return COSMETIC_NO_CHARACTER;
+			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
 			const catalog = await this.queries.listCosmetics(tx);
 			const owned = await this.queries.listOwnedCosmetics(tx, discordId);
 			const equipped = await this.queries.listEquippedSkins(tx, discordId);
 			const ownedIds = new Set(owned.map((o) => o.cosmeticId));
 			const equippedIds = new Set(equipped.map((e) => e.cosmeticId));
-			return (
+			return ok(
 				COSMETIC_LIST_HEADER +
-				'\n' +
-				catalog
-					.map((c) => {
-						const has = ownedIds.has(c.cosmeticId);
-						const equippedMark = equippedIds.has(c.cosmeticId) ? COSMETIC_EQUIPPED_MARK : '';
-						const minLevel = COSMETIC_TIER_MIN_LEVEL[c.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
-						const lock = has ? '' : COSMETIC_LOCK(minLevel);
-						return COSMETIC_ENTRY(c.cosmeticId, c.displayName, c.category, c.tier) + equippedMark + lock;
-					})
-					.join('\n') +
-				COSMETIC_LIST_FOOTER
+					'\n' +
+					catalog
+						.map((c) => {
+							const has = ownedIds.has(c.cosmeticId);
+							const equippedMark = equippedIds.has(c.cosmeticId) ? COSMETIC_EQUIPPED_MARK : '';
+							const minLevel = COSMETIC_TIER_MIN_LEVEL[c.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
+							const lock = has ? '' : COSMETIC_LOCK(minLevel);
+							return COSMETIC_ENTRY(c.cosmeticId, c.displayName, c.category, c.tier) + equippedMark + lock;
+						})
+						.join('\n') +
+					COSMETIC_LIST_FOOTER,
 			);
 		});
 	}
 
-	async equipCosmetic(discordId: string, cosmeticId: number): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async equipCosmetic(discordId: string, cosmeticId: number): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [character] = await this.queries.findCharacter(tx, discordId);
-			if (!character) return COSMETIC_NO_CHARACTER;
+			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
 			const [catalog] = await this.queries.findCosmeticById(tx, cosmeticId);
-			if (!catalog) return COSMETIC_NOT_FOUND;
+			if (!catalog) return err(new AppError('COSMETIC_NOT_FOUND', COSMETIC_NOT_FOUND));
 			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
 			const [owned] = await this.queries.findOwnedCosmetic(tx, discordId, cosmeticId);
-			if (!owned) return COSMETIC_NOT_OWNED(catalog.tier, minLevel);
+			if (!owned) return err(new AppError('COSMETIC_NOT_OWNED', COSMETIC_NOT_OWNED(catalog.tier, minLevel)));
 			// Tier gate is enforced here, not just displayed: believer < chosen < eternal.
 			if (character.believerLevel < minLevel)
-				return COSMETIC_TIER_LOCKED(catalog.tier, minLevel, character.believerLevel);
+				return err(
+					new AppError(
+						'COSMETIC_TIER_LOCKED',
+						COSMETIC_TIER_LOCKED(catalog.tier, minLevel, character.believerLevel),
+					),
+				);
 			await this.queries.upsertEquippedSkin(tx, cosmeticId, new Date(), {
 				discordId,
 				category: catalog.category,
 				cosmeticId,
 			});
-			return COSMETIC_EQUIPPED(catalog.displayName, catalog.category);
+			return ok(COSMETIC_EQUIPPED(catalog.displayName, catalog.category));
 		});
 	}
 
-	async listTitles(discordId: string): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async listTitles(discordId: string): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [character] = await this.queries.findCharacter(tx, discordId);
-			if (!character) return COSMETIC_NO_CHARACTER;
+			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
 			const catalog = await this.queries.listTitles(tx);
 			const owned = await this.queries.listOwnedTitles(tx, discordId);
 			const ownedIds = new Set(owned.map((o) => o.titleId));
-			return (
+			return ok(
 				TITLE_LIST_HEADER +
-				'\n' +
-				catalog
-					.map((t) => {
-						let ownedMark = TITLE_LOCK_MARK;
-						if (ownedIds.has(t.titleId)) {
-							ownedMark = character.equippedTitleId === t.titleId ? TITLE_EQUIPPED_MARK : '';
-						}
-						return TITLE_ENTRY(t.titleId, t.display) + ownedMark + ` — ${t.howTo}`;
-					})
-					.join('\n') +
-				TITLE_LIST_FOOTER
+					'\n' +
+					catalog
+						.map((t) => {
+							let ownedMark = TITLE_LOCK_MARK;
+							if (ownedIds.has(t.titleId)) {
+								ownedMark = character.equippedTitleId === t.titleId ? TITLE_EQUIPPED_MARK : '';
+							}
+							return TITLE_ENTRY(t.titleId, t.display) + ownedMark + ` — ${t.howTo}`;
+						})
+						.join('\n') +
+					TITLE_LIST_FOOTER,
 			);
 		});
 	}
 
-	async equipTitle(discordId: string, titleId: number): Promise<string> {
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async equipTitle(discordId: string, titleId: number): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [character] = await this.queries.findCharacter(tx, discordId);
-			if (!character) return COSMETIC_NO_CHARACTER;
+			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
 			if (titleId === 0) {
 				await this.queries.updateEquippedTitle(tx, discordId, { equippedTitleId: null });
-				return TITLE_REMOVED;
+				return ok(TITLE_REMOVED);
 			}
 			const [owned] = await this.queries.findOwnedTitle(tx, discordId, titleId);
-			if (!owned) return TITLE_NOT_OWNED;
+			if (!owned) return err(new AppError('TITLE_NOT_OWNED', TITLE_NOT_OWNED));
 			await this.queries.updateEquippedTitle(tx, discordId, { equippedTitleId: titleId });
-			return TITLE_EQUIPPED;
+			return ok(TITLE_EQUIPPED);
 		});
 	}
 }

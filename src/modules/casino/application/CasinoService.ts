@@ -1,6 +1,5 @@
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { CasinoRepository } from '../infrastructure/CasinoRepository.js';
 import { CasinoGameRegistry, type StatelessCasinoGameKey } from '../domain/CasinoGameRegistry.js';
 import type { CasinoOutcome } from '../domain/ICasinoGame.js';
@@ -17,7 +16,7 @@ export type PlayResult =
 
 export interface CasinoDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 }
 
@@ -38,9 +37,9 @@ export class CasinoService {
 	constructor(
 		repo?: Pick<CasinoRepository, 'getCredux' | 'settle'>,
 		events?: Pick<EventBus, 'emit'>,
-		options: CasinoDependencies = {},
+		options: CasinoDependencies = {} as CasinoDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'CasinoService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new CasinoRepository();

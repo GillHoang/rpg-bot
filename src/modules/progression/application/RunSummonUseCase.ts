@@ -1,7 +1,6 @@
 import { ok, type Result, AppError } from '../../../shared/kernel/Result.js';
 import type { UseCase } from '../../../shared/kernel/UseCase.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { SummonRepository } from '../infrastructure/SummonRepository.js';
 import { UserCharacterRepository } from '../../identity/infrastructure/UserCharacterRepository.js';
@@ -65,9 +64,9 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 		characters: SummonCharactersPort | undefined = undefined,
 		deities: SummonDeitiesPort | undefined = undefined,
 		events: SummonEventsPort | undefined = undefined,
-		options: RunSummonOptions = {},
+		options: RunSummonOptions,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'RunSummonUseCase');
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.characters = characters ?? new UserCharacterRepository();
 		this.deities = deities ?? new DeityService();
@@ -113,7 +112,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 			return { status: 'no-character' };
 		}
 		const [bag] = await this.queries.lockBag(tx, discordId);
-		if (!bag) throw new Error(SUMMON_ERROR_TEXT.missingBag(discordId));
+		if (!bag) throw new AppError('SUMMON_MISSING_BAG', SUMMON_ERROR_TEXT.missingBag(discordId));
 
 		const funds = this.checkFunds(bag, count, relic);
 		if (funds) return funds;
@@ -131,7 +130,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 		await this.debit(tx, discordId, bag, count, relic, relicField, cost);
 		const owned = await this.deities.ownedDeityIds(tx, discordId);
 		const [character] = await this.queries.lockCharacter(tx, discordId);
-		if (!character) throw new Error(SUMMON_ERROR_TEXT.missingCharacter(discordId));
+		if (!character) throw new AppError('SUMMON_MISSING_CHARACTER', SUMMON_ERROR_TEXT.missingCharacter(discordId));
 		const [activePreset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
 
 		const { pulls, essenceDelta, pendingActiveDeityId } = await this.grantPlanned(

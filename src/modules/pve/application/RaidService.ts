@@ -9,8 +9,7 @@ import {
 	BOSS_FEE_REQUIRED,
 	BOSS_LEVEL_REQUIRED,
 } from '../../../shared/ui/text/raid.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import type { Clock } from '../../../shared/kernel/clock.js';
 import { systemClock } from '../../../shared/kernel/clock.js';
 import { RaidRepository } from '../infrastructure/RaidRepository.js';
@@ -95,7 +94,7 @@ export interface RaidDependencies {
 	events?: Pick<EventBus, 'emit'>;
 	clock?: Clock;
 
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<
 		RaidRepository,
 		| 'lockBag'
@@ -192,9 +191,9 @@ export class RaidService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly loot: Pick<LootGrantService, 'gear'>;
 
-	constructor(options: RaidDependencies = {}) {
+	constructor(options: RaidDependencies) {
 		// Compatibility fallback: production must inject via createAppContainer.
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'RaidService');
 		this.clock = options.clock ?? systemClock;
 		this.accounts = options.accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.monsters = options.monsters ?? new MonsterEncounterService();

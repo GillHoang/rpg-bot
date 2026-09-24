@@ -8,7 +8,7 @@ import { NOT_REGISTERED } from '../../../shared/ui/text/common.js';
 export class DailyCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('daily').setDescription(DAILY_DESCRIPTION);
 
-	constructor(private readonly daily: Pick<ClaimDailyUseCase, 'claim'> = new ClaimDailyUseCase()) {}
+	constructor(private readonly daily: Pick<ClaimDailyUseCase, 'claim'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();

@@ -28,7 +28,7 @@ export type DailyEventsPort = Pick<EventBus, 'emit'>;
 export type TxExecutor = Executor;
 
 export interface ClaimDailyOptions {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	progress?: ProgressPort;
 	clock?: Clock;
 }

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
 import { eq } from 'drizzle-orm';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 vi.mock('../src/db/client.js', async () => {
@@ -18,8 +19,8 @@ beforeAll(async () => {
 	await migrateTestDatabase(testClient);
 	await db.insert(s.weaponRoster).values(WEAPON_SEED);
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
-	await new StartService().start('audit-a', 'Alice', 'Knight');
-	await new StartService().start('audit-b', 'Bob', 'Knight');
+	await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start('audit-a', 'Alice', 'Knight');
+	await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start('audit-b', 'Bob', 'Knight');
 }, 120000);
 afterAll(async () => {
 	await pool.end();
@@ -28,7 +29,7 @@ afterAll(async () => {
 it('no opponent does not leave a committed ranked lock', async () => {
 	const queries = new RankedRepository();
 	vi.spyOn(queries, 'findOpponentInWindow').mockResolvedValue([]);
-	const ranked = new RankedService(undefined, undefined, undefined, undefined, { queries });
+	const ranked = new RankedService(undefined, undefined, undefined, undefined, { queries, persistence: testPersistence() });
 	expect(await ranked.fight('audit-a')).toEqual({ status: 'no-opponent' });
 	expect(await db.select().from(s.activeRankedFights)).toHaveLength(0);
 });
@@ -46,7 +47,7 @@ it('locks both bags in ID order before reading both locked character states', as
 		order.push(`character:${id}`);
 		return character(tx, id);
 	});
-	const ranked = new RankedService(undefined, undefined, undefined, undefined, { queries });
+	const ranked = new RankedService(undefined, undefined, undefined, undefined, { queries, persistence: testPersistence() });
 	expect((await ranked.fight('audit-b')).status).toBe('ok');
 	expect(order.slice(0, 4)).toEqual(['bag:audit-a', 'bag:audit-b', 'character:audit-a', 'character:audit-b']);
 	const [opponent] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, 'audit-a'));
@@ -76,7 +77,7 @@ it('multi-action progress uses quantity, caps targets and rewards completion onl
 		rewardCredux: 100,
 		rewardValor: 0,
 	});
-	const quests = new QuestService();
+	const quests = new QuestService(undefined, { persistence: testPersistence() });
 	await quests.progress('audit-a', 'summon', 30);
 	const [daily] = await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, 'audit-a'));
 	const [weekly] = await db.select().from(s.weeklyQuests).where(eq(s.weeklyQuests.discordId, 'audit-a'));
@@ -95,6 +96,7 @@ it('daily rolls back reward and streak if atomic progress fails', async () => {
 	const [before] = await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'audit-b'));
 	const events = { emit: vi.fn() };
 	const daily = new ClaimDailyUseCase(undefined, events, {
+		persistence: testPersistence(),
 		progress: {
 			apply: async () => {
 				throw new Error('progress failed');
@@ -112,7 +114,7 @@ import { ResetService } from '../src/modules/system/application/ResetService.js'
 it('reset rolls back deleted data if audit cannot be written', async () => {
 	const queries = new ResetRepository();
 	vi.spyOn(queries, 'insertAudit').mockRejectedValue(new Error('audit failed'));
-	await expect(new ResetService({ queries }).resetAll('owner')).rejects.toThrow('audit failed');
+	await expect(new ResetService({ queries, persistence: testPersistence() }).resetAll('owner')).rejects.toThrow('audit failed');
 	expect(await db.select().from(s.users)).toHaveLength(2);
 });
 
@@ -133,7 +135,7 @@ it('profile summary does not assemble stats or fetch loadout', async () => {
 	const loadout = vi.spyOn(queries, 'findLoadout');
 	const preset = vi.spyOn(queries, 'findPreset');
 	const assemble = vi.fn();
-	const profile = new ProfileService(undefined, undefined, { assemble }, { queries });
+	const profile = new ProfileService(undefined, undefined, { assemble }, { queries, persistence: testPersistence() });
 	const result = await profile.get('audit-a', 'summary');
 	expect(result.status).toBe('ok');
 	expect(loadout).not.toHaveBeenCalled();
@@ -143,7 +145,7 @@ it('profile summary does not assemble stats or fetch loadout', async () => {
 
 import { SeasonService } from '../src/modules/meta/application/SeasonService.js';
 it('manual season rollover honors expiry and is idempotent for the expected season', async () => {
-	const seasons = new SeasonService();
+	const seasons = new SeasonService(testPersistence());
 	const active = await db.transaction((tx) => seasons.ensureActive(tx as never));
 	expect(await seasons.rollover(active.seasonId, active.startsAt)).toEqual({ status: 'not-due' });
 	const next = await seasons.rollover(active.seasonId, active.endsAt);
@@ -182,8 +184,8 @@ it('actual multi-summon and multi-open commit full quest quantities', async () =
 		})),
 	);
 	await db.update(s.usersBag).set({ beliefShards: 3000, silverChest: 10 }).where(eq(s.usersBag.discordId, 'audit-b'));
-	expect((await new RunSummonUseCase().run('audit-b', 30)).status).toBe('ok');
-	await new LootService().open('audit-b', 'silver', 10);
+	expect((await new RunSummonUseCase(undefined, undefined, undefined, { persistence: testPersistence() }).run('audit-b', 30)).status).toBe('ok');
+	await new LootService(undefined, undefined, { persistence: testPersistence() }).open('audit-b', 'silver', 10);
 	const daily = await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, 'audit-b'));
 	expect(daily.find((q) => q.questType === 'summon')?.currentCount).toBe(30);
 	expect(daily.find((q) => q.questType === 'open_chest')?.currentCount).toBe(10);
@@ -213,7 +215,7 @@ it('observer failures do not escape an already committed action', async () => {
 it('weekly grand can be claimed once in each ISO week-year', async () => {
 	vi.useFakeTimers({ toFake: ['Date'] });
 	try {
-		const service = new QuestService();
+		const service = new QuestService(undefined, { persistence: testPersistence() });
 		for (const date of ['2026-01-01T12:00:00Z', '2027-01-04T12:00:00Z']) {
 			vi.setSystemTime(new Date(date));
 			await db

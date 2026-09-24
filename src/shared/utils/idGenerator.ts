@@ -1,4 +1,5 @@
 import { GEAR_ID_ERROR_TEXT } from '../ui/text/diagnostics.js';
+import { AppError } from '../kernel/Result.js';
 import { randomBytes } from 'node:crypto';
 import type { Executor } from '../../db/client.js';
 import { GearIdentityRepository } from '../../modules/progression/infrastructure/GearIdentityRepository.js';
@@ -37,7 +38,7 @@ export class GearIdGenerator {
 			const id = this.createId();
 			if (await this.isFree(id)) return id;
 		}
-		throw new Error(GEAR_ID_ERROR_TEXT.exhausted);
+		throw new AppError('GEAR_ID_EXHAUSTED', GEAR_ID_ERROR_TEXT.exhausted);
 	}
 
 	private async isFree(id: string): Promise<boolean> {

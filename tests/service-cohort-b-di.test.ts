@@ -4,6 +4,7 @@ import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
 import type { Transaction } from '../src/db/client.js';
 import type { BattleResult } from '../src/modules/combat-shared/domain/BattleEngine.js';
 import { createTestDatabase, migrateTestDatabase } from './helpers/database.js';
+import { textOf } from './helpers/result.js';
 import * as s from '../src/db/schema.js';
 import { StartService } from '../src/modules/identity/application/StartService.js';
 import { CasinoService } from '../src/modules/casino/application/CasinoService.js';
@@ -268,7 +269,7 @@ describe('service cohort B dependency and transaction boundaries', () => {
 			),
 		);
 		const shop = new PvpShopService(undefined, { persistence });
-		expect(await shop.buy(id, 'title_champion')).toContain('Arena Champion');
+		expect(textOf(await shop.buy(id, 'title_champion'))).toContain('Arena Champion');
 		expect(await isolated.db.select().from(s.userTitles).where(eq(s.userTitles.discordId, id))).not.toHaveLength(0);
 		expect(await other.db.select().from(s.userTitles).where(eq(s.userTitles.discordId, id))).toHaveLength(0);
 	});

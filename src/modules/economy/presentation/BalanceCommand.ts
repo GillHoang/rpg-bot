@@ -10,8 +10,8 @@ export class BalanceCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('balance').setDescription(BALANCE_DESCRIPTION);
 
 	constructor(
-		private readonly economy: Pick<EconomyService, 'getAccount'> = new EconomyService(),
-		private readonly inventory: Pick<InventoryService, 'bag'> = new InventoryService(),
+		private readonly economy: Pick<EconomyService, 'getAccount'>,
+		private readonly inventory: Pick<InventoryService, 'bag'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {

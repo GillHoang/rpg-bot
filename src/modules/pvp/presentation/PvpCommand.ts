@@ -29,7 +29,7 @@ export class PvpCommand implements ICommand {
 				}),
 		);
 
-	constructor(private readonly shop: Pick<PvpShopService, 'list' | 'buy'> = new PvpShopService()) {}
+	constructor(private readonly shop: Pick<PvpShopService, 'list' | 'buy'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
@@ -38,6 +38,7 @@ export class PvpCommand implements ICommand {
 			return;
 		}
 		const item = interaction.options.getString('item', true);
-		await interaction.editReply(await this.shop.buy(interaction.user.id, item));
+		const bought = await this.shop.buy(interaction.user.id, item);
+		await interaction.editReply(bought.ok ? bought.value : bought.error.message);
 	}
 }

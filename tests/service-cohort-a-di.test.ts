@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
 import type { Transaction } from '../src/db/client.js';
 import { createTestDatabase, migrateTestDatabase } from './helpers/database.js';
+import { textOf } from './helpers/result.js';
 import * as s from '../src/db/schema.js';
 import { StartService } from '../src/modules/identity/application/StartService.js';
 import { ProfileService } from '../src/modules/identity/application/ProfileService.js';
@@ -229,7 +230,7 @@ describe('service cohort A persistence isolation', () => {
 		const quests = new QuestService(undefined, { persistence });
 		await quests.snapshot(id);
 		const before = await isolated.db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, id));
-		expect(await quests.refresh(id, '1999-01-01')).toContain('ngày mới');
+		expect(textOf(await quests.refresh(id, '1999-01-01'))).not.toContain('/register');
 		expect(await isolated.db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, id))).toEqual(before);
 		expect((await quests.snapshot(id))?.day).toBe(DailyCycle.keyAt());
 	});

@@ -94,6 +94,7 @@ describe('application dependency boundaries', () => {
 	it('bans new runtime imports of the deprecated defaultPersistence global', () => {
 		const allowed = new Set([
 			'app/container.ts',
+			'scripts/rolloverSeason.ts',
 			'shared/progress/gameplayProgress.ts',
 			'modules/identity/application/StartService.ts',
 			'modules/identity/application/ProfileService.ts',

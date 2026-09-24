@@ -16,11 +16,8 @@ export class Scheduler {
 	private timer?: ReturnType<typeof setInterval>;
 
 	constructor(
-		private readonly duels: Pick<DuelService, 'expireStale'> = new DuelService(),
-		private readonly maintenance: Pick<
-			MaintenanceRepository,
-			'clearExpiredRankedLocks'
-		> = new MaintenanceRepository(),
+		private readonly duels: Pick<DuelService, 'expireStale'>,
+		private readonly maintenance: Pick<MaintenanceRepository, 'clearExpiredRankedLocks'>,
 		private readonly clock: Clock = systemClock,
 	) {}
 

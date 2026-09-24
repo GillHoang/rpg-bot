@@ -109,7 +109,7 @@ export class SummonCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly summon: Pick<RunSummonUseCase, 'run'> = new RunSummonUseCase()) {}
+	constructor(private readonly summon: Pick<RunSummonUseCase, 'run'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Multi-pull transactions can exceed the 3s reply window — acknowledge first.

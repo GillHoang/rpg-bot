@@ -1,7 +1,6 @@
 import { LOG_EVENT_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { EnhancementStateRepository } from '../infrastructure/EnhancementStateRepository.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import { logger } from '../../../shared/utils/logger.js';
@@ -20,7 +19,7 @@ export type EnhanceResult =
 
 export interface EnhancementDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 	queries?: Pick<EnhancementStateRepository, 'lockBag'>;
 }
@@ -49,9 +48,9 @@ export class EnhancementService {
 			'findGear' | 'getCredux' | 'spendCredux' | 'applyWeaponSuccess' | 'applyArmorSuccess'
 		>,
 		events?: Pick<EventBus, 'emit'>,
-		options: EnhancementDependencies = {},
+		options: EnhancementDependencies = {} as EnhancementDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'EnhancementService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new EnhancementRepository();

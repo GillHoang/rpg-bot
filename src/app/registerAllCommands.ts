@@ -27,7 +27,6 @@ import { MenuCommand } from '../modules/menu/presentation/MenuCommand.js';
 import { InteractiveCasinoController } from '../modules/casino/presentation/interactiveCasino.js';
 import { createAppContainer, type ApplicationServices } from './container.js';
 import { EventBus } from '../shared/kernel/EventBus.js';
-import { menuRouter } from '../modules/menu/menuRuntime.js';
 
 /** Services graph; module use-cases ride along on the container. */
 export type CommandServices = ApplicationServices;
@@ -39,8 +38,8 @@ export type CommandServices = ApplicationServices;
  * in the Discord API (or vice versa). Adding a command = add one line here.
  */
 export function registerAllCommands(
-	services: CommandServices = createAppContainer({ events: EventBus.getInstance(), menu: menuRouter }),
-	registry: Pick<CommandRegistry, 'register'> = CommandRegistry.getInstance(),
+	services: CommandServices = createAppContainer({ events: new EventBus() }),
+	registry: Pick<CommandRegistry, 'register'>,
 ): void {
 	registry.register(new MenuCommand(services.menu));
 	registry.register(new StartCommand(services.start));

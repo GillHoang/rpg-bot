@@ -1,4 +1,5 @@
 import { DAILY_REPOSITORY_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 import { eq } from 'drizzle-orm';
 import type { Executor } from '../../../db/client.js';
 import { users, usersBag, gameLogs } from '../../../db/schema.js';
@@ -50,7 +51,7 @@ export class DailyRepository {
 		milestoneChestCountAfter: number | null;
 	}> {
 		const [bag] = await executor.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
-		if (!bag) throw new Error(DAILY_REPOSITORY_ERROR_TEXT.missingBag(discordId));
+		if (!bag) throw new AppError('DAILY_MISSING_BAG', DAILY_REPOSITORY_ERROR_TEXT.missingBag(discordId));
 		const chestField = CHEST_COLUMN_MAP[params.chestColumn];
 		const milestoneField = params.milestoneColumn ? CHEST_COLUMN_MAP[params.milestoneColumn] : null;
 

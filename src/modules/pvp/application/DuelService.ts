@@ -1,7 +1,6 @@
 import { comparePlayerIds } from '../../../shared/utils/comparePlayerIds.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { DuelRepository } from '../infrastructure/DuelRepository.js';
 import type { activeDuels, usersBag, userCharacter } from '../../../db/schema.js';
 import { randomUUID } from 'node:crypto';
@@ -56,7 +55,7 @@ type CharacterRow = typeof userCharacter.$inferSelect;
 
 export interface DuelDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: import('../../../shared/kernel/clock.js').Clock;
 	queries?: Pick<
 		DuelRepository,
@@ -129,9 +128,9 @@ export class DuelService {
 		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
 		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
 		events?: Pick<EventBus, 'emit'>,
-		options: DuelDependencies = {},
+		options: DuelDependencies = {} as DuelDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'DuelService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);

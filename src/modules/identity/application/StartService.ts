@@ -1,8 +1,8 @@
 import { LOG_EVENT_TEXT, START_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 
 import type { Executor } from '../../../db/client.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { AccountLifecycleRepository } from '../infrastructure/AccountLifecycleRepository.js';
 import { logger } from '../../../shared/utils/logger.js';
 
@@ -28,7 +28,7 @@ export type StartResult =
 	| { status: 'ok'; weaponId: string; armorId: string };
 
 export interface StartDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<AccountLifecycleRepository, 'lockBag' | 'findBag' | 'updateStarterBalances'>;
 	createGearIdGenerator?: (executor: Executor) => Pick<GearIdGenerator, 'generateUniqueGearId'>;
 }
@@ -63,9 +63,9 @@ export class StartService {
 			| undefined = undefined,
 		presets: Pick<PresetRepository, 'createDefaultPresets'> | undefined = undefined,
 		cosmetics: Pick<CosmeticService, 'grantBaseInTx'> | undefined = undefined,
-		options: StartDependencies = {},
+		options: StartDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'StartService');
 		this.users = users ?? new UserRepository();
 		this.characters = characters ?? new UserCharacterRepository();
 		this.gear = gear ?? new GearRepository();
@@ -122,7 +122,7 @@ export class StartService {
 			await this.cosmetics.grantBaseInTx(tx, discordId);
 
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(START_ERROR_TEXT.missingBag(discordId));
+			if (!bag) throw new AppError('START_MISSING_BAG', START_ERROR_TEXT.missingBag(discordId));
 			await this.queries.updateStarterBalances(tx, discordId, {
 				beliefShards: bag.beliefShards + GRANT_BELIEF_SHARDS,
 				silverChest: bag.silverChest + GRANT_SILVER_CHESTS,

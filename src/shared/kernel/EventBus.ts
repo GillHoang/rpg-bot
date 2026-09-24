@@ -22,20 +22,14 @@ type Listener<K extends keyof DomainEvents> = (payload: DomainEvents[K]) => void
 /**
  * Observer pattern: an application-scoped pub/sub bus. Combat/economy code fires
  * events ("what happened") without knowing who cares ("who reacts").
- * Noncritical observers subscribe independently; core rewards commit in the action transaction. getInstance()
- * retains the default bus for callers outside the composed application.
+ * Noncritical observers subscribe independently; core rewards commit in the action transaction.
+ * No static singleton: every graph gets its own instance from createAppContainer.
  */
 export class EventBus {
-	private static instance: EventBus | null = null;
 	private readonly emitter = new EventEmitter();
 
 	constructor() {
 		this.emitter.setMaxListeners(50);
-	}
-
-	static getInstance(): EventBus {
-		EventBus.instance ??= new EventBus();
-		return EventBus.instance;
 	}
 
 	on<K extends keyof DomainEvents>(event: K, listener: Listener<K>): void {

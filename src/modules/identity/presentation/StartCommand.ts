@@ -120,7 +120,7 @@ function confirmView(combatClass: CombatClass): InteractionUpdateOptions {
 export class StartCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('start').setDescription(START_DESCRIPTION);
 
-	constructor(private readonly startService: Pick<StartService, 'start'> = new StartService()) {}
+	constructor(private readonly startService: Pick<StartService, 'start'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		const flow: StartFlow = { pickedClass: null, busy: false, ended: false };

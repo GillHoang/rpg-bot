@@ -32,7 +32,46 @@ The first behavior-preserving refactor established 198 tests in 25 files. This s
 | Interface segregation        | Consumers request only methods they use.                                                                |
 | Dependency inversion         | Use cases accept collaborators and persistence contracts rather than accessing a global DB in handlers. |
 
-Pure arithmetic helpers, immutable configuration and text formatting remain functions/data. Constructor defaults still import concrete adapters for source compatibility: this is explicit dependency injection, not a claim that every module is independent of infrastructure types.
+Pure arithmetic helpers, immutable configuration and text formatting remain functions/data.
+
+## Required persistence + AppError (2026-09-25)
+
+- `PersistenceContext` is now **required**: every service takes it via constructor
+  (`requirePersistence()` in `shared/kernel/persistence.ts` throws
+  `DI_MISSING_PERSISTENCE` when missing). The only `defaultPersistence`
+  fallback left is the composition root (`app/container.ts`) and the
+  `scripts/rolloverSeason.ts` entry point. Repositories take a required
+  executor; `Scheduler`/`BotMaintenance`/`DiscordBot`/all commands take required
+  collaborators. Tests inject `tests/helpers/persistence.ts:testPersistence()`
+  (PGlite mock); an architecture test bans new `defaultPersistence` imports.
+- All service error channels are `AppError` with stable codes
+  (`DI_*`, `*_MISSING_BAG`, …); `CommandRegistry.dispatch` maps `AppError` to
+  the user message, unknown errors to `GENERIC_ERROR`. Pure validation utils
+  (`progressBar`, `weightedRandom`) keep native `RangeError`; CLI scripts keep
+  `Error`. `Clock` is injected everywhere time matters (`BattleEngine` seeds
+  from crypto instead of `Date.now()`); `DrizzleUnitOfWork` retries
+  `40P01/40001` with backoff. SRP extractions: `RaidGatePolicy`,
+  `RankedRatingService`, `QuestTemplatePicker`, `MenuActionRouter`.
+- Full suite: **477 passed / 7 skipped** (postgres-concurrency needs live PG);
+  typecheck + lint + text-boundaries + dist import check pass.
+
+## No-singleton + Result envelope + menu split (2026-09-25)
+
+- `EventBus.getInstance` / `CommandRegistry.getInstance` deleted (no static
+  singletons left). `registerAllCommands`, `DiscordBot`, `subscribeDomainEvents`,
+  `Scheduler`, `BotMaintenance`, `HealthService`, `PingCommand` and all 22
+  presentation commands take required collaborators; `deployCommands` builds an
+  explicit registry. Tests assert `'getInstance' in X === false`.
+- All 17 string-returning application methods now return
+  `Result<string, AppError>` (`LootService` 3, `QuestService` 3, `CosmeticService`
+  4, `PvpShopService.buy`, `LoadoutService` 2, `RankedService.stats`,
+  `SocketService.unlock`, `ClassChangeService.change`); commands reply with
+  `value`/`error.message` (user-visible text unchanged); tests unwrap via
+  `tests/helpers/result.ts:textOf`. Remaining returns are kernel `Result`,
+  `{status}` domain unions, or presentation text — no bare error strings.
+- `MenuGameplayService` (~345 → ~190 lines) is a facade over `MenuGatePanels`
+  (pure gate render), `MenuActionRouter` (stateless routing + pager math) and
+  `MenuBattleFlow` (daily/confirm/fight flows).
 
 ## Compatibility
 

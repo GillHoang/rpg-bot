@@ -1,4 +1,5 @@
 import { RAID_REWARD_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 import type { Executor } from '../../../db/client.js';
 import { RaidRewardStore, type RaidRewardBag } from '../infrastructure/RaidRewardStore.js';
 import { applyCombatExp } from '../../../shared/config/combatExp.js';
@@ -54,8 +55,8 @@ export class RaidRewardService {
 	async grant(executor: Executor, discordId: string, grant: RaidRewardGrant): Promise<RaidRewardResult> {
 		const lockedBag = await this.store.lockBag(executor, discordId);
 		const character = await this.store.lockCharacter(executor, discordId);
-		if (!character) throw new Error(RAID_REWARD_ERROR_TEXT.missingCharacter(discordId));
-		if (!lockedBag) throw new Error(RAID_REWARD_ERROR_TEXT.missingBag(discordId));
+		if (!character) throw new AppError('RAID_REWARD_MISSING_CHARACTER', RAID_REWARD_ERROR_TEXT.missingCharacter(discordId));
+		if (!lockedBag) throw new AppError('RAID_REWARD_MISSING_BAG', RAID_REWARD_ERROR_TEXT.missingBag(discordId));
 		const bag = lockedBag;
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);
 		const won = grant.outcome === 'player_win';

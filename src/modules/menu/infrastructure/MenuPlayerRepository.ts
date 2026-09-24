@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db, type Executor } from '../../../db/client.js';
+import { type Executor } from '../../../db/client.js';
 import { users, userCharacter } from '../../../db/schema.js';
 
 export type MenuPlayerState = Pick<
@@ -15,7 +15,7 @@ export type MenuPlayerState = Pick<
 
 /** Read model needed by menu availability and streak displays. */
 export class MenuPlayerRepository {
-	constructor(private readonly executor: Executor = db) {}
+	constructor(private readonly executor: Executor) {}
 
 	async findState(discordId: string): Promise<MenuPlayerState | undefined> {
 		const [user] = await this.executor

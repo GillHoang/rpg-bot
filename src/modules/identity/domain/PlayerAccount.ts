@@ -1,4 +1,5 @@
 import { ACCOUNT_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 export type CombatClass = 'Swordsman' | 'Fighter' | 'Mage' | 'Knight' | 'Archer';
 
 /**
@@ -24,14 +25,14 @@ export class PlayerAccount {
 
 	spend(amount: number): void {
 		if (!this.canAfford(amount)) {
-			throw new Error(ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount));
+			throw new AppError('ACCOUNT_INSUFFICIENT_CREDUX', ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount));
 		}
 		this.credux -= amount;
 	}
 
 	earn(amount: number): void {
 		if (!Number.isInteger(amount) || amount <= 0) {
-			throw new Error(ACCOUNT_ERROR_TEXT.invalidEarning(amount));
+			throw new AppError('ACCOUNT_INVALID_EARNING', ACCOUNT_ERROR_TEXT.invalidEarning(amount));
 		}
 		this.credux += amount;
 	}

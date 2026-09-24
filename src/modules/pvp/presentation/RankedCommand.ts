@@ -33,7 +33,7 @@ export class RankedCommand implements ICommand {
 		.addSubcommand((s) => s.setName('claim').setDescription(RANKED_CLAIM_DESC))
 		.addSubcommand((s) => s.setName('stats').setDescription(RANKED_STATS_DESC));
 
-	constructor(private readonly ranked: Pick<RankedService, 'claim' | 'stats' | 'fight'> = new RankedService()) {}
+	constructor(private readonly ranked: Pick<RankedService, 'claim' | 'stats' | 'fight'>) {}
 
 	private claimMessage(result: RankedClaimResult): string {
 		switch (result.status) {
@@ -64,7 +64,8 @@ export class RankedCommand implements ICommand {
 		}
 
 		if (sub === 'stats') {
-			await interaction.editReply(await this.ranked.stats(interaction.user.id));
+			const stats = await this.ranked.stats(interaction.user.id);
+			await interaction.editReply(stats.ok ? stats.value : stats.error.message);
 			return;
 		}
 

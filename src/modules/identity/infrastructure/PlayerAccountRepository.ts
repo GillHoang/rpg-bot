@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db, type Executor } from '../../../db/client.js';
+import { type Executor } from '../../../db/client.js';
 import { users, userCharacter, usersBag } from '../../../db/schema.js';
 import { PlayerAccount, type CombatClass } from '../domain/PlayerAccount.js';
 import type { Repository } from '../../../shared/kernel/repository.js';
@@ -9,7 +9,7 @@ import type { Repository } from '../../../shared/kernel/repository.js';
  * keeps standalone reads and explicit transaction reads independently testable.
  */
 export class PlayerAccountRepository implements Repository<PlayerAccount, string> {
-	constructor(private readonly executor: Executor = db) {}
+	constructor(private readonly executor: Executor) {}
 
 	async findById(discordId: string): Promise<PlayerAccount | null> {
 		return this.findByIdWithExecutor(this.executor, discordId);

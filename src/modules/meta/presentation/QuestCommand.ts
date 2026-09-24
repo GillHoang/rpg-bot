@@ -17,20 +17,23 @@ export class QuestCommand implements ICommand {
 		.addSubcommand((s) => s.setName('claim').setDescription(QUEST_CLAIM_DESC));
 
 	constructor(
-		private readonly quests: Pick<QuestService, 'refresh' | 'claimWeeklyGrand' | 'view'> = new QuestService(),
+		private readonly quests: Pick<QuestService, 'refresh' | 'claimWeeklyGrand' | 'view'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
 		const sub = interaction.options.getSubcommand(false);
 		if (sub === 'refresh') {
-			await interaction.editReply(await this.quests.refresh(interaction.user.id));
+			const refreshed = await this.quests.refresh(interaction.user.id);
+			await interaction.editReply(refreshed.ok ? refreshed.value : refreshed.error.message);
 			return;
 		}
 		if (sub === 'claim') {
-			await interaction.editReply(await this.quests.claimWeeklyGrand(interaction.user.id));
+			const claimed = await this.quests.claimWeeklyGrand(interaction.user.id);
+			await interaction.editReply(claimed.ok ? claimed.value : claimed.error.message);
 			return;
 		}
-		await interaction.editReply(await this.quests.view(interaction.user.id));
+		const viewed = await this.quests.view(interaction.user.id);
+		await interaction.editReply(viewed.ok ? viewed.value : viewed.error.message);
 	}
 }

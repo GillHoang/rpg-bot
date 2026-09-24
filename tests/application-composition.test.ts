@@ -75,13 +75,14 @@ describe('application composition', () => {
 		expect(award).not.toHaveBeenCalled();
 	});
 
-	it('keeps zero-argument registration on the legacy shared menu and event bus', async () => {
+	it('builds explicit registration on an isolated event bus, never a shared singleton', async () => {
 		const open = vi.spyOn(menuRouter, 'open').mockResolvedValue();
-		const singleton = vi.spyOn(EventBus, 'getInstance');
-		registerAllCommands();
-		expect(singleton).toHaveBeenCalled();
+		const explicit = createAppContainer({ persistence: context(), menu: menuRouter });
+		const registry = new CommandRegistry();
+		registerAllCommands(explicit, registry);
+		expect(registry.getAll()).toHaveLength(28);
 		const interaction = {} as ChatInputCommandInteraction;
-		await CommandRegistry.getInstance()
+		await registry
 			.getAll()
 			.find((command) => command.data.name === 'menu')!
 			.execute(interaction);

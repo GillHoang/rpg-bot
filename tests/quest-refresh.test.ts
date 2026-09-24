@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
+import { textOf } from './helpers/result.js';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { and, eq } from 'drizzle-orm';
 
@@ -37,7 +39,7 @@ beforeEach(async () => {
 
 describe('QuestService.refresh', () => {
 	it('keeps completed quests and tops the board back up to 3', async () => {
-		const quests = new QuestService();
+		const quests = new QuestService(undefined, { persistence: testPersistence() });
 		const day = DailyCycle.keyAt();
 
 		// rng 0 → raid_win ×5, summon ×3, enhance ×2. Finish only raid_win.
@@ -51,7 +53,7 @@ describe('QuestService.refresh', () => {
 		expect(before.filter((q) => q.completed)).toHaveLength(1);
 
 		// Refresh: the two unfinished quests reroll, the finished one stays.
-		expect(await quests.refresh(id)).not.toContain('/register');
+		expect(textOf(await quests.refresh(id))).not.toContain('/register');
 		const after = await db
 			.select()
 			.from(s.dailyQuests)
@@ -65,9 +67,10 @@ describe('QuestService.refresh', () => {
 	});
 
 	it('allows one refresh per day only', async () => {
-		const quests = new QuestService();
+		const quests = new QuestService(undefined, { persistence: testPersistence() });
 		await quests.view(id);
-		expect(await quests.refresh(id)).toBe(QUEST_REFRESH_DONE);
-		expect(await quests.refresh(id)).toContain('Đã refresh daily hôm nay');
+		const first = await quests.refresh(id);
+		expect(first.ok ? first.value : null).toBe(QUEST_REFRESH_DONE);
+		expect(textOf(await quests.refresh(id))).toContain('Đã refresh daily hôm nay');
 	});
 });

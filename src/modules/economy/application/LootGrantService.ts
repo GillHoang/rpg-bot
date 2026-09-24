@@ -1,4 +1,5 @@
 import { LOOT_GEAR_RECEIVED, LOOT_SEED_TEXT } from '../../../shared/ui/text/loot.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 
 import { randomUUID } from 'node:crypto';
 import type { Executor } from '../../../db/client.js';
@@ -17,7 +18,7 @@ export class LootGrantService {
 	async rune(tx: Executor, id: string, rng: () => number, filter: { tier?: string; names?: string[] }) {
 		const pool = await this.repo.findRunePool(tx, filter);
 		if (filter.names?.some((name) => !pool.some((r) => r.name === name)))
-			throw new Error(LOOT_SEED_TEXT.missingRune);
+			throw new AppError('LOOT_SEED_MISSING_RUNE', LOOT_SEED_TEXT.missingRune);
 		const rune = choose(pool, rng);
 		const runeUid = `r_${randomUUID()}`;
 		await this.repo.insertRune(tx, { discordId: id, runeUid, runeId: rune.runeId });

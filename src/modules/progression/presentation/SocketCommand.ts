@@ -81,11 +81,11 @@ export class SocketCommand implements ICommand {
 		);
 
 	constructor(
-		private readonly socket: Pick<SocketService, 'unlock' | 'equip' | 'unequip'> = new SocketService(),
+		private readonly socket: Pick<SocketService, 'unlock' | 'equip' | 'unequip'>,
 		private readonly inventory: Pick<
 			InventoryService,
 			'searchWeapons' | 'searchArmors' | 'searchRunes'
-		> = new InventoryService(),
+		>,
 	) {}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -116,9 +116,11 @@ export class SocketCommand implements ICommand {
 		await interaction.deferReply();
 		const sub = interaction.options.getSubcommand(true);
 		if (sub === 'unlock') {
-			await interaction.editReply(
-				await this.socket.unlock(interaction.user.id, interaction.options.getString('gear_id', true)),
+			const unlocked = await this.socket.unlock(
+				interaction.user.id,
+				interaction.options.getString('gear_id', true),
 			);
+			await interaction.editReply(unlocked.ok ? unlocked.value : unlocked.error.message);
 			return;
 		}
 		const runeUid = interaction.options.getString('rune_uid', true);

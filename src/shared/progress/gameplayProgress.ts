@@ -1,12 +1,11 @@
 import type { QuestType } from '../config/quests.js';
 import type { Executor } from '../../db/client.js';
-import type { PersistenceContext } from '../kernel/persistence.js';
-import { defaultPersistence } from '../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../kernel/persistence.js';
 import { QuestService } from '../../modules/meta/application/QuestService.js';
 import { ReputationService } from '../../modules/meta/application/ReputationService.js';
 
 export interface GameplayProgressDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	quests?: Pick<QuestService, 'progressInTx'>;
 	reputation?: Pick<ReputationService, 'awardInTx'>;
 }
@@ -16,8 +15,8 @@ export class GameplayProgressCoordinator {
 	private readonly quests: Pick<QuestService, 'progressInTx'>;
 	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
 
-	constructor(options: GameplayProgressDependencies = {}) {
-		const persistence = options.persistence ?? defaultPersistence;
+	constructor(options: GameplayProgressDependencies) {
+		const persistence = requirePersistence(options, 'GameplayProgressCoordinator');
 		this.reputation = options.reputation ?? new ReputationService({ persistence });
 		this.quests = options.quests ?? new QuestService(this.reputation, { persistence });
 	}

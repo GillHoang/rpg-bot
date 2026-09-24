@@ -1,5 +1,4 @@
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { AccountLifecycleRepository } from '../infrastructure/AccountLifecycleRepository.js';
 
 import { CLASSES } from '../../../shared/config/classes.js';
@@ -12,9 +11,10 @@ import {
 	CLASS_SAME,
 } from '../../../shared/ui/text/class.js';
 import type { CombatClass } from '../domain/PlayerAccount.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 
 export interface ClassChangeDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<
 		AccountLifecycleRepository,
 		'lockCharacter' | 'lockBagForClassChange' | 'updateClass' | 'updateClassTokens'
@@ -31,22 +31,22 @@ export interface ClassChangeDependencies {
 export class ClassChangeService {
 	private readonly persistence: PersistenceContext;
 	private readonly queries: NonNullable<ClassChangeDependencies['queries']>;
-	constructor(options: ClassChangeDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(options: ClassChangeDependencies) {
+		this.persistence = requirePersistence(options, 'ClassChangeService');
 		this.queries = options.queries ?? new AccountLifecycleRepository();
 	}
-	async change(discordId: string, newClass: CombatClass): Promise<string> {
-		if (!(newClass in CLASSES)) return CLASS_INVALID;
-		return this.persistence.unitOfWork.run(async (tx) => {
+	async change(discordId: string, newClass: CombatClass): Promise<Result<string, AppError>> {
+		if (!(newClass in CLASSES)) return err(new AppError('CLASS_INVALID', CLASS_INVALID));
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [bag] = await this.queries.lockBagForClassChange(tx, discordId);
 			const [character] = await this.queries.lockCharacter(tx, discordId);
-			if (!character) return CLASS_NO_CHARACTER;
-			if (!bag) return CLASS_NO_REGISTER;
-			if (bag.changeClass < 1) return CLASS_NO_TOKEN;
-			if (character.class === newClass) return CLASS_SAME;
+			if (!character) return err(new AppError('CLASS_NO_CHARACTER', CLASS_NO_CHARACTER));
+			if (!bag) return err(new AppError('CLASS_NO_REGISTER', CLASS_NO_REGISTER));
+			if (bag.changeClass < 1) return err(new AppError('CLASS_NO_TOKEN', CLASS_NO_TOKEN));
+			if (character.class === newClass) return err(new AppError('CLASS_SAME_CLASS', CLASS_SAME));
 			await this.queries.updateClass(tx, discordId, { class: newClass });
 			await this.queries.updateClassTokens(tx, discordId, { changeClass: bag.changeClass - 1 });
-			return CLASS_CHANGED(newClass, bag.changeClass - 1);
+			return ok(CLASS_CHANGED(newClass, bag.changeClass - 1));
 		});
 	}
 }

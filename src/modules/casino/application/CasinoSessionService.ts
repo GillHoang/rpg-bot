@@ -9,8 +9,7 @@ import {
 	CASINO_SETTLE_LINE,
 } from '../../../shared/ui/text/casino.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { CasinoSessionRepository } from '../infrastructure/CasinoSessionRepository.js';
 import type { activeCasinoSessions } from '../../../db/schema.js';
 import { randomUUID } from 'node:crypto';
@@ -25,7 +24,7 @@ export type SessionView =
 	| { status: 'error'; text: string };
 export interface CasinoSessionDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 	queries?: Pick<
 		CasinoSessionRepository,
@@ -58,8 +57,8 @@ export class CasinoSessionService {
 		| 'findExpiredSessions'
 	>;
 
-	constructor(options: CasinoSessionDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(options: CasinoSessionDependencies) {
+		this.persistence = requirePersistence(options, 'CasinoSessionService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.queries = options.queries ?? new CasinoSessionRepository();

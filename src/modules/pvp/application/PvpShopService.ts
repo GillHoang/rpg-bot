@@ -1,6 +1,6 @@
 import { SeasonService } from '../../meta/application/SeasonService.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { PvpShopRepository } from '../infrastructure/PvpShopRepository.js';
 import { PVP_SHOP_ITEMS, type PvpShopItem } from '../../../shared/config/pvpShop.js';
 import type { Executor } from '../../../db/client.js';
@@ -23,7 +23,8 @@ import {
 } from '../../../shared/ui/text/pvp.js';
 
 export interface PvpShopDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
+	seasons?: Pick<SeasonService, 'ensureActive'>;
 	queries?: Pick<
 		PvpShopRepository,
 		'lockCharacter' | 'lockBag' | 'findCosmeticTier' | 'findPurchase' | 'incrementPurchase' | 'updateBag'
@@ -39,7 +40,7 @@ type LockedBag = Awaited<ReturnType<PvpShopRepository['lockBag']>>[number];
  */
 
 export class PvpShopService {
-	private readonly seasons = new SeasonService();
+	private readonly seasons: Pick<SeasonService, 'ensureActive'>;
 	private readonly persistence: PersistenceContext;
 	private readonly cosmetics: Pick<CosmeticService, 'grantCosmeticInTx' | 'grantTitleInTx'>;
 	private readonly queries: Pick<
@@ -49,9 +50,10 @@ export class PvpShopService {
 
 	constructor(
 		cosmetics?: Pick<CosmeticService, 'grantCosmeticInTx' | 'grantTitleInTx'>,
-		options: PvpShopDependencies = {},
+		options: PvpShopDependencies = {} as PvpShopDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'PvpShopService');
+		this.seasons = options.seasons ?? new SeasonService(this.persistence);
 		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
 		this.queries = options.queries ?? new PvpShopRepository();
 	}
@@ -65,15 +67,16 @@ export class PvpShopService {
 		);
 	}
 
-	async buy(discordId: string, itemKey: string): Promise<string> {
+	async buy(discordId: string, itemKey: string): Promise<Result<string, AppError>> {
 		const item = PVP_SHOP_ITEMS.find((i) => i.key === itemKey);
-		if (!item) return PVP_ITEM_NOT_FOUND;
-		return this.persistence.unitOfWork.run(async (tx) => {
+		if (!item) return err(new AppError('PVP_ITEM_NOT_FOUND', PVP_ITEM_NOT_FOUND));
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [bag] = await this.queries.lockBag(tx, discordId);
 			const [character] = await this.queries.lockCharacter(tx, discordId);
-			if (!character) return PVP_NO_CHARACTER;
-			if (!bag) return PVP_NO_REGISTER;
-			if (bag.valorMedals < item.cost) return PVP_INSUFFICIENT(item.cost, bag.valorMedals);
+			if (!character) return err(new AppError('PVP_NO_CHARACTER', PVP_NO_CHARACTER));
+			if (!bag) return err(new AppError('PVP_NO_REGISTER', PVP_NO_REGISTER));
+			if (bag.valorMedals < item.cost)
+				return err(new AppError('PVP_INSUFFICIENT', PVP_INSUFFICIENT(item.cost, bag.valorMedals)));
 
 			const season = await this.seasons.ensureActive(tx);
 			const restriction = await this.purchaseRestriction(
@@ -83,7 +86,7 @@ export class PvpShopService {
 				character.believerLevel,
 				season.seasonId,
 			);
-			if (restriction) return restriction;
+			if (restriction) return err(restriction);
 			return this.settlePurchase(tx, discordId, item, bag, season.seasonId);
 		});
 	}
@@ -94,15 +97,15 @@ export class PvpShopService {
 		item: PvpShopItem,
 		bag: LockedBag,
 		seasonId: number,
-	): Promise<string> {
+	): Promise<Result<string, AppError>> {
 		// Grant first: a duplicate must consume neither currency nor seasonal quota.
 		if (item.kind.type === 'cosmetic') {
 			const granted = await this.cosmetics.grantCosmeticInTx(tx, discordId, item.kind.cosmeticKey, 'shop');
-			if (!granted) return PVP_ALREADY_OWNED;
+			if (!granted) return err(new AppError('PVP_ALREADY_OWNED', PVP_ALREADY_OWNED));
 		}
 		if (item.kind.type === 'title') {
 			const granted = await this.cosmetics.grantTitleInTx(tx, discordId, item.kind.titleCode);
-			if (!granted) return PVP_ALREADY_OWNED;
+			if (!granted) return err(new AppError('PVP_ALREADY_OWNED', PVP_ALREADY_OWNED));
 		}
 		if (item.kind.type !== 'bag' && item.limitPerSeason) {
 			await this.queries.incrementPurchase(tx, {
@@ -118,9 +121,11 @@ export class PvpShopService {
 			await this.queries.updateBag(tx, discordId, {
 				[item.kind.field]: bag[item.kind.field] + item.kind.qty,
 			});
-			return PVP_BOUGHT_BAG(item.label, item.kind.qty);
+			return ok(PVP_BOUGHT_BAG(item.label, item.kind.qty));
 		}
-		return item.kind.type === 'cosmetic' ? PVP_BOUGHT_COSMETIC(item.label) : PVP_BOUGHT_TITLE(item.label);
+		return ok(
+			item.kind.type === 'cosmetic' ? PVP_BOUGHT_COSMETIC(item.label) : PVP_BOUGHT_TITLE(item.label),
+		);
 	}
 
 	private async purchaseRestriction(
@@ -129,16 +134,18 @@ export class PvpShopService {
 		item: PvpShopItem,
 		believerLevel: number,
 		seasonId: number,
-	): Promise<string | undefined> {
+	): Promise<AppError | undefined> {
 		if (item.kind.type === 'cosmetic') {
 			// Cosmetic tiers gate on believer level — same rule as /cosmetic equip.
 			const [catalog] = await this.queries.findCosmeticTier(tx, item.kind.cosmeticKey);
 			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog?.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
-			if (minLevel != null && believerLevel < minLevel) return PVP_TIER_LOCKED(minLevel, believerLevel);
+			if (minLevel != null && believerLevel < minLevel)
+				return new AppError('PVP_TIER_LOCKED', PVP_TIER_LOCKED(minLevel, believerLevel));
 		}
 		if (item.kind.type !== 'bag' && item.limitPerSeason) {
 			const [purchase] = await this.queries.findPurchase(tx, discordId, seasonId, item.key);
-			if ((purchase?.qty ?? 0) >= item.limitPerSeason) return PVP_SEASON_LIMIT(item.limitPerSeason);
+			if ((purchase?.qty ?? 0) >= item.limitPerSeason)
+				return new AppError('PVP_SEASON_LIMIT', PVP_SEASON_LIMIT(item.limitPerSeason));
 		}
 		return undefined;
 	}

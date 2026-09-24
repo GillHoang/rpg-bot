@@ -8,7 +8,7 @@ import { NOT_REGISTERED, NO_CHARACTER } from '../../../shared/ui/text/common.js'
 export class ProfileCommand implements ICommand {
 	readonly data = new SlashCommandBuilder().setName('profile').setDescription(PROFILE_DESCRIPTION);
 
-	constructor(private readonly profile: Pick<ProfileService, 'get'> = new ProfileService()) {}
+	constructor(private readonly profile: Pick<ProfileService, 'get'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Canvas render + SQLite reads can exceed the 3s reply window — acknowledge first.

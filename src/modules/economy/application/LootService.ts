@@ -1,14 +1,13 @@
 import { formatNumber } from '../../../shared/ui/text/format.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { LootGrantService } from './LootGrantService.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { LootInventoryRepository } from '../infrastructure/LootInventoryRepository.js';
 import { LootRepository } from '../infrastructure/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../../../shared/config/chestLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
-import { AppError } from '../../../shared/kernel/Result.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import {
 	OPEN_BAD_COUNT,
@@ -44,7 +43,7 @@ export const ESSENCE_FIELDS = {
 export interface LootDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	grants?: Pick<LootGrantService, 'rune' | 'gear'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 	queries?: Pick<LootInventoryRepository, 'updateBag'>;
 }
@@ -60,8 +59,8 @@ export class LootService {
 	private readonly events: Pick<EventBus, 'emit'>;
 	private readonly queries: Pick<LootInventoryRepository, 'updateBag'>;
 
-	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {} as LootDependencies) {
+		this.persistence = requirePersistence(options, 'LootService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new LootRepository();
@@ -74,14 +73,15 @@ export class LootService {
 		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new LootInventoryRepository();
 	}
-	async open(id: string, key: ChestKey, count: number): Promise<string> {
-		if (!Object.hasOwn(CHESTS, key) || !Number.isInteger(count) || count < 1 || count > 10) return OPEN_BAD_COUNT;
+	async open(id: string, key: ChestKey, count: number): Promise<Result<string, AppError>> {
+		if (!Object.hasOwn(CHESTS, key) || !Number.isInteger(count) || count < 1 || count > 10)
+			return err(new AppError('LOOT_BAD_COUNT', OPEN_BAD_COUNT));
 		let opened = false;
-		const message = await this.persistence.unitOfWork.run(async (tx) => {
+		const message = await this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const bag = await this.repo.lockBag(tx, id);
-			if (!bag) return OPEN_NO_REGISTER;
+			if (!bag) return err(new AppError('LOOT_NO_REGISTER', OPEN_NO_REGISTER));
 			const table = CHESTS[key];
-			if (bag[table.column] < count) return OPEN_NO_CHESTS;
+			if (bag[table.column] < count) return err(new AppError('LOOT_NO_CHESTS', OPEN_NO_CHESTS));
 			opened = true;
 			const rng = createRng(createSecureSeed());
 			const items: string[] = [];
@@ -128,25 +128,26 @@ export class LootService {
 			});
 			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
 			await this.progress.apply(tx, id, 'open_chest', this.clock.now(), count);
-			return (
+			return ok(
 				OPEN_RESULT(count, table.label, formatNumber(creux), shards) +
-				(items.length ? '\n' + items.join('\n') : '') +
-				OPEN_HINT
+					(items.length ? '\n' + items.join('\n') : '') +
+					OPEN_HINT,
 			);
 		});
-		if (opened) this.events.emit('chest.opened', { discordId: id, chest: key, count, progressApplied: true });
+		if (message.ok && opened)
+			this.events.emit('chest.opened', { discordId: id, chest: key, count, progressApplied: true });
 		return message;
 	}
 
 	/** /runes open bag:lb|gb|db — mở 1 túi rune đang nằm trong bag theo pool đã seed. */
-	async openRuneBag(id: string, bagKey: string): Promise<string> {
+	async openRuneBag(id: string, bagKey: string): Promise<Result<string, AppError>> {
 		const field = { lb: 'lesserRuneBag', gb: 'greaterRuneBag', db: 'divineRuneBag' } as const;
-		if (!Object.hasOwn(field, bagKey)) return RUNE_BAG_BAD_KEY;
-		return this.persistence.unitOfWork.run(async (tx) => {
+		if (!Object.hasOwn(field, bagKey)) return err(new AppError('RUNE_BAG_BAD_KEY', RUNE_BAG_BAD_KEY));
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const bag = await this.repo.lockBag(tx, id);
-			if (!bag) return OPEN_NO_REGISTER;
+			if (!bag) return err(new AppError('LOOT_NO_REGISTER', OPEN_NO_REGISTER));
 			const key = field[bagKey as keyof typeof field];
-			if (bag[key] < 1) return RUNE_BAG_EMPTY;
+			if (bag[key] < 1) return err(new AppError('RUNE_BAG_EMPTY', RUNE_BAG_EMPTY));
 			const offer = (await this.repo.bags(tx)).find((b) => b.bagKey === bagKey);
 			if (
 				!offer ||
@@ -157,14 +158,14 @@ export class LootService {
 				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, { [key]: bag[key] - 1 });
-			return RUNE_BAG_OPENED(bagKey, item) + RUNE_BAG_HINT;
+			return ok(RUNE_BAG_OPENED(bagKey, item) + RUNE_BAG_HINT);
 		});
 	}
 
-	async shop(id: string, key?: string): Promise<string> {
+	async shop(id: string, key?: string): Promise<Result<string, AppError>> {
 		if (!key) {
 			const bags = await this.repo.bags(this.persistence.executor);
-			return (
+			return ok(
 				bags
 					.map(
 						(b) =>
@@ -172,17 +173,23 @@ export class LootService {
 							'\n' +
 							RUNES_SHOP_POOL((b.runePool as string[]).join(', ')),
 					)
-					.join('\n\n') + RUNES_SHOP_FOOTER
+					.join('\n\n') + RUNES_SHOP_FOOTER,
 			);
 		}
-		return this.persistence.unitOfWork.run(async (tx) => {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const bag = await this.repo.lockBag(tx, id);
-			if (!bag) return OPEN_NO_REGISTER;
+			if (!bag) return err(new AppError('LOOT_NO_REGISTER', OPEN_NO_REGISTER));
 			const offer = (await this.repo.bags(tx)).find((b) => b.bagKey === key);
-			if (!offer || !Object.hasOwn(ESSENCE_FIELDS, offer.essenceTier)) return RUNES_BAG_NOT_FOUND;
+			if (!offer || !Object.hasOwn(ESSENCE_FIELDS, offer.essenceTier))
+				return err(new AppError('RUNES_BAG_NOT_FOUND', RUNES_BAG_NOT_FOUND));
 			const field = ESSENCE_FIELDS[offer.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < offer.creduxCost || bag[field] < offer.essenceCost)
-				return RUNES_COST_NEEDED(offer.essenceCost, offer.essenceTier, formatNumber(offer.creduxCost));
+				return err(
+					new AppError(
+						'RUNES_COST_NEEDED',
+						RUNES_COST_NEEDED(offer.essenceCost, offer.essenceTier, formatNumber(offer.creduxCost)),
+					),
+				);
 			if (
 				!Array.isArray(offer.runePool) ||
 				!offer.runePool.length ||
@@ -195,7 +202,7 @@ export class LootService {
 				[field]: bag[field] - offer.essenceCost,
 			});
 			await this.repo.log(tx, id, `Rune bag ${key}`, bag.credux, bag.credux - offer.creduxCost);
-			return RUNE_RECEIVED(item) + RUNE_RECEIVED_HINT;
+			return ok(RUNE_RECEIVED(item) + RUNE_RECEIVED_HINT);
 		});
 	}
 }

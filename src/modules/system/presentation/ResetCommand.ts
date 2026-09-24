@@ -63,7 +63,7 @@ export class ResetCommand implements ICommand {
 		private readonly reset: Pick<
 			ResetService,
 			'countAll' | 'resetAll' | 'countUser' | 'resetUser'
-		> = new ResetService(),
+		>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {

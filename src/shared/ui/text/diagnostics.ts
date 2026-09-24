@@ -61,6 +61,18 @@ export const DATABASE_LOG_TEXT = {
 	migrationsApplied: 'Migrations applied.',
 } as const;
 
+/** kernel/persistence + composition roots: dependency-injection wiring failures */
+export const DI_ERROR_TEXT = {
+	missingPersistence: (service: string): string =>
+		`${service} requires an explicit PersistenceContext (pass { persistence } from createAppContainer or tests/helpers/persistence)`,
+	menuNotWired:
+		'MenuGameplay requires createAppContainer (pass an explicit MenuGameplay, no global singleton)',
+	controllerRequired:
+		'interactiveCasino requires an explicit InteractiveCasinoController (pass new InteractiveCasinoController(sessions))',
+	healthRequiresDatabase:
+		'HealthService requires an explicit HealthDatabase or probe (pass services.health from createAppContainer)',
+} as const;
+
 /** menu/MenuGameplayService */
 export const MENU_ERROR_TEXT = {
 	playerDisappeared: 'Menu player disappeared',

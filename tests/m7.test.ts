@@ -1,4 +1,6 @@
 import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
+import { textOf } from './helpers/result.js';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { eq } from 'drizzle-orm';
 
@@ -34,6 +36,7 @@ import { COSMETIC_SEED } from '../src/modules/meta/seed/cosmetics.js';
 import { TITLE_SEED } from '../src/modules/meta/seed/titles.js';
 import { RANKED_REWARD_SEED } from '../src/modules/pvp/seed/rankedRewards.js';
 import { subscribeDomainEvents } from '../src/app/events.js';
+import { EventBus } from '../src/shared/kernel/EventBus.js';
 import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 
 let id: string;
@@ -55,13 +58,13 @@ beforeAll(async () => {
 	await db.insert(s.rankedReward).values(RANKED_REWARD_SEED);
 	// Wire the real EventBus subscribers — duel/ranked believer EXP and quest
 	// progress travel through the bus, exactly like production bootstrap.
-	subscribeDomainEvents();
+	subscribeDomainEvents(new EventBus());
 }, 120000);
 afterAll(async () => { await pool.end(); });
 beforeEach(async () => {
 	vi.restoreAllMocks();
 	id = `test-${++sequence}`;
-	const c = await new StartService().start(id, id, 'Knight');
+	const c = await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id, id, 'Knight');
 	if (c.status !== 'ok') throw new Error(c.status);
 });
 
@@ -78,26 +81,26 @@ describe('M7 pantheon + resonance', () => {
 		const ud1 = await grantDeity(1); // Bathala 180/900/160 — Filipino
 		const ud2 = await grantDeity(2); // Amihan 210/780/140 — Filipino
 		const ud3 = await grantDeity(3); // Amanikable 195/850/155 — Filipino
-		const loadout = new LoadoutService();
-		const base = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		const loadout = new LoadoutService({ persistence: testPersistence() });
+		const base = await new StatAssemblyService(undefined, undefined, undefined, { persistence: testPersistence() }).assemble(id, 'Knight', 1);
 
 		await loadout.equip(id, 'deity', String(ud1));
-		const one = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		const one = await new StatAssemblyService(undefined, undefined, undefined, { persistence: testPersistence() }).assemble(id, 'Knight', 1);
 		// Sigil 0 → 50% base: Bathala eff atk 90, hp 450, def 80. No resonance alone.
 		expect(one.stats.atk).toBe(base.stats.atk + 90);
 		expect(one.blessings[0]).toEqual({ key: 'guardian_light', strength: 0.5 });
 
 		await loadout.equip(id, 'deity2', String(ud2));
-		const two = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		const two = await new StatAssemblyService(undefined, undefined, undefined, { persistence: testPersistence() }).assemble(id, 'Knight', 1);
 		// Pair resonance ×1.1: atk (90 + 0.5×105)×1.1 = 156.75 → 156.
 		expect(two.stats.atk).toBe(base.stats.atk + Math.floor((90 + 0.5 * 105) * 1.1));
 		expect(two.stats.hp).toBe(base.stats.hp + Math.floor((450 + 0.5 * 390) * 1.1));
 
 		// A deity cannot hold two slots at once.
-		await expect(loadout.equip(id, 'deity', String(ud2))).resolves.toContain('slot pantheon khác');
+		expect(textOf(await loadout.equip(id, 'deity', String(ud2)))).toContain('slot pantheon khác');
 
 		await loadout.equip(id, 'deity3', String(ud3));
-		const three = await new StatAssemblyService().assemble(id, 'Knight', 1);
+		const three = await new StatAssemblyService(undefined, undefined, undefined, { persistence: testPersistence() }).assemble(id, 'Knight', 1);
 		// Triple resonance ×1.2: (90 + 52.5 + 0.25×97.5)×1.2 = 200.25 → 200.
 		expect(three.stats.atk).toBe(base.stats.atk + Math.floor((90 + 52.5 + 0.25 * 97.5) * 1.2));
 	});
@@ -106,8 +109,8 @@ describe('M7 pantheon + resonance', () => {
 describe('M7 quests + believer EXP', () => {
 	it('generates quests lazily, credits rewards and pays the daily relic + weekly grand', async () => {
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0); // deterministic picks + min rewards
-		const quests = new QuestService();
-		const view = await quests.view(id);
+		const quests = new QuestService(undefined, { persistence: testPersistence() });
+		const view = textOf(await quests.view(id));
 		expect(view).toContain('Thắng 5 lượt /raid hunt');
 		expect(view).toContain('Weekly quests');
 
@@ -125,9 +128,9 @@ describe('M7 quests + believer EXP', () => {
 		for (let i = 0; i < 15; i++) await quests.progress(id, 'raid_win');
 		for (let i = 0; i < 10; i++) await quests.progress(id, 'summon');
 		for (let i = 0; i < 5; i++) await quests.progress(id, 'duel_win');
-		expect(await quests.claimWeeklyGrand(id)).toContain('Weekly Grand');
+		expect(textOf(await quests.claimWeeklyGrand(id))).toContain('Weekly Grand');
 		expect((await bag()).diamondChest).toBe(1);
-		expect(await quests.claimWeeklyGrand(id)).toContain('đã nhận');
+		expect(textOf(await quests.claimWeeklyGrand(id))).toContain('đã nhận');
 
 		// Non-rolled quest types are a no-op.
 		await quests.progress(id, 'daily');
@@ -136,16 +139,16 @@ describe('M7 quests + believer EXP', () => {
 
 	it('answers view/claim politely before registration instead of crashing on FK', async () => {
 		const ghost = `ghost-${++sequence}`;
-		const quests = new QuestService();
-		expect(await quests.view(ghost)).toContain('/start');
-		expect(await quests.claimWeeklyGrand(ghost)).toContain('/start');
+		const quests = new QuestService(undefined, { persistence: testPersistence() });
+		expect(textOf(await quests.view(ghost))).toContain('/start');
+		expect(textOf(await quests.claimWeeklyGrand(ghost))).toContain('/start');
 		// Nothing was lazily generated for the unregistered id.
 		expect(await db.select().from(s.dailyQuests).where(eq(s.dailyQuests.discordId, ghost))).toHaveLength(0);
 		expect(await db.select().from(s.weeklyQuests).where(eq(s.weeklyQuests.discordId, ghost))).toHaveLength(0);
 	});
 
 	it('caps believer EXP per Vietnam day and levels up at the threshold', async () => {
-		const reputation = new ReputationService();
+		const reputation = new ReputationService({ persistence: testPersistence() });
 		for (let i = 0; i < 10; i++) await reputation.award(id, 'daily'); // 10×50 = cap 500
 		const [c1] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(c1.believerLevel).toBe(2); // cost(1) = 500 → level up with 0 left
@@ -165,11 +168,11 @@ describe('M7 duels', () => {
 
 	it('creates, accepts, pays the wager to the winner and logs everything', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new StartService().start(id2, id2, 'Mage');
+		await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id2, id2, 'Mage');
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id));
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id2));
 
-		const duels = new DuelService();
+		const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		expect(await duels.create(id, id, 1000)).toEqual({ status: 'self' });
 		expect(await duels.create(id, id2, DUEL_STAKE_MIN - 1)).toEqual({ status: 'invalid-stake' });
 		expect(await duels.create(id, 'ghost', 0)).toEqual({ status: 'not-registered', who: 'opponent' });
@@ -206,8 +209,8 @@ describe('M7 duels', () => {
 
 	it('declines, expires and refunds nothing on pending wagers', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new StartService().start(id2, id2, 'Mage');
-		const duels = new DuelService();
+		await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id2, id2, 'Mage');
+		const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 
 		const created = await duels.create(id, id2, 0);
 		expect(await duels.decline((created as { duelId: string }).duelId, id)).toBe(true);
@@ -224,7 +227,7 @@ describe('M7 duels', () => {
 
 	it('records completed duel draws without inventing a winner or changing counters', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new StartService().start(id2, id2, 'Mage');
+		await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id2, id2, 'Mage');
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id));
 		await db.update(s.usersBag).set({ credux: 5000 }).where(eq(s.usersBag.discordId, id2));
 		vi.spyOn(BattleEngine.prototype, 'resolve').mockReturnValue({
@@ -236,7 +239,7 @@ describe('M7 duels', () => {
 			enemyHpRemaining: 100,
 		});
 
-		const duels = new DuelService();
+		const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		const created = await duels.create(id, id2, 1000);
 		if (created.status !== 'ok') throw new Error(`duel create failed: ${created.status}`);
 		const result = await duels.accept(created.duelId, id2);
@@ -263,9 +266,9 @@ describe('M7 duels', () => {
 describe('M7 ranked', () => {
 	it('fights an async mirror match, moves Elo both ways and pays the weekly claim once', async () => {
 		const id2 = `test-${++sequence}-opponent`;
-		await new StartService().start(id2, id2, 'Mage');
+		await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id2, id2, 'Mage');
 
-		const ranked = new RankedService();
+		const ranked = new RankedService(undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		expect(await ranked.claim(id)).toEqual({ status: 'no-fights' });
 
 		const result = await ranked.fight(id);
@@ -297,7 +300,7 @@ describe('M7 ranked', () => {
 describe('M7 relics, rune bags and new chests', () => {
 	it('pulls forced tiers with relics without touching pity or shards', async () => {
 		await db.update(s.usersBag).set({ sacredRelics: 2, supremeRelics: 1 }).where(eq(s.usersBag.discordId, id));
-		const result = await new RunSummonUseCase().run(id, 2, 'sacred');
+		const result = await new RunSummonUseCase(undefined, undefined, undefined, { persistence: testPersistence() }).run(id, 2, 'sacred');
 		if (result.status !== 'ok') throw new Error(`relic pull failed: ${result.status}`);
 		expect(result.pulls.every((p) => p.tier === 'Mythic' || p.tier === 'Legendary' || p.tier === 'Supreme')).toBe(true);
 		expect((await bag()).sacredRelics).toBe(0);
@@ -306,38 +309,38 @@ describe('M7 relics, rune bags and new chests', () => {
 		expect(grants).toHaveLength(2);
 		const [pity] = await db.select().from(s.pityCounters).where(eq(s.pityCounters.discordId, id));
 		expect(pity?.pityCount ?? 0).toBe(0); // pity untouched
-		expect(await new RunSummonUseCase().run(id, 1, 'sacred')).toEqual({
+		expect(await new RunSummonUseCase(undefined, undefined, undefined, { persistence: testPersistence() }).run(id, 1, 'sacred')).toEqual({
 			status: 'insufficient-relics', relic: 'sacred', needed: 1, have: 0,
 		});
-		const supreme = await new RunSummonUseCase().run(id, 1, 'supreme');
+		const supreme = await new RunSummonUseCase(undefined, undefined, undefined, { persistence: testPersistence() }).run(id, 1, 'supreme');
 		if (supreme.status !== 'ok') throw new Error('supreme relic failed');
 		expect(['Legendary', 'Supreme']).toContain(supreme.pulls[0].tier);
 	});
 
 	it('opens inventory rune bags against the seeded pools', async () => {
 		await db.update(s.usersBag).set({ lesserRuneBag: 1, divineRuneBag: 1 }).where(eq(s.usersBag.discordId, id));
-		const svc = new LootService();
-		expect(await svc.openRuneBag(id, 'xx')).toContain('lb | gb | db');
+		const svc = new LootService(undefined, undefined, { persistence: testPersistence() });
+		expect(textOf(await svc.openRuneBag(id, 'xx'))).toContain('lb | gb | db');
 		const runesBefore = (await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).length;
-		expect(await svc.openRuneBag(id, 'lb')).toContain('Mở túi lb');
+		expect(textOf(await svc.openRuneBag(id, 'lb'))).toContain('Mở túi lb');
 		expect(await db.select().from(s.userRunes).where(eq(s.userRunes.discordId, id))).toHaveLength(runesBefore + 1);
 		expect((await bag()).lesserRuneBag).toBe(0);
-		expect(await svc.openRuneBag(id, 'lb')).toContain('Không đủ');
-		expect(await svc.openRuneBag(id, 'db')).toContain('Mở túi db');
+		expect(textOf(await svc.openRuneBag(id, 'lb'))).toContain('Không đủ');
+		expect(textOf(await svc.openRuneBag(id, 'db'))).toContain('Mở túi db');
 	});
 
 	it('opens diamond and genesis chests with rune-bag drops and supreme loot', async () => {
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
 		await db.update(s.usersBag).set({ diamondChest: 1, genesisChest: 1 }).where(eq(s.usersBag.discordId, id));
 		const before = await bag();
-		const svc = new LootService();
-		expect(await svc.open(id, 'diamond', 1)).toContain('Diamond');
+		const svc = new LootService(undefined, undefined, { persistence: testPersistence() });
+		expect(textOf(await svc.open(id, 'diamond', 1))).toContain('Diamond');
 		const afterDiamond = await bag();
 		expect(afterDiamond.diamondChest).toBe(0);
 		expect(afterDiamond.credux).toBe(before.credux + 200_000);
 		expect(afterDiamond.greaterRuneBag).toBe(before.greaterRuneBag + 1); // 50/25 roll at rng 0
 		expect(afterDiamond.sacredRelics).toBe(before.sacredRelics + 1); // 25% relic at rng 0
-		expect(await svc.open(id, 'genesis', 1)).toContain('Genesis');
+		expect(textOf(await svc.open(id, 'genesis', 1))).toContain('Genesis');
 		const afterGenesis = await bag();
 		expect(afterGenesis.genesisChest).toBe(0);
 		expect(afterGenesis.supremeEssence).toBe(before.supremeEssence + 1);
@@ -353,30 +356,30 @@ describe('M7 cosmetics, titles, class change', () => {
 		const owned = await db.select().from(s.userCosmetics).where(eq(s.userCosmetics.discordId, id));
 		expect(owned).toHaveLength(2); // base_profile + base_battle
 
-		const pvp = new PvpShopService();
+		const pvp = new PvpShopService(undefined, { persistence: testPersistence() });
 		await db.update(s.usersBag).set({ valorMedals: 200 }).where(eq(s.usersBag.discordId, id));
-		expect(await pvp.buy(id, 'nonexistent')).toContain('không tồn tại');
-		expect(await pvp.buy(id, 'change_class')).toContain('Đã mua');
+		expect(textOf(await pvp.buy(id, 'nonexistent'))).toContain('không tồn tại');
+		expect(textOf(await pvp.buy(id, 'change_class'))).toContain('Đã mua');
 		expect((await bag()).changeClass).toBe(1);
 		expect((await bag()).valorMedals).toBe(80);
 
 		// Tier Chosen gates on believer level 5 — enforced at purchase AND equip.
-		expect(await pvp.buy(id, 'frame_gold')).toContain('believer level');
+		expect(textOf(await pvp.buy(id, 'frame_gold'))).toContain('believer level');
 		await db.update(s.userCharacter).set({ believerLevel: 5 }).where(eq(s.userCharacter.discordId, id));
-		expect(await pvp.buy(id, 'frame_gold')).toContain('Đã mua');
-		expect(await pvp.buy(id, 'frame_gold')).toContain('tối đa');
+		expect(textOf(await pvp.buy(id, 'frame_gold'))).toContain('Đã mua');
+		expect(textOf(await pvp.buy(id, 'frame_gold'))).toContain('tối đa');
 		const catalog = await db.select().from(s.cosmeticCatalog);
 		const gold = catalog.find((c) => c.cosmeticKey === 'frame_gold')!;
-		const cosmetics = new CosmeticService();
-		expect(await cosmetics.equipCosmetic(id, gold.cosmeticId)).toContain('Đã trang bị');
+		const cosmetics = new CosmeticService({ persistence: testPersistence() });
+		expect(textOf(await cosmetics.equipCosmetic(id, gold.cosmeticId))).toContain('Đã trang bị');
 
-		expect(await pvp.buy(id, 'title_champion')).toContain('Cần'); // 120 > 40 left
+		expect(textOf(await pvp.buy(id, 'title_champion'))).toContain('Cần'); // 120 > 40 left
 		await db.update(s.usersBag).set({ valorMedals: 200 }).where(eq(s.usersBag.discordId, id));
-		expect(await pvp.buy(id, 'title_champion')).toContain('Đã mua');
+		expect(textOf(await pvp.buy(id, 'title_champion'))).toContain('Đã mua');
 		const titles = await db.select().from(s.userTitles).where(eq(s.userTitles.discordId, id));
-		expect(await cosmetics.equipTitle(id, titles[0].titleId)).toContain('Đã đeo');
+		expect(textOf(await cosmetics.equipTitle(id, titles[0].titleId))).toContain('Đã đeo');
 
-		const profile = await new ProfileService().get(id);
+		const profile = await new ProfileService(undefined, undefined, undefined, { persistence: testPersistence() }).get(id);
 		if (profile.status !== 'ok') throw new Error('profile failed');
 		expect(profile.data.title).toContain('Champion');
 		expect(profile.data.believerLevel).toBe(5);
@@ -384,11 +387,11 @@ describe('M7 cosmetics, titles, class change', () => {
 	});
 
 	it('changes class by consuming a change-class token and keeps everything else', async () => {
-		const svc = new ClassChangeService();
-		expect(await svc.change(id, 'Mage')).toContain('Token');
+		const svc = new ClassChangeService({ persistence: testPersistence() });
+		expect(textOf(await svc.change(id, 'Mage'))).toContain('Token');
 		await db.update(s.usersBag).set({ changeClass: 1 }).where(eq(s.usersBag.discordId, id));
-		expect(await svc.change(id, 'Knight')).toContain('đã là class này');
-		expect(await svc.change(id, 'Mage')).toContain('Mage');
+		expect(textOf(await svc.change(id, 'Knight'))).toContain('đã là class này');
+		expect(textOf(await svc.change(id, 'Mage'))).toContain('Mage');
 		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
 		expect(character.class).toBe('Mage');
 		expect(character.combatLevel).toBe(1);

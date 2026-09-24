@@ -1,6 +1,5 @@
 import { enhancementPlus } from '../../../shared/utils/enhancementDisplay.js';
 import type { Executor } from '../../../db/client.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
 import { InventoryDataRepository } from '../infrastructure/InventoryDataRepository.js';
 export type { GearSearchRow, DeitySearchRow, RuneSearchRow } from '../infrastructure/InventoryDataRepository.js';
 import { computeSigilStats } from '../../../shared/config/ascension.js';
@@ -15,7 +14,7 @@ import {
 /** Projects persisted inventory into command-facing values and display text. */
 export class InventoryService {
 	constructor(
-		executor: Executor = defaultPersistence.executor,
+		executor: Executor,
 		private readonly data: Pick<
 			InventoryDataRepository,
 			| 'bag'

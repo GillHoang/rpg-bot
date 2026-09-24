@@ -1,7 +1,6 @@
 import { ok, type Result, AppError } from '../../../shared/kernel/Result.js';
 import type { UseCase } from '../../../shared/kernel/UseCase.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { DailyRepository } from '../infrastructure/DailyRepository.js';
 import { DailyRewardTable } from '../domain/DailyRewardTable.js';
@@ -33,9 +32,9 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 	constructor(
 		repo: DailyRepoPort | undefined = undefined,
 		events: DailyEventsPort | undefined = undefined,
-		options: ClaimDailyOptions = {},
+		options: ClaimDailyOptions,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'ClaimDailyUseCase');
 		this.clock = options.clock ?? systemClock;
 		this.repo = repo ?? new DailyRepository();
 		this.events = events ?? new EventBus();

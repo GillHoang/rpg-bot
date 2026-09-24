@@ -14,7 +14,7 @@ import {
 } from '../../../shared/ui/text/loot.js';
 
 export class OpenCommand implements ICommand {
-	constructor(private readonly loot: Pick<LootService, 'open'> = new LootService()) {}
+	constructor(private readonly loot: Pick<LootService, 'open'>) {}
 
 	readonly data = new SlashCommandBuilder()
 		.setName('open')
@@ -36,11 +36,12 @@ export class OpenCommand implements ICommand {
 			i.options.getString('chest', true) as ChestKey,
 			i.options.getInteger('count') ?? 1,
 		);
-		await i.editReply({ embeds: [new EmbedBuilder().setDescription(result.slice(0, 4000))] });
+		const text = result.ok ? result.value : result.error.message;
+		await i.editReply({ embeds: [new EmbedBuilder().setDescription(text.slice(0, 4000))] });
 	}
 }
 export class RunesCommand implements ICommand {
-	constructor(private readonly loot: Pick<LootService, 'openRuneBag' | 'shop'> = new LootService()) {}
+	constructor(private readonly loot: Pick<LootService, 'openRuneBag' | 'shop'>) {}
 
 	readonly data = new SlashCommandBuilder()
 		.setName('runes')
@@ -71,9 +72,11 @@ export class RunesCommand implements ICommand {
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
 		if (i.options.getSubcommand(false) === 'open') {
-			await i.editReply(await this.loot.openRuneBag(i.user.id, i.options.getString('bag', true)));
+			const opened = await this.loot.openRuneBag(i.user.id, i.options.getString('bag', true));
+			await i.editReply(opened.ok ? opened.value : opened.error.message);
 			return;
 		}
-		await i.editReply(await this.loot.shop(i.user.id, i.options.getString('bag') ?? undefined));
+		const listed = await this.loot.shop(i.user.id, i.options.getString('bag') ?? undefined);
+		await i.editReply(listed.ok ? listed.value : listed.error.message);
 	}
 }

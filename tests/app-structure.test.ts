@@ -28,8 +28,12 @@ function context(): PersistenceContext {
 }
 
 describe('shared kernel canonical locations', () => {
-	it('exposes EventBus, clock and domain events from one barrel', () => {
-		expect(EventBus.getInstance()).toBeInstanceOf(EventBus);
+	it('exposes EventBus, clock and domain events from one barrel, with no shared singletons', () => {
+		expect(new EventBus()).toBeInstanceOf(EventBus);
+		expect(new EventBus()).not.toBe(new EventBus());
+		expect(new CommandRegistry()).toBeInstanceOf(CommandRegistry);
+		expect('getInstance' in EventBus).toBe(false);
+		expect('getInstance' in CommandRegistry).toBe(false);
 		expect(systemClock.now()).toBeInstanceOf(Date);
 		expect(typeof subscribeDomainEvents).toBe('function');
 	});

@@ -32,8 +32,8 @@ export class CasinoCommand implements ICommand {
 		.addSubcommand((s) => casinoOptions(s, 'crash', CASINO_DESCRIPTION_TEXT.crash));
 
 	constructor(
-		private readonly casino: Pick<CasinoService, 'play'> = new CasinoService(),
-		private readonly interactive: Pick<InteractiveCasinoController, 'execute'> = new InteractiveCasinoController(),
+		private readonly casino: Pick<CasinoService, 'play'>,
+		private readonly interactive: Pick<InteractiveCasinoController, 'execute'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {

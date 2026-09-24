@@ -1,5 +1,7 @@
 // Regression coverage for the 2026-09-23 business-logic review.
 import { afterAll, beforeAll, beforeEach, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
+import { textOf } from './helpers/result.js';
 import { eq } from 'drizzle-orm';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 vi.mock('../src/db/client.js', async () => {
@@ -46,7 +48,7 @@ beforeEach(async () => {
 	vi.restoreAllMocks();
 	await client.exec('TRUNCATE users, raid_logs, active_duels CASCADE');
 	for (const id of ['audit-a', 'audit-b']) {
-		expect((await new StartService().start(id, id, 'Knight')).status).toBe('ok');
+		expect((await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id, id, 'Knight')).status).toBe('ok');
 	}
 });
 
@@ -129,7 +131,7 @@ it.each(['player_win', 'enemy_win', 'draw'] as const)(
 					rewardValor: 1,
 				});
 		}
-		expect((await new RankedService().fight('audit-a')).status).toBe('ok');
+		expect((await new RankedService(undefined, undefined, undefined, undefined, { persistence: testPersistence() }).fight('audit-a')).status).toBe('ok');
 		const quests = await db.select().from(s.weeklyQuests);
 		expect(quests.find((q) => q.discordId === 'audit-a' && q.questType === 'ranked')?.currentCount).toBe(1);
 		expect(quests.find((q) => q.discordId === 'audit-b' && q.questType === 'ranked')?.currentCount).toBe(0);
@@ -141,7 +143,7 @@ it.each(['player_win', 'enemy_win', 'draw'] as const)(
 it('R5: a defending ranked winner receives promotion title and highest streak', async () => {
 	forceBattle('enemy_win');
 	await db.update(s.userCharacter).set({ pvpRating: 1099 });
-	expect((await new RankedService().fight('audit-a')).status).toBe('ok');
+	expect((await new RankedService(undefined, undefined, undefined, undefined, { persistence: testPersistence() }).fight('audit-a')).status).toBe('ok');
 	const defender = await character('audit-b');
 	expect(defender.pvpRating).toBeGreaterThanOrEqual(1100);
 	expect(defender.highestRankStreak).toBe(1);
@@ -151,8 +153,8 @@ it('R5: a defending ranked winner receives promotion title and highest streak', 
 
 it('R6: first duel victory grants First Blood even after a ranked win', async () => {
 	forceBattle('player_win');
-	expect((await new RankedService().fight('audit-a')).status).toBe('ok');
-	const duels = new DuelService();
+	expect((await new RankedService(undefined, undefined, undefined, undefined, { persistence: testPersistence() }).fight('audit-a')).status).toBe('ok');
+	const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 	const created = await duels.create('audit-a', 'audit-b', 0);
 	if (created.status !== 'ok') throw new Error(created.status);
 	expect((await duels.accept(created.duelId, 'audit-b')).status).toBe('ok');
@@ -169,8 +171,8 @@ it('R6: first duel victory grants First Blood even after a ranked win', async ()
 
 it('R7: buying an already-earned title consumes neither medals nor purchase quota', async () => {
 	await db.update(s.usersBag).set({ valorMedals: 100 }).where(eq(s.usersBag.discordId, 'audit-a'));
-	await db.transaction((tx) => new CosmeticService().grantTitleInTx(tx as never, 'audit-a', 'rank_champion'));
-	expect(await new PvpShopService().buy('audit-a', 'title_champion')).toContain('đã sở hữu');
+	await db.transaction((tx) => new CosmeticService({ persistence: testPersistence() }).grantTitleInTx(tx as never, 'audit-a', 'rank_champion'));
+	expect(textOf(await new PvpShopService(undefined, { persistence: testPersistence() }).buy('audit-a', 'title_champion'))).toContain('đã sở hữu');
 	const [bag] = await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'audit-a'));
 	expect(bag.valorMedals).toBe(100);
 	expect(await db.select().from(s.pvpShopPurchases)).toHaveLength(0);
@@ -186,7 +188,7 @@ it('R8: a one-round battle reports one round', () => {
 });
 
 it('R9: expired duel participants are released before the next duel', async () => {
-	const duels = new DuelService();
+	const duels = new DuelService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 	const created = await duels.create('audit-a', 'audit-b', 0);
 	expect(created.status).toBe('ok');
 	await db.update(s.activeDuels).set({ expiresAt: new Date(0) });
@@ -273,10 +275,10 @@ it('R3: tailwind preserves other initiative bonuses and works for a new combatan
 it('R7: an owned cosmetic cannot consume a new seasons purchase quota', async () => {
 	await db.update(s.usersBag).set({ valorMedals: 100 }).where(eq(s.usersBag.discordId, 'audit-a'));
 	await db.update(s.userCharacter).set({ believerLevel: 10 }).where(eq(s.userCharacter.discordId, 'audit-a'));
-	const shop = new PvpShopService();
-	expect(await shop.buy('audit-a', 'frame_gold')).toContain('Đã mua');
+	const shop = new PvpShopService(undefined, { persistence: testPersistence() });
+	expect(textOf(await shop.buy('audit-a', 'frame_gold'))).toContain('Đã mua');
 	await db.delete(s.pvpShopPurchases);
-	expect(await shop.buy('audit-a', 'frame_gold')).toContain('đã sở hữu');
+	expect(textOf(await shop.buy('audit-a', 'frame_gold'))).toContain('đã sở hữu');
 	const [bag] = await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'audit-a'));
 	expect(bag.valorMedals).toBe(60);
 	expect(await db.select().from(s.pvpShopPurchases)).toHaveLength(0);
@@ -286,7 +288,7 @@ it('R7: a failure after granting ownership rolls back ownership, currency and qu
 	await db.update(s.usersBag).set({ valorMedals: 100 }).where(eq(s.usersBag.discordId, 'audit-a'));
 	const queries = new PvpShopRepository();
 	vi.spyOn(queries, 'updateBag').mockRejectedValueOnce(new Error('test write failure'));
-	await expect(new PvpShopService(undefined, { queries }).buy('audit-a', 'title_champion')).rejects.toThrow(
+	await expect(new PvpShopService(undefined, { queries, persistence: testPersistence() }).buy('audit-a', 'title_champion')).rejects.toThrow(
 		'test write failure',
 	);
 	expect(await db.select().from(s.userTitles)).toHaveLength(0);
@@ -321,7 +323,7 @@ it('R9: a participant claimed between guard and insert returns busy and releases
 		return insert(tx, rows);
 	});
 	expect(
-		await new DuelService(undefined, undefined, undefined, undefined, undefined, { queries }).create(
+		await new DuelService(undefined, undefined, undefined, undefined, undefined, { queries, persistence: testPersistence() }).create(
 			'audit-a',
 			'audit-b',
 			0,

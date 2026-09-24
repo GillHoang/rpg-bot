@@ -10,6 +10,7 @@ vi.mock('../src/modules/identity/application/StartService.js', () => ({
 }));
 vi.mock('../src/shared/utils/logger.js', () => ({ logger: { error: vi.fn() } }));
 import { StartCommand } from '../src/modules/identity/presentation/StartCommand.js';
+import { StartService } from '../src/modules/identity/application/StartService.js';
 
 function fixture(id: string) {
 	const collector = Object.assign(new EventEmitter(), { stop: vi.fn() });
@@ -45,7 +46,7 @@ describe('start sessions', () => {
 		['alice', 'bob'],
 		['alice', 'alice'],
 	])('isolates interleaved sessions for %s and %s', async (a, b) => {
-		const command = new StartCommand();
+		const command = new StartCommand(new StartService());
 		const first = fixture(a),
 			second = fixture(b);
 		await command.execute(first.interaction);
@@ -61,7 +62,7 @@ describe('start sessions', () => {
 		expect(confirmed.editReply).toHaveBeenCalledWith(expect.objectContaining({ components: [] }));
 	});
 	it('going back in another session does not clear the first selection', async () => {
-		const command = new StartCommand(),
+		const command = new StartCommand(new StartService()),
 			a = fixture('a'),
 			b = fixture('b');
 		await command.execute(a.interaction);
@@ -79,7 +80,7 @@ describe('start sessions', () => {
 			}),
 		);
 		const f = fixture('a');
-		await new StartCommand().execute(f.interaction);
+		await new StartCommand(new StartService()).execute(f.interaction);
 		await f.press('start:class:Knight');
 		const pending = f.press('start:confirm');
 		const duplicate = await f.press('start:confirm');
@@ -91,7 +92,7 @@ describe('start sessions', () => {
 	it('allows retry after a temporary failure', async () => {
 		service.start.mockRejectedValueOnce(new Error('temporary'));
 		const f = fixture('a');
-		await new StartCommand().execute(f.interaction);
+		await new StartCommand(new StartService()).execute(f.interaction);
 		await f.press('start:class:Mage');
 		const failed = await f.press('start:confirm');
 		expect(failed.editReply.mock.calls[0]![0].components).toHaveLength(1);
@@ -102,7 +103,7 @@ describe('start sessions', () => {
 	});
 	it('does not write to the database if acknowledging the button fails', async () => {
 		const f = fixture('a');
-		await new StartCommand().execute(f.interaction);
+		await new StartCommand(new StartService()).execute(f.interaction);
 		await f.press('start:class:Knight');
 		await f.collector.listeners('collect')[0]!({
 			customId: 'start:confirm',

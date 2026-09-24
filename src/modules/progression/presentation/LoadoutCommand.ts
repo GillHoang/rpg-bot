@@ -15,11 +15,11 @@ import {
 
 export class EquipCommand implements ICommand {
 	constructor(
-		private readonly loadout: Pick<LoadoutService, 'equip'> = new LoadoutService(),
+		private readonly loadout: Pick<LoadoutService, 'equip'>,
 		private readonly inventory: Pick<
 			InventoryService,
 			'searchDeities' | 'searchArmors' | 'searchWeapons'
-		> = new InventoryService(),
+		>,
 	) {}
 
 	readonly data = new SlashCommandBuilder()
@@ -40,14 +40,13 @@ export class EquipCommand implements ICommand {
 		);
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
-		await i.editReply(
-			await this.loadout.equip(
-				i.user.id,
-				i.options.getString('kind', true),
-				i.options.getString('id', true),
-				i.options.getInteger('preset') ?? undefined,
-			),
+		const result = await this.loadout.equip(
+			i.user.id,
+			i.options.getString('kind', true),
+			i.options.getString('id', true),
+			i.options.getInteger('preset') ?? undefined,
 		);
+		await i.editReply(result.ok ? result.value : result.error.message);
 	}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {
@@ -69,7 +68,7 @@ export class EquipCommand implements ICommand {
 	}
 }
 export class PresetCommand implements ICommand {
-	constructor(private readonly loadout: Pick<LoadoutService, 'switch'> = new LoadoutService()) {}
+	constructor(private readonly loadout: Pick<LoadoutService, 'switch'>) {}
 
 	readonly data = new SlashCommandBuilder()
 		.setName('preset')
@@ -89,6 +88,7 @@ export class PresetCommand implements ICommand {
 		);
 	async execute(i: ChatInputCommandInteraction): Promise<void> {
 		await i.deferReply({ ephemeral: true });
-		await i.editReply(await this.loadout.switch(i.user.id, i.options.getInteger('slot', true)));
+		const result = await this.loadout.switch(i.user.id, i.options.getInteger('slot', true));
+		await i.editReply(result.ok ? result.value : result.error.message);
 	}
 }

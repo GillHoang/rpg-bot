@@ -23,6 +23,7 @@ vi.mock('../src/modules/system/application/ResetService.js', () => ({
 	},
 }));
 import { ResetCommand } from '../src/modules/system/presentation/ResetCommand.js';
+import { ResetService } from '../src/modules/system/application/ResetService.js';
 
 function fixture(subcommand = 'all') {
 	const collector = new EventEmitter() as EventEmitter & { stop: ReturnType<typeof vi.fn> };
@@ -68,7 +69,7 @@ describe('ResetCommand confirm flow', () => {
 	it('non-owner caller gets refused before any DB call', async () => {
 		const f = fixture();
 		owners.isOwner.mockReturnValue(false);
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('Lệnh này chỉ dành cho chủ bot.');
 		expect(reset.countAll).not.toHaveBeenCalled();
 		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
@@ -76,7 +77,7 @@ describe('ResetCommand confirm flow', () => {
 
 	it('preview only counts — nothing is deleted before the owner presses RESET', async () => {
 		const f = fixture();
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(reset.countAll).toHaveBeenCalledOnce();
 		expect(reset.resetAll).not.toHaveBeenCalled();
 		expect(f.i.editReply).toHaveBeenCalledWith(expect.objectContaining({ components: [expect.anything()] }));
@@ -84,7 +85,7 @@ describe('ResetCommand confirm flow', () => {
 
 	it('cancel leaves data untouched', async () => {
 		const f = fixture();
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		press(f.collector, { customId: 'reset:cancel' });
 		await vi.waitFor(() => expect(f.collector.stop).toHaveBeenCalledWith('cancelled'));
 		expect(reset.resetAll).not.toHaveBeenCalled();
@@ -93,7 +94,7 @@ describe('ResetCommand confirm flow', () => {
 
 	it('confirm wipes, audits, and reports the deleted count', async () => {
 		const f = fixture();
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		const button = press(f.collector);
 		// stop('confirmed') bắn trước khi resetAll xong — chờ tới khi kết quả hiển thị.
 		await vi.waitFor(() => expect(button.editReply).toHaveBeenCalled());
@@ -108,7 +109,7 @@ describe('ResetCommand confirm flow', () => {
 
 	it('owner list is re-checked at button press time', async () => {
 		const f = fixture();
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		owners.isOwner.mockReturnValue(false); // list đổi giữa lúc gọi lệnh và lúc bấm
 		const button = press(f.collector);
 		await vi.waitFor(() => expect(f.collector.stop).toHaveBeenCalledWith('not-owner'));
@@ -121,7 +122,7 @@ describe('ResetCommand confirm flow', () => {
 	it('empty database short-circuits before showing buttons', async () => {
 		const f = fixture();
 		reset.countAll.mockResolvedValue(0);
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('Không có dữ liệu người chơi nào để reset.');
 		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
 	});
@@ -131,7 +132,7 @@ describe('ResetCommand user flow', () => {
 	it('non-owner caller gets refused before any DB call', async () => {
 		const f = fixture('user');
 		owners.isOwner.mockReturnValue(false);
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('Lệnh này chỉ dành cho chủ bot.');
 		expect(reset.countUser).not.toHaveBeenCalled();
 		expect(f.channel.createMessageComponentCollector).not.toHaveBeenCalled();
@@ -140,7 +141,7 @@ describe('ResetCommand user flow', () => {
 	it('unknown user short-circuits before showing buttons', async () => {
 		const f = fixture('user');
 		reset.countUser.mockResolvedValue(0);
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(reset.countUser).toHaveBeenCalledTimes(1);
 		expect(reset.countUser).toHaveBeenCalledWith('target-9');
 		expect(f.i.editReply).toHaveBeenCalledExactlyOnceWith('User này chưa từng chơi — không có dữ liệu nào để xoá.');
@@ -151,7 +152,7 @@ describe('ResetCommand user flow', () => {
 		const f = fixture('user');
 		reset.countUser.mockResolvedValue(250);
 		reset.resetUser.mockResolvedValue({ status: 'ok', deletedRows: 250 });
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		expect(f.i.editReply).toHaveBeenCalledWith(
 			expect.objectContaining({ content: expect.stringContaining('250') }),
 		);
@@ -166,7 +167,7 @@ describe('ResetCommand user flow', () => {
 	it('cancel leaves the target untouched', async () => {
 		const f = fixture('user');
 		reset.countUser.mockResolvedValue(250);
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		press(f.collector, { customId: 'reset:user-cancel' });
 		await vi.waitFor(() => expect(f.collector.stop).toHaveBeenCalledWith('cancelled'));
 		expect(reset.resetUser).not.toHaveBeenCalled();
@@ -176,7 +177,7 @@ describe('ResetCommand user flow', () => {
 		const f = fixture('user');
 		reset.countUser.mockResolvedValue(250);
 		reset.resetUser.mockResolvedValue({ status: 'not-found' });
-		await new ResetCommand().execute(f.interaction);
+		await new ResetCommand(new ResetService()).execute(f.interaction);
 		const button = press(f.collector, { customId: 'reset:user-confirm:target-9' });
 		await vi.waitFor(() => expect(button.editReply).toHaveBeenCalled());
 		expect(button.editReply).toHaveBeenCalledWith(

@@ -1,5 +1,4 @@
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { ReputationRepository } from '../infrastructure/ReputationRepository.js';
 import type { Executor } from '../../../db/client.js';
 
@@ -19,7 +18,7 @@ export interface BelieverAwardResult {
 }
 
 export interface ReputationDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	clock?: Clock;
 	queries?: Pick<ReputationRepository, 'lockCharacter' | 'updateProgress'>;
 	cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>;
@@ -36,8 +35,8 @@ export class ReputationService {
 	private readonly clock: Clock;
 	private readonly queries: NonNullable<ReputationDependencies['queries']>;
 	private readonly cosmetics: Pick<CosmeticService, 'grantTitleInTx'>;
-	constructor(options: ReputationDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(options: ReputationDependencies) {
+		this.persistence = requirePersistence(options, 'ReputationService');
 		this.clock = options.clock ?? systemClock;
 		this.queries = options.queries ?? new ReputationRepository();
 		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });

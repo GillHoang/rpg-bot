@@ -2,8 +2,7 @@ import { LOOT_CHEST_LABELS } from '../../../shared/ui/text/loot.js';
 import { comparePlayerIds } from '../../../shared/utils/comparePlayerIds.js';
 import { SeasonService } from '../../meta/application/SeasonService.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { RankedRepository } from '../infrastructure/RankedRepository.js';
 import type { userCharacter } from '../../../db/schema.js';
 import type { Transaction } from '../../../db/client.js';
@@ -17,6 +16,7 @@ import { PlayerCombatantFactory } from '../../combat-shared/application/combatan
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import { applyElo, resolveRatingChange as resolveRatingChangePure } from './RankedRatingService.js';
+import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { RANKED, bracketFor, weekWindowAt, type Bracket } from '../../../shared/config/ranked.js';
 import {
 	RANKED_NOT_REGISTERED,
@@ -66,7 +66,7 @@ export type RankedClaimResult =
 
 export interface RankedDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	seasons?: Pick<SeasonService, 'ensureActive'>;
 	clock?: import('../../../shared/kernel/clock.js').Clock;
 	queries?: Pick<
@@ -132,9 +132,9 @@ export class RankedService {
 		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
 		cosmetics?: Pick<CosmeticService, 'grantTitleInTx'>,
 		events?: Pick<EventBus, 'emit'>,
-		options: RankedDependencies = {},
+		options: RankedDependencies = {} as RankedDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'RankedService');
 		this.clock = options.clock ?? systemClock;
 		this.seasons = options.seasons ?? new SeasonService(this.persistence);
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
@@ -330,23 +330,23 @@ export class RankedService {
 		});
 	}
 
-	async stats(discordId: string): Promise<string> {
+	async stats(discordId: string): Promise<Result<string, AppError>> {
 		const [me] = await this.queries.findCharacter(this.persistence.executor, discordId);
-		if (!me) return RANKED_NOT_REGISTERED;
+		if (!me) return err(new AppError('RANKED_NOT_REGISTERED', RANKED_NOT_REGISTERED));
 		const bracket = bracketFor(me.pvpRating);
 		const { week, key, endsAt } = weekWindowAt(this.clock.now());
 		const claimed = me.lastWeeklyClaimWeek === key;
-		return (
+		return ok(
 			RANKED_STATS_HEADER(me.pvpRating, bracket.name, me.pvpPeak) +
-			'\n' +
-			RANKED_STATS_BODY(
-				me.rankedWins,
-				me.rankedLosses,
-				me.highestRankStreak,
-				me.pvpDemotionShield ? RANKED_SHIELD_ON : RANKED_SHIELD_OFF,
-			) +
-			'\n' +
-			RANKED_WEEK_STATUS(week, endsAt.toISOString().slice(0, 10), claimed)
+				'\n' +
+				RANKED_STATS_BODY(
+					me.rankedWins,
+					me.rankedLosses,
+					me.highestRankStreak,
+					me.pvpDemotionShield ? RANKED_SHIELD_ON : RANKED_SHIELD_OFF,
+				) +
+				'\n' +
+				RANKED_WEEK_STATUS(week, endsAt.toISOString().slice(0, 10), claimed),
 		);
 	}
 

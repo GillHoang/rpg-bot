@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ButtonInteraction, ChatInputCommandInteraction, MessageEditOptions } from 'discord.js';
-import type { InventoryService } from '../src/modules/progression/application/InventoryService.js';
+import { InventoryService } from '../src/modules/progression/application/InventoryService.js';
 
 const { repo, logger } = vi.hoisted(() => ({
 	repo: { bag: vi.fn(), count: vi.fn(), list: vi.fn() },
@@ -74,7 +74,7 @@ async function openInventory(category = 'runes', page = 1) {
 		deferReply: vi.fn().mockResolvedValue(undefined),
 		editReply: vi.fn().mockResolvedValue(message),
 	};
-	await new InventoryCommand().execute(interaction as unknown as ChatInputCommandInteraction);
+	await new InventoryCommand(new InventoryService()).execute(interaction as unknown as ChatInputCommandInteraction);
 	let payload = interaction.editReply.mock.calls[0][0] as MessageEditOptions;
 	return {
 		interaction,

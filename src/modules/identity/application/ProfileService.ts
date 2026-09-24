@@ -1,5 +1,4 @@
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { ProfileQueryRepository } from '../infrastructure/ProfileQueryRepository.js';
 import { PlayerAccountRepository } from '../infrastructure/PlayerAccountRepository.js';
 import type { UserCharacterRepository } from '../infrastructure/UserCharacterRepository.js';
@@ -16,7 +15,7 @@ export type ProfileResult =
 	{ status: 'not-registered' } | { status: 'no-character' } | { status: 'ok'; data: ProfileCardData };
 
 export interface ProfileDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<ProfileQueryRepository, 'findCharacter' | 'findTitleDisplay' | 'findLoadout' | 'findPreset'>;
 }
 
@@ -29,9 +28,9 @@ export class ProfileService {
 		accounts: Pick<PlayerAccountRepository, 'findById'> | undefined = undefined,
 		_characters: Pick<UserCharacterRepository, 'hasCharacter'> | undefined = undefined,
 		statAssembly: Pick<StatAssemblyService, 'assemble'> | undefined = undefined,
-		options: ProfileDependencies = {},
+		options: ProfileDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'ProfileService');
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.statAssembly =
 			statAssembly ?? new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });

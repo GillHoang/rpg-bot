@@ -85,7 +85,7 @@ describe('commands accept narrow structural dependencies', () => {
 	});
 
 	it('uses injected equipment services and category-specific autocomplete queries', async () => {
-		const loadout = { equip: vi.fn(async () => 'Equipped') };
+		const loadout = { equip: vi.fn(async () => ({ ok: true as const, value: 'Equipped' })) };
 		const inventory = {
 			searchWeapons: vi.fn<InventoryService['searchWeapons']>().mockResolvedValue([]),
 			searchArmors: vi
@@ -108,7 +108,7 @@ describe('commands accept narrow structural dependencies', () => {
 		await equip.autocomplete(deity.autocomplete);
 		expect(inventory.searchDeities).toHaveBeenCalledExactlyOnceWith('owner', 'Ze');
 		expect(inventory.searchWeapons).not.toHaveBeenCalled();
-		const presets = { switch: vi.fn(async () => 'Preset switched') };
+		const presets = { switch: vi.fn(async () => ({ ok: true as const, value: 'Preset switched' })) };
 		const preset = interaction({ slot: 2 });
 		await new PresetCommand(presets).execute(preset.command);
 		expect(presets.switch).toHaveBeenCalledExactlyOnceWith('owner', 2);
@@ -116,9 +116,9 @@ describe('commands accept narrow structural dependencies', () => {
 
 	it('routes chest and rune operations through injected use cases', async () => {
 		const loot = {
-			open: vi.fn(async () => 'Chest loot'),
-			openRuneBag: vi.fn(async () => 'Rune loot'),
-			shop: vi.fn(async () => 'Rune shop'),
+			open: vi.fn(async () => ({ ok: true as const, value: 'Chest loot' })),
+			openRuneBag: vi.fn(async () => ({ ok: true as const, value: 'Rune loot' })),
+			shop: vi.fn(async () => ({ ok: true as const, value: 'Rune shop' })),
 		};
 		const chest = interaction({ chest: 'silver', count: 3 });
 		await new OpenCommand({ open: loot.open }).execute(chest.command);
@@ -165,7 +165,7 @@ describe('commands accept narrow structural dependencies', () => {
 		const sockets = {
 			equip: vi.fn<SocketService['equip']>().mockResolvedValue({ status: 'ok' }),
 			unequip: vi.fn<SocketService['unequip']>().mockResolvedValue({ status: 'ok' }),
-			unlock: vi.fn<SocketService['unlock']>().mockResolvedValue('Unlocked'),
+			unlock: vi.fn<SocketService['unlock']>().mockResolvedValue({ ok: true as const, value: 'Unlocked' }),
 		};
 		const socket = new SocketCommand(sockets, inventory);
 		await socket.execute(

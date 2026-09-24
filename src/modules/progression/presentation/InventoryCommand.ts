@@ -31,7 +31,7 @@ import {
 
 export class InventoryCommand implements ICommand {
 	constructor(
-		private readonly inventory: Pick<InventoryService, 'bag' | 'count' | 'list'> = new InventoryService(),
+		private readonly inventory: Pick<InventoryService, 'bag' | 'count' | 'list'>,
 	) {}
 
 	readonly data = new SlashCommandBuilder()
@@ -91,7 +91,7 @@ export class InventoryCommand implements ICommand {
 }
 
 export class DeitiesCommand implements ICommand {
-	constructor(private readonly inventory: Pick<InventoryService, 'list'> = new InventoryService()) {}
+	constructor(private readonly inventory: Pick<InventoryService, 'list'>) {}
 
 	readonly data = new SlashCommandBuilder()
 		.setName('deities')

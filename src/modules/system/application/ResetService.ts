@@ -1,8 +1,8 @@
 import { LOG_EVENT_TEXT, RESET_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { AppError } from '../../../shared/kernel/Result.js';
 import { RESET_USER_AUDIT_DETAIL } from '../../../shared/ui/text/reset.js';
 
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { ResetRepository } from '../infrastructure/ResetRepository.js';
 
 import { logger } from '../../../shared/utils/logger.js';
@@ -12,7 +12,7 @@ export type ResetResult = { status: 'ok'; deletedUsers: number } | { status: 'no
 export type ResetUserResult = { status: 'ok'; deletedRows: number } | { status: 'not-found' };
 
 export interface ResetDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<
 		ResetRepository,
 		| 'lockUsers'
@@ -48,8 +48,8 @@ export class ResetService {
 		| 'countUserData'
 		| 'deleteUserData'
 	>;
-	constructor(options: ResetDependencies = {}) {
-		this.persistence = options.persistence ?? defaultPersistence;
+	constructor(options: ResetDependencies) {
+		this.persistence = requirePersistence(options, 'ResetService');
 		this.queries = options.queries ?? new ResetRepository();
 	}
 
@@ -59,7 +59,7 @@ export class ResetService {
 	}
 
 	async resetAll(devId: string): Promise<ResetResult> {
-		if (!devId.trim()) throw new Error(RESET_ERROR_TEXT.missingAdministrator);
+		if (!devId.trim()) throw new AppError('RESET_MISSING_ADMINISTRATOR', RESET_ERROR_TEXT.missingAdministrator);
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ResetResult> => {
 			await this.queries.lockUsers(tx);
 			const deletedUsers = await this.queries.countUsers(tx);
@@ -79,7 +79,7 @@ export class ResetService {
 	}
 
 	async resetUser(devId: string, discordId: string): Promise<ResetUserResult> {
-		if (!devId.trim()) throw new Error(RESET_ERROR_TEXT.missingAdministrator);
+		if (!devId.trim()) throw new AppError('RESET_MISSING_ADMINISTRATOR', RESET_ERROR_TEXT.missingAdministrator);
 		assertDiscordId(discordId);
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<ResetUserResult> => {
 			const deletedRows = await this.queries.deleteUserData(tx, discordId);
@@ -95,5 +95,5 @@ export class ResetService {
 
 /** Discord snowflake luôn là chuỗi số — chặn raw-SQL injection từ input. */
 function assertDiscordId(discordId: string): void {
-	if (!/^\d+$/.test(discordId)) throw new Error(RESET_ERROR_TEXT.invalidTarget);
+	if (!/^\d+$/.test(discordId)) throw new AppError('RESET_INVALID_TARGET', RESET_ERROR_TEXT.invalidTarget);
 }

@@ -8,9 +8,11 @@ const casino = vi.hoisted(() => ({ start: vi.fn(), act: vi.fn() }));
 vi.mock('../src/modules/casino/application/CasinoSessionService.js', () => ({
 	CasinoSessionService: class { start = casino.start; act = casino.act; },
 }));
-import { interactiveCasino } from '../src/modules/casino/presentation/interactiveCasino.js';
+import { interactiveCasino, InteractiveCasinoController } from '../src/modules/casino/presentation/interactiveCasino.js';
 import { registerAllCommands } from '../src/app/registerAllCommands.js';
 import { CommandRegistry } from '../src/app/CommandRegistry.js';
+
+const controller = new InteractiveCasinoController(casino);
 
 function fixture() {
 	const collector = new EventEmitter() as EventEmitter & { stop: ReturnType<typeof vi.fn> };
@@ -27,8 +29,9 @@ beforeEach(() => {
 
 describe('Discord gameplay surface', () => {
 	it('serializes all slash commands, including their new subcommands', () => {
-		registerAllCommands();
-		const commands = CommandRegistry.getInstance().getAll().map(c => c.data.toJSON());
+		const registry = new CommandRegistry();
+		registerAllCommands(undefined, registry);
+		const commands = registry.getAll().map(c => c.data.toJSON());
 		expect(commands.map(c => c.name)).toEqual(expect.arrayContaining(['inventory', 'deities', 'open', 'runes', 'equip', 'preset', 'raid', 'casino']));
 		expect(commands.find(c => c.name === 'casino')?.options?.map(o => o.name)).toEqual(expect.arrayContaining(['blackjack', 'crash', 'coin_toss', 'dice_roll', 'slot_machine', 'baccarat']));
 		expect(commands.find(c => c.name === 'raid')?.options?.map(o => o.name)).toEqual(['gates', 'hunt', 'boss']);
@@ -36,7 +39,7 @@ describe('Discord gameplay surface', () => {
 	});
 	it('renders revision-bound buttons and a 60 second collector', async () => {
 		const f = fixture();
-		await interactiveCasino(f.interaction, 'blackjack', 100);
+		await interactiveCasino(f.interaction, 'blackjack', 100, controller);
 		expect(f.i.deferReply).toHaveBeenCalledOnce();
 		expect(f.createMessageComponentCollector).toHaveBeenCalledWith(expect.objectContaining({ time: 60000 }));
 		const row = f.i.editReply.mock.calls[0][0].components[0].toJSON();
@@ -44,7 +47,7 @@ describe('Discord gameplay surface', () => {
 	});
 	it('rejects a different player without calling the game service', async () => {
 		const f = fixture();
-		await interactiveCasino(f.interaction, 'blackjack', 100);
+		await interactiveCasino(f.interaction, 'blackjack', 100, controller);
 		const button = { user: { id: 'intruder' }, reply: vi.fn().mockResolvedValue(undefined), deferUpdate: vi.fn(), customId: 'session:hit:0' };
 		f.collector.emit('collect', button);
 		expect(button.reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }));
@@ -52,7 +55,7 @@ describe('Discord gameplay surface', () => {
 	});
 	it('acknowledges the owner, settles, and removes the buttons', async () => {
 		const f = fixture();
-		await interactiveCasino(f.interaction, 'blackjack', 100);
+		await interactiveCasino(f.interaction, 'blackjack', 100, controller);
 		const button = { user: { id: 'owner' }, deferUpdate: vi.fn().mockResolvedValue(undefined), customId: 'session:stand:0' };
 		f.collector.emit('collect', button);
 		await vi.waitFor(() => expect(f.collector.stop).toHaveBeenCalledWith('settled'));
@@ -62,7 +65,7 @@ describe('Discord gameplay surface', () => {
 	});
 	it('auto-resolves timeout and does not leave active buttons', async () => {
 		const f = fixture();
-		await interactiveCasino(f.interaction, 'crash', 100);
+		await interactiveCasino(f.interaction, 'crash', 100, controller);
 		f.collector.emit('end', [], 'time');
 		await vi.waitFor(() => expect(casino.act).toHaveBeenCalledWith('owner', 'session', 'timeout'));
 		expect(f.i.editReply).toHaveBeenLastCalledWith({ content: 'Settled', components: [] });
@@ -71,7 +74,7 @@ describe('Discord gameplay surface', () => {
 		for (const start of [{ status: 'error', text: 'Không đủ Credux.' }, { status: 'ok', sessionId: 's', game: 'blackjack', done: true, text: 'Natural', revision: 0 }]) {
 			casino.start.mockResolvedValue(start);
 			const f = fixture();
-			await interactiveCasino(f.interaction, 'blackjack', 100);
+			await interactiveCasino(f.interaction, 'blackjack', 100, controller);
 			expect(f.createMessageComponentCollector).not.toHaveBeenCalled();
 			expect(f.i.editReply).toHaveBeenCalledWith({ content: start.text, components: [] });
 		}

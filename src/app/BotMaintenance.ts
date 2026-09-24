@@ -11,8 +11,8 @@ export class BotMaintenance {
 	private recovering = false;
 
 	constructor(
-		private readonly sessions: Pick<CasinoSessionService, 'recoverExpired'> = new CasinoSessionService(),
-		private readonly scheduler: Pick<Scheduler, 'start' | 'stop'> = new Scheduler(),
+		private readonly sessions: Pick<CasinoSessionService, 'recoverExpired'>,
+		private readonly scheduler: Pick<Scheduler, 'start' | 'stop'>,
 		private readonly menu: { sweep(): void } = menuRouter,
 	) {}
 

@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { eq } from 'drizzle-orm';
 
@@ -31,8 +32,8 @@ beforeEach(async () => {
 	vi.restoreAllMocks();
 	id = `test-draw-${++sequence}`;
 	opponent = `test-draw-${++sequence}-opponent`;
-	const me = await new StartService().start(id, id, 'Knight');
-	const foe = await new StartService().start(opponent, opponent, 'Knight');
+	const me = await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id, id, 'Knight');
+	const foe = await new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(opponent, opponent, 'Knight');
 	if (me.status !== 'ok' || foe.status !== 'ok') throw new Error('start flow failed');
 });
 
@@ -52,7 +53,7 @@ describe('RankedService draw handling', () => {
 
 	it('a draw gives neither fighter a win or a loss', async () => {
 		forceDraw();
-		const ranked = new RankedService();
+		const ranked = new RankedService(undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		const result = await ranked.fight(id);
 		if (result.status !== 'ok') throw new Error(`ranked failed: ${result.status}`);
 		expect(result.draw).toBe(true);

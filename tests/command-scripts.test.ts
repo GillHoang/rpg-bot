@@ -22,10 +22,10 @@ vi.mock('../src/shared/utils/logger.js', () => ({
 }));
 vi.mock('../src/app/registerAllCommands.js', () => ({ registerAllCommands: api.register }));
 vi.mock('../src/app/CommandRegistry.js', () => ({
-	CommandRegistry: {
-		getInstance: () => ({
-			getAll: () => ['start', 'test'].map((name) => ({ data: { name, toJSON: () => ({ name }) } })),
-		}),
+	CommandRegistry: class {
+		getAll() {
+			return ['start', 'test'].map((name) => ({ data: { name, toJSON: () => ({ name }) } }));
+		}
 	},
 }));
 

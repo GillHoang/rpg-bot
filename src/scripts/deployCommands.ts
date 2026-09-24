@@ -22,8 +22,8 @@ const COMMAND_NAME_DEV_ONLY = 'test';
 
 try {
 	const { guildId } = parseCommandScope(process.argv.slice(2), env.DEPLOY_GUILD_ID);
-	registerAllCommands();
-	const registry = CommandRegistry.getInstance();
+	const registry = new CommandRegistry();
+	registerAllCommands(undefined, registry);
 	const body = registry
 		.getAll()
 		.filter((c) => guildId !== null || c.data.name !== COMMAND_NAME_DEV_ONLY)

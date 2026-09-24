@@ -1,14 +1,13 @@
 import { ECONOMY_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import { AppError } from '../../../shared/kernel/Result.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 
 import { PlayerAccountRepository } from '../../identity/infrastructure/PlayerAccountRepository.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import type { PlayerAccount } from '../../identity/domain/PlayerAccount.js';
 
 export interface EconomyDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 }
 
 /**
@@ -30,9 +29,9 @@ export class EconomyService {
 			| Pick<PlayerAccountRepository, 'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor'>
 			| undefined = undefined,
 		events: Pick<EventBus, 'emit'> | undefined = undefined,
-		options: EconomyDependencies = {},
+		options: EconomyDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'EconomyService');
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
 		this.events = events ?? new EventBus();
 	}

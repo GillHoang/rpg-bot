@@ -28,7 +28,7 @@ export class RaidCommand implements ICommand {
 		)
 		.addSubcommand((s) => s.setName('boss').setDescription(RAID_FLOW_TEXT.bossDescription));
 
-	constructor(private readonly raid: Pick<RaidService, 'run'> = new RaidService()) {}
+	constructor(private readonly raid: Pick<RaidService, 'run'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.

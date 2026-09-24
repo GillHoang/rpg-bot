@@ -9,9 +9,9 @@ import type { MenuRouter } from '../modules/menu/MenuRouter.js';
 
 export interface DiscordBotDependencies {
 	client?: Client;
-	registry?: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
+	registry: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
 	menu?: Pick<MenuRouter, 'handle'>;
-	maintenance?: Pick<BotMaintenance, 'start' | 'stop'>;
+	maintenance: Pick<BotMaintenance, 'start' | 'stop'>;
 }
 
 /**
@@ -26,11 +26,11 @@ export class DiscordBot {
 	private readonly menu: Pick<MenuRouter, 'handle'>;
 	private readonly maintenance: Pick<BotMaintenance, 'start' | 'stop'>;
 
-	constructor(options: DiscordBotDependencies = {}) {
+	constructor(options: DiscordBotDependencies) {
 		this.client = options.client ?? new Client({ intents: [GatewayIntentBits.Guilds] });
-		this.registry = options.registry ?? CommandRegistry.getInstance();
+		this.registry = options.registry;
 		this.menu = options.menu ?? menuRouter;
-		this.maintenance = options.maintenance ?? new BotMaintenance();
+		this.maintenance = options.maintenance;
 		this.registerEventHandlers();
 	}
 

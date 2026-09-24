@@ -1,4 +1,5 @@
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
+import { AppError } from '../../shared/kernel/Result.js';
 import type { MenuAction } from './menuIds.js';
 import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
 
@@ -61,5 +62,5 @@ export function navigateBattleLogPage(
 
 export function assertBattleLogNavigable(session: MenuSession): void {
 	if ((session.screen.kind !== 'log' && session.screen.kind !== 'result') || !session.battle)
-		throw new Error(MENU_ERROR_TEXT.missingBattleLog);
+		throw new AppError('MENU_MISSING_BATTLE_LOG', MENU_ERROR_TEXT.missingBattleLog);
 }

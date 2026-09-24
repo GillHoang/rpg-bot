@@ -13,18 +13,12 @@ import { AppError } from '../shared/kernel/Result.js';
  * this file's logic, only calling `.register()` once at bootstrap.
  */
 export class CommandRegistry {
-	private static instance: CommandRegistry | null = null;
 	private readonly commands = new Map<string, ICommand>();
-
-	static getInstance(): CommandRegistry {
-		CommandRegistry.instance ??= new CommandRegistry();
-		return CommandRegistry.instance;
-	}
 
 	register(command: ICommand): void {
 		const name = command.data.name;
 		if (this.commands.has(name)) {
-			throw new Error(COMMAND_LOG_TEXT.duplicate(name));
+			throw new AppError('COMMAND_DUPLICATE', COMMAND_LOG_TEXT.duplicate(name));
 		}
 		this.commands.set(name, command);
 	}

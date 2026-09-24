@@ -23,8 +23,8 @@ export class EnhanceCommand implements ICommand {
 		);
 
 	constructor(
-		private readonly enhancement: Pick<EnhancementService, 'attempt'> = new EnhancementService(),
-		private readonly inventory: Pick<InventoryService, 'searchWeapons' | 'searchArmors'> = new InventoryService(),
+		private readonly enhancement: Pick<EnhancementService, 'attempt'>,
+		private readonly inventory: Pick<InventoryService, 'searchWeapons' | 'searchArmors'>,
 	) {}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {

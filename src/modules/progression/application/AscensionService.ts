@@ -1,6 +1,6 @@
 import { ASCENSION_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
-import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { defaultPersistence } from '../../../db/defaultPersistence.js';
+import { AppError } from '../../../shared/kernel/Result.js';
+import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { AscensionRepository } from '../infrastructure/AscensionRepository.js';
 import type { usersBag } from '../../../db/schema.js';
 import { DeityService } from './DeityService.js';
@@ -21,7 +21,7 @@ export type AscendResult =
 	| { status: 'ok' };
 
 export interface AscensionDependencies {
-	persistence?: PersistenceContext;
+	persistence: PersistenceContext;
 	queries?: Pick<
 		AscensionRepository,
 		| 'lockBag'
@@ -46,9 +46,9 @@ export class AscensionService {
 	private readonly queries: NonNullable<AscensionDependencies['queries']>;
 	constructor(
 		deities: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'> | undefined = undefined,
-		options: AscensionDependencies = {},
+		options: AscensionDependencies,
 	) {
-		this.persistence = options.persistence ?? defaultPersistence;
+		this.persistence = requirePersistence(options, 'AscensionService');
 		this.deities = deities ?? new DeityService();
 		this.queries = options.queries ?? new AscensionRepository();
 	}
@@ -64,7 +64,7 @@ export class AscensionService {
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(ASCENSION_ERROR_TEXT.sigilMissingBag(discordId));
+			if (!bag) throw new AppError('ASCENSION_SIGIL_MISSING_BAG', ASCENSION_ERROR_TEXT.sigilMissingBag(discordId));
 			const have = bag[field];
 			if (have < next.essence) return { status: 'insufficient-essence', needed: next.essence, have };
 
@@ -98,7 +98,7 @@ export class AscensionService {
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new Error(ASCENSION_ERROR_TEXT.ascendMissingBag(discordId));
+			if (!bag) throw new AppError('ASCENSION_MISSING_BAG', ASCENSION_ERROR_TEXT.ascendMissingBag(discordId));
 			const essenceHave = bag[field];
 			if (essenceHave < cost.essence || bag.credux < cost.credux) {
 				return { status: 'insufficient-resources', neededEssence: cost.essence, neededCredux: cost.credux };

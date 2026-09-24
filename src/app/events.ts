@@ -5,7 +5,7 @@ import { recordFailure } from '../shared/utils/operationalMetrics.js';
  * Canonical event-wiring location. Quest progress + believer EXP observe
  * committed actions; core rewards already applied inside the transaction.
  */
-export function subscribeDomainEvents(bus: Pick<EventBus, 'on'> = EventBus.getInstance()): void {
+export function subscribeDomainEvents(bus: Pick<EventBus, 'on'>): void {
 	for (const name of [
 		'battle.won',
 		'daily.claimed',

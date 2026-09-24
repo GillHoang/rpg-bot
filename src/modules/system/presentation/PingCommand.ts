@@ -24,7 +24,7 @@ interface Latency {
  *  - PostgreSQL: SELECT 1 đi-đến-đáp-là.
  */
 export class PingCommand implements ICommand {
-	constructor(private readonly health: Pick<HealthService, 'checkDatabase'> = new HealthService()) {}
+	constructor(private readonly health: Pick<HealthService, 'checkDatabase'>) {}
 
 	readonly data = new SlashCommandBuilder().setName('ping').setDescription(PING_DESCRIPTION);
 

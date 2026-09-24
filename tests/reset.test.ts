@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { testPersistence } from './helpers/persistence.js';
 import { migrateTestDatabase, type TestDatabase } from './helpers/database.js';
 import { sql } from 'drizzle-orm';
 
@@ -27,12 +28,12 @@ afterAll(async () => {
 
 describe('ResetService', () => {
 	it('countAll() counts without touching data — preview is destructive-free', async () => {
-		const start = new StartService();
+		const start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		for (const id of ['reset-count-a', 'reset-count-b', 'reset-count-c']) {
 			const result = await start.start(id, id, 'Swordsman');
 			if (result.status !== 'ok') throw new Error(result.status);
 		}
-		const reset = new ResetService();
+		const reset = new ResetService({ persistence: testPersistence() });
 		expect(await reset.countAll()).toBe(3);
 		// Counting must not have wiped anything.
 		expect(await db.select().from(s.users)).toHaveLength(3);
@@ -47,7 +48,7 @@ describe('ResetService', () => {
 
 	it('resetAll() deletes players but keeps seed catalogs and server config', async () => {
 		await db.insert(s.serverConfig).values({ guildId: 'g1', prefix: '!' });
-		const start = new StartService();
+		const start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		for (const id of ['reset-a', 'reset-b']) {
 			const result = await start.start(id, id, 'Knight');
 			if (result.status !== 'ok') throw new Error(result.status);
@@ -55,7 +56,7 @@ describe('ResetService', () => {
 		expect(await db.select().from(s.users)).toHaveLength(2);
 		expect(await db.select().from(s.userWeapons)).toHaveLength(2);
 
-		const reset = new ResetService();
+		const reset = new ResetService({ persistence: testPersistence() });
 		const result = await reset.resetAll('developer');
 		expect(result).toEqual({ status: 'ok', deletedUsers: 2 });
 
@@ -79,17 +80,17 @@ describe('ResetService', () => {
 
 	it('reports nothing-to-reset when there are no users', async () => {
 		// Previous test already wiped everything; audit row is in dev_logs only.
-		const result = await new ResetService().resetAll('developer');
+		const result = await new ResetService({ persistence: testPersistence() }).resetAll('developer');
 		expect(result).toEqual({ status: 'nothing-to-reset' });
 	});
 
 	it('resetUser() wipes exactly one user and leaves the other untouched', async () => {
-		const start = new StartService();
+		const start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		for (const id of ['900000000000000001', '900000000000000002']) {
 			const result = await start.start(id, id, 'Knight');
 			if (result.status !== 'ok') throw new Error(result.status);
 		}
-		const reset = new ResetService();
+		const reset = new ResetService({ persistence: testPersistence() });
 		const rows = await reset.countUser('900000000000000002');
 		expect(rows).toBeGreaterThan(0);
 
@@ -114,12 +115,12 @@ describe('ResetService', () => {
 	});
 
 	it('resets cleanly a second time after players re-register', async () => {
-		const start = new StartService();
+		const start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
 		const result = await start.start('reset-c', 'reset-c', 'Mage');
 		if (result.status !== 'ok') throw new Error(result.status);
 		// Identity columns restarted, so freshly created rows work as before.
 		expect(await db.select().from(s.userCharacter)).toHaveLength(1);
-		expect((await new ResetService().resetAll('developer')) as { status: string }).toEqual({
+		expect((await new ResetService({ persistence: testPersistence() }).resetAll('developer')) as { status: string }).toEqual({
 			status: 'ok',
 			deletedUsers: 1,
 		});

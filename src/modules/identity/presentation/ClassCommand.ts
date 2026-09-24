@@ -43,7 +43,7 @@ export class ClassCommand implements ICommand {
 				),
 		);
 
-	constructor(private readonly classChange: Pick<ClassChangeService, 'change'> = new ClassChangeService()) {}
+	constructor(private readonly classChange: Pick<ClassChangeService, 'change'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
@@ -52,7 +52,8 @@ export class ClassCommand implements ICommand {
 			return;
 		}
 		const newClass = interaction.options.getString('new_class', true) as CombatClass;
-		await interaction.editReply(await this.classChange.change(interaction.user.id, newClass));
+		const result = await this.classChange.change(interaction.user.id, newClass);
+		await interaction.editReply(result.ok ? result.value : result.error.message);
 	}
 
 	/** Xem trước class — flavor + nội tại + chỉ số, không cần tạo nhân vật. */
