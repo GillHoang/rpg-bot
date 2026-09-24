@@ -844,6 +844,12 @@ export const userCharacter = pgTable(
 		combatLevel: integer('combat_level').notNull().default(1),
 		combatExp: bigint('combat_exp', { mode: 'number' }).notNull().default(0),
 		activePresetSlot: integer('active_preset_slot').notNull().default(1),
+		/** Số tầng đã vượt của Gate 1..5 (0-10 mỗi Gate). */
+		gate1TiersCleared: integer('gate1_tiers_cleared').notNull().default(0),
+		gate2TiersCleared: integer('gate2_tiers_cleared').notNull().default(0),
+		gate3TiersCleared: integer('gate3_tiers_cleared').notNull().default(0),
+		gate4TiersCleared: integer('gate4_tiers_cleared').notNull().default(0),
+		gate5TiersCleared: integer('gate5_tiers_cleared').notNull().default(0),
 		highestRaidStreak: integer('highest_raid_streak').notNull().default(0),
 		highestRankStreak: integer('highest_rank_streak').notNull().default(0),
 		raidsWon: integer('raids_won').notNull().default(0),
@@ -875,6 +881,11 @@ export const userCharacter = pgTable(
 		check('character_valid_class', sql`${t.class} IN ('Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer')`),
 		check('character_valid_preset', sql`${t.activePresetSlot} IN (1, 2)`),
 		check('character_valid_level', sql`${t.combatLevel} BETWEEN 1 AND 100`),
+		check('gate1_tiers_valid', sql`${t.gate1TiersCleared} BETWEEN 0 AND 10`),
+		check('gate2_tiers_valid', sql`${t.gate2TiersCleared} BETWEEN 0 AND 10`),
+		check('gate3_tiers_valid', sql`${t.gate3TiersCleared} BETWEEN 0 AND 10`),
+		check('gate4_tiers_valid', sql`${t.gate4TiersCleared} BETWEEN 0 AND 10`),
+		check('gate5_tiers_valid', sql`${t.gate5TiersCleared} BETWEEN 0 AND 10`),
 	],
 );
 

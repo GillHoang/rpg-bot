@@ -22,9 +22,24 @@ export class GameplayProgressCoordinator {
 		this.quests = options.quests ?? new QuestService(this.reputation, { persistence });
 	}
 
-	async apply(tx: Executor, discordId: string, type: QuestType | 'ranked_win', now: Date, amount = 1): Promise<void> {
-		if (type !== 'ranked_win') await this.quests.progressInTx(tx, discordId, type, now, amount);
-		if (type === 'daily' || type === 'raid_win' || type === 'duel_win' || type === 'ranked_win') {
+	async apply(
+		tx: Executor,
+		discordId: string,
+		type: QuestType | 'ranked_win' | 'final_boss_win',
+		now: Date,
+		amount = 1,
+	): Promise<void> {
+		// Final Boss gate counts toward raid_win quests but awards its own reputation.
+		const questType: QuestType | null =
+			type === 'final_boss_win' ? 'raid_win' : type === 'ranked_win' ? null : type;
+		if (questType) await this.quests.progressInTx(tx, discordId, questType, now, amount);
+		if (
+			type === 'daily' ||
+			type === 'raid_win' ||
+			type === 'final_boss_win' ||
+			type === 'duel_win' ||
+			type === 'ranked_win'
+		) {
 			await this.reputation.awardInTx(tx, discordId, type, now);
 		}
 	}

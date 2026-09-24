@@ -36,6 +36,20 @@
       "when": 1790160000000,
       "tag": "0004_battle_standardization",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790170000000,
+      "tag": "0005_portal_progression",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790180000000,
+      "tag": "0006_portal_gates",
+      "breakpoints": true
     }
   ]
 }

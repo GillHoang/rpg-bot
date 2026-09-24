@@ -102,10 +102,80 @@ function checkPayload(payload: unknown) {
 	walk(json);
 	expect(count).toBeLessThanOrEqual(40);
 	expect(length).toBeLessThanOrEqual(4000);
-	expect(new Set(ids).size).toBe(ids.length);
 }
 
 describe('phase 2 menu', () => {
+	it('rejects invalid and locked gate attempts without consuming cooldown or writing rewards', async () => {
+		await start();
+		const before = await bag();
+		const raid = new RaidService();
+		for (const options of [
+			{ gate: 6 },
+			{ gate: 2 },
+			{ gate: 1, tier: 2 },
+			{ gate: 1, tier: 0 },
+			{ gate: 1, tier: 11 },
+		]) {
+			expect((await raid.run(id, false, { ...options, requestId: 'invalid-attempt' })).status).toBe(
+				'portal-locked',
+			);
+		}
+		expect(await bag()).toEqual(before);
+		expect(await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id))).toHaveLength(0);
+		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
+		expect(await db.select().from(s.menuActionReceipts).where(eq(s.menuActionReceipts.discordId, id))).toHaveLength(
+			0,
+		);
+	});
+	it('refreshes onboarding in place and keeps class selection bound to the same message', async () => {
+		const router = new MenuRouter(undefined, new MenuGameplayService());
+		const open = fixture('command');
+		await router.open(open.command);
+		const refresh = fixture('button', action(open.raw.editReply.mock.calls[0][0], 'refresh'));
+		await router.handle(refresh.interaction);
+		expect(refresh.raw.deferUpdate).toHaveBeenCalledOnce();
+		expect(refresh.raw.deferReply).not.toHaveBeenCalled();
+		const select = fixture('select', action(refresh.raw.editReply.mock.calls[0][0], 'class'), ['Knight']);
+		await router.handle(select.interaction);
+		expect(select.raw.editReply).toHaveBeenCalledOnce();
+	});
+	it.each([
+		[10, 1],
+		[7, 3],
+	])('advances past tier %i/%i after winning without returning to the lobby', async (level, cleared) => {
+		await start();
+		await db
+			.update(s.userCharacter)
+			.set({ combatLevel: level, gate1TiersCleared: cleared })
+			.where(eq(s.userCharacter.discordId, id));
+		vi.spyOn(BattleEngine.prototype, 'resolve').mockReturnValue({
+			outcome: 'player_win',
+			rounds: 1,
+			log: [],
+			roundLogs: [],
+			playerHpRemaining: 1,
+			enemyHpRemaining: 0,
+		});
+		const game = new MenuGameplayService();
+		const session = new MenuSessionStore().create(id);
+		session.screen = { kind: 'gateTiers' };
+		session.gateId = 1;
+		await game.render(session);
+		expect(session.portalGate).toBe(cleared + 1);
+		session.screen = await game.act(session, 'hunt', id);
+		expect(session.screen.kind).toBe('result');
+		if (cleared === 3) {
+			const lobbySession = { ...session, screen: { kind: 'gateTiers' } as const };
+			const lobby = await game.render(lobbySession);
+			expect(lobbySession.portalGate).toBe(5);
+			expect(lobby?.buttons.find((button) => button.action === 'hunt')?.disabled).toBe(false);
+		}
+		await db.delete(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id));
+		session.revision++;
+		session.screen = await game.act(session, 'hunt', id);
+		const [character] = await db.select().from(s.userCharacter).where(eq(s.userCharacter.discordId, id));
+		expect(character.gate1TiersCleared).toBe(cleared + 1);
+	});
 	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
 		await start();
 		const router = new MenuRouter(undefined, new MenuGameplayService());

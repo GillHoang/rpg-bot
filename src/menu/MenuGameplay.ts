@@ -4,7 +4,7 @@ import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { RaidResult } from '../services/RaidService.js';
 
 export type GameplayScreen =
-	| { kind: 'profile' | 'quests' | 'battle' }
+	| { kind: 'profile' | 'quests' | 'battle' | 'gateSelect' | 'gateTiers' }
 	| { kind: 'confirm'; operation: 'start'; combatClass: CombatClass }
 	| { kind: 'confirm'; operation: 'boss' | 'reroll'; day: string }
 	| { kind: 'result' }
@@ -13,6 +13,11 @@ export interface GamePanel {
 	title: string;
 	body: string;
 	buttons: { action: MenuAction; label: string; disabled?: boolean; danger?: boolean; group?: string }[];
+	selectors?: {
+		action: 'portal' | 'gate';
+		placeholder: string;
+		options: { label: string; value: string; default?: boolean }[];
+	}[];
 	classes?: boolean;
 	withAvatar?: boolean;
 	grouped?: boolean;

@@ -105,6 +105,9 @@ export class MenuRouter {
 			gamePanel: source.gamePanel,
 			avatarUrl: source.avatarUrl,
 			pendingModal: source.pendingModal,
+			portalId: source.portalId,
+			portalGate: source.portalGate,
+			battle: source.battle,
 		});
 		source.pendingModal = null;
 		return session;
@@ -148,9 +151,15 @@ export class MenuRouter {
 			session.gamePanel?.classes &&
 			interaction.values.length === 1 &&
 			(CLASS_NAMES as readonly string[]).includes(interaction.values[0]!);
+		const portalSelect =
+			interaction.isStringSelectMenu() &&
+			interaction.values.length === 1 &&
+			session.gamePanel?.selectors?.some(
+				(s) => s.action === action && s.options.some((o) => o.value === interaction.values[0]),
+			);
 		const button =
 			interaction.isButton() && session.gamePanel?.buttons.some((b) => b.action === action && !b.disabled);
-		if (!this.gameplay || (!classSelect && !button)) {
+		if (!this.gameplay || (!classSelect && !portalSelect && !button)) {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
@@ -262,8 +271,7 @@ export class MenuRouter {
 	}
 
 	private async acknowledge(interaction: MenuInteraction, session: MenuSession): Promise<void> {
-		if (!session.messageId || (session.launcher && session.screen.kind === 'home'))
-			await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+		if (!session.messageId) await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 		else await interaction.deferUpdate();
 	}
 

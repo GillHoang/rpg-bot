@@ -28,7 +28,9 @@ it('backfills mode records and streaks across interleaved logs, preserving legac
 				(5, 'a', 'b', 'loss', 1031, 1014), (6, 'a', 'b', 'win', 1014, 1030),
 				(7, 'a', 'b', 'draw', 1030, 1030), (8, 'a', 'b', 'win', 1030, 1046);
 		`);
-		await testClient.exec(await readFile(new URL('0004_battle_standardization.sql', root), 'utf8'));
+			await testClient.exec(await readFile(new URL('0004_battle_standardization.sql', root), 'utf8'));
+			await testClient.exec(await readFile(new URL('0005_portal_progression.sql', root), 'utf8'));
+			await testClient.exec(await readFile(new URL('0006_portal_gates.sql', root), 'utf8'));
 		const characters = await db.select().from(s.userCharacter);
 		expect(characters.find((row) => row.discordId === 'a')).toMatchObject({
 			duelWins: 3,

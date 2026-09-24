@@ -1,7 +1,7 @@
 import { CURRENCY } from './common.js';
 import { ICONS } from './icons.js';
 
-export const RAID_DESCRIPTION = 'Chiến đấu với một quái vật ngẫu nhiên';
+export const RAID_DESCRIPTION = 'Khám phá Portal, vượt Gate và chiến đấu với boss';
 
 export const RAID_NO_MONSTERS_SEEDED = 'Chưa có dữ liệu quái vật (mob_roster trống). Báo admin seed dữ liệu.';
 

@@ -1,6 +1,8 @@
 export const MENU_PREFIX = 'menu:';
 export const MENU_OPEN_ID = 'menu:v1:open';
 export const GAME_ACTIONS = [
+	'portal',
+	'gate',
 	'battle',
 	'inventory',
 	'deity',
@@ -61,6 +63,10 @@ export function parseMenuId(
 	const revision = Number(match[2]);
 	if (!Number.isSafeInteger(revision)) return null;
 	const action = match[3] as MenuAction;
-	if ((action === 'find') !== (match[4] !== undefined)) return null;
+	// 'gate' carries the gate number (1-5) in the nonce slot so the five gate
+	// buttons stay unique on one panel; 'find' carries its modal nonce.
+	const nonceAllowed = action === 'find' || action === 'gate';
+	if (nonceAllowed !== (match[4] !== undefined)) return null;
+	if (action === 'gate' && !/^[1-5]$/.test(match[4] ?? '')) return null;
 	return { id: match[1]!, revision, action, nonce: match[4] };
 }

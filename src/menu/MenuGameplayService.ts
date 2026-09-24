@@ -1,3 +1,12 @@
+import {
+	GATES,
+	GATE_TIERS,
+	TIERS_PER_GATE,
+	defaultGateTier,
+	gateUnlocked,
+	highestAccessibleGate,
+} from '../config/portals.js';
+import { GATE_TEXT } from '../text/portals.js';
 import { dailyRewardText } from '../render/dailyRewardText.js';
 import { MENU_ERROR_TEXT } from '../text/diagnostics.js';
 import { GAMEPLAY_NOTICE } from '../text/gameplay.js';
@@ -83,12 +92,114 @@ export class MenuGameplayService implements MenuGameplay {
 			if (!snapshot) throw new Error(MENU_ERROR_TEXT.playerDisappeared);
 			return questsPanel(snapshot, dailyDone);
 		}
-		if (kind === 'battle') return battleLobbyPanel(profile.data, bossDone, !!session.battle);
+		if (kind === 'gateSelect') {
+			const gatesCleared = this.gatesCleared(user);
+			const level = profile.data.level;
+			const panel = battleLobbyPanel(profile.data, bossDone, !!session.battle);
+			panel.title = GATE_TEXT.title;
+			panel.body = [
+				...GATES.map((g) => {
+					const cleared = gatesCleared[g.id - 1] ?? 0;
+					return (
+						GATE_TEXT.gateRow(g.id, g.name, g.modifier, g.minLevel, cleared, level) +
+						` · ` +
+						GATE_TEXT.tiersStatus(cleared)
+					);
+				}),
+				GATE_TEXT.rules,
+				panel.body,
+			].join('\n');
+			panel.buttons = [
+				panel.buttons[0]!,
+				...GATES.map((g) => ({
+					action: 'gate' as MenuAction,
+					label: `Gate ${g.id}`,
+					disabled: !gateUnlocked(g, gatesCleared, level),
+				})),
+				...panel.buttons.slice(1),
+			];
+			return panel;
+		}
+		if (kind === 'gateTiers') {
+			const gatesCleared = this.gatesCleared(user);
+			const level = profile.data.level;
+			const gate = GATES.find((g) => g.id === session.gateId) ?? highestAccessibleGate(gatesCleared);
+			const gateCleared = gatesCleared[gate.id - 1] ?? 0;
+			const tiers = GATE_TIERS.filter((t) => t.gate.id === gate.id);
+			const selected = tiers.find((t) => t.number === session.portalGate) ?? defaultGateTier(gatesCleared, gate);
+			session.gateId = gate.id;
+			session.portalGate = selected.number;
+			const panel = battleLobbyPanel(profile.data, bossDone, !!session.battle);
+			panel.title = GATE_TEXT.title;
+			panel.body = [
+				GATE_TEXT.gateHeader(gate.id, gate.name, gate.modifier, gate.minLevel),
+				...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
+				gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
+				panel.body,
+			]
+				.filter(Boolean)
+				.join('\n');
+			panel.buttons = [
+				{ action: 'hunt', label: GATE_TEXT.enter, disabled: selected.number > gateCleared + 1 },
+				...panel.buttons.slice(1),
+			];
+			panel.selectors = [
+				{
+					action: 'gate',
+					placeholder: GATE_TEXT.chooseGate,
+					options: GATES.map((g) => ({
+						label: GATE_TEXT.gateRow(
+							g.id,
+							g.name,
+							g.modifier,
+							g.minLevel,
+							gatesCleared[g.id - 1] ?? 0,
+							level,
+						),
+						value: String(g.id),
+						default: g.id === gate.id,
+					})),
+				},
+				{
+					action: 'portal',
+					placeholder: GATE_TEXT.chooseTier,
+					options: tiers.map((t) => ({
+						label: GATE_TEXT.tierRow(t, gateCleared),
+						value: String(t.number),
+						default: t.number === selected.number,
+					})),
+				},
+			];
+			return panel;
+		}
+		if (kind === 'battle') {
+			session.screen = { kind: 'gateSelect' };
+			return this.render(session);
+		}
 		return homePanel(profile.data, { dailyDone, bossDone });
 	}
 
+	private gatesCleared(
+		user:
+			| {
+					gate1TiersCleared?: number | null;
+					gate2TiersCleared?: number | null;
+					gate3TiersCleared?: number | null;
+					gate4TiersCleared?: number | null;
+					gate5TiersCleared?: number | null;
+			  }
+			| undefined,
+	): number[] {
+		return [
+			user?.gate1TiersCleared ?? 0,
+			user?.gate2TiersCleared ?? 0,
+			user?.gate3TiersCleared ?? 0,
+			user?.gate4TiersCleared ?? 0,
+			user?.gate5TiersCleared ?? 0,
+		];
+	}
+
 	async act(session: MenuSession, action: MenuAction, username: string, value?: string): Promise<MenuScreen> {
-		const id = session.ownerId;
 		switch (action) {
 			case 'inventory':
 			case 'deity':
@@ -96,7 +207,19 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'casino':
 				return { kind: 'section', section: action };
 			case 'battle':
-				return { kind: 'battle' };
+				// Săn quái luôn mở lại màn chọn Gate (session mới từ đầu, như yêu cầu).
+				session.gateId = undefined;
+				session.portalGate = undefined;
+				return { kind: 'gateSelect' };
+			case 'gate':
+				// Chọn Gate — nonce slot trên custom_id mang số Gate (1-5).
+				session.gateId = Number(value);
+				session.portalGate = undefined;
+				return { kind: 'gateTiers' };
+			case 'portal':
+				// Selector tầng trên màn tier (value = số tầng).
+				session.portalGate = Number(value);
+				return { kind: 'gateTiers' };
 			case 'class': {
 				const combatClass = CLASS_NAMES.find((c) => c === value);
 				if (!combatClass) throw new Error(MENU_ERROR_TEXT.invalidClass);
@@ -109,7 +232,7 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'daily':
 				return this.claimDaily(session);
 			case 'claim':
-				session.notice = await this.quests.claimWeeklyGrand(id);
+				session.notice = await this.quests.claimWeeklyGrand(session.ownerId);
 				return { kind: 'quests' };
 			case 'reroll':
 			case 'boss':
@@ -162,7 +285,7 @@ export class MenuGameplayService implements MenuGameplay {
 	private cancelConfirmation(screen: MenuScreen): MenuScreen {
 		if (screen.kind !== 'confirm') return { kind: 'home' };
 		if (screen.operation === 'reroll') return { kind: 'quests' };
-		if (screen.operation === 'boss') return { kind: 'battle' };
+		if (screen.operation === 'boss') return { kind: 'gateSelect' };
 		return { kind: 'home' };
 	}
 
@@ -187,21 +310,25 @@ export class MenuGameplayService implements MenuGameplay {
 		const r = await this.raid.run(session.ownerId, boss, {
 			requestId: `${session.id}:${session.revision}`,
 			expectedDay,
+			...(!boss ? { gate: session.gateId, tier: session.portalGate } : {}),
 		});
 		if (r.status === 'ok') {
 			session.battle = { ...r, boss };
+			// Win clears the fought tier: drop the tier number so the next render
+			// falls back to defaultGateTier (the tier just unlocked), keeping the gate.
+			if (!boss && r.battle.outcome === 'player_win') session.portalGate = undefined;
 			return { kind: 'result' };
 		}
-		if (r.status === 'boss-locked') session.notice = r.message;
+		if (r.status === 'boss-locked' || r.status === 'portal-locked') session.notice = r.message;
 		else if (r.status === 'cooldown') {
 			session.notice = GAMEPLAY_NOTICE.cooldown(
 				Math.max(1, Math.ceil((r.retryAt.getTime() - Date.now()) / 1000)),
 			);
-			return session.battle ? { kind: 'result' } : { kind: 'battle' };
+			return session.battle ? { kind: 'result' } : { kind: 'gateTiers' };
 		} else if (r.status === 'already-processed') session.notice = GAMEPLAY_NOTICE.alreadyProcessed;
 		else if (r.status === 'no-monsters-seeded') session.notice = GAMEPLAY_NOTICE.noMonster;
 		else session.notice = GAMEPLAY_NOTICE.createFirst;
-		return { kind: 'battle' };
+		return { kind: 'gateTiers' };
 	}
 }
 

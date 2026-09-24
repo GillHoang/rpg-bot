@@ -1,3 +1,5 @@
+import { GATES, TIERS_PER_GATE } from '../../config/portals.js';
+import { GATE_TEXT } from '../../text/portals.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../core/ICommand.js';
 import { sendBattleLog } from '../../render/BattleLogPager.js';
@@ -12,7 +14,18 @@ export class RaidCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
 		.setName('raid')
 		.setDescription(RAID_DESCRIPTION)
-		.addSubcommand((s) => s.setName('hunt').setDescription(RAID_FLOW_TEXT.huntDescription))
+		.addSubcommand((s) => s.setName('gates').setDescription(GATE_TEXT.listDescription))
+		.addSubcommand((s) =>
+			s
+				.setName('hunt')
+				.setDescription(GATE_TEXT.description)
+				.addIntegerOption((o) =>
+					o.setName('gate').setDescription(GATE_TEXT.gateOption).setMinValue(1).setMaxValue(GATES.length),
+				)
+				.addIntegerOption((o) =>
+					o.setName('tier').setDescription(GATE_TEXT.tierOption).setMinValue(1).setMaxValue(TIERS_PER_GATE),
+				),
+		)
 		.addSubcommand((s) => s.setName('boss').setDescription(RAID_FLOW_TEXT.bossDescription));
 
 	constructor(private readonly raid: Pick<RaidService, 'run'> = new RaidService()) {}
@@ -20,13 +33,25 @@ export class RaidCommand implements ICommand {
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.
 		await interaction.deferReply();
+		if (interaction.options.getSubcommand(false) === 'gates') {
+			await interaction.editReply(
+				GATES.map((g) => GATE_TEXT.gateRowBoss(g.id, g.name, g.modifier, g.minLevel, g.bossLevel)).join('\n') +
+					'\n\n' +
+					GATE_TEXT.rules,
+			);
+			return;
+		}
 		const boss = interaction.options.getSubcommand(false) === 'boss';
-		const result = await this.raid.run(interaction.user.id, boss);
+		const selection = {
+			gate: interaction.options.getInteger('gate') ?? undefined,
+			tier: interaction.options.getInteger('tier') ?? undefined,
+		};
+		const result = await this.raid.run(interaction.user.id, boss, { ...selection, requestId: interaction.id });
 		if (result.status === 'already-processed') {
 			await interaction.editReply(RAID_FLOW_TEXT.alreadyProcessed);
 			return;
 		}
-		if (result.status === 'boss-locked') {
+		if (result.status === 'boss-locked' || result.status === 'portal-locked') {
 			await interaction.editReply(result.message);
 			return;
 		}
@@ -52,12 +77,23 @@ export class RaidCommand implements ICommand {
 
 		const options = raidBattleOptions(result, boss, interaction.user.username);
 		if (!boss) {
+			// Replay sticks to the requested gate but drops the tier number after a
+			// win so the next replay targets the default (just-unlocked) tier instead
+			// of farming the same cleared tier forever.
+			const replaySelection = { ...selection };
+			if (result.battle.outcome === 'player_win') replaySelection.tier = undefined;
 			options.replay = {
 				ownerId: interaction.user.id,
 				cooldownMs: RAID_HUNT_COOLDOWN_SECONDS * 1000,
 				run: async () => {
-					const next = await this.raid.run(interaction.user.id, false);
-					if (next.status === 'ok') return raidBattleOptions(next, false, interaction.user.username);
+					const next = await this.raid.run(interaction.user.id, false, replaySelection);
+					if (next.status === 'ok') {
+						if (replaySelection.tier !== undefined && next.battle.outcome === 'player_win') {
+							// won the explicitly selected tier — advance to the default (next) tier
+							replaySelection.tier = undefined;
+						}
+						return raidBattleOptions(next, false, interaction.user.username);
+					}
 					if (next.status === 'cooldown')
 						return GAMEPLAY_NOTICE.cooldown(
 							Math.max(1, Math.ceil((next.retryAt.getTime() - Date.now()) / 1000)),
@@ -65,7 +101,7 @@ export class RaidCommand implements ICommand {
 					if (next.status === 'not-registered') return NOT_REGISTERED;
 					if (next.status === 'no-character') return NO_CHARACTER;
 					if (next.status === 'no-monsters-seeded') return RAID_NO_MONSTERS_SEEDED;
-					if (next.status === 'boss-locked') return next.message;
+					if (next.status === 'boss-locked' || next.status === 'portal-locked') return next.message;
 					return RAID_FLOW_TEXT.alreadyProcessed;
 				},
 			};

@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 import { createTestDatabase } from './helpers/database.js';
 import * as s from '../src/db/schema.js';
 import { MAX_COMBAT_LEVEL } from '../src/config/combatExp.js';
@@ -23,7 +24,19 @@ it('upgrades populated EXP columns and level limits without losing existing prog
 		);
 		await testClient.exec(await readFile(new URL('0003_combat_progression.sql', root), 'utf8'));
 		await testClient.exec(await readFile(new URL('0004_battle_standardization.sql', root), 'utf8'));
+		await testClient.exec(await readFile(new URL('0005_portal_progression.sql', root), 'utf8'));
+		await testClient.exec(await readFile(new URL('0006_portal_gates.sql', root), 'utf8'));
 		const [preserved] = await db.select().from(s.userCharacter);
+		expect(preserved.gate1TiersCleared).toBe(0);
+		expect(getTableConfig(s.userCharacter).checks.map((constraint) => constraint.name)).toEqual(
+			expect.arrayContaining(['gate1_tiers_valid', 'gate5_tiers_valid']),
+		);
+		await expect(
+			db
+				.update(s.userCharacter)
+				.set({ gate1TiersCleared: 11 })
+				.where(eq(s.userCharacter.discordId, 'migration')),
+		).rejects.toThrow();
 		expect(preserved).toMatchObject({ combatLevel: 50, combatExp: 1000, lifetimeExp: 2_000_000_000 });
 		expect((await db.select().from(s.raidLogs))[0].updatedExp).toBe(1000);
 		await db

@@ -8,6 +8,7 @@
 export const BELIEVER_EXP_SOURCES = {
 	daily: 50,
 	raid_win: 30,
+	final_boss_win: 80,
 	duel_win: 40,
 	ranked_win: 50,
 	quest_complete: 25,

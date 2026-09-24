@@ -56,7 +56,7 @@ describe('menu payloads', () => {
 			expect(payload.components[1].components).toHaveLength(2);
 			expect(parseMenuId(payload.components[1].components[0].custom_id)?.action).toBe('home');
 			expect(parseMenuId(payload.components[1].components[1].custom_id)?.action).toBe('hunt');
-			expect(payload.components[1].components[1].label).toBe('Đánh lại (15s)');
+			expect(payload.components[1].components[1].label).toBe('Vào tầng');
 		}
 	});
 	it('serializes real V2 views within Discord limits with unique component IDs', () => {

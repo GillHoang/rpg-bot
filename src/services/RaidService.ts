@@ -1,3 +1,5 @@
+import { GATES, findGateTier, defaultGateTier, highestAccessibleGate, gateUnlocked } from '../config/portals.js';
+import { GATE_TEXT } from '../text/portals.js';
 import { formatNumber } from '../text/format.js';
 import { LOOT_CHEST_NAMES } from '../text/loot.js';
 import { RAID_CONFIRMATION_TEXT, BOSS_ALREADY_DONE, BOSS_FEE_REQUIRED, BOSS_LEVEL_REQUIRED } from '../text/raid.js';
@@ -41,6 +43,7 @@ export type RaidResult =
 	| { status: 'no-character' }
 	| { status: 'no-monsters-seeded' }
 	| { status: 'boss-locked'; message: string }
+	| { status: 'portal-locked'; message: string }
 	| {
 			status: 'ok';
 			battle: BattleResult;
@@ -55,6 +58,8 @@ export type RaidResult =
 	  };
 
 export interface RaidRunOptions {
+	gate?: number;
+	tier?: number;
 	requestId?: string;
 	expectedDay?: string;
 }
@@ -96,6 +101,11 @@ function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, m
 		table = RAID_LOOT_BOSS;
 		chestField = 'bossTreasureChest';
 		chestName = LOOT_CHEST_NAMES.boss;
+	} else if (mobType === 'final') {
+		// Final Boss gate: thưởng bậc Elite (miễn phí, không đụng daily boss fee).
+		table = RAID_LOOT_ELITE;
+		chestField = 'goldChest';
+		chestName = LOOT_CHEST_NAMES.gold;
 	} else if (mobType === 'elite') {
 		table = RAID_LOOT_ELITE;
 		chestField = 'goldChest';
@@ -224,8 +234,38 @@ export class RaidService {
 			if (cooldown && cooldown.readyAt > now) return { status: 'cooldown', retryAt: cooldown.readyAt };
 		}
 
+		const gatesCleared = [
+			character.gate1TiersCleared,
+			character.gate2TiersCleared,
+			character.gate3TiersCleared,
+			character.gate4TiersCleared,
+			character.gate5TiersCleared,
+		];
+		const explicitMode = options.gate !== undefined || options.tier !== undefined;
+		const gateTier = boss
+			? undefined
+			: explicitMode
+				? findGateTier(options.gate ?? highestAccessibleGate(gatesCleared).id, options.tier ?? 1)
+				: (() => {
+						const gate = highestAccessibleGate(gatesCleared);
+						return defaultGateTier(gatesCleared, gate);
+					})();
+		if (!boss && explicitMode && options.gate !== undefined && !GATES.some((g) => g.id === options.gate))
+			return { status: 'portal-locked', message: GATE_TEXT.invalid };
+		if (!boss && !gateTier) return { status: 'portal-locked', message: GATE_TEXT.invalid };
+		if (!boss && !gateUnlocked(gateTier!.gate, gatesCleared, account.combatLevel))
+			return { status: 'portal-locked', message: GATE_TEXT.locked(gateTier!.gate.minLevel) };
+		if (!boss && gateTier!.number > (gatesCleared[gateTier!.gate.id - 1] ?? 0) + 1)
+			return { status: 'portal-locked', message: GATE_TEXT.tierLocked() };
 		const lootRng = createRng(createSecureSeed());
-		const monsterStats = await this.monsters.pickForLevel(tx, account.combatLevel, lootRng, boss);
+		const monsterStats = await this.monsters.pickForLevel(
+			tx,
+			gateTier?.level ?? account.combatLevel,
+			lootRng,
+			boss,
+			gateTier?.finalBoss ?? false,
+			gateTier?.gate.modifier ?? 'none',
+		);
 		if (!monsterStats) return { status: 'no-monsters-seeded' };
 		if (boss) {
 			const gate = await this.bossGate(tx, discordId, account, day);
@@ -263,8 +303,8 @@ export class RaidService {
 			lootRng,
 			won,
 			boss,
-			monsterStats.mobType,
-			account.combatLevel,
+			gateTier?.finalBoss ? 'final' : monsterStats.mobType,
+			gateTier?.level ?? account.combatLevel,
 		);
 
 		const progress = await this.rewards.grant(tx, discordId, {
@@ -273,15 +313,22 @@ export class RaidService {
 			shards,
 			grantChest: gotChest,
 			chestField,
-			boss,
+			boss: boss || gateTier?.finalBoss,
 			battleType: boss ? 'boss' : 'raid',
 			enemyName: monsterStats.name,
 			enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
 			outcome: battle.outcome,
 		});
+		if (won && gateTier)
+			await this.queries.updateCharacter(tx, discordId, {
+				[`gate${gateTier.gate.id}TiersCleared`]: Math.max(
+					gatesCleared[gateTier.gate.id - 1] ?? 0,
+					gateTier.number,
+				),
+			});
 		await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
 		const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
-		if (won) await this.progress.apply(tx, discordId, 'raid_win', now);
+		if (won) await this.progress.apply(tx, discordId, gateTier?.finalBoss ? 'final_boss_win' : 'raid_win', now);
 		if (options.requestId)
 			await this.queries.insertReceipt(tx, {
 				discordId,
@@ -291,7 +338,7 @@ export class RaidService {
 		return {
 			status: 'ok',
 			battle,
-			monsterName: `${monsterStats.name} [${monsterStats.mobType}]`,
+			monsterName: `${gateTier ? GATE_TEXT.gate(gateTier) + ' · ' : ''}${monsterStats.name} [${monsterStats.mobType}]`,
 			credux,
 			shards,
 			expGained,

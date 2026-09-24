@@ -110,9 +110,9 @@ describe('MonsterEncounterService', () => {
 		const service = new MonsterEncounterService(roster);
 		expect(await service.pickForLevel(executor, 2, rng)).toEqual({
 			name: 'Small',
-			hp: 1432,
-			atk: 135,
-			def: 62,
+			hp: 1489,
+			atk: 140,
+			def: 65,
 			crit: 5,
 			mobType: 'regular',
 			skillKey: 'none',
@@ -131,9 +131,9 @@ describe('MonsterEncounterService', () => {
 		const rng = vi.fn(() => 0.99);
 		expect(await new MonsterEncounterService(roster).pickForLevel(executor, 2, rng)).toEqual({
 			name: 'Elite',
-			hp: 1298,
-			atk: 431,
-			def: 226,
+			hp: 1728,
+			atk: 129,
+			def: 52,
 			crit: 5,
 			mobType: 'elite',
 			skillKey: 'none',

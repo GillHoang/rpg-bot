@@ -20,6 +20,10 @@ export interface MenuSession {
 	expiresAt: number;
 	busy: boolean;
 	pendingModal: string | null;
+	portalId?: string;
+	portalGate?: number;
+	/** Gate đang chọn ở màn tier (1-5). */
+	gateId?: number;
 	gamePanel?: GamePanel;
 	battle?: MenuBattle;
 	notice?: string;

@@ -230,7 +230,7 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 				button('prev', GAMEPLAY_TEXT.previous, page === 0),
 				button('next', GAMEPLAY_TEXT.next, page >= pages.length - 1),
 				button('last', GAMEPLAY_TEXT.last, page >= pages.length - 1),
-				...(!r.boss ? [button('hunt', GAMEPLAY_TEXT.replay)] : []),
+				...(!r.boss ? [button('hunt', GAMEPLAY_TEXT.hunt)] : []),
 			],
 		};
 	}
