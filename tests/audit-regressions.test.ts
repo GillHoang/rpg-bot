@@ -20,7 +20,7 @@ beforeAll(async () => {
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
 	await new StartService().start('audit-a', 'Alice', 'Knight');
 	await new StartService().start('audit-b', 'Bob', 'Knight');
-}, 30000);
+}, 120000);
 afterAll(async () => {
 	await pool.end();
 });

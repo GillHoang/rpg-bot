@@ -83,4 +83,4 @@ it('backfills mode records and streaks across interleaved logs, preserving legac
 	} finally {
 		await testClient.close();
 	}
-}, 30000);
+}, 120000);

@@ -10,11 +10,11 @@ import { GATE_TEXT } from '../../shared/ui/text/portals.js';
 import { dailyRewardText } from '../../shared/ui/render/dailyRewardText.js';
 import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
 import { GAMEPLAY_NOTICE } from '../../shared/ui/text/gameplay.js';
-import { MenuPlayerRepository } from './infrastructure/MenuPlayerRepository.js';
+import { MenuPlayerRepository, type MenuPlayerState } from './infrastructure/MenuPlayerRepository.js';
 import type { PersistenceContext } from '../../shared/kernel/persistence.js';
 import { defaultPersistence } from '../../db/defaultPersistence.js';
 import { CLASS_NAMES } from '../../shared/config/classes.js';
-import { ProfileService } from '../identity/application/ProfileService.js';
+import { ProfileService, type ProfileSummaryData } from '../identity/application/ProfileService.js';
 import { StartService } from '../identity/application/StartService.js';
 import { ClaimDailyUseCase } from '../economy/application/ClaimDailyUseCase.js';
 import { QuestService } from '../meta/application/QuestService.js';
@@ -38,6 +38,9 @@ export interface MenuGameplayDependencies {
 	persistence?: PersistenceContext;
 	players?: Pick<MenuPlayerRepository, 'findState'>;
 }
+
+/** section của MenuScreen → kind panel tương ứng (các section khác không render ở đây). */
+const SECTION_KIND: Record<string, string> = { character: 'profile', daily: 'quests', battle: 'battle' };
 
 export class MenuGameplayService implements MenuGameplay {
 	private readonly players: Pick<MenuPlayerRepository, 'findState'>;
@@ -66,17 +69,10 @@ export class MenuGameplayService implements MenuGameplay {
 
 	async render(session: MenuSession): Promise<GamePanel | undefined> {
 		const screen = session.screen;
-		if (['help', 'topic', 'search'].includes(screen.kind)) return undefined;
-		if (screen.kind === 'section' && !['character', 'daily', 'battle'].includes(screen.section)) return undefined;
 		if (screen.kind === 'result' || screen.kind === 'log') return battlePanel(session);
 		if (screen.kind === 'confirm') return confirmationPanel(screen);
-
-		const kind =
-			screen.kind === 'section'
-				? ({ character: 'profile', daily: 'quests', battle: 'battle' } as Record<string, string>)[
-						screen.section
-					]
-				: screen.kind;
+		const kind = this.resolveKind(screen);
+		if (kind === undefined) return undefined;
 		if (kind === 'profile') {
 			const detail = await this.profiles.get(session.ownerId);
 			return detail.status === 'ok' ? profilePanel(detail.data) : onboardingPanel();
@@ -92,70 +88,96 @@ export class MenuGameplayService implements MenuGameplay {
 			if (!snapshot) throw new Error(MENU_ERROR_TEXT.playerDisappeared);
 			return questsPanel(snapshot, dailyDone);
 		}
-		if (kind === 'gateSelect') {
-			const gatesCleared = this.gatesCleared(user);
-			const level = profile.data.level;
-			const panel = battleLobbyPanel(profile.data, bossDone, !!session.battle);
-			panel.title = GATE_TEXT.title;
-			panel.body = [
-				...GATES.map((g) => {
-					const cleared = gatesCleared[g.id - 1] ?? 0;
-					return (
-						GATE_TEXT.gateRow(g.id, g.name, g.modifier, g.minLevel, cleared, level) +
-						` · ` +
-						GATE_TEXT.tiersStatus(cleared)
-					);
-				}),
-				GATE_TEXT.rules,
-				panel.body,
-			].join('\n');
-			panel.buttons = [
-				...GATES.map((g) => ({
-					action: 'gate' as MenuAction,
-					label: `Gate ${g.id}`,
-					value: String(g.id),
-					disabled: !gateUnlocked(g, gatesCleared, level),
-				})),
-				...panel.buttons.slice(1),
-			];
-			return panel;
-		}
-		if (kind === 'gateTiers') {
-			const gatesCleared = this.gatesCleared(user);
-			const level = profile.data.level;
-			const gate = GATES.find((g) => g.id === session.gateId) ?? highestAccessibleGate(gatesCleared);
-			const gateCleared = gatesCleared[gate.id - 1] ?? 0;
-			const tiers = GATE_TIERS.filter((t) => t.gate.id === gate.id);
-			const selected = tiers.find((t) => t.number === session.portalGate) ?? defaultGateTier(gatesCleared, gate);
-			session.gateId = gate.id;
-			session.portalGate = selected.number;
-			const panel = battleLobbyPanel(profile.data, bossDone, !!session.battle);
-			panel.title = GATE_TEXT.title;
-			panel.body = [
-				GATE_TEXT.gateHeader(gate.id, gate.name, gate.modifier, gate.minLevel),
-				...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
-				gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
-				panel.body,
-			]
-				.filter(Boolean)
-				.join('\n');
-			panel.buttons = [
-				...tiers.map((tier) => ({
-					action: 'fight' as const,
-					label: GATE_TEXT.fightTier(tier.number),
-					value: String(tier.number),
-					disabled: !gateUnlocked(gate, gatesCleared, level) || tier.number > gateCleared + 1,
-				})),
-				{ action: 'hunt', label: GATE_TEXT.chooseGate },
-				...panel.buttons.slice(1),
-			];
-			return panel;
-		}
+		if (kind === 'gateSelect') return this.gateSelectPanel(session, profile.data, user, bossDone);
+		if (kind === 'gateTiers') return this.gateTiersPanel(session, profile.data, user, bossDone);
 		if (kind === 'battle') {
 			session.screen = { kind: 'gateSelect' };
 			return this.render(session);
 		}
 		return homePanel(profile.data, { dailyDone, bossDone });
+	}
+
+	/** Kind panel cho screen hiện tại; `undefined` = screen không render gì (help/search/section lạ). */
+	private resolveKind(screen: MenuScreen): string | undefined {
+		if (screen.kind === 'section') {
+			if (!['character', 'daily', 'battle'].includes(screen.section)) return undefined;
+			return SECTION_KIND[screen.section];
+		}
+		if (['help', 'topic', 'search'].includes(screen.kind)) return undefined;
+		return screen.kind;
+	}
+
+	/** Màn chọn Gate: danh sách 5 Gate kèm trạng thái unlocked theo tiến độ + level. */
+	private gateSelectPanel(
+		session: MenuSession,
+		profile: ProfileSummaryData,
+		user: MenuPlayerState | undefined,
+		bossDone: boolean,
+	): GamePanel {
+		const gatesCleared = this.gatesCleared(user);
+		const level = profile.level;
+		const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
+		panel.title = GATE_TEXT.title;
+		panel.body = [
+			...GATES.map((g) => {
+				const cleared = gatesCleared[g.id - 1] ?? 0;
+				return (
+					GATE_TEXT.gateRow(g.id, g.name, g.modifier, g.minLevel, cleared, level) +
+					` · ` +
+					GATE_TEXT.tiersStatus(cleared)
+				);
+			}),
+			GATE_TEXT.rules,
+			panel.body,
+		].join('\n');
+		panel.buttons = [
+			...GATES.map((g) => ({
+				action: 'gate' as MenuAction,
+				label: `Gate ${g.id}`,
+				value: String(g.id),
+				disabled: !gateUnlocked(g, gatesCleared, level),
+			})),
+			...panel.buttons.slice(1),
+		];
+		return panel;
+	}
+
+	/** Màn tier trong một Gate: khóa tầng vượt quá `cleared + 1` (chỉ mở dần từng tầng). */
+	private gateTiersPanel(
+		session: MenuSession,
+		profile: ProfileSummaryData,
+		user: MenuPlayerState | undefined,
+		bossDone: boolean,
+	): GamePanel {
+		const gatesCleared = this.gatesCleared(user);
+		const level = profile.level;
+		const gate = GATES.find((g) => g.id === session.gateId) ?? highestAccessibleGate(gatesCleared);
+		const gateCleared = gatesCleared[gate.id - 1] ?? 0;
+		const tiers = GATE_TIERS.filter((t) => t.gate.id === gate.id);
+		const selected = tiers.find((t) => t.number === session.portalGate) ?? defaultGateTier(gatesCleared, gate);
+		session.gateId = gate.id;
+		session.portalGate = selected.number;
+		const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
+		panel.title = GATE_TEXT.title;
+		panel.body = [
+			GATE_TEXT.gateHeader(gate.id, gate.name, gate.modifier, gate.minLevel),
+			...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
+			gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
+			panel.body,
+		]
+			.filter(Boolean)
+			.join('\n');
+		panel.buttons = [
+			...tiers.map((tier) => ({
+				action: 'fight' as const,
+				label: GATE_TEXT.fightTier(tier.number),
+				value: String(tier.number),
+				disabled: !gateUnlocked(gate, gatesCleared, level) || tier.number > gateCleared + 1,
+			})),
+			{ action: 'hunt', label: GATE_TEXT.chooseGate },
+			...panel.buttons.slice(1),
+		];
+		return panel;
 	}
 
 	private gatesCleared(

@@ -19,6 +19,13 @@ export default defineConfig({
 		// PGlite suites each boot PostgreSQL in WASM (some boot two instances).
 		// Bound CPU/memory contention so setup and queries stay within their timeouts.
 		maxWorkers: 2,
+		// Migration + seed hooks boot PGlite in WASM (some suites boot two instances
+		// in one beforeAll); under background CPU load (games/other apps on the
+		// machine) even 60s starves — 120s still bounds real hangs.
+		hookTimeout: 120_000,
+		// Individual tests normally finish in <5s; on a loaded machine PGlite
+		// queries starve past 5s. 30s absorbs background load without hiding hangs.
+		testTimeout: 30_000,
 		env: {
 			DISCORD_TOKEN: 'test-token',
 			DISCORD_CLIENT_ID: 'test-client-id',

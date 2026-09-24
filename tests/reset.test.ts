@@ -20,7 +20,7 @@ beforeAll(async () => {
 	await migrateTestDatabase(testClient);
 	await db.insert(s.weaponRoster).values(WEAPON_SEED);
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
-}, 30000);
+}, 120000);
 afterAll(async () => {
 	await pool.end();
 });

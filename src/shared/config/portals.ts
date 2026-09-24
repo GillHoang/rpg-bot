@@ -48,8 +48,7 @@ export const GATE_TIERS: readonly GateTier[] = GATES.flatMap((gate) =>
 export type PortalGate = GateTier;
 
 export function findGateTier(gateId: number, tier: number): GateTier | undefined {
-	const gate = GATES.find((g) => g.id === gateId);
-	if (!gate) return undefined;
+	if (!GATES.some((g) => g.id === gateId)) return undefined;
 	return GATE_TIERS.find((t) => t.gate.id === gateId && t.number === tier);
 }
 

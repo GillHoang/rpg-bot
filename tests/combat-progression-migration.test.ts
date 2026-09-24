@@ -56,4 +56,4 @@ it('upgrades populated EXP columns and level limits without losing existing prog
 	} finally {
 		await testClient.close();
 	}
-}, 30000);
+}, 120000);

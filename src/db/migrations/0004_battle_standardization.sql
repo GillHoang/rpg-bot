@@ -9,10 +9,10 @@ ALTER TABLE "pvp_logs" ADD COLUMN "outcome" text DEFAULT 'draw' NOT NULL;
 --> statement-breakpoint
 UPDATE "pvp_logs"
 SET "outcome" = CASE
-	WHEN "winner_id" IS NULL THEN 'draw'
 	WHEN "winner_id" = "challenger_id" THEN 'win'
 	ELSE 'loss'
-END;
+END
+WHERE "winner_id" IS NOT NULL;
 --> statement-breakpoint
 ALTER TABLE "pvp_logs" ALTER COLUMN "winner_id" DROP NOT NULL;
 --> statement-breakpoint

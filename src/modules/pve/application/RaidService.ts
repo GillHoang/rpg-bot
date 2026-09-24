@@ -4,6 +4,7 @@ import {
 	defaultGateTier,
 	highestAccessibleGate,
 	gateUnlocked,
+	type GateTier,
 } from '../../../shared/config/portals.js';
 import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
@@ -20,7 +21,7 @@ import { RaidRepository } from '../infrastructure/RaidRepository.js';
 import type { Transaction } from '../../../db/client.js';
 import { PlayerAccountRepository } from '../../identity/infrastructure/PlayerAccountRepository.js';
 import type { PlayerAccount } from '../../identity/domain/PlayerAccount.js';
-import { MonsterEncounterService } from './MonsterEncounterService.js';
+import { MonsterEncounterService, type MonsterStats } from './MonsterEncounterService.js';
 import { UserCharacterRepository } from '../../identity/infrastructure/UserCharacterRepository.js';
 import { RaidRewardService, type RaidRewardResult } from './RaidRewardService.js';
 import { StatAssemblyService } from '../../combat-shared/application/StatAssemblyService.js';
@@ -76,6 +77,18 @@ export interface RaidRunOptions {
 	expectedDay?: string;
 }
 
+/** Dữ liệu đầu vào cho bước settle sau khi battle đã resolve trong transaction. */
+interface RaidSettlement {
+	now: Date;
+	character: { highestRaidStreak: number };
+	combatLevel: number;
+	gatesCleared: number[];
+	gateTier?: GateTier;
+	monsterStats: MonsterStats;
+	lootRng: () => number;
+	battle: BattleResult;
+}
+
 export interface RaidDependencies {
 	accounts?: Pick<PlayerAccountRepository, 'findByIdWithExecutor'>;
 	monsters?: Pick<MonsterEncounterService, 'pickForLevel'>;
@@ -115,12 +128,8 @@ function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, m
 		table = RAID_LOOT_BOSS;
 		chestField = 'bossTreasureChest';
 		chestName = LOOT_CHEST_NAMES.boss;
-	} else if (mobType === 'final') {
-		// Final Boss gate: thưởng bậc Elite (miễn phí, không đụng daily boss fee).
-		table = RAID_LOOT_ELITE;
-		chestField = 'goldChest';
-		chestName = LOOT_CHEST_NAMES.gold;
-	} else if (mobType === 'elite') {
+	} else if (mobType === 'final' || mobType === 'elite') {
+		// Final Boss gate & elite: thưởng bậc Elite (final miễn phí, không đụng daily boss fee).
 		table = RAID_LOOT_ELITE;
 		chestField = 'goldChest';
 		chestName = LOOT_CHEST_NAMES.gold;
@@ -140,6 +149,12 @@ function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, m
 	}
 	const expGained = scaleExpForMobLevel(baseExp, combatLevel);
 	return { credux, shards, expGained, gotChest, chestField, chestName };
+}
+
+/** Tên hiển thị của encounter: tiền tố portal (Gate/Tầng) + tên quái + bậc. */
+function raidMonsterName(gateTier: GateTier | undefined, monsterStats: MonsterStats): string {
+	const prefix = gateTier ? `${GATE_TEXT.gate(gateTier)} · ` : '';
+	return `${prefix}${monsterStats.name} [${monsterStats.mobType}]`;
 }
 
 /**
@@ -244,10 +259,6 @@ export class RaidService {
 		if (!(await this.characters.hasCharacter(tx, discordId))) return { status: 'no-character' };
 		const invalidAttempt = await this.validateAttempt(tx, discordId, boss, day, options);
 		if (invalidAttempt) return invalidAttempt;
-		if (!boss) {
-			const [cooldown] = await this.queries.lockHuntCooldown(tx, discordId);
-			if (cooldown && cooldown.readyAt > now) return { status: 'cooldown', retryAt: cooldown.readyAt };
-		}
 
 		const gatesCleared = [
 			character.gate1TiersCleared,
@@ -256,34 +267,96 @@ export class RaidService {
 			character.gate4TiersCleared,
 			character.gate5TiersCleared,
 		];
+		const portal = await this.resolveGateTier(tx, discordId, now, gatesCleared, account.combatLevel, boss, options);
+		if ('status' in portal) return portal;
+		const gateTier = portal.tier;
+
+		const lootRng = createRng(createSecureSeed());
+		const monsterStats = await this.pickMonster(tx, lootRng, boss, gateTier, account.combatLevel);
+		if (!monsterStats) return { status: 'no-monsters-seeded' };
+		if (boss) {
+			const locked = await this.bossGate(tx, discordId, account, day);
+			if (locked) return locked;
+		}
+
+		const battle = await this.resolveBattle(tx, discordId, account, monsterStats, action);
+		if (!boss) {
+			await this.queries.upsertHuntCooldown(
+				tx,
+				discordId,
+				new Date(now.getTime() + RAID_HUNT_COOLDOWN_SECONDS * 1000),
+			);
+		}
+		return this.settle(tx, discordId, boss, options, {
+			now,
+			character,
+			combatLevel: account.combatLevel,
+			gatesCleared,
+			gateTier,
+			monsterStats,
+			lootRng,
+			battle,
+		});
+	}
+
+	/**
+	 * Hunt cooldown + portal gate/tier selection và các khoá tầng.
+	 * Trả về RaidResult chặn (cooldown/portal-locked), hoặc tier cần đánh
+	 * (rỗng với daily boss — không đi qua portal).
+	 */
+	private async resolveGateTier(
+		tx: Transaction,
+		discordId: string,
+		now: Date,
+		gatesCleared: number[],
+		level: number,
+		boss: boolean,
+		options: RaidRunOptions,
+	): Promise<{ tier?: GateTier } | RaidResult> {
+		if (boss) return {};
+		const [cooldown] = await this.queries.lockHuntCooldown(tx, discordId);
+		if (cooldown && cooldown.readyAt > now) return { status: 'cooldown', retryAt: cooldown.readyAt };
 		const selectedGate =
 			options.gate === undefined
 				? highestAccessibleGate(gatesCleared)
 				: GATES.find((gate) => gate.id === options.gate);
-		const gateTier =
-			boss || !selectedGate
-				? undefined
-				: findGateTier(selectedGate.id, options.tier ?? defaultGateTier(gatesCleared, selectedGate).number);
-		if (!boss && !gateTier) return { status: 'portal-locked', message: GATE_TEXT.invalid };
-		if (!boss && !gateUnlocked(gateTier!.gate, gatesCleared, account.combatLevel))
-			return { status: 'portal-locked', message: GATE_TEXT.locked(gateTier!.gate.minLevel) };
-		if (!boss && gateTier!.number > (gatesCleared[gateTier!.gate.id - 1] ?? 0) + 1)
+		const tier =
+			selectedGate &&
+			findGateTier(selectedGate.id, options.tier ?? defaultGateTier(gatesCleared, selectedGate).number);
+		if (!tier) return { status: 'portal-locked', message: GATE_TEXT.invalid };
+		if (!gateUnlocked(tier.gate, gatesCleared, level))
+			return { status: 'portal-locked', message: GATE_TEXT.locked(tier.gate.minLevel) };
+		if (tier.number > (gatesCleared[tier.gate.id - 1] ?? 0) + 1)
 			return { status: 'portal-locked', message: GATE_TEXT.tierLocked() };
-		const lootRng = createRng(createSecureSeed());
-		const monsterStats = await this.monsters.pickForLevel(
+		return { tier };
+	}
+
+	/** Chọn quái theo cấp mục tiêu (cấp tầng portal, fallback về cấp người chơi). */
+	private pickMonster(
+		tx: Transaction,
+		lootRng: () => number,
+		boss: boolean,
+		gateTier: GateTier | undefined,
+		combatLevel: number,
+	): Promise<MonsterStats | null> {
+		return this.monsters.pickForLevel(
 			tx,
-			gateTier?.level ?? account.combatLevel,
+			gateTier?.level ?? combatLevel,
 			lootRng,
 			boss,
 			gateTier?.finalBoss ?? false,
 			gateTier?.gate.modifier ?? 'none',
 		);
-		if (!monsterStats) return { status: 'no-monsters-seeded' };
-		if (boss) {
-			const gate = await this.bossGate(tx, discordId, account, day);
-			if (gate) return gate;
-		}
+	}
 
+	/** Dựng combatant player/monster và resolve battle trong engine. */
+	private async resolveBattle(
+		tx: Transaction,
+		discordId: string,
+		account: PlayerAccount,
+		monsterStats: MonsterStats,
+		action: ReturnType<typeof createBattleActionContext>,
+	): Promise<BattleResult> {
 		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
 		const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
 		const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
@@ -296,27 +369,29 @@ export class RaidService {
 			def: monsterStats.def,
 			crit: monsterStats.crit,
 		});
-
 		monster.immunityTags = monsterStats.immunityTags;
-		const battle = this.engine.resolve(player, monster, action.seed, {
+		return this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey),
 		});
-		if (!boss) {
-			await this.queries.upsertHuntCooldown(
-				tx,
-				discordId,
-				new Date(now.getTime() + RAID_HUNT_COOLDOWN_SECONDS * 1000),
-			);
-		}
-		const won = battle.outcome === 'player_win';
+	}
 
+	/** Roll thưởng, ghi tiến độ portal/streak/receipt — chỉ chạy sau khi battle đã resolve. */
+	private async settle(
+		tx: Transaction,
+		discordId: string,
+		boss: boolean,
+		options: RaidRunOptions,
+		ctx: RaidSettlement,
+	): Promise<RaidResult> {
+		const won = ctx.battle.outcome === 'player_win';
+		const mobType = ctx.gateTier?.finalBoss ? 'final' : ctx.monsterStats.mobType;
 		const { credux, shards, expGained, gotChest, chestField, chestName } = rollBattleRewards(
-			lootRng,
+			ctx.lootRng,
 			won,
 			boss,
-			gateTier?.finalBoss ? 'final' : monsterStats.mobType,
-			gateTier?.level ?? account.combatLevel,
+			mobType,
+			ctx.gateTier?.level ?? ctx.combatLevel,
 		);
 
 		const progress = await this.rewards.grant(tx, discordId, {
@@ -325,22 +400,23 @@ export class RaidService {
 			shards,
 			grantChest: gotChest,
 			chestField,
-			boss: boss || gateTier?.finalBoss,
+			boss: boss || ctx.gateTier?.finalBoss,
 			battleType: boss ? 'boss' : 'raid',
-			enemyName: monsterStats.name,
-			enemyTier: monsterStats.mobType as 'regular' | 'elite' | 'boss',
-			outcome: battle.outcome,
+			enemyName: ctx.monsterStats.name,
+			enemyTier: ctx.monsterStats.mobType as 'regular' | 'elite' | 'boss',
+			outcome: ctx.battle.outcome,
 		});
-		if (won && gateTier)
+		if (won && ctx.gateTier)
 			await this.queries.updateCharacter(tx, discordId, {
-				[`gate${gateTier.gate.id}TiersCleared`]: Math.max(
-					gatesCleared[gateTier.gate.id - 1] ?? 0,
-					gateTier.number,
+				[`gate${ctx.gateTier.gate.id}TiersCleared`]: Math.max(
+					ctx.gatesCleared[ctx.gateTier.gate.id - 1] ?? 0,
+					ctx.gateTier.number,
 				),
 			});
-		await this.updateRaidStreak(tx, discordId, character.highestRaidStreak, won);
-		const gearDrop = await this.grantRaidExtras(tx, discordId, lootRng, won, boss);
-		if (won) await this.progress.apply(tx, discordId, gateTier?.finalBoss ? 'final_boss_win' : 'raid_win', now);
+		await this.updateRaidStreak(tx, discordId, ctx.character.highestRaidStreak, won);
+		const gearDrop = await this.grantRaidExtras(tx, discordId, ctx.lootRng, won, boss);
+		if (won)
+			await this.progress.apply(tx, discordId, ctx.gateTier?.finalBoss ? 'final_boss_win' : 'raid_win', ctx.now);
 		if (options.requestId)
 			await this.queries.insertReceipt(tx, {
 				discordId,
@@ -349,8 +425,8 @@ export class RaidService {
 			});
 		return {
 			status: 'ok',
-			battle,
-			monsterName: `${gateTier ? GATE_TEXT.gate(gateTier) + ' · ' : ''}${monsterStats.name} [${monsterStats.mobType}]`,
+			battle: ctx.battle,
+			monsterName: raidMonsterName(ctx.gateTier, ctx.monsterStats),
 			credux,
 			shards,
 			expGained,

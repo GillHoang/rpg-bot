@@ -66,7 +66,7 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 		await db.insert(s.weaponRoster).values(WEAPON_SEED);
 		await db.insert(s.armorRoster).values(ARMOR_SEED);
 		await db.insert(s.mobRoster).values(MOB_SEED);
-	}, 30000);
+	}, 120000);
 	afterAll(async () => {
 		await pool?.end();
 		// Only the random schema created by this suite is dropped.

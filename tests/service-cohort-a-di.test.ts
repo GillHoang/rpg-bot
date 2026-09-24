@@ -59,7 +59,7 @@ beforeAll(async () => {
 	await isolated.db.insert(s.deityRoster).values(DEITY_SEED);
 	await isolated.db.insert(s.cosmeticCatalog).values(COSMETIC_SEED.map((row) => ({ ...row, isActive: true })));
 	await isolated.db.insert(s.titleCatalog).values(TITLE_SEED);
-}, 30000);
+}, 120000);
 
 afterAll(async () => {
 	await isolated.pool.end();

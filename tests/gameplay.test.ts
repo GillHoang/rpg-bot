@@ -51,7 +51,7 @@ beforeAll(async () => {
 	await db.insert(s.cosmeticCatalog).values(COSMETIC_SEED.map((c) => ({ ...c, isActive: true })));
 	await db.insert(s.titleCatalog).values(TITLE_SEED);
 	await db.insert(s.socketUnlockCost).values(SOCKET_UNLOCK_COST_SEED);
-}, 30000);
+}, 120000);
 afterAll(async () => { await pool.end(); });
 beforeEach(async () => {
 	vi.restoreAllMocks();

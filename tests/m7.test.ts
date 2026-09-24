@@ -56,7 +56,7 @@ beforeAll(async () => {
 	// Wire the real EventBus subscribers — duel/ranked believer EXP and quest
 	// progress travel through the bus, exactly like production bootstrap.
 	subscribeDomainEvents();
-}, 30000);
+}, 120000);
 afterAll(async () => { await pool.end(); });
 beforeEach(async () => {
 	vi.restoreAllMocks();

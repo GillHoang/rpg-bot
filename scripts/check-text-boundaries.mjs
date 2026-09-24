@@ -70,7 +70,7 @@ function isDisplayArgument(node) {
 }
 
 function isAsciiLetter(value) {
-	const code = value.charCodeAt(0);
+	const code = value.codePointAt(0);
 	return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 }
 

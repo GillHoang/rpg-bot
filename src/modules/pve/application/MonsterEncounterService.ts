@@ -40,6 +40,15 @@ const AVG_CLASS_CURVE = {
 
 const REGULAR_SCALE = { hp: 3.2, atk: 0.72, def: 0.55 };
 const ELITE_BONUS = { hp: 1.45, atk: 1.15, def: 1.0 };
+const FINAL_BOSS_BONUS = { hp: 1.25, atk: 1.15, def: 1.2 };
+const NEUTRAL_BONUS = { hp: 1, atk: 1, def: 1 };
+
+/** Hệ số thưởng theo bậc encounter — tách riêng để tránh ternary lồng nhau. */
+function tierBonus(finalBoss: boolean, mobType: string): { hp: number; atk: number; def: number } {
+	if (finalBoss) return FINAL_BOSS_BONUS;
+	if (mobType === 'elite') return ELITE_BONUS;
+	return NEUTRAL_BONUS;
+}
 /** Đặc điểm riêng từng Gate: nhân chỉ số quái để tạo bản sắc. */
 const GATE_MODIFIER_BONUS: Record<GateModifier, { hp: number; atk: number; def: number }> = {
 	none: { hp: 1, atk: 1, def: 1 },
@@ -96,16 +105,13 @@ export class MonsterEncounterService {
 
 		// Regular/elite: base curve theo level, roster chỉ giữ TỈ LỆ hình dạng.
 		// Normalize roster shape within each tier before applying its stat multiplier.
-		const shape = finalBoss ? 1 : row.baseHp / (type === 'elite' ? 1500 : 600);
+		const shapeBase = type === 'elite' ? 1500 : 600;
+		const shape = finalBoss ? 1 : row.baseHp / shapeBase;
 		// Gate strength is fixed by its level, never by the player's equipment.
 		// Early gates remain farmable; later gates require equipment investment.
 		const difficulty = 1 + Math.min(0.6, (lv - 1) * 0.04);
 		const modifier = GATE_MODIFIER_BONUS[gateModifier] ?? GATE_MODIFIER_BONUS.none!;
-		const bonus = finalBoss
-			? { hp: 1.25, atk: 1.15, def: 1.2 }
-			: type === 'elite'
-				? ELITE_BONUS
-				: { hp: 1, atk: 1, def: 1 };
+		const bonus = tierBonus(finalBoss, type);
 		const scale = {
 			hp: REGULAR_SCALE.hp * bonus.hp * modifier.hp * difficulty,
 			atk: REGULAR_SCALE.atk * bonus.atk * modifier.atk * difficulty,

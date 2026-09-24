@@ -26,6 +26,20 @@ export const GATE_MODIFIERS: Record<string, string> = {
 	evasive: 'Toàn diện',
 };
 
+/** Icon trạng thái một Gate: đã thắng boss / đang mở / còn khóa. */
+function gateStatusIcon(cleared: number, id: number, minLevel: number, level: number): string {
+	if (cleared >= TIERS) return ICONS.status.success;
+	if (id === 1 || minLevel <= level) return ICONS.nav.next;
+	return ICONS.gear.locked;
+}
+
+/** Icon trạng thái một tầng: đã vượt / kế tiếp (vừa mở) / chưa mở. */
+function tierStatusIcon(number: number, cleared: number): string {
+	if (number <= cleared) return ICONS.status.success;
+	if (number === cleared + 1) return ICONS.nav.next;
+	return ICONS.gear.locked;
+}
+
 export const GATE_TEXT = {
 	title: 'Portal · Cổng săn quái',
 	chooseGate: 'Chọn Gate (Cửa)',
@@ -49,10 +63,10 @@ export const GATE_TEXT = {
 	gateHeader: (id: number, name: string, modifier: string, minLevel: number) =>
 		`**Gate ${id} · ${GATE_NAMES[name] ?? name}** · ${GATE_MODIFIERS[modifier] ?? modifier} · Cần Lv.${minLevel}`,
 	gateRow: (id: number, name: string, modifier: string, minLevel: number, cleared: number, level: number) =>
-		`${cleared >= TIERS ? ICONS.status.success : id === 1 || minLevel <= level ? ICONS.nav.next : ICONS.gear.locked} Gate ${id} · ${GATE_NAMES[name] ?? name} · ${GATE_MODIFIERS[modifier] ?? modifier} · 10 tầng · Cần Lv.${minLevel}`,
+		`${gateStatusIcon(cleared, id, minLevel, level)} Gate ${id} · ${GATE_NAMES[name] ?? name} · ${GATE_MODIFIERS[modifier] ?? modifier} · 10 tầng · Cần Lv.${minLevel}`,
 	gateRowBoss: (id: number, name: string, modifier: string, minLevel: number, bossLevel: number) =>
 		`Gate ${id} · ${GATE_NAMES[name] ?? name} · ${GATE_MODIFIERS[modifier] ?? modifier} · 10 tầng · Cần Lv.${minLevel} → Boss Lv.${bossLevel}`,
 	tiersStatus: (cleared: number) => `${cleared}/${TIERS} tầng`,
 	tierRow: (tier: GateTierLike, clearedTiers: number) =>
-		`${tier.number <= clearedTiers ? ICONS.status.success : tier.number === clearedTiers + 1 ? ICONS.nav.next : ICONS.gear.locked} Tầng ${tier.number}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,
+		`${tierStatusIcon(tier.number, clearedTiers)} Tầng ${tier.number}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,
 };

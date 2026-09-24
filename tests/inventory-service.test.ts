@@ -101,7 +101,7 @@ beforeAll(async () => {
 	]);
 	inventory = new InventoryService(first.db as unknown as Executor);
 	isolated = new InventoryService(second.db as unknown as Executor);
-}, 30_000);
+}, 120000);
 afterAll(async () => {
 	await Promise.all([first?.pool.end(), second?.pool.end()]);
 });

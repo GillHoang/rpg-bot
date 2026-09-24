@@ -41,7 +41,7 @@ beforeAll(async () => {
 	await db.insert(s.cosmeticCatalog).values(COSMETIC_SEED.map((c) => ({ ...c, isActive: true })));
 	await db.insert(s.titleCatalog).values(TITLE_SEED);
 	subscribeDomainEvents();
-}, 30000);
+}, 120000);
 afterAll(async () => {
 	await pool.end();
 });

@@ -55,4 +55,4 @@ it('preserves UTC history and weekly boundaries across database session timezone
 	} finally {
 		await testClient.close();
 	}
-}, 30000);
+}, 120000);

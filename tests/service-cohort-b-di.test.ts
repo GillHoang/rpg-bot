@@ -99,7 +99,7 @@ beforeAll(async () => {
 		await database.db.insert(s.socketUnlockCost).values(SOCKET_UNLOCK_COST_SEED);
 		await database.db.insert(s.rankedReward).values(RANKED_REWARD_SEED);
 	}
-}, 30000);
+}, 120000);
 
 afterAll(async () => {
 	await isolated.pool.end();

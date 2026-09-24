@@ -22,7 +22,7 @@ let sequence = 0;
 beforeAll(async () => {
 	const { testClient } = await import('../src/db/client.js') as unknown as TestDatabase;
 	await migrateTestDatabase(testClient);
-}, 30000);
+}, 120000);
 afterAll(async () => {
 	await pool.end();
 });

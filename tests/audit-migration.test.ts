@@ -12,7 +12,7 @@ beforeAll(async () => {
  INSERT INTO user_presets(id,discord_id,slot) VALUES (99,'old',1);
  INSERT INTO weekly_quests(discord_id,quest_type,target_count,reward_credux,reward_valor,quest_week) VALUES ('old','summon',10,100,1,1);
  INSERT INTO weekly_grand(discord_id,quest_week,claimed) VALUES ('old',1,true);`);
-}, 30000);
+}, 120000);
 afterAll(() => db.close());
 it('migrates existing IDs and preserves ambiguous week history without inventing a year', async () => {
 	await db.exec('BEGIN');

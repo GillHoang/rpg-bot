@@ -24,6 +24,13 @@ export interface RaidRewardResult {
 	leveledUp: boolean;
 }
 
+/** Kết quả hiển thị trong raid_logs — tách riêng để tránh ternary lồng nhau. */
+function battleResultLabel(won: boolean, lost: boolean): 'win' | 'loss' | 'draw' {
+	if (won) return 'win';
+	if (lost) return 'loss';
+	return 'draw';
+}
+
 /**
  * Ported from utils/awardCombatExp.js + the credux/shard/chest half of
  * commands/rpg/raid.js. Only `combat_level`/`combat_exp`/`lifetime_exp`
@@ -86,7 +93,7 @@ export class RaidRewardService {
 			battleType: grant.battleType,
 			enemyName: grant.enemyName,
 			enemyTier: grant.enemyTier,
-			result: won ? 'win' : lost ? 'loss' : 'draw',
+			result: battleResultLabel(won, lost),
 			expEarned: grant.expGain,
 			updatedExp: next.exp,
 			beliefShardsDropped: grant.shards,

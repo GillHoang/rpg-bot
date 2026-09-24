@@ -56,13 +56,14 @@ export class ResetCommand implements ICommand {
 			sub
 				.setName('user')
 				.setDescription(RESET_USER_DESCRIPTION)
-				.addUserOption((opt) =>
-					opt.setName('target').setDescription(RESET_USER_OPTION_DESC).setRequired(true),
-				),
+				.addUserOption((opt) => opt.setName('target').setDescription(RESET_USER_OPTION_DESC).setRequired(true)),
 		);
 
 	constructor(
-		private readonly reset: Pick<ResetService, 'countAll' | 'resetAll' | 'countUser' | 'resetUser'> = new ResetService(),
+		private readonly reset: Pick<
+			ResetService,
+			'countAll' | 'resetAll' | 'countUser' | 'resetUser'
+		> = new ResetService(),
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -159,7 +160,10 @@ export class ResetCommand implements ICommand {
 				.setCustomId(`${USER_CONFIRM_PREFIX}${target.id}`)
 				.setLabel(RESET_CONFIRM_LABEL)
 				.setStyle(ButtonStyle.Danger),
-			new ButtonBuilder().setCustomId('reset:user-cancel').setLabel(RESET_CANCEL_LABEL).setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder()
+				.setCustomId('reset:user-cancel')
+				.setLabel(RESET_CANCEL_LABEL)
+				.setStyle(ButtonStyle.Secondary),
 		);
 		await interaction.editReply({ content: RESET_USER_CONFIRM_HEADER(label, rows), components: [confirmRow] });
 

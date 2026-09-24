@@ -30,8 +30,10 @@ export class GameplayProgressCoordinator {
 		amount = 1,
 	): Promise<void> {
 		// Final Boss gate counts toward raid_win quests but awards its own reputation.
-		const questType: QuestType | null =
-			type === 'final_boss_win' ? 'raid_win' : type === 'ranked_win' ? null : type;
+		let questType: QuestType | null;
+		if (type === 'final_boss_win') questType = 'raid_win';
+		else if (type === 'ranked_win') questType = null;
+		else questType = type;
 		if (questType) await this.quests.progressInTx(tx, discordId, questType, now, amount);
 		if (
 			type === 'daily' ||

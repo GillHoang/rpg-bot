@@ -38,7 +38,7 @@ beforeAll(async () => {
 	await db.insert(s.armorRoster).values(ARMOR_SEED);
 	await db.insert(s.titleCatalog).values(TITLE_SEED);
 	await db.insert(s.cosmeticCatalog).values(COSMETIC_SEED);
-}, 30000);
+}, 120000);
 afterAll(async () => {
 	await pool.end();
 });
