@@ -5,9 +5,9 @@ import { newDeck, baccaratValue, baccaratScore, type Card } from '../CardDeck.js
 /**
  * Banker's third-card rule, evaluated against the banker's ORIGINAL two-card
  * score and the player's third-card value (null when the player stood).
- * Ported 1:1 from casino/baccarat.js.
+ * Ported 1:1 from casino/baccarat.js. Exported for unit-testing the matrix.
  */
-function bankerDrawsThird(bTwo: number, playerThirdVal: number | null): boolean {
+export function bankerDrawsThird(bTwo: number, playerThirdVal: number | null): boolean {
 	if (playerThirdVal === null) return bTwo <= 5;
 	const pt = playerThirdVal;
 	if (bTwo <= 2) return true;

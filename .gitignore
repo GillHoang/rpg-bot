@@ -12,3 +12,4 @@ dist/
 .tools
 .pnpm-store
 .codegraph
+coverage/

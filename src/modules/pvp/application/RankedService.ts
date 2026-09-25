@@ -446,7 +446,10 @@ export class RankedService {
 		discordId: string,
 		rating: number,
 	): Promise<typeof userCharacter.$inferSelect | null> {
-		for (const window of [RANKED.WINDOW, RANKED.WINDOW * 3, Number.MAX_SAFE_INTEGER]) {
+		// The final window must fit a PostgreSQL integer: Number.MAX_SAFE_INTEGER
+		// overflows int4 (22003) and crashes the fight instead of matching.
+		// 1e9 dwarfs any reachable rating spread, so it still means "everyone".
+		for (const window of [RANKED.WINDOW, RANKED.WINDOW * 3, 1_000_000_000]) {
 			const [row] = await this.queries.findOpponentInWindow(tx, discordId, rating, window);
 			if (row) return row.user_character;
 		}

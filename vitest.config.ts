@@ -35,5 +35,16 @@ export default defineConfig({
 			OWNER_DISCORD_IDS: '123456789012345678',
 			DEPLOY_GUILD_ID: '1234567890',
 		},
+		coverage: {
+			provider: 'v8',
+			// Floor measured 2026-09-25 (86.7/81.6/85.8/88.9 stmts/branch/funcs/lines):
+			// the gate fails `test:coverage` on regressions, plain `test` is unaffected.
+			thresholds: {
+				statements: 85,
+				branches: 80,
+				functions: 84,
+				lines: 87,
+			},
+		},
 	},
 });

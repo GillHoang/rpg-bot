@@ -18,8 +18,14 @@ import { ResetService } from '../src/modules/system/application/ResetService.js'
 import { ResetRepository } from '../src/modules/system/infrastructure/ResetRepository.js';
 import { SeasonService } from '../src/modules/meta/application/SeasonService.js';
 import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
+import { RunSummonUseCase } from '../src/modules/progression/application/RunSummonUseCase.js';
+import { EnhancementService } from '../src/modules/progression/application/EnhancementService.js';
+import { computeWeaponCurrAtk } from '../src/shared/config/enhancement.js';
+import * as weightedRandom from '../src/shared/utils/weightedRandom.js';
+import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
 import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
+import { DEITY_SEED } from '../src/modules/progression/seed/deities.js';
 import { MOB_SEED } from '../src/modules/pve/seed/mobs.js';
 import type { PersistenceContext } from '../src/shared/kernel/persistence.js';
 
@@ -65,6 +71,7 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 		start = new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
 		await db.insert(s.weaponRoster).values(WEAPON_SEED);
 		await db.insert(s.armorRoster).values(ARMOR_SEED);
+		await db.insert(s.deityRoster).values(DEITY_SEED);
 		await db.insert(s.mobRoster).values(MOB_SEED);
 	}, 120000);
 	afterAll(async () => {
@@ -164,6 +171,47 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 		);
 		expect(new Set(results.map((s) => s.seasonId)).size).toBe(1);
 		expect(await db.select().from(s.seasons).where(eq(s.seasons.isActive, true))).toHaveLength(1);
+	});
+	it('serializes simultaneous summons without losing pity increments', async () => {
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		await db.update(s.usersBag).set({ beliefShards: 10000 }).where(eq(s.usersBag.discordId, 'a'));
+		const run = () =>
+			new RunSummonUseCase(undefined, undefined, undefined, { persistence }).run('a', 1);
+		const [first, second] = await Promise.all([run(), run()]);
+		expect(first.status).toBe('ok');
+		expect(second.status).toBe('ok');
+		expect(await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, 'a'))).toHaveLength(2);
+		expect((await db.select().from(s.pityCounters).where(eq(s.pityCounters.discordId, 'a')))[0].pityCount).toBe(2);
+	});
+	it('charges both concurrent enhance attempts exactly once with consistent stats', async () => {
+		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		const [rare] = await db.select().from(s.weaponRoster).where(eq(s.weaponRoster.tier, 'Rare')).limit(1);
+		if (!rare) throw new Error('no Rare weapon seeded');
+		await db.insert(s.userWeapons).values({
+			discordId: 'a',
+			weaponId: 'pg-rare-1',
+			weaponRosterId: rare.weaponRosterId,
+			baseAtk: 100,
+			currAtk: 100,
+			enhancement: 1,
+			crit: 5,
+			nativeSockets: [],
+			oppositeSockets: [],
+		});
+		await db.update(s.usersBag).set({ credux: 1000000 }).where(eq(s.usersBag.discordId, 'a'));
+		// Forced successes: attempt 1 pays the +1 cost (1000), attempt 2 the
+		// +2 cost (3000) — serialized on the bag lock, never double-charged.
+		vi.spyOn(weightedRandom, 'rollChance').mockReturnValue(true);
+		const attempt = () =>
+			new EnhancementService(undefined, undefined, { persistence }).attempt('a', 'pg-rare-1');
+		const results = await Promise.all([attempt(), attempt()]);
+		expect(results.every((r) => r.status === 'success')).toBe(true);
+		expect((await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'a')))[0].credux).toBe(
+			1000000 - 1000 - 3000,
+		);
+		const [gear] = await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, 'pg-rare-1'));
+		expect(gear.enhancement).toBe(3);
+		expect(gear.currAtk).toBe(computeWeaponCurrAtk(100, 'Rare', 3));
 	});
 	it('rolls reset back when audit fails and serializes reset against registration', async () => {
 		const queries = new ResetRepository();
