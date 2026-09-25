@@ -3,6 +3,7 @@ import { createCombatant, type CombatantState } from '../domain/CombatantState.j
 import { ClassStrategyRegistry } from '../domain/ClassStrategyRegistry.js';
 import { wrapWithRunes } from '../domain/RuneStrategyDecorator.js';
 import { wrapWithBlessings } from '../domain/DeityBlessingDecorator.js';
+import { wrapWithWeaponPassive } from '../domain/WeaponPassiveDecorator.js';
 import type { IClassStrategy } from '../domain/IClassStrategy.js';
 import type { AssembledPlayer } from './StatAssemblyService.js';
 
@@ -29,10 +30,13 @@ export class PlayerCombatantFactory implements IPlayerCombatantFactory {
 		});
 	}
 
-	/** Preserve the shared class strategy, with fresh rune then blessing wrappers. */
+	/** Preserve the shared class strategy, with fresh weapon, rune then blessing wrappers. */
 	createStrategy(combatClass: CombatClass, assembled: AssembledPlayer): IClassStrategy {
 		return wrapWithBlessings(
-			wrapWithRunes(ClassStrategyRegistry.forClass(combatClass), assembled.combatEffectRunes),
+			wrapWithRunes(
+				wrapWithWeaponPassive(ClassStrategyRegistry.forClass(combatClass), assembled.weaponPassive?.passiveKey),
+				assembled.combatEffectRunes,
+			),
 			assembled.blessings,
 		);
 	}

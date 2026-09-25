@@ -90,6 +90,8 @@ export const usersBag = pgTable(
 			.references(() => users.discordId),
 		credux: bigint('credux', { mode: 'number' }).notNull().default(0),
 		beliefShards: integer('belief_shards').notNull().default(0),
+		/** OwO-style weapon shards from /weapon dismantle; spent on quality upgrades. */
+		weaponShards: integer('weapon_shards').notNull().default(0),
 		sacredRelics: integer('sacred_relics').notNull().default(0),
 		supremeRelics: integer('supreme_relics').notNull().default(0),
 		silverChest: integer('silver_chest').notNull().default(0),

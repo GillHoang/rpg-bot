@@ -10,6 +10,7 @@ export { AscensionService } from './application/AscensionService.js';
 export { EnhancementService } from './application/EnhancementService.js';
 export { SocketService } from './application/SocketService.js';
 export { LoadoutService } from './application/LoadoutService.js';
+export { WeaponService } from './application/WeaponService.js';
 export { InventoryService } from './application/InventoryService.js';
 export { StatAssemblyService } from '../combat-shared/application/StatAssemblyService.js';
 export type { AssembledPlayer, AssembledPlayerStats } from '../combat-shared/application/StatAssemblyService.js';

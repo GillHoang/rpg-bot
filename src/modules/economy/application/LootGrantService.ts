@@ -4,6 +4,7 @@ import { AppError } from '../../../shared/kernel/Result.js';
 import { randomUUID } from 'node:crypto';
 import type { Executor } from '../../../db/client.js';
 import { choose, GEAR_STATS } from '../../../shared/config/chestLoot.js';
+import { rollWeaponQuality } from '../../../shared/config/weaponQuality.js';
 import { randInt } from '../../../shared/config/raidLoot.js';
 import { LootRepository } from '../infrastructure/LootRepository.js';
 
@@ -45,6 +46,7 @@ export class LootGrantService {
 				baseAtk: atk,
 				currAtk: atk,
 				crit: randInt(rng, stats.crit),
+				quality: rollWeaponQuality(tier, rng),
 				nativeSockets: [null],
 				oppositeSockets: [null],
 			});

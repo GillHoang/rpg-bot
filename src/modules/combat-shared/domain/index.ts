@@ -10,5 +10,6 @@ export { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
 export type { IClassStrategy, StrategyContext } from './IClassStrategy.js';
 export { wrapWithRunes } from './RuneStrategyDecorator.js';
 export { wrapWithBlessings } from './DeityBlessingDecorator.js';
+export { wrapWithWeaponPassive, WeaponPassiveDecorator } from './WeaponPassiveDecorator.js';
 export { MAX_ROUNDS, SUDDEN_DEATH_START } from './combatRules.js';
 export type { CombatClass } from '../../identity/domain/PlayerAccount.js';

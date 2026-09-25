@@ -138,6 +138,32 @@ export const COMBAT_BLESSING_MOUNTAIN_GRACE = (name: string): string =>
 export const COMBAT_BLESSING_SKY_SOVEREIGN = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.AEGIS)} ${ICONS.blessing.skySovereign} Sky Sovereign — thiên lệnh hoá giải trọn vẹn đòn đánh vào ${name}!`;
 
+// --- Weapon passive decorator (OwO-style weapon passives) ---
+export const COMBAT_WEAPON_FIRST_BLOOD = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} ra tay trước — đòn đầu +10% sát thương!`;
+export const COMBAT_WEAPON_WARLORD_EDGE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} lấn lướt kẻ mạnh hơn — +5% sát thương!`;
+export const COMBAT_WEAPON_SKY_DIVE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} bổ nhào từ toàn vẹn — chí mạng tăng!`;
+export const COMBAT_WEAPON_ECLIPSE_MARK = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.ECLIPS)} ${name} khắc nhật thực lên ${enemy} — nhận thêm 15% sát thương!`;
+export const COMBAT_WEAPON_EAGLE_DIVE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} lao xuống như đại bàng — +10% sát thương hiệp đầu!`;
+export const COMBAT_WEAPON_TWIN_STING = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} đâm bồi bằng mũi thứ hai!`;
+export const COMBAT_WEAPON_STORM_ECHO = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} dội sấm hưởng — +25% sát thương!`;
+export const COMBAT_WEAPON_SOUL_WEIGH = (name: string, bonus: number): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} cân hồn đối thủ — +${bonus}% sát thương kết liễu!`;
+export const COMBAT_WEAPON_GRASS_CLEAVER = (name: string, enemy: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} phạt cỏ — giáp ${enemy} nứt vỡ!`;
+export const COMBAT_WEAPON_OATH_PIERCE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} giữ lời thề — đòn đánh xuyên giáp!`;
+export const COMBAT_WEAPON_SOLAR_BARQUE = (name: string, healed: string): string =>
+	`${combatTag(COMBAT_TAGS.REGEN)} ${name} dong thuyền mặt trời — hồi __${healed} HP__.`;
+export const COMBAT_WEAPON_SKY_SUNDER = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} chẻ toang bầu trời — +15% sát thương!`;
+
 // --- Monster skills ---
 export const COMBAT_MONSTER_ECLIPSE = (): string =>
 	`${combatTag(COMBAT_TAGS.ECLIPS)} ${ICONS.effect.eclipse} Bakunawa bước vào Eclipse — sát thương +50%.`;

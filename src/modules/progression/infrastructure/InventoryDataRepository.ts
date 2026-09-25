@@ -32,18 +32,6 @@ export class InventoryDataRepository {
 	}
 
 	async searchWeapons(id: string, query: string): Promise<GearSearchRow[]> {
-		const [character] = await this.executor
-			.select({ weapon: userPresets.equippedWeaponId })
-			.from(userCharacter)
-			.innerJoin(
-				userPresets,
-				and(
-					eq(userPresets.discordId, userCharacter.discordId),
-					eq(userPresets.slot, userCharacter.activePresetSlot),
-				),
-			)
-			.where(eq(userCharacter.discordId, id))
-			.limit(1);
 		const pattern = `%${query}%`;
 		const rows = await this.executor
 			.select({
@@ -51,6 +39,7 @@ export class InventoryDataRepository {
 				name: weaponRoster.name,
 				tier: weaponRoster.tier,
 				plus: userWeapons.enhancement,
+				attachedDeityId: userWeapons.attachedDeityId,
 			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
@@ -62,7 +51,13 @@ export class InventoryDataRepository {
 			)
 			.orderBy(userWeapons.weaponId)
 			.limit(25);
-		return rows.map((w) => ({ ...w, plus: enhancementPlus(w.plus), equipped: w.id === character?.weapon }));
+		return rows.map((w) => ({
+			id: w.id,
+			name: w.name,
+			tier: w.tier,
+			plus: enhancementPlus(w.plus),
+			equipped: w.attachedDeityId != null,
+		}));
 	}
 
 	async searchArmors(id: string, query: string): Promise<GearSearchRow[]> {

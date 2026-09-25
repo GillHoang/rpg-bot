@@ -51,7 +51,7 @@ describe('application composition', () => {
 		const other = vi.spyOn(second.menu, 'open').mockResolvedValue();
 		const registry = new CommandRegistry();
 		registerAllCommands(first, registry);
-		expect(registry.getAll()).toHaveLength(28);
+		expect(registry.getAll()).toHaveLength(29);
 		const interaction = {} as ChatInputCommandInteraction;
 		await registry
 			.getAll()
@@ -80,7 +80,7 @@ describe('application composition', () => {
 		const explicit = createAppContainer({ persistence: context(), menu: menuRouter });
 		const registry = new CommandRegistry();
 		registerAllCommands(explicit, registry);
-		expect(registry.getAll()).toHaveLength(28);
+		expect(registry.getAll()).toHaveLength(29);
 		const interaction = {} as ChatInputCommandInteraction;
 		await registry
 			.getAll()

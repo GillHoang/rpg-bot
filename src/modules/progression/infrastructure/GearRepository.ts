@@ -3,8 +3,11 @@ import type { Executor } from '../../../db/client.js';
 import { weaponRoster, armorRoster, userWeapons, userArmors } from '../../../db/schema.js';
 
 export interface WeaponCurrStats {
+	weaponId: string;
 	currAtk: number;
 	crit: number;
+	quality: string;
+	passiveKey: string;
 }
 
 export interface ArmorCurrStats {
@@ -29,16 +32,45 @@ export class GearRepository {
 		return row?.armorRosterId ?? null;
 	}
 
-	/** Read the equipped weapon's current ATK/CRIT (post-enhancement), for stat assembly. */
+	/** Read the equipped weapon's current ATK/CRIT (post-enhancement) plus its
+	 * OwO-style quality grade and roster passive, for stat assembly. */
 	async findWeaponCurrStats(
 		executor: Executor,
 		discordId: string,
 		weaponId: string,
 	): Promise<WeaponCurrStats | null> {
 		const [row] = await executor
-			.select({ currAtk: userWeapons.currAtk, crit: userWeapons.crit })
+			.select({
+				weaponId: userWeapons.weaponId,
+				currAtk: userWeapons.currAtk,
+				crit: userWeapons.crit,
+				quality: userWeapons.quality,
+				passiveKey: weaponRoster.passiveKey,
+			})
 			.from(userWeapons)
+			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
 			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, weaponId)))
+			.limit(1);
+		return row ?? null;
+	}
+
+	/** Battle weapon: the one wielded by the given deity (one weapon per deity). */
+	async findWeaponByDeity(
+		executor: Executor,
+		discordId: string,
+		userDeityId: number,
+	): Promise<WeaponCurrStats | null> {
+		const [row] = await executor
+			.select({
+				weaponId: userWeapons.weaponId,
+				currAtk: userWeapons.currAtk,
+				crit: userWeapons.crit,
+				quality: userWeapons.quality,
+				passiveKey: weaponRoster.passiveKey,
+			})
+			.from(userWeapons)
+			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
+			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.attachedDeityId, userDeityId)))
 			.limit(1);
 		return row ?? null;
 	}
@@ -141,10 +173,17 @@ export class GearRepository {
 			);
 	}
 
-	/** Weapons are ATK + CRIT only (v5 stat split). */
+	/** Weapons are ATK + CRIT only (v5 stat split). Quality defaults to Common. */
 	async grantWeapon(
 		executor: Executor,
-		params: { discordId: string; weaponId: string; weaponRosterId: number; atk: number; crit: number },
+		params: {
+			discordId: string;
+			weaponId: string;
+			weaponRosterId: number;
+			atk: number;
+			crit: number;
+			quality?: string;
+		},
 	): Promise<void> {
 		await executor.insert(userWeapons).values({
 			discordId: params.discordId,
@@ -153,6 +192,7 @@ export class GearRepository {
 			currAtk: params.atk,
 			baseAtk: params.atk,
 			crit: params.crit,
+			quality: params.quality ?? 'Common',
 			enhancement: 1,
 			isLocked: false,
 			nativeSockets: [null],

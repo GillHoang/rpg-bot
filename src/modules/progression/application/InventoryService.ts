@@ -54,6 +54,7 @@ export class InventoryService {
 				WEAPON_LIST_LINE({
 					name: r.name,
 					tier: r.tier,
+					quality: w.quality,
 					plus: enhancementPlus(w.enhancement),
 					id: w.weaponId,
 					atk: w.currAtk,
