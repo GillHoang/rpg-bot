@@ -113,7 +113,7 @@ describe('combat review regressions', () => {
 			[10, 1],
 		]) {
 			const ctx = setup();
-			ctx.self.flags.warding_pct = warding;
+			ctx.self.flags.wardingPct = warding;
 			ctx.self.debuffs.push({ tag, value, turnsLeft: 2 });
 			const statuses = new CombatStatusEffectProcessor();
 			const log: string[] = [];

@@ -48,7 +48,7 @@ async function winRates(
 			for (let seed = 1; seed <= 100; seed++) {
 				const enemy = createCombatant({ ...mob, combatClass: null });
 				enemy.immunityTags = mob.immunityTags;
-				enemy.flags.regen_pct = mob.regenPct;
+				enemy.flags.regenPct = mob.regenPct;
 				const result = engine.resolve(
 					createCombatant({ name: combatClass, combatClass, ...stats }),
 					enemy,

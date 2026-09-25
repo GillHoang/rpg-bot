@@ -104,4 +104,33 @@ describe('application dependency boundaries', () => {
 		);
 		expect(violations).toEqual([]);
 	});
+
+	it('bans removed DI singletons and silent event-bus fallbacks', () => {
+		// Phase 1 DI hardening: menuRouter global, EMIT_ONLY no-op bus and the
+		// combatant defaultFactory must never come back. Services default to an
+		// isolated `new EventBus()`; production injects the shared bus.
+		expect(existsSync(fileURLToPath(new URL('../src/modules/menu/menuRuntime.ts', import.meta.url)))).toBe(
+			false,
+		);
+		const violations = files.flatMap((file) =>
+			runtimeImports(file)
+				.filter((dep) => /menuRuntime\.js$/.test(dep))
+				.map((dep) => `${pathOf(file)}: ${dep}`),
+		);
+		expect(violations).toEqual([]);
+		const emitOnlyUsers = files.flatMap((file) => {
+			const text = file.getFullText();
+			return text.includes('EMIT_ONLY_EVENT_BUS') && !pathOf(file).endsWith('shared/kernel/EventBus.ts')
+				? [pathOf(file)]
+				: [];
+		});
+		expect(emitOnlyUsers).toEqual([]);
+		const factoryUsers = files.flatMap((file) => {
+			const text = file.getFullText();
+			return /createPlayerCombatant|createPlayerStrategy|defaultFactory/.test(text)
+				? [pathOf(file)]
+				: [];
+		});
+		expect(factoryUsers).toEqual([]);
+	});
 });

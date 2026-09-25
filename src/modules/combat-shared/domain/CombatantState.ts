@@ -59,6 +59,84 @@ export function applyDebuff(
 	return applied;
 }
 
+/**
+ * Per-battle scratch state for strategies and decorators. Every key is a
+ * typed field with a fixed default (see `createBattleFlags`): adding a new
+ * effect means adding a field here, so a typo'd key is a compile error
+ * instead of a silent `undefined`. Numeric fields default to 0, booleans to
+ * false, except `bakuPhase` (1, the opening phase) and
+ * `swordsmanAtkStackBase` (null until the first stack accrues).
+ */
+export interface BattleFlags {
+	// Weapon passives.
+	weaponFirstBloodUsed: boolean;
+	weaponSkyDiveBonus: number;
+	eclipseMarkUntil: number;
+	stormEchoArmed: boolean;
+	// Rune combat hooks.
+	wardingPct: number;
+	aegisUsed: boolean;
+	// Deity blessings.
+	initiativeBias: number;
+	blessingVeilActive: boolean;
+	blessingSovereignUsed: boolean;
+	// Class strategies.
+	swordsmanAtkStackPct: number;
+	swordsmanAtkStackBase: number | null;
+	fighterBashThisHit: boolean;
+	stunImmuneUntil: number;
+	mageOverchargeThisHit: boolean;
+	knightSecondWindUsed: boolean;
+	knightBulwarkThisHit: boolean;
+	archerExtraSwing: boolean;
+	archerShots: number;
+	archerAimedThisHit: boolean;
+	// Monster AI + shared per-battle budgets.
+	monsterAffixes: boolean;
+	monsterRounds: number;
+	regenPct: number;
+	devourCharging: boolean;
+	leapCharging: boolean;
+	frenzyLogged: boolean;
+	bakuPhase: number;
+	immunityUsed: number;
+	healedThisRound: number;
+}
+
+/** Fresh per-battle flags; every combatant starts from these defaults. */
+export function createBattleFlags(): BattleFlags {
+	return {
+		weaponFirstBloodUsed: false,
+		weaponSkyDiveBonus: 0,
+		eclipseMarkUntil: 0,
+		stormEchoArmed: false,
+		wardingPct: 0,
+		aegisUsed: false,
+		initiativeBias: 0,
+		blessingVeilActive: false,
+		blessingSovereignUsed: false,
+		swordsmanAtkStackPct: 0,
+		swordsmanAtkStackBase: null,
+		fighterBashThisHit: false,
+		stunImmuneUntil: 0,
+		mageOverchargeThisHit: false,
+		knightSecondWindUsed: false,
+		knightBulwarkThisHit: false,
+		archerExtraSwing: false,
+		archerShots: 0,
+		archerAimedThisHit: false,
+		monsterAffixes: false,
+		monsterRounds: 0,
+		regenPct: 0,
+		devourCharging: false,
+		leapCharging: false,
+		frenzyLogged: false,
+		bakuPhase: 1,
+		immunityUsed: 0,
+		healedThisRound: 0,
+	};
+}
+
 /** One combatant's mutable state for the duration of a single battle. */
 export interface CombatantState {
 	name: string;
@@ -86,8 +164,8 @@ export interface CombatantState {
 	ten: number;
 	debuffs: Debuff[];
 	immunityTags?: string[];
-	/** Free-form per-battle scratch space for a class strategy (e.g. Swordsman's ATK-stack %, Mage's overcharge charge counter). */
-	flags: Record<string, number | boolean>;
+	/** Typed per-battle scratch space (see BattleFlags); every key starts from `createBattleFlags()`. */
+	flags: BattleFlags;
 }
 
 export function findDebuff(side: CombatantState, tag: DebuffTag): Debuff | undefined {
@@ -109,8 +187,8 @@ export const HEAL_CAP_PCT = 0.08;
 export const IMMUNITY_BUDGET = 2;
 
 export function immunityMultiplier(side: CombatantState): number {
-	const used = (side.flags.immunity_used as number) ?? 0;
-	side.flags.immunity_used = used + 1;
+	const used = side.flags.immunityUsed;
+	side.flags.immunityUsed = used + 1;
 	return used < IMMUNITY_BUDGET ? 1 : 0.5;
 }
 
@@ -120,11 +198,11 @@ export function immunityMultiplier(side: CombatantState): number {
  */
 export function cappedHeal(side: CombatantState, amount: number): number {
 	if (amount <= 0 || side.hp <= 0) return 0;
-	const budget = Math.floor(side.maxHp * HEAL_CAP_PCT) - ((side.flags.healed_this_round as number) ?? 0);
+	const budget = Math.floor(side.maxHp * HEAL_CAP_PCT) - side.flags.healedThisRound;
 	const healed = Math.max(0, Math.min(amount, budget, side.maxHp - side.hp));
 	if (healed > 0) {
 		side.hp += healed;
-		side.flags.healed_this_round = ((side.flags.healed_this_round as number) ?? 0) + healed;
+		side.flags.healedThisRound = side.flags.healedThisRound + healed;
 	}
 	return healed;
 }
@@ -163,6 +241,6 @@ export function createCombatant(params: {
 		eva: params.eva ?? 0,
 		ten: params.ten ?? 0,
 		debuffs: [],
-		flags: {},
+		flags: createBattleFlags(),
 	};
 }

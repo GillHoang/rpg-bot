@@ -119,8 +119,8 @@ export class BattleEngine {
 		if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
 		if (round > SUDDEN_DEATH_START) this.bloodMoonPrice(ctx);
 		// P8 heal budget resets every round for both sides.
-		player.flags.healed_this_round = 0;
-		enemy.flags.healed_this_round = 0;
+		player.flags.healedThisRound = 0;
+		enemy.flags.healedThisRound = 0;
 
 		playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 		enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
@@ -165,8 +165,8 @@ export class BattleEngine {
 	 * initiative-bias roll (Tailwind blessing, swift affix). */
 	private turnOrder(ctx: RoundContext): Array<[CombatantState, CombatantState, IClassStrategy, IClassStrategy]> {
 		const { player, enemy, playerStrategy, enemyStrategy, rng } = ctx;
-		const playerBias = (player.flags.initiative_bias as number) ?? 0;
-		const enemyBias = (enemy.flags.initiative_bias as number) ?? 0;
+		const playerBias = player.flags.initiativeBias;
+		const enemyBias = enemy.flags.initiativeBias;
 		const playerFirst = rollChance(0.5 + playerBias - enemyBias, rng);
 		const playerTurn: [CombatantState, CombatantState, IClassStrategy, IClassStrategy] = [
 			player,

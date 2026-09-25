@@ -31,7 +31,7 @@ import {
 	BOSS_ROLLING_COOLDOWN_MINUTES,
 } from '../../../shared/config/raidLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
+import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { CosmeticService } from '../../meta/application/CosmeticService.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
@@ -135,7 +135,7 @@ export class RaidService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = options.events ?? EMIT_ONLY_EVENT_BUS;
+		this.events = options.events ?? new EventBus();
 		this.queries = options.queries ?? new RaidRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
@@ -306,7 +306,7 @@ export class RaidService {
 			ten: monsterStats.ten,
 		});
 		monster.immunityTags = monsterStats.immunityTags;
-		monster.flags.regen_pct = monsterStats.regenPct;
+		monster.flags.regenPct = monsterStats.regenPct;
 		const battle = this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, { affixes: monsterStats.affixes }),

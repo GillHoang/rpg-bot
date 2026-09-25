@@ -1,6 +1,6 @@
 import { enhancementPlus } from '../../../shared/utils/enhancementDisplay.js';
 import { and, eq, ilike, or, sql } from 'drizzle-orm';
-import { db, type Executor } from '../../../db/client.js';
+import type { Executor } from '../../../db/client.js';
 import {
 	userCharacter,
 	userPresets,
@@ -15,9 +15,9 @@ import {
 	deityRoster,
 } from '../../../db/schema.js';
 
-/** Persistence-only inventory read model. */
+/** Persistence-only inventory read model. Executor is required — no live-db default. */
 export class InventoryDataRepository {
-	constructor(private readonly executor: Executor = db) {}
+	constructor(private readonly executor: Executor) {}
 	async bag(id: string): Promise<typeof usersBag.$inferSelect | null> {
 		return (await this.executor.select().from(usersBag).where(eq(usersBag.discordId, id)))[0] ?? null;
 	}

@@ -16,7 +16,7 @@ import {
 	WeaponPassiveDecorator,
 } from '../src/modules/combat-shared/domain/WeaponPassiveDecorator.js';
 import type { OutgoingHit, StrategyContext } from '../src/modules/combat-shared/domain/IClassStrategy.js';
-import { createPlayerStrategy } from '../src/modules/combat-shared/application/combatantFactory.js';
+import { PlayerCombatantFactory } from '../src/modules/combat-shared/application/combatantFactory.js';
 import {
 	WEAPON_QUALITIES,
 	WEAPON_CRATE_COST,
@@ -29,9 +29,10 @@ import {
 	sellValue,
 	WEAPON_UPGRADE_COSTS,
 } from '../src/shared/config/weaponQuality.js';
+import * as rngModule from '../src/modules/combat-shared/domain/Rng.js';
 import { WeaponService } from '../src/modules/progression/application/WeaponService.js';
 import { WeaponCommand } from '../src/modules/progression/presentation/WeaponCommand.js';
-import { StatAssemblyService } from '../src/modules/combat-shared/application/StatAssemblyService.js';
+import { StatAssemblyService, type AssembledPlayer } from '../src/modules/combat-shared/application/StatAssemblyService.js';
 import { computeClassStats } from '../src/shared/config/classes.js';
 
 function duel(passiveKey: string, seed = 42) {
@@ -136,7 +137,7 @@ describe('weapon passive decorator', () => {
 		const passive = new WeaponPassiveDecorator(new NullClassStrategy(), 'eclipse_mark');
 		const ctx = hookCtx({ round: 1 });
 		passive.onHitLanded(ctx, { damageDealt: 100, crit: true, missed: false, triggerExtraAttack: false });
-		expect(ctx.enemy.flags.eclipse_mark_until).toBe(3);
+		expect(ctx.enemy.flags.eclipseMarkUntil).toBe(3);
 		const marked = hookCtx({ round: 2, self: ctx.self, enemy: ctx.enemy });
 		const hit = freshHit();
 		passive.prepareOutgoingHit(marked, hit);
@@ -244,14 +245,15 @@ describe('weapon passive decorator', () => {
 	});
 
 	it('plugs into the shared factory between base strategy and rune wrappers', () => {
-		const plain = {
+		const plain: AssembledPlayer = {
 			stats: { hp: 5000, atk: 400, def: 150, crit: 10, spd: 100, acc: 0, eva: 0, ten: 0 },
 			combatEffectRunes: [],
 			blessings: [],
 			weaponPassive: null,
-		} as const;
-		const armed = { ...plain, weaponPassive: { passiveKey: 'first_blood' } };
-		expect(createPlayerStrategy('Fighter', armed)).not.toBe(createPlayerStrategy('Fighter', plain));
+		};
+		const armed: AssembledPlayer = { ...plain, weaponPassive: { passiveKey: 'first_blood' } };
+		const factory = new PlayerCombatantFactory();
+		expect(factory.createStrategy('Fighter', armed)).not.toBe(factory.createStrategy('Fighter', plain));
 	});
 });
 
@@ -332,7 +334,7 @@ describe('lead-deity weapon assembly', () => {
 	it('counts the pantheon lead weapon first and falls back to the legacy preset weapon', async () => {
 		const divine = { weaponId: 'w_divine', currAtk: 500, crit: 5, quality: 'Epic', passiveKey: 'sky_sunder' };
 		const legacy = { weaponId: 'w_legacy', currAtk: 50, crit: 1, quality: 'Common', passiveKey: 'first_blood' };
-		const findWeaponByDeity = vi.fn(async () => divine);
+		const findWeaponByDeity = vi.fn(async (): Promise<typeof divine | null> => divine);
 		const findWeaponCurrStats = vi.fn(async () => legacy);
 		const service = assembly({ findWeaponByDeity, findWeaponCurrStats } as never);
 		const cls = computeClassStats('Fighter', 1);
@@ -446,7 +448,11 @@ describe('weapon service lifecycle', () => {
 	});
 
 	it('pulls crates, upgrades quality, and bonds weapons to deities', async () => {
-		const service = new WeaponService({ persistence: testPersistence() });
+		// Deterministic crate (Rare/Common): upgrade cost then always fits the
+		// seeded shards. Unmocked crypto RNG made this test flaky.
+		const rngSpy = vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
+		try {
+			const service = new WeaponService({ persistence: testPersistence() });
 		const before = (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'owo')))[0]!;
 		const pulled = await service.openCrate('owo');
 		expect(pulled.ok).toBe(true);
@@ -481,6 +487,9 @@ describe('weapon service lifecycle', () => {
 		expect(detached.ok).toBe(true);
 		const [freed] = await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, crateId));
 		expect(freed!.attachedDeityId).toBeNull();
+		} finally {
+			rngSpy.mockRestore();
+		}
 	}, 120000);
 
 	it('dismantles spares into shards and sells the rest for exactly the configured yield', async () => {

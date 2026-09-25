@@ -2,7 +2,6 @@ import { MAINTENANCE_LOG_TEXT } from '../shared/ui/text/diagnostics.js';
 import { CasinoSessionService } from '../modules/casino/application/CasinoSessionService.js';
 import { Scheduler } from './Scheduler.js';
 import { logger } from '../shared/utils/logger.js';
-import { menuRouter } from '../modules/menu/menuRuntime.js';
 
 /** Owns maintenance lifecycle; services keep gameplay and persistence decisions. */
 export class BotMaintenance {
@@ -13,7 +12,7 @@ export class BotMaintenance {
 	constructor(
 		private readonly sessions: Pick<CasinoSessionService, 'recoverExpired'>,
 		private readonly scheduler: Pick<Scheduler, 'start' | 'stop'>,
-		private readonly menu: { sweep(): void } = menuRouter,
+		private readonly menu: { sweep(): void },
 	) {}
 
 	start(): void {

@@ -112,7 +112,7 @@ it('R3: tailwind keeps a fixed initiative bonus across rounds', () => {
 	const strategy = new DeityBlessingDecorator(new NullClassStrategy(), 'tailwind', 1);
 	for (let round = 1; round <= 2; round++)
 		strategy.onRoundStart({ self, enemy, round, rng: () => 0.5, log: () => {} });
-	expect(self.flags.initiative_bias).toBe(0.25);
+	expect(self.flags.initiativeBias).toBe(0.25);
 });
 
 it.each(['player_win', 'enemy_win', 'draw'] as const)(
@@ -265,10 +265,10 @@ it('R3: tailwind preserves other initiative bonuses and works for a new combatan
 	const strategy = new DeityBlessingDecorator(new NullClassStrategy(), 'tailwind', 0.5);
 	for (let fight = 0; fight < 2; fight++) {
 		const self = createCombatant({ name: 'self', combatClass: null, hp: 100, atk: 1, def: 0, crit: 0 });
-		self.flags.initiative_bias = 0.1;
+		self.flags.initiativeBias = 0.1;
 		for (let round = 1; round <= 40; round++)
 			strategy.onRoundStart({ self, enemy: self, round, rng: () => 0.5, log: () => {} });
-		expect(self.flags.initiative_bias).toBeCloseTo(0.225);
+		expect(self.flags.initiativeBias).toBeCloseTo(0.225);
 	}
 });
 

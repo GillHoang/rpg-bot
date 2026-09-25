@@ -1,26 +1,21 @@
-import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import type { RuneEffectKey } from '../../../shared/config/runes.js';
-import { combatDisplayName, findDebuff, applyDebuff, cappedHeal, immunityMultiplier } from './CombatantState.js';
-import {
-	COMBAT_FROST,
-	COMBAT_RUNE_THORNS,
-	COMBAT_RUNE_VAMPIRIC,
-	COMBAT_RUNE_VENOM,
-} from '../../../shared/ui/text/combat.js';
+import { createRuneEffectRegistry, type RuneEffectParams } from './runeEffects.js';
+import type { EffectRegistry } from './EffectRegistry.js';
 
 /**
  * Decorator pattern: wraps any IClassStrategy (a real class passive, or
  * another rune decorator — they chain) and layers ONE socketed rune's
  * combat-hook effect on top, without the base Strategy classes from M3
- * knowing runes exist at all. One parameterized class (rather than 7
- * near-identical subclasses) mirrors how config/runes.js itself treats
- * these as one data-driven effect-key table, not 7 bespoke systems.
+ * knowing runes exist at all.
  *
  * Only combat-hook runes need this — the STAT_EFFECT_KEYS
  * family (sharpness/precision/vitality/bulwark) are flat stat bonuses
  * applied once when the CombatantState is built (see RaidService), never
  * a per-turn hook.
+ *
+ * Open/Closed: effect logic lives in the `runeEffects.ts` handler table;
+ * this core only dispatches. A new effect key = one new table entry.
  */
 export class RuneStrategyDecorator implements IClassStrategy {
 	readonly key: IClassStrategy['key'];
@@ -29,78 +24,45 @@ export class RuneStrategyDecorator implements IClassStrategy {
 		private readonly inner: IClassStrategy,
 		private readonly effectKey: RuneEffectKey,
 		private readonly value: number, // fraction from rune_roster, e.g. 0.15 means 15%
+		private readonly handlers: EffectRegistry<string, RuneEffectParams> = createRuneEffectRegistry(),
 	) {
 		this.key = inner.key;
 	}
 
+	private get params(): RuneEffectParams {
+		return { value: this.value };
+	}
+
 	onRoundStart(ctx: StrategyContext): void {
-		if (this.effectKey === 'warding') {
-			ctx.self.flags.warding_pct = Math.max(this.value, (ctx.self.flags.warding_pct as number) ?? 0);
-		}
+		this.handlers.get(this.effectKey)?.onRoundStart?.(ctx, this.params);
 		this.inner.onRoundStart(ctx);
 	}
 
 	prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		this.inner.prepareOutgoingHit(ctx, hit);
-		if (this.effectKey === 'piercing') {
-			hit.armorPierceFraction = Math.min(1, hit.armorPierceFraction + this.value);
-		}
+		this.handlers.get(this.effectKey)?.prepareOutgoingHit?.(ctx, hit, this.params);
 	}
 
 	prepareIncomingHit(ctx: StrategyContext, hit: IncomingHit): void {
 		this.inner.prepareIncomingHit(ctx, hit);
-		if (this.effectKey === 'warding') hit.reductionFraction = Math.max(hit.reductionFraction, this.value);
-		if (this.effectKey === 'aegis_rune' && !ctx.self.flags.aegis_used) {
-			hit.reductionFraction = Math.max(hit.reductionFraction, immunityMultiplier(ctx.self));
-			ctx.self.flags.aegis_used = true;
-		}
+		this.handlers.get(this.effectKey)?.prepareIncomingHit?.(ctx, hit, this.params);
 	}
 
 	onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
 		this.inner.onHitLanded(ctx, resolved);
 		if (resolved.damageDealt <= 0) return;
 
-		if (this.effectKey === 'vampiric') {
-			const healed = cappedHeal(ctx.self, Math.floor(resolved.damageDealt * this.value));
-			if (healed > 0) {
-				ctx.log(COMBAT_RUNE_VAMPIRIC(combatDisplayName(ctx.self), formatNumber(healed)));
-			}
-		} else if (this.effectKey === 'venom') {
-			const value = Math.floor(ctx.enemy.maxHp * this.value);
-			const existing = findDebuff(ctx.enemy, 'venom');
-			if (existing) {
-				existing.turnsLeft = 2;
-				// P5 cap: stacked venom never exceeds 25% of the victim's max HP.
-				existing.value = Math.min(Math.floor(ctx.enemy.maxHp * 0.25), existing.value + value);
-			} else {
-				applyDebuff(ctx.enemy, { tag: 'venom', turnsLeft: 2, value }, ctx.rng, ctx.log);
-			}
-			ctx.log(COMBAT_RUNE_VENOM(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), formatNumber(value)));
-		} else if (this.effectKey === 'blight') {
-			const existing = findDebuff(ctx.enemy, 'blight');
-			if (existing) {
-				existing.value = Math.max(existing.value, this.value);
-				existing.turnsLeft = 1;
-			} else applyDebuff(ctx.enemy, { tag: 'blight', turnsLeft: 1, value: this.value }, ctx.rng, ctx.log);
-		} else if (this.effectKey === 'frost') {
-			applyDebuff(ctx.enemy, { tag: 'slow', turnsLeft: 1, value: this.value }, ctx.rng, ctx.log);
-			ctx.log(COMBAT_FROST(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy)));
-		}
+		this.handlers.get(this.effectKey)?.onHitLanded?.(ctx, resolved, this.params);
 	}
 
 	onDamageTaken(ctx: StrategyContext, resolved: ResolvedHit): void {
 		this.inner.onDamageTaken(ctx, resolved);
-		if (this.effectKey === 'thorns' && resolved.damageDealt > 0) {
-			const reflected = Math.floor(resolved.damageDealt * this.value);
-			if (reflected > 0) {
-				ctx.enemy.hp = Math.max(0, ctx.enemy.hp - reflected);
-				ctx.log(COMBAT_RUNE_THORNS(combatDisplayName(ctx.self), formatNumber(reflected)));
-			}
-		}
+		this.handlers.get(this.effectKey)?.onDamageTaken?.(ctx, resolved, this.params);
 	}
 
 	onRoundEnd(ctx: StrategyContext): void {
 		this.inner.onRoundEnd(ctx);
+		this.handlers.get(this.effectKey)?.onRoundEnd?.(ctx, this.params);
 	}
 }
 
@@ -108,9 +70,10 @@ export class RuneStrategyDecorator implements IClassStrategy {
 export function wrapWithRunes(
 	base: IClassStrategy,
 	runes: Array<{ effectKey: RuneEffectKey; value: number }>,
+	handlers?: EffectRegistry<string, RuneEffectParams>,
 ): IClassStrategy {
 	return runes.reduce<IClassStrategy>(
-		(strategy, rune) => new RuneStrategyDecorator(strategy, rune.effectKey, rune.value),
+		(strategy, rune) => new RuneStrategyDecorator(strategy, rune.effectKey, rune.value, handlers),
 		base,
 	);
 }

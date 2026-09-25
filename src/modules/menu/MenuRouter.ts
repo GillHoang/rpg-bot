@@ -7,6 +7,7 @@ import {
 	type StringSelectMenuInteraction,
 } from 'discord.js';
 import { logger } from '../../shared/utils/logger.js';
+import { AppError } from '../../shared/kernel/Result.js';
 import { MENU_TEXT } from '../../shared/ui/text/menu.js';
 import { MenuCapacityError, MenuSessionStore, type MenuScreen, type MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, MENU_PREFIX, parseMenuId, type MenuAction } from './menuIds.js';
@@ -17,6 +18,15 @@ import { isNavigationAction } from './MenuRegistry.js';
 import { shouldForkSession } from './menuSessionPolicy.js';
 
 type MenuInteraction = ButtonInteraction | StringSelectMenuInteraction;
+
+/**
+ * Menu-side error boundary, mirroring CommandRegistry.dispatch: AppError
+ * carries a user-safe message (shown as-is); unknown errors fall back to a
+ * generic failure notice and are logged with stack.
+ */
+function userMessage(error: unknown, fallback: string): string {
+	return error instanceof AppError ? error.message : fallback;
+}
 
 export class MenuRouter {
 	constructor(
@@ -41,7 +51,10 @@ export class MenuRouter {
 			if (session) this.sessions.delete(session.id);
 			logger.error({ err: error, userId: interaction.user.id }, MENU_LOG_TEXT.openFailed);
 			// Use V2 even on failure: a failed HTTP response may have already applied the flag.
-			const text = error instanceof MenuCapacityError ? MENU_TEXT.capacity : MENU_TEXT.failed;
+			const text =
+				error instanceof MenuCapacityError
+					? MENU_TEXT.capacity
+					: userMessage(error, MENU_TEXT.failed);
 			if (interaction.deferred) {
 				try {
 					await interaction.editReply(recoveryView(text));
@@ -80,7 +93,7 @@ export class MenuRouter {
 			this.sessions.delete(session.id);
 			if (!isNavigationAction(parsed.action)) this.sessions.delete(source.id);
 			logger.error({ err: error, sessionId: session.id, action: parsed.action }, MENU_LOG_TEXT.interactionFailed);
-			await this.notice(interaction, MENU_TEXT.failed);
+			await this.notice(interaction, userMessage(error, MENU_TEXT.failed));
 		} finally {
 			if (session !== source && !session.messageId) this.sessions.delete(session.id);
 			this.sessions.release(session);

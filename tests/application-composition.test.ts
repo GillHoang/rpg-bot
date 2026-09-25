@@ -6,7 +6,6 @@ import { registerAllCommands } from '../src/app/registerAllCommands.js';
 import { CommandRegistry } from '../src/app/CommandRegistry.js';
 import { EventBus } from '../src/shared/kernel/EventBus.js';
 import { subscribeDomainEvents } from '../src/app/events.js';
-import { menuRouter } from '../src/modules/menu/menuRuntime.js';
 
 vi.mock('../src/db/client.js', () => ({
 	db: new Proxy(
@@ -76,8 +75,8 @@ describe('application composition', () => {
 	});
 
 	it('builds explicit registration on an isolated event bus, never a shared singleton', async () => {
-		const open = vi.spyOn(menuRouter, 'open').mockResolvedValue();
-		const explicit = createAppContainer({ persistence: context(), menu: menuRouter });
+		const explicit = createAppContainer({ persistence: context() });
+		const open = vi.spyOn(explicit.menu, 'open').mockResolvedValue();
 		const registry = new CommandRegistry();
 		registerAllCommands(explicit, registry);
 		expect(registry.getAll()).toHaveLength(29);

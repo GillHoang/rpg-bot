@@ -28,10 +28,10 @@ export class SwordsmanStrategy extends NullClassStrategy {
 
 	override prepareOutgoingHit(ctx: StrategyContext, _hit: OutgoingHit): void {
 		// Apply the accrued ATK stack (if any) before this hit's damage is rolled.
-		const stackPct = (ctx.self.flags.swordsman_atk_stack_pct as number) ?? 0;
+		const stackPct = ctx.self.flags.swordsmanAtkStackPct;
 		if (stackPct > 0) {
-			ctx.self.flags.swordsman_atk_stack_base ??= ctx.self.atk;
-			const base = ctx.self.flags.swordsman_atk_stack_base as number;
+			ctx.self.flags.swordsmanAtkStackBase ??= ctx.self.atk;
+			const base = ctx.self.flags.swordsmanAtkStackBase ?? ctx.self.atk;
 			ctx.self.atk = Math.floor(base * (1 + stackPct));
 		}
 	}
@@ -40,10 +40,10 @@ export class SwordsmanStrategy extends NullClassStrategy {
 		if (resolved.damageDealt <= 0) return;
 
 		// Grow the permanent-for-battle ATK stack.
-		const current = (ctx.self.flags.swordsman_atk_stack_pct as number) ?? 0;
+		const current = ctx.self.flags.swordsmanAtkStackPct;
 		if (current < ATK_STACK_MAX) {
 			const next = Math.min(ATK_STACK_MAX, current + ATK_STACK_PER_TURN);
-			ctx.self.flags.swordsman_atk_stack_pct = next;
+			ctx.self.flags.swordsmanAtkStackPct = next;
 			ctx.log(COMBAT_SWORDSMAN_ATK_UP(combatDisplayName(ctx.self), Math.round((next - current) * 100)));
 		}
 

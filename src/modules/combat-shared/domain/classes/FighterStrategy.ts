@@ -27,25 +27,25 @@ export class FighterStrategy extends NullClassStrategy {
 
 		// No stun-lock: a target stunned within the last 2 rounds cannot be
 		// bashed again until the immunity window lapses.
-		const warded = ((ctx.enemy.flags.stun_immune_until as number) ?? 0) >= ctx.round;
+		const warded = ctx.enemy.flags.stunImmuneUntil >= ctx.round;
 		const dizzy = !!findDebuff(ctx.enemy, 'dizzy');
 		const chance = dizzy ? DIZZY_BASH_CHANCE : BASE_BASH_CHANCE;
 		const willBash = !warded && rollChance(chance, ctx.rng) && !findDebuff(ctx.enemy, 'stun');
-		ctx.self.flags.fighter_bash_this_hit = willBash;
+		ctx.self.flags.fighterBashThisHit = willBash;
 		if (willBash) hit.damagePctBonus += BASH_DAMAGE_BONUS_PCT;
 	}
 
 	override onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
 		// Consume the bash flag on every landed hit (a miss must not leave a
 		// stale flag that stuns on a later, non-bash hit).
-		const bashed = ctx.self.flags.fighter_bash_this_hit === true;
-		ctx.self.flags.fighter_bash_this_hit = false;
+		const bashed = ctx.self.flags.fighterBashThisHit === true;
+		ctx.self.flags.fighterBashThisHit = false;
 		if (!bashed || resolved.damageDealt <= 0) return;
 
 		const execution = ctx.enemy.hp < ctx.enemy.maxHp * 0.3;
 		const stunTurns = execution ? 2 : 1;
 		applyDebuff(ctx.enemy, { tag: 'stun', turnsLeft: stunTurns, value: 0 }, ctx.rng, ctx.log);
-		ctx.enemy.flags.stun_immune_until = ctx.round + stunTurns + 1;
+		ctx.enemy.flags.stunImmuneUntil = ctx.round + stunTurns + 1;
 		// Keep the next-attack rider alive through the stunned round(s).
 		applyDebuff(ctx.enemy, { tag: 'dizzy', turnsLeft: stunTurns + 1, value: DIZZY_MISS_CHANCE }, ctx.rng, ctx.log);
 		ctx.log(COMBAT_FIGHTER_BASH(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), stunTurns));

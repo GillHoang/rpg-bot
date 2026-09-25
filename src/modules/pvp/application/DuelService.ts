@@ -15,7 +15,7 @@ import { BattleEngine, type BattleResult } from '../../combat-shared/domain/Batt
 import { createBattleActionContext } from '../../combat-shared/domain/BattleActionContext.js';
 import { PlayerCombatantFactory } from '../../combat-shared/application/combatantFactory.js';
 import type { IClassStrategy } from '../../combat-shared/domain/IClassStrategy.js';
-import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
+import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
 
@@ -140,7 +140,7 @@ export class DuelService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = events ?? EMIT_ONLY_EVENT_BUS;
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new DuelRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();

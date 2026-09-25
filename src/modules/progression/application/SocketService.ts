@@ -144,7 +144,7 @@ export class SocketService {
 			const [cost] = await this.queries.findUnlockCost(tx, rows[0].tier, next);
 			if (!cost) return err(new AppError('SOCKET_UNLOCK_LIMIT', SOCKET_UNLOCK_LIMIT));
 			if (!Object.hasOwn(ESSENCE_FIELDS, cost.essenceTier))
-				throw new AppError('SOCKET_INVALID_ESSENCE_TIER', SOCKET_ERROR_TEXT.invalidEssenceTier);
+				return err(new AppError('SOCKET_INVALID_ESSENCE_TIER', SOCKET_ERROR_TEXT.invalidEssenceTier));
 			const field = ESSENCE_FIELDS[cost.essenceTier as keyof typeof ESSENCE_FIELDS];
 			if (bag.credux < cost.creduxCost || bag[field] < cost.essenceCost)
 				return err(

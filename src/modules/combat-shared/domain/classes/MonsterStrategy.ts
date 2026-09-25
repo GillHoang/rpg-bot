@@ -44,8 +44,8 @@ export class MonsterStrategy extends NullClassStrategy {
 	}
 
 	private affixes(ctx: StrategyContext): string[] {
-		if (!ctx.self.flags.monster_affixes) {
-			ctx.self.flags.monster_affixes = true;
+		if (!ctx.self.flags.monsterAffixes) {
+			ctx.self.flags.monsterAffixes = true;
 			return this.traits.affixes ?? [];
 		}
 		return [];
@@ -53,12 +53,12 @@ export class MonsterStrategy extends NullClassStrategy {
 
 	override onRoundStart(ctx: StrategyContext): void {
 		const flags = ctx.self.flags;
-		flags.monster_rounds = ((flags.monster_rounds as number) ?? 0) + 1;
+		flags.monsterRounds = flags.monsterRounds + 1;
 
 		// One-time affix setup: swift initiative, tenacious resolve.
 		for (const affix of this.affixes(ctx)) {
 			if (affix === 'swift') {
-				flags.initiative_bias = ((flags.initiative_bias as number) ?? 0) + 0.15;
+				flags.initiativeBias = flags.initiativeBias + 0.15;
 				ctx.log(COMBAT_MONSTER_SWIFT(combatDisplayName(ctx.self)));
 			} else if (affix === 'tenacious') {
 				ctx.self.ten = Math.max(ctx.self.ten, 50);
@@ -66,7 +66,7 @@ export class MonsterStrategy extends NullClassStrategy {
 		}
 
 		// Gate-modifier regen: slow mend every round.
-		const regenPct = (flags.regen_pct as number) ?? 0;
+		const regenPct = flags.regenPct;
 		if (regenPct > 0 && ctx.self.hp > 0 && ctx.self.hp < ctx.self.maxHp) {
 			const healed = Math.min(ctx.self.maxHp - ctx.self.hp, Math.floor(ctx.self.maxHp * regenPct));
 			if (healed > 0) {
@@ -81,15 +81,15 @@ export class MonsterStrategy extends NullClassStrategy {
 			// Devour telegraph: charged on the round before, consumed on the strike.
 			if (
 				ctx.self.hp < ctx.self.maxHp / 3 &&
-				(ctx.self.flags.monster_rounds as number) % 4 === 3 &&
-				!ctx.self.flags.devour_charging
+				ctx.self.flags.monsterRounds % 4 === 3 &&
+				!ctx.self.flags.devourCharging
 			) {
-				ctx.self.flags.devour_charging = true;
+				ctx.self.flags.devourCharging = true;
 				ctx.log(COMBAT_MONSTER_DEVOUR_CHARGE(combatDisplayName(ctx.self)));
 			}
 		}
-		if (this.skill === 'blood_moon_leap' && (flags.monster_rounds as number) % 3 === 0) {
-			flags.leap_charging = true;
+		if (this.skill === 'blood_moon_leap' && flags.monsterRounds % 3 === 0) {
+			flags.leapCharging = true;
 			ctx.log(COMBAT_MONSTER_DEVOUR_CHARGE(combatDisplayName(ctx.self)));
 		}
 	}
@@ -104,8 +104,8 @@ export class MonsterStrategy extends NullClassStrategy {
 			hit.damagePctBonus += 25;
 		}
 		// Blood-moon leap: charged heavy, consumed on the strike.
-		if (this.skill === 'blood_moon_leap' && ctx.self.flags.leap_charging) {
-			ctx.self.flags.leap_charging = false;
+		if (this.skill === 'blood_moon_leap' && ctx.self.flags.leapCharging) {
+			ctx.self.flags.leapCharging = false;
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
 			ctx.log(COMBAT_MONSTER_LEAP(combatDisplayName(ctx.self)));
 		}
@@ -124,8 +124,8 @@ export class MonsterStrategy extends NullClassStrategy {
 			hit.damagePctBonus += 20;
 		}
 		// Devour: consumed on the strike after the telegraphed charge round.
-		if (hpFrac < 1 / 3 && ctx.self.flags.devour_charging) {
-			ctx.self.flags.devour_charging = false;
+		if (hpFrac < 1 / 3 && ctx.self.flags.devourCharging) {
+			ctx.self.flags.devourCharging = false;
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 3.0);
 			ctx.log(COMBAT_MONSTER_DEVOUR(combatDisplayName(ctx.self)));
 		}
@@ -135,8 +135,8 @@ export class MonsterStrategy extends NullClassStrategy {
 	private applyBloodFrenzy(ctx: StrategyContext, hit: OutgoingHit, hpFrac: number): void {
 		if (this.skill !== 'blood_frenzy' || hpFrac >= 0.4) return;
 		hit.damagePctBonus += 40;
-		if (!ctx.self.flags.frenzy_logged) {
-			ctx.self.flags.frenzy_logged = true;
+		if (!ctx.self.flags.frenzyLogged) {
+			ctx.self.flags.frenzyLogged = true;
 			ctx.log(COMBAT_MONSTER_FRENZY(combatDisplayName(ctx.self)));
 		}
 	}
@@ -204,11 +204,11 @@ export class MonsterStrategy extends NullClassStrategy {
 	private trackBakunawaPhase(ctx: StrategyContext): void {
 		const hpFrac = ctx.self.hp / ctx.self.maxHp;
 		const phase = bakunawaPhase(hpFrac);
-		const previous = (ctx.self.flags.baku_phase as number) ?? 1;
+		const previous = ctx.self.flags.bakuPhase;
 		if (phase === previous) return;
 		const crossedTwo = previous < 2 && phase >= 2;
 		const crossedThree = previous < 3 && phase >= 3;
-		ctx.self.flags.baku_phase = phase;
+		ctx.self.flags.bakuPhase = phase;
 		// Shed damage-over-time on every transition.
 		const before = ctx.self.debuffs.length;
 		ctx.self.debuffs = ctx.self.debuffs.filter((d) => d.tag !== 'bleed' && d.tag !== 'burn' && d.tag !== 'venom');

@@ -40,6 +40,17 @@ export interface MenuGameplayDependencies {
 const SECTION_KIND: Record<string, string> = { character: 'profile', daily: 'quests', battle: 'battle' };
 
 /**
+ * Sync panels need no data: adding one = one map entry, no new branch in
+ * buildPanel. Data-backed kinds (profile/quests/gates/home) stay in
+ * buildPanel where their awaits live.
+ */
+const SYNC_PANELS: ReadonlyMap<string, (session: MenuSession) => GamePanel | undefined> = new Map([
+	['result', (session) => battlePanel(session)],
+	['log', (session) => battlePanel(session)],
+	['confirm', (session) => (session.screen.kind === 'confirm' ? confirmationPanel(session.screen) : undefined)],
+]);
+
+/**
  * Thin facade over menu rendering + actions. Menu elements come from the
  * file registry (`items/registry.generated.ts`); this class only renders
  * panels, attaches the registry buttons, and exposes the business operations
@@ -91,13 +102,15 @@ export class MenuGameplayService implements MenuGameplay, MenuItemApi {
 			const section = MENU_SECTIONS[screen.section];
 			return { title: section.title, body: section.body };
 		}
-		if (screen.kind === 'result' || screen.kind === 'log') return battlePanel(session);
-		if (screen.kind === 'confirm') return confirmationPanel(screen);
+		const sync = SYNC_PANELS.get(screen.kind);
+		if (sync) return sync(session);
 		const kind = this.resolveKind(screen);
 		if (kind === undefined) return undefined;
 		if (kind === 'profile') {
 			const detail = await this.profiles.get(session.ownerId);
-			return detail.status === 'ok' ? profilePanel(detail.data, session.profileTab ?? 'stats') : onboardingPanel();
+			return detail.status === 'ok'
+				? profilePanel(detail.data, session.profileTab ?? 'stats')
+				: onboardingPanel();
 		}
 		const profile = await this.profiles.get(session.ownerId, 'summary');
 		if (profile.status !== 'ok') return onboardingPanel();

@@ -30,7 +30,7 @@ export class MageStrategy extends NullClassStrategy {
 		const woven = this.consumeWeave(ctx);
 		hit.forcedMultiplier = this.overchargeMultiplier(ctx, woven);
 		if (woven) ctx.log(COMBAT_MAGE_WEAVE(combatDisplayName(ctx.self)));
-		ctx.self.flags.mage_overcharge_this_hit = true;
+		ctx.self.flags.mageOverchargeThisHit = true;
 	}
 
 	/** Weave consumes to a guaranteed max roll; otherwise roll the 40% high chance. */
@@ -52,8 +52,8 @@ export class MageStrategy extends NullClassStrategy {
 	}
 
 	override onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
-		if (!ctx.self.flags.mage_overcharge_this_hit) return;
-		ctx.self.flags.mage_overcharge_this_hit = false;
+		if (!ctx.self.flags.mageOverchargeThisHit) return;
+		ctx.self.flags.mageOverchargeThisHit = false;
 		if (resolved.damageDealt <= 0) return;
 
 		const pick = choose(OVERCHARGE_DEBUFFS, ctx.rng);

@@ -4,14 +4,13 @@ import { CommandRegistry } from './CommandRegistry.js';
 import { BotMaintenance } from './BotMaintenance.js';
 import { logger } from '../shared/utils/logger.js';
 import { env } from '../shared/config/env.js';
-import { menuRouter } from '../modules/menu/menuRuntime.js';
 import type { MenuRouter } from '../modules/menu/MenuRouter.js';
 import { AppError } from '../shared/kernel/Result.js';
 
 export interface DiscordBotDependencies {
 	client?: Client;
 	registry: Pick<CommandRegistry, 'dispatch' | 'dispatchAutocomplete'>;
-	menu?: Pick<MenuRouter, 'handle'>;
+	menu: Pick<MenuRouter, 'handle'>;
 	maintenance: Pick<BotMaintenance, 'start' | 'stop'>;
 }
 
@@ -36,7 +35,7 @@ export class DiscordBot {
 		if (wiredClients.has(this.client)) throw new AppError('DI_DOUBLE_BOT_CLIENT', DI_ERROR_TEXT.doubleBotClient);
 		wiredClients.add(this.client);
 		this.registry = options.registry;
-		this.menu = options.menu ?? menuRouter;
+		this.menu = options.menu;
 		this.maintenance = options.maintenance;
 		this.registerEventHandlers();
 	}

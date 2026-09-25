@@ -55,7 +55,7 @@ export class CombatStatusEffectProcessor implements ICombatStatusEffects {
 
 	/** DOT ticks (bleed, burn, venom), reduced by the target's Warding rune (if any). */
 	private tickDamageOverTime(side: CombatantState, log: string[]): void {
-		const wardingPct = (side.flags.warding_pct as number) ?? 0;
+		const wardingPct = side.flags.wardingPct;
 		for (const debuff of side.debuffs) {
 			if (!isDotTag(debuff.tag)) continue;
 			const tick = Math.floor(debuff.value * (1 - wardingPct));

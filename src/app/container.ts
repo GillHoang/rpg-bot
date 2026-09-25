@@ -48,6 +48,9 @@ import { GameplayProgressCoordinator } from '../shared/progress/gameplayProgress
 import { PlayerCombatantFactory } from '../modules/combat-shared/application/combatantFactory.js';
 import { CombatSetup } from '../modules/combat-shared/application/CombatSetup.js';
 import { ClaimDailyUseCase } from '../modules/economy/application/ClaimDailyUseCase.js';
+import { DailyRepository } from '../modules/economy/infrastructure/DailyRepository.js';
+import { CasinoRepository } from '../modules/casino/infrastructure/CasinoRepository.js';
+import { EnhancementRepository } from '../modules/progression/infrastructure/EnhancementRepository.js';
 import { RunSummonUseCase } from '../modules/progression/application/RunSummonUseCase.js';
 import { GetBalanceUseCase } from '../modules/economy/application/GetBalanceUseCase.js';
 import type { BattleEngine as BattleEngineType } from '../modules/combat-shared/domain/BattleEngine.js';
@@ -120,27 +123,32 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 	const persistence = options.persistence ?? createLivePersistence();
 	const events = options.events ?? new EventBus();
 	const clock = options.clock ?? systemClock;
+	// --- Stateless repositories (no executor captured; methods take tx/executor) ---
 	const accounts = new PlayerAccountRepository(persistence.executor);
 	const characters = new UserCharacterRepository();
 	const gear = new GearRepository();
 	const runes = new RuneRepository();
 	const deities = new DeityService();
 	const lootRepository = new LootRepository();
+	// --- Meta progression (quests/reputation feed GameplayProgressCoordinator) ---
 	const cosmetics = new CosmeticService({ persistence });
 	const reputation = new ReputationService({ persistence, clock, cosmetics });
 	const quests = new QuestService(reputation, { persistence, clock });
 	const progress = new GameplayProgressCoordinator({ persistence, quests, reputation });
+	// --- Shared combat preamble (one engine/factory/assembly for raid/duel/ranked) ---
 	const statAssembly = new StatAssemblyService(gear, deities, runes, { persistence });
 	const engine = new BattleEngine();
 	const factory = new PlayerCombatantFactory();
 	const combatSetup = new CombatSetup(statAssembly, factory, engine);
 	const grants = new LootGrantService(lootRepository);
+	// --- Identity + economy facades ---
 	const start = new StartService(new UserRepository(), characters, gear, new PresetRepository(), cosmetics, {
 		persistence,
 	});
-	const daily = new ClaimDailyUseCase(undefined, events, { persistence, progress, clock });
+	const daily = new ClaimDailyUseCase(new DailyRepository(), events, { persistence, progress, clock });
 	const economy = new EconomyService(accounts, events, { persistence });
 	const profile = new ProfileService(accounts, characters, statAssembly, { persistence });
+	// --- PvE / PvP battlers (share combatSetup; individual deps win on conflict) ---
 	const raid = new RaidService({
 		accounts,
 		monsters: new MonsterEncounterService(),
@@ -171,6 +179,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		factory,
 		combat: combatSetup,
 	});
+	// --- Menu + background lifecycle (no I/O or timers at construction) ---
 	const casinoSessions = new CasinoSessionService({ persistence, clock });
 	const menuGameplay = new MenuGameplayService(profile, start, daily, quests, raid, { persistence, clock });
 	const menu = options.menu ?? new MenuRouter(new MenuSessionStore(), menuGameplay);
@@ -198,13 +207,13 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		ascension: new AscensionService(deities, { persistence }),
 		summon,
 		classChange: new ClassChangeService({ persistence }),
-		casino: new CasinoService(undefined, events, { persistence, clock }),
+		casino: new CasinoService(new CasinoRepository(), events, { persistence, clock }),
 		pvpShop: new PvpShopService(cosmetics, { persistence }),
 		loot: new LootService(lootRepository, events, { persistence, grants, clock }),
 		loadout: new LoadoutService({ persistence }),
 		weapon: new WeaponService({ persistence }),
 		socket: new SocketService(runes, gear, { persistence }),
-		enhancement: new EnhancementService(undefined, events, { persistence, clock }),
+		enhancement: new EnhancementService(new EnhancementRepository(), events, { persistence, clock }),
 		reset: new ResetService({ persistence }),
 		inventory,
 		health: new HealthService(persistence.executor),

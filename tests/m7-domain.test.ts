@@ -63,7 +63,7 @@ describe('deity blessing decorator', () => {
 	it('tailwind biases the initiative roll and guardian light heals each round', () => {
 		const player = createCombatant({ name: 'P', combatClass: null, hp: 1_000_000_000, atk: 0, def: 0, crit: 0 });
 		const enemy = createCombatant({ name: 'E', combatClass: null, hp: 1_000_000_000, atk: 100, def: 0, crit: 0 });
-		enemy.flags.initiative_bias = -1; // Player with Tailwind always outruns −1.
+		enemy.flags.initiativeBias = -1; // Player with Tailwind always outruns −1.
 		const strategy = wrapWithBlessings(new NullClassStrategy(), [
 			{ key: 'tailwind', strength: 1 },
 			{ key: 'guardian_light', strength: 1 },

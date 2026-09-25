@@ -28,12 +28,12 @@ export class KnightStrategy extends NullClassStrategy {
 		// Second wind: once per battle, dropping below 30% HP shrugs off
 		// every debuff (Tenacity made flesh).
 		if (
-			!ctx.self.flags.knight_second_wind_used &&
+			!ctx.self.flags.knightSecondWindUsed &&
 			ctx.self.hp > 0 &&
 			ctx.self.hp < ctx.self.maxHp * 0.3 &&
 			ctx.self.debuffs.length > 0
 		) {
-			ctx.self.flags.knight_second_wind_used = true;
+			ctx.self.flags.knightSecondWindUsed = true;
 			ctx.self.debuffs = [];
 			ctx.log(COMBAT_KNIGHT_SECOND_WIND(combatDisplayName(ctx.self)));
 		}
@@ -46,7 +46,7 @@ export class KnightStrategy extends NullClassStrategy {
 	override prepareIncomingHit(ctx: StrategyContext, hit: IncomingHit): void {
 		if (ctx.round % 4 === 0) {
 			hit.reductionFraction = Math.max(hit.reductionFraction, BULWARK_REDUCTION);
-			ctx.self.flags.knight_bulwark_this_hit = true;
+			ctx.self.flags.knightBulwarkThisHit = true;
 			ctx.log(COMBAT_KNIGHT_BULWARK(combatDisplayName(ctx.self)));
 		} else {
 			hit.reductionFraction = Math.max(hit.reductionFraction, DAMAGE_REDUCTION);
@@ -54,8 +54,8 @@ export class KnightStrategy extends NullClassStrategy {
 	}
 
 	override onDamageTaken(ctx: StrategyContext, resolved: ResolvedHit): void {
-		if (!ctx.self.flags.knight_bulwark_this_hit || resolved.damageDealt <= 0) return;
-		ctx.self.flags.knight_bulwark_this_hit = false;
+		if (!ctx.self.flags.knightBulwarkThisHit || resolved.damageDealt <= 0) return;
+		ctx.self.flags.knightBulwarkThisHit = false;
 		const reflected = Math.floor(resolved.damageDealt * BULWARK_REFLECT);
 		if (reflected <= 0 || ctx.enemy.hp <= 0) return;
 		ctx.enemy.hp = Math.max(0, ctx.enemy.hp - reflected);

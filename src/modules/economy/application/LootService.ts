@@ -7,7 +7,7 @@ import { LootInventoryRepository } from '../infrastructure/LootInventoryReposito
 import { LootRepository } from '../infrastructure/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../../../shared/config/chestLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
+import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import {
@@ -88,7 +88,7 @@ export class LootService {
 			(repo?.rune && repo.gear
 				? { rune: repo.rune.bind(repo), gear: repo.gear.bind(repo) }
 				: new LootGrantService());
-		this.events = events ?? EMIT_ONLY_EVENT_BUS;
+		this.events = events ?? new EventBus();
 		this.queries = options.queries ?? new LootInventoryRepository();
 	}
 	async open(id: string, key: ChestKey, count: number): Promise<Result<string, AppError>> {
@@ -240,7 +240,7 @@ export class LootService {
 				!offer.runePool.length ||
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
-				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
+				return err(new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID));
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, { [key]: bag[key] - 1 });
 			await this.repo.logLedger(tx, {
@@ -291,7 +291,7 @@ export class LootService {
 				!offer.runePool.length ||
 				!offer.runePool.every((n) => typeof n === 'string')
 			)
-				throw new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID);
+				return err(new AppError('LOOT_INVALID_RUNE_POOL', RUNE_POOL_INVALID));
 			const item = await this.grants.rune(tx, id, createRng(createSecureSeed()), { names: offer.runePool });
 			await this.queries.updateBag(tx, id, {
 				credux: bag.credux - offer.creduxCost,

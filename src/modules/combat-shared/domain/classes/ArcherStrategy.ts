@@ -21,14 +21,14 @@ export class ArcherStrategy extends NullClassStrategy {
 
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		// An extra swing repeats the skirmish style instead of consuming
-		// the next alternating shot (flags only hold number|boolean).
-		if (ctx.self.flags.archer_extra_swing === true) {
-			ctx.self.flags.archer_extra_swing = false;
+		// the next alternating shot.
+		if (ctx.self.flags.archerExtraSwing === true) {
+			ctx.self.flags.archerExtraSwing = false;
 			this.applyStyle(ctx, hit, 'skirmish');
 			return;
 		}
-		const shots = ((ctx.self.flags.archer_shots as number) ?? 0) + 1;
-		ctx.self.flags.archer_shots = shots;
+		const shots = ctx.self.flags.archerShots + 1;
+		ctx.self.flags.archerShots = shots;
 		this.applyStyle(ctx, hit, shots % 2 === 0 ? 'aimed' : 'skirmish');
 	}
 
@@ -37,21 +37,21 @@ export class ArcherStrategy extends NullClassStrategy {
 			hit.armorPierceFraction = Math.max(hit.armorPierceFraction, AIMED_PIERCE);
 			hit.damagePctBonus += AIMED_BONUS_PCT;
 			hit.varianceRange = [0.95, 1.05];
-			ctx.self.flags.archer_aimed_this_hit = true;
+			ctx.self.flags.archerAimedThisHit = true;
 			ctx.log(COMBAT_ARCHER_AIMED(combatDisplayName(ctx.self)));
 		} else {
 			hit.armorPierceFraction = Math.max(hit.armorPierceFraction, DEFENSE_IGNORE);
-			ctx.self.flags.archer_aimed_this_hit = false;
+			ctx.self.flags.archerAimedThisHit = false;
 		}
 	}
 
 	override onHitLanded(ctx: StrategyContext, resolved: ResolvedHit): void {
-		const aimed = ctx.self.flags.archer_aimed_this_hit === true;
-		ctx.self.flags.archer_aimed_this_hit = false;
+		const aimed = ctx.self.flags.archerAimedThisHit === true;
+		ctx.self.flags.archerAimedThisHit = false;
 		if (aimed || resolved.damageDealt <= 0) return;
 		if (rollChance(DOUBLE_ATTACK_CHANCE, ctx.rng)) {
 			resolved.triggerExtraAttack = true;
-			ctx.self.flags.archer_extra_swing = true;
+			ctx.self.flags.archerExtraSwing = true;
 			ctx.log(COMBAT_ARCHER_DOUBLE_ATTACK(combatDisplayName(ctx.self)));
 		}
 	}

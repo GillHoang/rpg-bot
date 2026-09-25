@@ -1,13 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BattleEngine } from '../src/modules/combat-shared/domain/BattleEngine.js';
-import { createCombatant } from '../src/modules/combat-shared/domain/CombatantState.js';
+import { createCombatant, createBattleFlags } from '../src/modules/combat-shared/domain/CombatantState.js';
 import { ClassStrategyRegistry } from '../src/modules/combat-shared/domain/ClassStrategyRegistry.js';
 import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
 import { wrapWithBlessings } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
 import type { IncomingHit, StrategyContext } from '../src/modules/combat-shared/domain/IClassStrategy.js';
 import type { CombatClass } from '../src/modules/identity/domain/PlayerAccount.js';
 import type { AssembledPlayer } from '../src/modules/combat-shared/application/StatAssemblyService.js';
-import { createPlayerCombatant, createPlayerStrategy } from '../src/modules/combat-shared/application/combatantFactory.js';
+import { PlayerCombatantFactory } from '../src/modules/combat-shared/application/combatantFactory.js';
+
+const factory = new PlayerCombatantFactory();
 import { COMBAT_STRIKE_EMOJIS } from '../src/shared/ui/text/combat.js';
 
 // Importing the pure factory must not initialize the production database.
@@ -19,7 +21,7 @@ const classes: CombatClass[] = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Arche
 
 function loadout(decorated = true): AssembledPlayer {
 	const assembled: AssembledPlayer = {
-		stats: { hp: 4200, atk: 390, def: 170, crit: 23 },
+		stats: { hp: 4200, atk: 390, def: 170, crit: 23, spd: 100, acc: 0, eva: 0, ten: 0 },
 		weaponPassive: null,
 		combatEffectRunes: decorated
 			? [
@@ -48,8 +50,8 @@ function loadout(decorated = true): AssembledPlayer {
 describe('assembled player combatant factory', () => {
 	it('copies stats exactly and starts independent mutable combatant state', () => {
 		const assembled = loadout();
-		const first = createPlayerCombatant('Player', 'Swordsman', assembled);
-		const second = createPlayerCombatant('Player', 'Swordsman', assembled);
+		const first = factory.createCombatant('Player', 'Swordsman', assembled);
+		const second = factory.createCombatant('Player', 'Swordsman', assembled);
 		expect(first).toEqual({
 			name: 'Player',
 			emoji: undefined,
@@ -65,7 +67,7 @@ describe('assembled player combatant factory', () => {
 			eva: 0,
 			ten: 0,
 			debuffs: [],
-			flags: {},
+			flags: createBattleFlags(),
 		});
 		expect(first).not.toBe(second);
 		expect(first.debuffs).not.toBe(second.debuffs);
@@ -73,12 +75,12 @@ describe('assembled player combatant factory', () => {
 		first.hp = 1;
 		first.atk += 20;
 		first.debuffs.push({ tag: 'burn', turnsLeft: 2, value: 10 });
-		first.flags.aegis_used = true;
+		first.flags.aegisUsed = true;
 		expect(second.hp).toBe(4200);
 		expect(second.atk).toBe(390);
 		expect(second.debuffs).toEqual([]);
-		expect(second.flags).toEqual({});
-		expect(assembled.stats).toEqual({ hp: 4200, atk: 390, def: 170, crit: 23 });
+		expect(second.flags).toEqual(createBattleFlags());
+		expect(assembled.stats).toEqual({ hp: 4200, atk: 390, def: 170, crit: 23, spd: 100, acc: 0, eva: 0, ten: 0 });
 	});
 
 	it.each(classes)('preserves prior service assembly and seeded battle results for %s', (combatClass) => {
@@ -91,8 +93,8 @@ describe('assembled player combatant factory', () => {
 					wrapWithRunes(ClassStrategyRegistry.forClass(combatClass), assembled.combatEffectRunes),
 					assembled.blessings,
 				);
-				const actual = createPlayerCombatant('Player', combatClass, assembled);
-				const actualStrategy = createPlayerStrategy(combatClass, assembled);
+				const actual = factory.createCombatant('Player', combatClass, assembled);
+				const actualStrategy = factory.createStrategy(combatClass, assembled);
 				const enemy = () =>
 					createCombatant({ name: 'Enemy', combatClass: 'Mage', hp: 5600, atk: 410, def: 140, crit: 17 });
 				const referenceEnemy = enemy();
@@ -112,31 +114,31 @@ describe('assembled player combatant factory', () => {
 
 	it('reuses the registry base only when no decorators are needed', () => {
 		for (const combatClass of classes) {
-			expect(createPlayerStrategy(combatClass, loadout(false))).toBe(ClassStrategyRegistry.forClass(combatClass));
+			expect(factory.createStrategy(combatClass, loadout(false))).toBe(ClassStrategyRegistry.forClass(combatClass));
 			const assembled = loadout();
-			const first = createPlayerStrategy(combatClass, assembled);
+			const first = factory.createStrategy(combatClass, assembled);
 			expect(first).not.toBe(ClassStrategyRegistry.forClass(combatClass));
-			expect(first).not.toBe(createPlayerStrategy(combatClass, assembled));
+			expect(first).not.toBe(factory.createStrategy(combatClass, assembled));
 		}
 	});
 
 	it('keeps one-use rune and blessing flags local to each battle', () => {
 		const assembled: AssembledPlayer = {
-			stats: { hp: 500, atk: 50, def: 10, crit: 0 },
+			stats: { hp: 500, atk: 50, def: 10, crit: 0, spd: 100, acc: 0, eva: 0, ten: 0 },
 			weaponPassive: null,
 			combatEffectRunes: [{ effectKey: 'aegis_rune', value: 1 }],
 			blessings: [{ key: 'sky_sovereign', strength: 1 }],
 		};
 		const makeBattle = () => {
-			const self = createPlayerCombatant('Player', 'Archer', assembled);
+			const self = factory.createCombatant('Player', 'Archer', assembled);
 			const ctx: StrategyContext = {
 				self,
-				enemy: createPlayerCombatant('Enemy', 'Archer', assembled),
+				enemy: factory.createCombatant('Enemy', 'Archer', assembled),
 				round: 1,
 				rng: () => 0.5,
 				log: () => {},
 			};
-			return { self, ctx, strategy: createPlayerStrategy('Archer', assembled) };
+			return { self, ctx, strategy: factory.createStrategy('Archer', assembled) };
 		};
 		const first = makeBattle();
 		const second = makeBattle();
@@ -147,9 +149,14 @@ describe('assembled player combatant factory', () => {
 		};
 		expect(incoming(first).reductionFraction).toBe(1);
 		expect(incoming(first).reductionFraction).toBe(0);
-		expect(second.self.flags).toEqual({});
+		expect(second.self.flags).toEqual(createBattleFlags());
 		expect(incoming(second).reductionFraction).toBe(1);
-		expect(first.self.flags).toEqual({ aegis_used: true, blessing_sovereign_used: true, immunity_used: 2 });
+		expect(first.self.flags).toEqual({
+			...createBattleFlags(),
+			aegisUsed: true,
+			blessingSovereignUsed: true,
+			immunityUsed: 2,
+		});
 		expect(incoming(second).reductionFraction).toBe(0);
 	});
 });
