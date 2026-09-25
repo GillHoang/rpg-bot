@@ -118,6 +118,28 @@ describe('menu payloads', () => {
 		}
 	});
 
+	it('packs gate/tier grids into rows of five instead of one button per line', () => {
+		const session = new MenuSessionStore().create('a');
+		session.screen = { kind: 'gateTiers' };
+		const data = {
+			hasBattle: false,
+			bossDisabled: true,
+			gates: [1, 2, 3, 4, 5].map((id) => ({ id, disabled: false })),
+			tiers: Array.from({ length: 10 }, (_, index) => ({ number: index + 1, disabled: false })),
+		};
+		session.gamePanel = {
+			title: 'T',
+			body: 'B',
+			buttons: buildPanelButtons(session, { title: '', body: '', data }),
+		};
+		const payload = JSON.parse(JSON.stringify(menuView(session)));
+		const rows: string[][] = (payload.components[0].components as { type: number; components: { label: string }[] }[])
+			.filter((component) => component.type === 1)
+			.map((row) => row.components.map((component) => component.label));
+		const tierRows = rows.filter((row) => row.some((label) => label.startsWith('Tầng ')));
+		expect(tierRows.map((row) => row.length)).toEqual([5, 5]);
+	});
+
 	it('renders the home buttons from the file registry and drops help-search/section selectors', () => {
 		const session = new MenuSessionStore().create('a');
 		session.screen = { kind: 'home' };

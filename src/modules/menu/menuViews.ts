@@ -66,16 +66,19 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 		}
 		const grouped = group ? buttons.filter((b) => (b.group ?? '') === group) : buttons;
 		let row: ButtonBuilder[] = [];
+		let rowGrid = false;
 		const flush = () => {
 			if (!row.length) return;
 			container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(...row));
 			row = [];
 		};
 		for (const button of grouped) {
-			// `row` items (gate/tier grids) start a fresh line so they never mix
-			// with the action buttons; otherwise pack up to 5 per row.
-			if (button.row && row.length) flush();
+			// Grid items (gate/tier) get their own lines, but still pack up to 5
+			// per row; only a change between normal and grid starts a new line.
+			const grid = !!button.row;
+			if (row.length && grid !== rowGrid) flush();
 			row.push(gameplayButton(session, button));
+			rowGrid = grid;
 			if (row.length === 5) flush();
 		}
 		flush();
