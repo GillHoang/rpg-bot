@@ -2,7 +2,12 @@ import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
 import type { RuneEffectKey } from '../../../shared/config/runes.js';
 import { combatDisplayName, findDebuff, applyDebuff, cappedHeal, immunityMultiplier } from './CombatantState.js';
-import { COMBAT_FROST, COMBAT_RUNE_THORNS, COMBAT_RUNE_VAMPIRIC, COMBAT_RUNE_VENOM } from '../../../shared/ui/text/combat.js';
+import {
+	COMBAT_FROST,
+	COMBAT_RUNE_THORNS,
+	COMBAT_RUNE_VAMPIRIC,
+	COMBAT_RUNE_VENOM,
+} from '../../../shared/ui/text/combat.js';
 
 /**
  * Decorator pattern: wraps any IClassStrategy (a real class passive, or

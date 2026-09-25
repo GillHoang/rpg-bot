@@ -7,11 +7,7 @@ import { createRng, createSecureSeed } from './Rng.js';
 import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
 import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
 import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier, BLOOD_MOON_PCT } from './combatRules.js';
-import {
-	COMBAT_BLOOD_MOON,
-	COMBAT_ROUND_HEADER,
-	COMBAT_SUDDEN_DEATH_HEADER,
-} from '../../../shared/ui/text/combat.js';
+import { COMBAT_BLOOD_MOON, COMBAT_ROUND_HEADER, COMBAT_SUDDEN_DEATH_HEADER } from '../../../shared/ui/text/combat.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
 
 export { SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
@@ -129,9 +125,12 @@ export class BattleEngine {
 		playerStrategy.onRoundStart({ self: player, enemy: enemy, round, rng, log: (m) => log.push(m) });
 		enemyStrategy.onRoundStart({ self: enemy, enemy: player, round, rng, log: (m) => log.push(m) });
 
-		// Debuffs pushed during the turns must not tick down at this round's
-		// end — a 1-turn debuff would otherwise expire before ever taking
-		// effect on the holder's next turn.
+		// Non-DOT debuffs pushed during the turns must not tick down at this
+		// round's end — a 1-turn debuff would otherwise expire before ever
+		// taking effect on the holder's next turn. DOT (bleed/burn/venom) is
+		// the deliberate exception: it ticks the same round it is applied
+		// (see CombatStatusEffects.tickDamageOverTime), so a 2-turn DOT
+		// always deals exactly 2 ticks.
 		ctx.existingDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
 
 		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(ctx)) {

@@ -28,7 +28,10 @@ export class PlayerAccount {
 			throw new AppError('ACCOUNT_INVALID_SPEND', ACCOUNT_ERROR_TEXT.invalidSpend(amount));
 		}
 		if (!this.canAfford(amount)) {
-			throw new AppError('ACCOUNT_INSUFFICIENT_CREDUX', ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount));
+			throw new AppError(
+				'ACCOUNT_INSUFFICIENT_CREDUX',
+				ACCOUNT_ERROR_TEXT.insufficientCredux(this.credux, amount),
+			);
 		}
 		this.credux -= amount;
 	}

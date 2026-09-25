@@ -59,12 +59,7 @@ export class ResetCommand implements ICommand {
 				.addUserOption((opt) => opt.setName('target').setDescription(RESET_USER_OPTION_DESC).setRequired(true)),
 		);
 
-	constructor(
-		private readonly reset: Pick<
-			ResetService,
-			'countAll' | 'resetAll' | 'countUser' | 'resetUser'
-		>,
-	) {}
+	constructor(private readonly reset: Pick<ResetService, 'countAll' | 'resetAll' | 'countUser' | 'resetUser'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply({ ephemeral: true });

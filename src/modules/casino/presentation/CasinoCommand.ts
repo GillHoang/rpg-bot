@@ -83,7 +83,17 @@ function casinoOptions(s: import('discord.js').SlashCommandSubcommandBuilder, na
 				.setMinValue(1)
 				.setMaxValue(MAX_BET),
 		);
-	if (name === 'coin_toss' || name === 'dice_roll' || name === 'baccarat')
-		s.addStringOption((o) => o.setName('choice').setDescription(CASINO_CHOICE_OPTION_DESC));
+	// Discord-side whitelisting: without addChoices a typo like `Banker`
+	// silently remaps to the opposite side in the game normalize step.
+	if (name === 'coin_toss' || name === 'dice_roll' || name === 'baccarat') {
+		const choices =
+			name === 'coin_toss' ? ['heads', 'tails'] : name === 'dice_roll' ? ['odd', 'even'] : ['player', 'banker'];
+		s.addStringOption((o) =>
+			o
+				.setName('choice')
+				.setDescription(CASINO_CHOICE_OPTION_DESC)
+				.addChoices(...choices.map((value) => ({ name: value, value }))),
+		);
+	}
 	return s;
 }

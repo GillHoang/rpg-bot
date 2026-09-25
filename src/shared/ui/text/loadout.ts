@@ -17,7 +17,7 @@ export const LOADOUT_EMPTY = 'trống';
 
 // --- Lệnh /equip ---
 export const EQUIP_DESCRIPTION = 'Trang bị gear hoặc deity vào preset';
-export const EQUIP_KIND_OPTION_DESC = 'Loại';
+export const EQUIP_KIND_OPTION_DESC = 'Loại (deity/deity2/deity3 = slot pantheon 1/2/3)';
 export const EQUIP_ID_OPTION_DESC = 'ID từ /inventory hoặc /deities';
 export const EQUIP_PRESET_OPTION_DESC = 'Mặc định: preset đang dùng';
 

@@ -39,7 +39,7 @@ export class ReputationService {
 		this.persistence = requirePersistence(options, 'ReputationService');
 		this.clock = options.clock ?? systemClock;
 		this.queries = options.queries ?? new ReputationRepository();
-		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
+		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence, clock: this.clock });
 	}
 	/** Event-driven path — opens its own transaction. */
 	async award(discordId: string, source: BelieverExpSource): Promise<BelieverAwardResult> {

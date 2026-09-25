@@ -67,8 +67,7 @@ export const DATABASE_LOG_TEXT = {
 export const DI_ERROR_TEXT = {
 	missingPersistence: (service: string): string =>
 		`${service} requires an explicit PersistenceContext (pass { persistence } from createAppContainer or tests/helpers/persistence)`,
-	menuNotWired:
-		'MenuGameplay requires createAppContainer (pass an explicit MenuGameplay, no global singleton)',
+	menuNotWired: 'MenuGameplay requires createAppContainer (pass an explicit MenuGameplay, no global singleton)',
 	controllerRequired:
 		'interactiveCasino requires an explicit InteractiveCasinoController (pass new InteractiveCasinoController(sessions))',
 	healthRequiresDatabase:
@@ -222,6 +221,7 @@ export const CASINO_LOG_TEXT = {
 	acknowledgementFailed: 'Casino button acknowledgement failed',
 	interactionFailed: 'Casino interaction failed',
 	timeoutFailed: 'Casino timeout failed; expiry worker will recover',
+	sessionRecoveryFailed: 'Casino session recovery failed',
 } as const;
 
 /** commands/rpg/DuelCommand */

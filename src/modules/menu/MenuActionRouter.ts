@@ -9,11 +9,7 @@ import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
  * session — selection actions (hunt/gate/portal) normalize gateId/portalGate
  * in place and return the next screen. Pure pager math lives below.
  */
-export function routeStatelessAction(
-	session: MenuSession,
-	action: MenuAction,
-	value?: string,
-): MenuScreen | null {
+export function routeStatelessAction(session: MenuSession, action: MenuAction, value?: string): MenuScreen | null {
 	switch (action) {
 		case 'inventory':
 		case 'deity':

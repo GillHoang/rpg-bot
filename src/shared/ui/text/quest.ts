@@ -15,7 +15,7 @@ export const DAILY_QUEST_LABELS: Record<QuestType, string> = {
 	enhance: 'Nâng gear 2 lần',
 	open_chest: 'Mở 3 rương',
 	casino: 'Chơi casino 5 ván',
-	daily: 'Claim /daily',
+	daily: 'Claim /daily 1 lần',
 	duel_win: 'Thắng 5 duel',
 	ranked: 'Đủ 5 trận ranked',
 };

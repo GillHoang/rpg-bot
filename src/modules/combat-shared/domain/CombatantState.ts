@@ -3,16 +3,7 @@ import { COMBAT_STRIKE_EMOJIS, COMBAT_TENACITY_SHRUG } from '../../../shared/ui/
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 
 export type DebuffTag =
-	| 'bleed'
-	| 'burn'
-	| 'venom'
-	| 'atk_down'
-	| 'def_down'
-	| 'paralyze'
-	| 'stun'
-	| 'dizzy'
-	| 'blight'
-	| 'slow';
+	'bleed' | 'burn' | 'venom' | 'atk_down' | 'def_down' | 'paralyze' | 'stun' | 'dizzy' | 'blight' | 'slow';
 
 /**
  * A status effect on one side. `value` means different things per tag:
@@ -35,6 +26,11 @@ const HARD_CC_TAGS: readonly DebuffTag[] = ['stun', 'paralyze', 'dizzy'];
  * Single choke point for applying a debuff. Tenacity gives a flat chance
  * to shrug off incoming hard CC (stun/paralyze/dizzy); DOT/fractional tags
  * pass through unchanged. Returns the applied debuff, or null on a shrug.
+ *
+ * Fractional tags (atk_down/def_down/slow) share one slot per tag: a
+ * re-proc keeps the strongest value and refreshes the duration, so repeat
+ * procs (e.g. wing_clippers) extend pressure instead of stacking dead rows
+ * that findDebuff() would never read.
  */
 export function applyDebuff(
 	target: CombatantState,
@@ -47,6 +43,14 @@ export function applyDebuff(
 		if (ten > 0 && rollChance(ten / 100, rng)) {
 			log?.(COMBAT_TENACITY_SHRUG(combatDisplayName(target)));
 			return null;
+		}
+	}
+	if (debuff.tag === 'atk_down' || debuff.tag === 'def_down' || debuff.tag === 'slow') {
+		const existing = target.debuffs.find((d) => d.tag === debuff.tag);
+		if (existing) {
+			existing.value = Math.max(existing.value, debuff.value);
+			existing.turnsLeft = Math.max(existing.turnsLeft, debuff.turnsLeft);
+			return existing;
 		}
 	}
 	const applied: Debuff = { tag: debuff.tag, turnsLeft: debuff.turnsLeft, value: debuff.value };
@@ -78,7 +82,7 @@ export interface CombatantState {
 	acc: number;
 	/** Evasion points vs the attacker's accuracy (see rollHit). */
 	eva: number;
-	/** Tenacity: % shaved off incoming stun/paralyze/dizzy durations (see applyDebuff). */
+	/** Tenacity: % chance to shrug off incoming stun/paralyze/dizzy entirely (see applyDebuff). */
 	ten: number;
 	debuffs: Debuff[];
 	immunityTags?: string[];

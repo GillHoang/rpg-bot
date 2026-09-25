@@ -82,10 +82,7 @@ export class SocketCommand implements ICommand {
 
 	constructor(
 		private readonly socket: Pick<SocketService, 'unlock' | 'equip' | 'unequip'>,
-		private readonly inventory: Pick<
-			InventoryService,
-			'searchWeapons' | 'searchArmors' | 'searchRunes'
-		>,
+		private readonly inventory: Pick<InventoryService, 'searchWeapons' | 'searchArmors' | 'searchRunes'>,
 	) {}
 
 	async autocomplete(interaction: AutocompleteInteraction): Promise<void> {

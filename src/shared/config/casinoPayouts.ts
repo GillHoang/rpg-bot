@@ -6,6 +6,13 @@
  */
 export const MAX_BET = 500_000;
 export const EVEN_MONEY = 2;
+/**
+ * Baccarat banker wins pay 1.95x gross (standard 5% commission). Without it
+ * the banker side is +EV (~+1.24%: banker wins ~46% vs player ~44.75% on a
+ * single deck) and becomes an unbounded slow money printer at MAX_BET.
+ * Player wins keep EVEN_MONEY.
+ */
+export const BANKER_PAYOUT_MULT = 1.95;
 
 export type SlotFace = 'horus' | 'lightning' | 'skull' | 'trident' | 'wings';
 
@@ -36,10 +43,11 @@ export function crashChance(push: number): number {
 /**
  * Cash-out multiplier locked in by SURVIVING the given push number.
  * Fair by construction: 1 / (product of survival odds through that push),
- * so cashing out at ANY push has EV exactly 1.0x the bet (100% RTP).
+ * ROUNDED DOWN to 2 decimals so cashing out at ANY push has EV <= 1.0x the
+ * bet (the house never subsidizes a cash-out timing strategy).
  */
 export function crashMultiplier(push: number): number {
 	let multiplier = 1;
 	for (let n = 1; n <= push; n++) multiplier /= 1 - crashChance(n) / 100;
-	return Math.round(multiplier * 100) / 100;
+	return Math.floor(multiplier * 100) / 100;
 }

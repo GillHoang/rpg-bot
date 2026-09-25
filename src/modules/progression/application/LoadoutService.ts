@@ -1,6 +1,7 @@
 import { LOG_EVENT_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import { LoadoutRepository } from '../infrastructure/LoadoutRepository.js';
 import type { userPresets } from '../../../db/schema.js';
 import type { Executor } from '../../../db/client.js';
@@ -23,6 +24,7 @@ type PresetRow = typeof userPresets.$inferSelect;
 
 export interface LoadoutDependencies {
 	persistence: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<
 		LoadoutRepository,
 		| 'lockCharacter'
@@ -42,6 +44,7 @@ export interface LoadoutDependencies {
 
 export class LoadoutService {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly queries: Pick<
 		LoadoutRepository,
 		| 'lockCharacter'
@@ -55,6 +58,7 @@ export class LoadoutService {
 
 	constructor(options: LoadoutDependencies) {
 		this.persistence = requirePersistence(options, 'LoadoutService');
+		this.clock = options.clock ?? systemClock;
 		this.queries = options.queries ?? new LoadoutRepository();
 	}
 	async equip(id: string, kind: string, item: string, slot?: number): Promise<Result<string, AppError>> {
@@ -81,14 +85,14 @@ export class LoadoutService {
 	private async equipWeapon(tx: Executor, id: string, preset: PresetRow, item: string): Promise<AppError | null> {
 		const [owned] = await this.queries.findOwnedWeapon(tx, id, item);
 		if (!owned) return new AppError('LOADOUT_WEAPON_NOT_OWNED', LOADOUT_WEAPON_NOT_OWNED);
-		await this.queries.updatePreset(tx, preset.id, { equippedWeaponId: item, updatedAt: new Date() });
+		await this.queries.updatePreset(tx, preset.id, { equippedWeaponId: item, updatedAt: this.clock.now() });
 		return null;
 	}
 
 	private async equipArmor(tx: Executor, id: string, preset: PresetRow, item: string): Promise<AppError | null> {
 		const [owned] = await this.queries.findOwnedArmor(tx, id, item);
 		if (!owned) return new AppError('LOADOUT_ARMOR_NOT_OWNED', LOADOUT_ARMOR_NOT_OWNED);
-		await this.queries.updatePreset(tx, preset.id, { equippedArmorId: item, updatedAt: new Date() });
+		await this.queries.updatePreset(tx, preset.id, { equippedArmorId: item, updatedAt: this.clock.now() });
 		return null;
 	}
 
@@ -110,7 +114,7 @@ export class LoadoutService {
 		const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
 		if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId)
 			return new AppError('LOADOUT_DEITY_IN_OTHER_SLOT', LOADOUT_DEITY_IN_OTHER_SLOT);
-		await this.queries.updatePreset(tx, preset.id, { [column]: userDeityId, updatedAt: new Date() });
+		await this.queries.updatePreset(tx, preset.id, { [column]: userDeityId, updatedAt: this.clock.now() });
 		return null;
 	}
 

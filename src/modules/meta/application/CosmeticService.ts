@@ -2,6 +2,7 @@ import { requirePersistence, type PersistenceContext } from '../../../shared/ker
 import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { CosmeticRepository } from '../infrastructure/CosmeticRepository.js';
 import type { Executor } from '../../../db/client.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 import { COSMETIC_TIER_MIN_LEVEL } from '../../../shared/config/reputation.js';
 import {
@@ -29,6 +30,7 @@ import {
 
 export interface CosmeticDependencies {
 	persistence: PersistenceContext;
+	clock?: Clock;
 	queries?: Pick<
 		CosmeticRepository,
 		| 'findCosmeticByKey'
@@ -62,9 +64,11 @@ export interface CosmeticDependencies {
 
 export class CosmeticService {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly queries: NonNullable<CosmeticDependencies['queries']>;
 	constructor(options: CosmeticDependencies) {
 		this.persistence = requirePersistence(options, 'CosmeticService');
+		this.clock = options.clock ?? systemClock;
 		this.queries = options.queries ?? new CosmeticRepository();
 	}
 	// --- In-tx grant helpers (used by other services) ---
@@ -112,7 +116,9 @@ export class CosmeticService {
 							const equippedMark = equippedIds.has(c.cosmeticId) ? COSMETIC_EQUIPPED_MARK : '';
 							const minLevel = COSMETIC_TIER_MIN_LEVEL[c.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
 							const lock = has ? '' : COSMETIC_LOCK(minLevel);
-							return COSMETIC_ENTRY(c.cosmeticId, c.displayName, c.category, c.tier) + equippedMark + lock;
+							return (
+								COSMETIC_ENTRY(c.cosmeticId, c.displayName, c.category, c.tier) + equippedMark + lock
+							);
 						})
 						.join('\n') +
 					COSMETIC_LIST_FOOTER,
@@ -125,7 +131,9 @@ export class CosmeticService {
 			const [character] = await this.queries.findCharacter(tx, discordId);
 			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
 			const [catalog] = await this.queries.findCosmeticById(tx, cosmeticId);
-			if (!catalog) return err(new AppError('COSMETIC_NOT_FOUND', COSMETIC_NOT_FOUND));
+			// Inactive (deprecated/unseeded) items fail closed, like missing ones.
+			if (!catalog || !(catalog as { isActive?: boolean }).isActive)
+				return err(new AppError('COSMETIC_NOT_FOUND', COSMETIC_NOT_FOUND));
 			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
 			const [owned] = await this.queries.findOwnedCosmetic(tx, discordId, cosmeticId);
 			if (!owned) return err(new AppError('COSMETIC_NOT_OWNED', COSMETIC_NOT_OWNED(catalog.tier, minLevel)));
@@ -137,7 +145,7 @@ export class CosmeticService {
 						COSMETIC_TIER_LOCKED(catalog.tier, minLevel, character.believerLevel),
 					),
 				);
-			await this.queries.upsertEquippedSkin(tx, cosmeticId, new Date(), {
+			await this.queries.upsertEquippedSkin(tx, cosmeticId, this.clock.now(), {
 				discordId,
 				category: catalog.category,
 				cosmeticId,
@@ -171,17 +179,24 @@ export class CosmeticService {
 	}
 
 	async equipTitle(discordId: string, titleId: number): Promise<Result<string, AppError>> {
+		if (titleId === 0) return this.unequipTitle(discordId);
 		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const [character] = await this.queries.findCharacter(tx, discordId);
 			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
-			if (titleId === 0) {
-				await this.queries.updateEquippedTitle(tx, discordId, { equippedTitleId: null });
-				return ok(TITLE_REMOVED);
-			}
 			const [owned] = await this.queries.findOwnedTitle(tx, discordId, titleId);
 			if (!owned) return err(new AppError('TITLE_NOT_OWNED', TITLE_NOT_OWNED));
 			await this.queries.updateEquippedTitle(tx, discordId, { equippedTitleId: titleId });
 			return ok(TITLE_EQUIPPED);
+		});
+	}
+
+	/** Explicit unequip path — presentation no longer needs the magic id 0. */
+	async unequipTitle(discordId: string): Promise<Result<string, AppError>> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
+			const [character] = await this.queries.findCharacter(tx, discordId);
+			if (!character) return err(new AppError('COSMETIC_NO_CHARACTER', COSMETIC_NO_CHARACTER));
+			await this.queries.updateEquippedTitle(tx, discordId, { equippedTitleId: null });
+			return ok(TITLE_REMOVED);
 		});
 	}
 }

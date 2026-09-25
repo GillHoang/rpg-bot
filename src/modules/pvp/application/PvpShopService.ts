@@ -123,9 +123,7 @@ export class PvpShopService {
 			});
 			return ok(PVP_BOUGHT_BAG(item.label, item.kind.qty));
 		}
-		return ok(
-			item.kind.type === 'cosmetic' ? PVP_BOUGHT_COSMETIC(item.label) : PVP_BOUGHT_TITLE(item.label),
-		);
+		return ok(item.kind.type === 'cosmetic' ? PVP_BOUGHT_COSMETIC(item.label) : PVP_BOUGHT_TITLE(item.label));
 	}
 
 	private async purchaseRestriction(
@@ -137,8 +135,11 @@ export class PvpShopService {
 	): Promise<AppError | undefined> {
 		if (item.kind.type === 'cosmetic') {
 			// Cosmetic tiers gate on believer level — same rule as /cosmetic equip.
+			// Fail closed: a shop item without a catalog row must never be
+			// buyable (an unseeded cosmetic would otherwise skip the tier gate).
 			const [catalog] = await this.queries.findCosmeticTier(tx, item.kind.cosmeticKey);
-			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog?.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
+			if (!catalog) return new AppError('PVP_ITEM_NOT_FOUND', PVP_ITEM_NOT_FOUND);
+			const minLevel = COSMETIC_TIER_MIN_LEVEL[catalog.tier as keyof typeof COSMETIC_TIER_MIN_LEVEL];
 			if (minLevel != null && believerLevel < minLevel)
 				return new AppError('PVP_TIER_LOCKED', PVP_TIER_LOCKED(minLevel, believerLevel));
 		}

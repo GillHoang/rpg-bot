@@ -2,7 +2,11 @@ import { formatNumber } from '../../../../shared/ui/text/format.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
 import { cappedHeal, combatDisplayName, findDebuff } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from '../IClassStrategy.js';
-import { COMBAT_KNIGHT_BULWARK, COMBAT_KNIGHT_REGEN, COMBAT_KNIGHT_SECOND_WIND } from '../../../../shared/ui/text/combat.js';
+import {
+	COMBAT_KNIGHT_BULWARK,
+	COMBAT_KNIGHT_REGEN,
+	COMBAT_KNIGHT_SECOND_WIND,
+} from '../../../../shared/ui/text/combat.js';
 
 const DAMAGE_REDUCTION = 0.25;
 const OUTGOING_BONUS_PCT = 30;
@@ -13,9 +17,9 @@ const BULWARK_REFLECT = 0.25;
 /**
  * Passive: Damage Reduction + Bulwark — ported from config/classes.js
  * CLASS_PASSIVE_VALUES.Knight. Incoming damage -25%, outgoing damage
- * +30%, and 2% max HP regenerated at the end of every round the Knight
+ * +30%, and 2.5% max HP regenerated at the end of every round the Knight
  * is still alive. Every 4th round the Knight raises Bulwark: 75%
- * reduction on that round's hits plus 15% damage reflection.
+ * reduction on that round's hits plus 25% damage reflection.
  */
 export class KnightStrategy extends NullClassStrategy {
 	override readonly key = 'Knight' as const;

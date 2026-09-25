@@ -55,7 +55,8 @@ export class RaidRewardService {
 	async grant(executor: Executor, discordId: string, grant: RaidRewardGrant): Promise<RaidRewardResult> {
 		const lockedBag = await this.store.lockBag(executor, discordId);
 		const character = await this.store.lockCharacter(executor, discordId);
-		if (!character) throw new AppError('RAID_REWARD_MISSING_CHARACTER', RAID_REWARD_ERROR_TEXT.missingCharacter(discordId));
+		if (!character)
+			throw new AppError('RAID_REWARD_MISSING_CHARACTER', RAID_REWARD_ERROR_TEXT.missingCharacter(discordId));
 		if (!lockedBag) throw new AppError('RAID_REWARD_MISSING_BAG', RAID_REWARD_ERROR_TEXT.missingBag(discordId));
 		const bag = lockedBag;
 		const next = applyCombatExp(character.combatLevel, character.combatExp, grant.expGain);

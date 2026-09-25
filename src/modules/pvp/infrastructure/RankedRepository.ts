@@ -26,10 +26,18 @@ export class RankedRepository {
 	}
 
 	async findWeeklyFight(tx: Executor, discordId: string, startsAt: Date) {
+		// Weekly rewards require an INITIATED fight: mirror-match defenders
+		// (isInitiator = false) can never claim on someone else's activity.
 		return tx
 			.select({ id: rankedLogs.id })
 			.from(rankedLogs)
-			.where(and(eq(rankedLogs.playerId, discordId), gte(rankedLogs.timestamp, startsAt)))
+			.where(
+				and(
+					eq(rankedLogs.playerId, discordId),
+					eq(rankedLogs.isInitiator, true),
+					gte(rankedLogs.timestamp, startsAt),
+				),
+			)
 			.limit(1);
 	}
 

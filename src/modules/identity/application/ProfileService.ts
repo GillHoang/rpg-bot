@@ -49,35 +49,35 @@ export class ProfileService {
 			const [character] = await this.queries.findCharacter(tx, discordId);
 			if (!character) return { status: 'no-character' };
 
-		const summary: ProfileSummaryData = {
-			username: account.username,
-			combatClass: account.combatClass,
-			level: account.combatLevel,
-			exp: account.combatExp,
-			expToNext: expRequiredForLevel(account.combatLevel),
-			credux: account.credux,
-			beliefShards: account.beliefShards,
-			believerLevel: character.believerLevel,
-			believerExp: character.believerExp,
-			pvpRating: character.pvpRating,
-		};
-		if (mode === 'summary') return { status: 'ok', data: summary };
-		const [preset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
-		const assembled = await this.statAssembly.assemble(
-			discordId,
-			account.combatClass,
-			account.combatLevel,
-			tx,
-			preset ?? null,
-		);
-		const loadout = await this.queries.findLoadout(tx, discordId, character.activePresetSlot, preset ?? null);
-		let title: string | null = null;
-		if (character?.equippedTitleId) {
-			const [row] = await this.queries.findTitleDisplay(tx, character.equippedTitleId);
-			title = row?.display ?? null;
-		}
+			const summary: ProfileSummaryData = {
+				username: account.username,
+				combatClass: account.combatClass,
+				level: account.combatLevel,
+				exp: account.combatExp,
+				expToNext: expRequiredForLevel(account.combatLevel),
+				credux: account.credux,
+				beliefShards: account.beliefShards,
+				believerLevel: character.believerLevel,
+				believerExp: character.believerExp,
+				pvpRating: character.pvpRating,
+			};
+			if (mode === 'summary') return { status: 'ok', data: summary };
+			const [preset] = await this.queries.findPreset(tx, discordId, character.activePresetSlot);
+			const assembled = await this.statAssembly.assemble(
+				discordId,
+				account.combatClass,
+				account.combatLevel,
+				tx,
+				preset ?? null,
+			);
+			const loadout = await this.queries.findLoadout(tx, discordId, character.activePresetSlot, preset ?? null);
+			let title: string | null = null;
+			if (character?.equippedTitleId) {
+				const [row] = await this.queries.findTitleDisplay(tx, character.equippedTitleId);
+				title = row?.display ?? null;
+			}
 
-		return { status: 'ok', data: { ...summary, stats: assembled.stats, loadout, title } };
+			return { status: 'ok', data: { ...summary, stats: assembled.stats, loadout, title } };
 		});
 	}
 }

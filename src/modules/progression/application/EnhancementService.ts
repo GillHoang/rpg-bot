@@ -5,14 +5,20 @@ import { EnhancementStateRepository } from '../infrastructure/EnhancementStateRe
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import { logger } from '../../../shared/utils/logger.js';
 import { EnhancementRepository } from '../infrastructure/EnhancementRepository.js';
-import { nextAttempt, computeWeaponCurrAtk, computeArmorCurrStats } from '../../../shared/config/enhancement.js';
+import {
+	nextAttempt,
+	isEnhanceableTier,
+	computeWeaponCurrAtk,
+	computeArmorCurrStats,
+} from '../../../shared/config/enhancement.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type EnhanceResult =
 	| { status: 'not-found' }
-	| { status: 'maxed-or-not-enhanceable' }
+	| { status: 'not-enhanceable' }
+	| { status: 'maxed' }
 	| { status: 'insufficient-credux'; needed: number; have: number }
 	| { status: 'success'; newLevel: number; cost: number }
 	| { status: 'failure'; cost: number };
@@ -64,8 +70,11 @@ export class EnhancementService {
 			const gear = await this.repo.findGear(tx, discordId, gearId);
 			if (!gear) return { status: 'not-found' };
 
+			// Common starter gear has no cost table: report it honestly
+			// instead of the misleading "already maxed".
+			if (!isEnhanceableTier(gear.tier)) return { status: 'not-enhanceable' };
 			const attempt = nextAttempt(gear.tier, gear.enhancement);
-			if (!attempt) return { status: 'maxed-or-not-enhanceable' };
+			if (!attempt) return { status: 'maxed' };
 
 			const credux = await this.repo.getCredux(tx, discordId);
 			if (credux < attempt.cost) return { status: 'insufficient-credux', needed: attempt.cost, have: credux };

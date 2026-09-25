@@ -27,10 +27,13 @@ export const MAGE_OVERCHARGE_HIGH_MULT = 5.0;
 export const MAGE_OVERCHARGE_HIGH_CHANCE = 0.4; // 40% chance of the 5.0x roll, else 4.0x
 export const MAGE_OVERCHARGE_EVERY = 3; // fires on rounds 3, 6, 9, ...
 
-/** Raw ATK after DEF mitigation, before variance/crit/damage-% riders. */
+/** Raw ATK after DEF mitigation, before variance/crit/damage-% riders.
+ * Defensive: negative effective DEF is clamped to 0 (a shred can never turn
+ * armor into a damage amplifier, and def = -600 can never divide by zero). */
 export function mitigate(atk: number, def: number): number {
 	if (atk <= 0) return 0;
-	return atk * (1 - Math.min(MITIGATION_CAP, def / (def + MITIGATION_K)));
+	const safeDef = Math.max(0, def);
+	return atk * (1 - Math.min(MITIGATION_CAP, safeDef / (safeDef + MITIGATION_K)));
 }
 
 /** Per-hit variance roll (default ±10%) so identical stats don't produce

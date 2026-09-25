@@ -1,5 +1,5 @@
 import type { ICasinoGame, CasinoOutcome } from '../ICasinoGame.js';
-import { EVEN_MONEY } from '../../../../shared/config/casinoPayouts.js';
+import { BANKER_PAYOUT_MULT, EVEN_MONEY } from '../../../../shared/config/casinoPayouts.js';
 import { newDeck, baccaratValue, baccaratScore, type Card } from '../CardDeck.js';
 
 /**
@@ -25,8 +25,9 @@ function bankerDrawsThird(bTwo: number, playerThirdVal: number | null): boolean 
  *  - else BANKER draws per the standard third-card matrix (vs the
  *    player's third-card value, evaluated against the banker's
  *    ORIGINAL two-card score).
- * No commission (virtual economy). Player/Banker win -> 2x. Tie -> push
- * (stake returned) regardless of the player's pick.
+ *  * No commission on player wins (2x gross). Banker wins pay 1.95x gross
+ *    (standard 5% commission) — without it the banker side is +EV ~+1.24%.
+ * Tie -> push (stake returned) regardless of the player's pick.
  */
 export class BaccaratGame implements ICasinoGame {
 	readonly key = 'baccarat';
@@ -63,7 +64,7 @@ export class BaccaratGame implements ICasinoGame {
 
 		let payout = 0;
 		if (push) payout = bet;
-		else if (won) payout = Math.floor(bet * EVEN_MONEY);
+		else if (won) payout = Math.floor(bet * (pick === 'banker' ? BANKER_PAYOUT_MULT : EVEN_MONEY));
 		return {
 			won,
 			payout,

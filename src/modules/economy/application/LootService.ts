@@ -60,7 +60,11 @@ export class LootService {
 	private readonly events: Pick<EventBus, 'emit'>;
 	private readonly queries: Pick<LootInventoryRepository, 'updateBag'>;
 
-	constructor(repo?: LootSource, events?: Pick<EventBus, 'emit'>, options: LootDependencies = {} as LootDependencies) {
+	constructor(
+		repo?: LootSource,
+		events?: Pick<EventBus, 'emit'>,
+		options: LootDependencies = {} as LootDependencies,
+	) {
 		this.persistence = requirePersistence(options, 'LootService');
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });

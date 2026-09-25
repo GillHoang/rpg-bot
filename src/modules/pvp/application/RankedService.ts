@@ -96,7 +96,8 @@ export interface RankedDependencies {
  * ngẫu nhiên (rating chênh trong cửa sổ matchmaking) làm đối thủ; không cần
  * cả hai online. Elo K=32 zero-sum, bracket theo rating, demotion shield giữ
  * bracket lần rớt đầu tiên. Thưởng tuần claim theo bảng ranked_reward, điều
- * kiện ≥1 trận trong tuần ISO (Asia/Ho_Chi_Minh).
+ * kiện ≥1 trận CHỦ ĐỘNG trong tuần ISO (Asia/Ho_Chi_Minh) — bị kéo vào
+ * mirror match làm đối thủ (isInitiator = false) không đủ điều kiện.
  */
 
 export class RankedService {
@@ -154,6 +155,7 @@ export class RankedService {
 		const result = await this.persistence.unitOfWork.run(async (tx): Promise<RankedFightResult> => {
 			const [account] = await this.queries.findUser(tx, discordId);
 			if (!account) return { status: 'not-registered' };
+			if ((account as { isBanned?: boolean }).isBanned) return { status: 'not-registered' };
 			const [candidate] = await this.queries.findCharacter(tx, discordId);
 			if (!candidate) return { status: 'no-character' };
 			const selected = await this.pickOpponentRow(tx, discordId, candidate.pvpRating);
@@ -399,6 +401,7 @@ export class RankedService {
 			ratingAfter,
 			rankedLogResultOf(draw, won),
 			meChange,
+			true,
 		);
 		await this.settleParticipant(
 			tx,
@@ -408,6 +411,7 @@ export class RankedService {
 			opponentRatingAfter,
 			rankedLogResultOf(draw, !won),
 			opponentChange,
+			false,
 		);
 	}
 
@@ -419,12 +423,20 @@ export class RankedService {
 		ratingAfter: number,
 		result: 'win' | 'loss' | 'draw',
 		change: { shield: boolean; promoted: boolean },
+		isInitiator: boolean,
 	): Promise<void> {
 		const discordId = character.discordId;
 		if (change.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
 			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
 		}
-		await this.queries.insertLog(tx, { playerId: discordId, opponentId, result, ratingBefore, ratingAfter });
+		await this.queries.insertLog(tx, {
+			playerId: discordId,
+			opponentId,
+			result,
+			ratingBefore,
+			ratingAfter,
+			isInitiator,
+		});
 		const streak = await this.currentWinStreak(tx, discordId);
 		await this.queries.updateCharacter(tx, discordId, {
 			pvpRating: ratingAfter,

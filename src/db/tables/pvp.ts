@@ -1,4 +1,4 @@
-import { pgTable, text, integer, primaryKey, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, boolean, primaryKey, jsonb, timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './identity.js';
 
@@ -15,11 +15,11 @@ export const activeDuels = pgTable('active_duels', {
 	guildId: text('guild_id'),
 	channelId: text('channel_id'),
 	messageId: text('message_id'),
-	createdAt: timestamp('created_at', { mode: 'date', withTimezone: false })
+	createdAt: timestamp('created_at', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
-	acceptedAt: timestamp('accepted_at', { mode: 'date', withTimezone: false }),
-	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: false }).notNull(),
+	acceptedAt: timestamp('accepted_at', { mode: 'date', withTimezone: true }),
+	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
 });
 
 export const activeDuelParticipants = pgTable('active_duel_participants', {
@@ -30,7 +30,7 @@ export const activeDuelParticipants = pgTable('active_duel_participants', {
 	lockToken: text('lock_token') /* TODO pg type: uuid */
 		.notNull(),
 	role: text('role').notNull(),
-	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: false }).notNull(),
+	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
 });
 
 // active_duels ΓÇö original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
@@ -40,10 +40,10 @@ export const activeDuelParticipants = pgTable('active_duel_participants', {
 export const activeRankedFights = pgTable('active_ranked_fights', {
 	discordId: text('discord_id').primaryKey(),
 	lockToken: text('lock_token').notNull(),
-	startedAt: timestamp('started_at', { mode: 'date', withTimezone: false })
+	startedAt: timestamp('started_at', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
-	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: false }).notNull(),
+	expiresAt: timestamp('expires_at', { mode: 'date', withTimezone: true }).notNull(),
 });
 
 // armor_roster ΓÇö original CHECK constraints (enforce in application/service layer, SQLite CHECK optional):
@@ -61,7 +61,7 @@ export const pvpLogs = pgTable('pvp_logs', {
 	outcome: text('outcome').notNull().default('draw'),
 	challengerDamage: integer('challenger_damage').notNull(),
 	opponentDamage: integer('opponent_damage').notNull(),
-	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: false })
+	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
 });
@@ -75,6 +75,9 @@ export const rankedLogs = pgTable('ranked_logs', {
 	result: text('result').notNull(),
 	ratingBefore: integer('rating_before').notNull(),
 	ratingAfter: integer('rating_after').notNull(),
+	/** True only for the fight initiator. Weekly rewards require at least one
+	 * initiated fight — being pulled in as a mirror-match defender is not enough. */
+	isInitiator: boolean('is_initiator').notNull().default(false),
 	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
@@ -102,7 +105,7 @@ export const wagerLogs = pgTable('wager_logs', {
 	opponentId: text('opponent_id').notNull(),
 	winnerId: text('winner_id').notNull(),
 	amount: integer('amount').notNull(),
-	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: false })
+	timestamp: timestamp('timestamp', { mode: 'date', withTimezone: true })
 		.notNull()
 		.default(sql`now()`),
 });

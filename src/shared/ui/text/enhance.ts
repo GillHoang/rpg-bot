@@ -6,6 +6,8 @@ export const ENHANCE_GEAR_OPTION_DESC = 'ID vũ khí/giáp';
 
 export const ENHANCE_NOT_FOUND = 'Không tìm thấy trang bị này thuộc về bạn.';
 export const ENHANCE_MAXED = 'Trang bị đã đạt mức tối đa hoặc không thể nâng cấp.';
+export const ENHANCE_NOT_ENHANCEABLE =
+	'Trang bị khởi đầu (Common) không thể nâng cấp — hãy summon hoặc kiếm gear Rare trở lên.';
 
 export const ENHANCE_INSUFFICIENT_CREDUX = (needed: string, have: string): string =>
 	`Không đủ ${CURRENCY.credux}. Cần ${needed}, hiện có ${have}.`;

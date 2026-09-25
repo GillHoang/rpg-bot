@@ -64,6 +64,20 @@
       "when": 1790278040749,
       "tag": "0008_bigint-credux-headroom",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790279704719,
+      "tag": "0009_ranked-log-initiator",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790279729027,
+      "tag": "0010_pvp-timestamps-tz",
+      "breakpoints": true
     }
   ]
 }

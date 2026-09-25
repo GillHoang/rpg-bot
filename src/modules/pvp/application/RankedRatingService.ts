@@ -11,11 +11,7 @@ export interface RatingChange {
 	promoted: boolean;
 }
 
-export function resolveRatingChange(
-	beforeRating: number,
-	rawAfterRating: number,
-	hadShield: boolean,
-): RatingChange {
+export function resolveRatingChange(beforeRating: number, rawAfterRating: number, hadShield: boolean): RatingChange {
 	const before = bracketFor(beforeRating);
 	const after = bracketFor(rawAfterRating);
 	const index = (b: Bracket) => BRACKETS.findIndex((x) => x.name === b.name);
@@ -32,10 +28,6 @@ export function resolveRatingChange(
 	return { rating, shield, shieldUsed, promoted };
 }
 
-export function applyElo(
-	playerRating: number,
-	opponentRating: number,
-	score: 0 | 0.5 | 1,
-): number {
+export function applyElo(playerRating: number, opponentRating: number, score: 0 | 0.5 | 1): number {
 	return Math.max(0, playerRating + eloDelta(playerRating, opponentRating, score));
 }

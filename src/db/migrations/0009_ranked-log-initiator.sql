@@ -1,0 +1,1 @@
+ALTER TABLE "ranked_logs" ADD COLUMN "is_initiator" boolean DEFAULT false NOT NULL;

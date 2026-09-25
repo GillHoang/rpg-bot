@@ -22,17 +22,16 @@ export class TitleCommand implements ICommand {
 				),
 		);
 
-	constructor(
-		private readonly cosmetics: Pick<CosmeticService, 'equipTitle' | 'listTitles'>,
-	) {}
+	constructor(private readonly cosmetics: Pick<CosmeticService, 'equipTitle' | 'unequipTitle' | 'listTitles'>) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
 		if (interaction.options.getSubcommand(false) === 'equip') {
-			const equipped = await this.cosmetics.equipTitle(
-				interaction.user.id,
-				interaction.options.getInteger('id', true),
-			);
+			const id = interaction.options.getInteger('id', true);
+			const equipped =
+				id === 0
+					? await this.cosmetics.unequipTitle(interaction.user.id)
+					: await this.cosmetics.equipTitle(interaction.user.id, id);
 			await interaction.editReply(equipped.ok ? equipped.value : equipped.error.message);
 			return;
 		}

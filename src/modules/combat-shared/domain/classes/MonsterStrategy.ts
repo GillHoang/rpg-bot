@@ -217,11 +217,7 @@ export class MonsterStrategy extends NullClassStrategy {
 		}
 	}
 
-	private healSelf(
-		ctx: StrategyContext,
-		healed: number,
-		text: (name: string, amount: string) => string,
-	): void {
+	private healSelf(ctx: StrategyContext, healed: number, text: (name: string, amount: string) => string): void {
 		const granted = cappedHeal(ctx.self, healed);
 		if (granted <= 0) return;
 		ctx.log(text(combatDisplayName(ctx.self), formatNumber(granted)));

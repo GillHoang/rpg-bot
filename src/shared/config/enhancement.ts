@@ -112,7 +112,8 @@ export function computeWeaponCurrAtk(baseAtk: number, tier: GearTier, enhancemen
 		return Math.floor(baseAtk * multiplier);
 	}
 	const m = BOOST_TABLE[stored];
-	if (m == null) throw new AppError('ENHANCEMENT_INVALID_WEAPON', ENHANCEMENT_ERROR_TEXT.invalidWeapon(enhancement, tier));
+	if (m == null)
+		throw new AppError('ENHANCEMENT_INVALID_WEAPON', ENHANCEMENT_ERROR_TEXT.invalidWeapon(enhancement, tier));
 	return Math.floor(baseAtk * m);
 }
 
@@ -131,7 +132,8 @@ export function computeArmorCurrStats(
 		return { hp: Math.floor(baseHp * multiplier), def: Math.floor(baseDef * multiplier) };
 	}
 	const m = BOOST_TABLE[stored];
-	if (m == null) throw new AppError('ENHANCEMENT_INVALID_ARMOR', ENHANCEMENT_ERROR_TEXT.invalidArmor(enhancement, tier));
+	if (m == null)
+		throw new AppError('ENHANCEMENT_INVALID_ARMOR', ENHANCEMENT_ERROR_TEXT.invalidArmor(enhancement, tier));
 	return { hp: Math.floor(baseHp * m), def: Math.floor(baseDef * m) };
 }
 
@@ -139,6 +141,12 @@ export interface EnhanceAttempt {
 	targetLevel: number;
 	cost: number;
 	successRate: number;
+}
+
+/** Starter Common gear (and any unknown tier) cannot be enhanced — callers
+ * use this to report "not enhanceable" instead of the misleading "maxed". */
+export function isEnhanceableTier(tier: string): tier is GearTier {
+	return tier in ENHANCE_COST;
 }
 
 /** Resolves the next attempt's cost/success-rate, or null if already maxed / tier not enhanceable. */

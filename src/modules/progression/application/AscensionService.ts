@@ -64,7 +64,8 @@ export class AscensionService {
 
 			const field = TIER_ESSENCE_FIELD[progress.tier];
 			const [bag] = await this.queries.findBag(tx, discordId);
-			if (!bag) throw new AppError('ASCENSION_SIGIL_MISSING_BAG', ASCENSION_ERROR_TEXT.sigilMissingBag(discordId));
+			if (!bag)
+				throw new AppError('ASCENSION_SIGIL_MISSING_BAG', ASCENSION_ERROR_TEXT.sigilMissingBag(discordId));
 			const have = bag[field];
 			if (have < next.essence) return { status: 'insufficient-essence', needed: next.essence, have };
 

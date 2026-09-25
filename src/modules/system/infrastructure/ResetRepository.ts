@@ -138,9 +138,7 @@ VALUES (${devId}, 'reset_user', ${targetId}, ${detail})`);
 	async deleteUserData(tx: Executor, discordId: string): Promise<number> {
 		let total = 0;
 		for (const table of USER_TABLES) {
-			const res = await tx.execute(
-				sql`DELETE FROM ${sql.identifier(table)} WHERE discord_id = ${discordId}`,
-			);
+			const res = await tx.execute(sql`DELETE FROM ${sql.identifier(table)} WHERE discord_id = ${discordId}`);
 			total += (res as unknown as { rowCount?: number }).rowCount ?? 0;
 		}
 		const pvp = await tx.execute(

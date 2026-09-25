@@ -26,7 +26,10 @@ export class EconomyService {
 	private readonly events: Pick<EventBus, 'emit'>;
 	constructor(
 		accounts:
-			| Pick<PlayerAccountRepository, 'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor' | 'addCreduxWithExecutor'>
+			| Pick<
+					PlayerAccountRepository,
+					'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor' | 'addCreduxWithExecutor'
+			  >
 			| undefined = undefined,
 		events: Pick<EventBus, 'emit'> | undefined = undefined,
 		options: EconomyDependencies,
@@ -51,7 +54,8 @@ export class EconomyService {
 			const acc = await this.accounts.findByIdWithExecutor(tx, discordId);
 			if (!acc) throw new AppError('ECONOMY_MISSING_ACCOUNT', ECONOMY_ERROR_TEXT.missingAccount(discordId));
 			const updated = await this.accounts.addCreduxWithExecutor(tx, discordId, amount);
-			if (updated == null) throw new AppError('ECONOMY_MISSING_ACCOUNT', ECONOMY_ERROR_TEXT.missingAccount(discordId));
+			if (updated == null)
+				throw new AppError('ECONOMY_MISSING_ACCOUNT', ECONOMY_ERROR_TEXT.missingAccount(discordId));
 			acc.credux = updated;
 			return acc;
 		});

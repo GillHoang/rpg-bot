@@ -19,8 +19,6 @@ export class BalanceCommand implements ICommand {
 			return;
 		}
 		const { username, credux, bag } = result.value;
-		await interaction.editReply(
-			BALANCE_SUCCESS(username, credux) + (bag ? '\n' + bagSummary(bag) : ''),
-		);
+		await interaction.editReply(BALANCE_SUCCESS(username, credux) + (bag ? '\n' + bagSummary(bag) : ''));
 	}
 }

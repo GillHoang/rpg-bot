@@ -60,11 +60,18 @@ export class MenuGameplayService implements MenuGameplay {
 		this.clock = options.clock ?? systemClock;
 		this.players = options.players ?? new MenuPlayerRepository(persistence.executor);
 		this.profiles = profiles ?? new ProfileService(undefined, undefined, undefined, { persistence });
-		const startSvc = start ?? new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
+		const startSvc =
+			start ?? new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
 		const dailySvc = daily ?? new ClaimDailyUseCase(undefined, undefined, { persistence });
 		this.quests = quests ?? new QuestService(undefined, { persistence });
 		const raidSvc = raid ?? new RaidService({ persistence });
-		this.flow = new MenuBattleFlow({ start: startSvc, daily: dailySvc, quests: this.quests, raid: raidSvc, clock: this.clock });
+		this.flow = new MenuBattleFlow({
+			start: startSvc,
+			daily: dailySvc,
+			quests: this.quests,
+			raid: raidSvc,
+			clock: this.clock,
+		});
 	}
 
 	async render(session: MenuSession): Promise<GamePanel | undefined> {

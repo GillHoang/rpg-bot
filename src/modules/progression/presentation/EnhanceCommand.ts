@@ -10,6 +10,7 @@ import {
 	ENHANCE_GEAR_OPTION_DESC,
 	ENHANCE_INSUFFICIENT_CREDUX,
 	ENHANCE_MAXED,
+	ENHANCE_NOT_ENHANCEABLE,
 	ENHANCE_NOT_FOUND,
 	ENHANCE_SUCCESS,
 } from '../../../shared/ui/text/enhance.js';
@@ -53,8 +54,11 @@ export class EnhanceCommand implements ICommand {
 			case 'not-found':
 				await interaction.editReply({ content: ENHANCE_NOT_FOUND });
 				return;
-			case 'maxed-or-not-enhanceable':
+			case 'maxed':
 				await interaction.editReply({ content: ENHANCE_MAXED });
+				return;
+			case 'not-enhanceable':
+				await interaction.editReply({ content: ENHANCE_NOT_ENHANCEABLE });
 				return;
 			case 'insufficient-credux':
 				await interaction.editReply({

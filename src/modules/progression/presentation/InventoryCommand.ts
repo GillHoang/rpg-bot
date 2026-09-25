@@ -30,9 +30,7 @@ import {
 } from '../../../shared/ui/render/InventoryPager.js';
 
 export class InventoryCommand implements ICommand {
-	constructor(
-		private readonly inventory: Pick<InventoryService, 'bag' | 'count' | 'list'>,
-	) {}
+	constructor(private readonly inventory: Pick<InventoryService, 'bag' | 'count' | 'list'>) {}
 
 	readonly data = new SlashCommandBuilder()
 		.setName('inventory')

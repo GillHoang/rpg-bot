@@ -9,8 +9,7 @@ export class HealthService {
 	constructor(database: HealthDatabase | undefined = undefined, probe?: Pick<HealthRepository, 'checkDatabase'>) {
 		if (probe) this.probe = probe;
 		else if (database) this.probe = new HealthRepository(database);
-		else
-			throw new AppError('DI_MISSING_PERSISTENCE', DI_ERROR_TEXT.healthRequiresDatabase);
+		else throw new AppError('DI_MISSING_PERSISTENCE', DI_ERROR_TEXT.healthRequiresDatabase);
 	}
 
 	async checkDatabase(): Promise<void> {

@@ -44,7 +44,11 @@ export class CosmeticRepository {
 	}
 
 	async listCosmetics(executor: Executor) {
-		return executor.select().from(cosmeticCatalog).orderBy(cosmeticCatalog.cosmeticId);
+		return executor
+			.select()
+			.from(cosmeticCatalog)
+			.where(eq(cosmeticCatalog.isActive, true))
+			.orderBy(cosmeticCatalog.cosmeticId);
 	}
 
 	async listOwnedCosmetics(executor: Executor, discordId: string) {

@@ -99,13 +99,10 @@ export class QuestService {
 	private readonly clock: Clock;
 	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
 	private readonly queries: NonNullable<QuestDependencies['queries']>;
-	constructor(
-		reputation: Pick<ReputationService, 'awardInTx'> | undefined = undefined,
-		options: QuestDependencies,
-	) {
+	constructor(reputation: Pick<ReputationService, 'awardInTx'> | undefined = undefined, options: QuestDependencies) {
 		this.persistence = requirePersistence(options, 'QuestService');
 		this.clock = options.clock ?? systemClock;
-		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence });
+		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence, clock: this.clock });
 		this.queries = options.queries ?? new QuestRepository();
 	}
 
@@ -124,7 +121,8 @@ export class QuestService {
 		amount = 1,
 	): Promise<void> {
 		const at = now ?? this.clock.now();
-		if (!Number.isSafeInteger(amount) || amount < 1) throw new AppError('QUEST_INVALID_PROGRESS', QUEST_ERROR_TEXT.invalidProgress);
+		if (!Number.isSafeInteger(amount) || amount < 1)
+			throw new AppError('QUEST_INVALID_PROGRESS', QUEST_ERROR_TEXT.invalidProgress);
 		if (!(await this.lockPlayer(tx, discordId))) return;
 		const day = DailyCycle.keyAt(at);
 		const { key: week } = weekWindowAt(at);
@@ -201,8 +199,7 @@ export class QuestService {
 			const day = DailyCycle.keyAt(this.clock.now());
 			if (expectedDay && expectedDay !== day)
 				return err(new AppError('QUEST_DAY_CHANGED', QUEST_FLOW_TEXT.dayChanged));
-			if (user.lastQuestRefreshDate === day)
-				return err(new AppError('QUEST_REFRESH_LIMIT', QUEST_REFRESH_LIMIT));
+			if (user.lastQuestRefreshDate === day) return err(new AppError('QUEST_REFRESH_LIMIT', QUEST_REFRESH_LIMIT));
 			await this.queries.deleteIncompleteDailyQuests(tx, discordId, day);
 			// Completed quests stay; reroll only tops the board back up to
 			// QUESTS_PER_CYCLE — ensureDailyQuests would see the kept rows and
@@ -225,7 +222,13 @@ export class QuestService {
 					})),
 				);
 			}
-			await this.queries.updateRefreshState(tx, discordId, { questRefreshesToday: 1, lastQuestRefreshDate: day });
+			await this.queries.updateRefreshState(tx, discordId, {
+				// Counter resets on day change (the early return above
+				// guarantees a new day here); kept as a real counter so a
+				// future N-per-day limit can gate on it instead of the date.
+				questRefreshesToday: user.lastQuestRefreshDate === day ? user.questRefreshesToday + 1 : 1,
+				lastQuestRefreshDate: day,
+			});
 			return ok(QUEST_REFRESH_DONE);
 		});
 	}
@@ -234,22 +237,41 @@ export class QuestService {
 		return this.persistence.unitOfWork.run(async (tx): Promise<Result<string, AppError>> => {
 			const user = await this.lockPlayer(tx, discordId);
 			if (!user) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
-			const { key: week } = weekWindowAt(this.clock.now());
-			const weeklies = await this.ensureWeeklyQuests(tx, discordId, week);
-			if (weeklies.length === 0 || !weeklies.every((q) => q.completed))
-				return err(new AppError('QUEST_CLAIM_NOT_READY', QUEST_CLAIM_NOT_READY));
-			const [bag] = await this.queries.lockRewardBag(tx, discordId);
-			if (!bag) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
-			const [grand] = await this.queries.insertWeeklyGrand(tx, { discordId, questWeek: week, claimed: true });
-			if (!grand) return err(new AppError('QUEST_CLAIM_ALREADY', QUEST_CLAIM_ALREADY));
-			await this.queries.updateWeeklyGrandBalances(tx, discordId, {
-				diamondChest: bag.diamondChest + WEEKLY_GRAND.diamondChest,
-				credux: bag.credux + WEEKLY_GRAND.credux,
-				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
-			});
-			await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
-			return ok(QUEST_CLAIM_OK(formatNumber(WEEKLY_GRAND.credux), WEEKLY_GRAND.diamondChest));
+			const now = this.clock.now();
+			const { key: week } = weekWindowAt(now);
+			// Current week first; previous-week grace second (a board finished
+			// Sunday 23:59 must still be claimable Monday 00:01 — without it
+			// the grand silently vanishes at the week boundary).
+			const current = await this.tryClaimWeek(tx, discordId, week);
+			if (current) return current;
+			const prevWeek = weekWindowAt(new Date(now.getTime() - 7 * 86400000)).key;
+			if (prevWeek !== week) {
+				const prev = await this.tryClaimWeek(tx, discordId, prevWeek);
+				if (prev) return prev;
+			}
+			return err(new AppError('QUEST_CLAIM_NOT_READY', QUEST_CLAIM_NOT_READY));
 		});
+	}
+
+	/** Attempt the grand for one week key; null = not eligible (caller falls through). */
+	private async tryClaimWeek(
+		tx: Executor,
+		discordId: string,
+		week: string,
+	): Promise<Result<string, AppError> | null> {
+		const weeklies = await this.queries.listWeeklyQuests(tx, discordId, week);
+		if (weeklies.length === 0 || !weeklies.every((q) => q.completed)) return null;
+		const [bag] = await this.queries.lockRewardBag(tx, discordId);
+		if (!bag) return err(new AppError('QUEST_NOT_REGISTERED', QUEST_REGISTER_FIRST));
+		const [grand] = await this.queries.insertWeeklyGrand(tx, { discordId, questWeek: week, claimed: true });
+		if (!grand) return err(new AppError('QUEST_CLAIM_ALREADY', QUEST_CLAIM_ALREADY));
+		await this.queries.updateWeeklyGrandBalances(tx, discordId, {
+			diamondChest: bag.diamondChest + WEEKLY_GRAND.diamondChest,
+			credux: bag.credux + WEEKLY_GRAND.credux,
+			lifetimeCreduxEarned: bag.lifetimeCreduxEarned + WEEKLY_GRAND.credux,
+		});
+		await this.reputation.awardInTx(tx, discordId, 'weekly_grand');
+		return ok(QUEST_CLAIM_OK(formatNumber(WEEKLY_GRAND.credux), WEEKLY_GRAND.diamondChest));
 	}
 
 	private formatQuest(

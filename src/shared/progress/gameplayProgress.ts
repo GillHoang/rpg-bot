@@ -36,12 +36,7 @@ export class GameplayProgressCoordinator {
 		else questType = type as QuestType;
 		if (questType) await this.quests.progressInTx(tx, discordId, questType, now, amount);
 		if (PROGRESS_REPUTATION_TYPES.has(type)) {
-			await this.reputation.awardInTx(
-				tx,
-				discordId,
-				type as Parameters<ReputationService['awardInTx']>[2],
-				now,
-			);
+			await this.reputation.awardInTx(tx, discordId, type as Parameters<ReputationService['awardInTx']>[2], now);
 		}
 	}
 }

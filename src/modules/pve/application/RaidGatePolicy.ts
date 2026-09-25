@@ -12,9 +12,7 @@ import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
  * SRP extraction from RaidService: pure portal gate/tier selection rules.
  * No DB, no clock — takes explicit inputs, returns a tier or a lock reason.
  */
-export type GateSelection =
-	| { tier?: GateTier }
-	| { status: 'portal-locked'; message: string };
+export type GateSelection = { tier?: GateTier } | { status: 'portal-locked'; message: string };
 
 export function selectGateTier(
 	gatesCleared: number[],

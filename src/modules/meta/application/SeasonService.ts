@@ -4,7 +4,10 @@ import { SeasonRepository } from '../infrastructure/SeasonRepository.js';
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
-/** Explicit administrator rollover; expiry alone does not reset shop quotas or ratings. */
+/** Season windows (30 days). Expiry auto-rolls: the next ranked fight or
+ * shop purchase closes the stale season and opens a fresh one, so quotas
+ * never silently serve an expired season while waiting for manual rollover.
+ * Ratings intentionally carry over (no reset, no decay). */
 export class SeasonService {
 	private readonly clock: Clock;
 	constructor(
@@ -18,7 +21,12 @@ export class SeasonService {
 		const at = now ?? this.clock.now();
 		await this.queries.lock(tx);
 		const active = await this.queries.active(tx);
-		return active ?? this.create(tx, at);
+		if (!active) return this.create(tx, at);
+		if (active.endsAt <= at) {
+			await this.queries.close(tx, active.seasonId);
+			return this.create(tx, at);
+		}
+		return active;
 	}
 	private async create(tx: Transaction, now: Date) {
 		const count = await this.queries.count(tx);

@@ -205,6 +205,7 @@ export class DuelService {
 	): Promise<DuelCreateResult | null> {
 		const [user] = await this.queries.findUser(tx, id);
 		if (!user) return { status: 'not-registered', who };
+		if ((user as { isBanned?: boolean }).isBanned) return { status: 'not-registered', who };
 		if (!(await this.characters.hasCharacter(tx, id))) return { status: 'no-character', who };
 		const [participant] = await this.queries.findParticipant(tx, id);
 		if (participant && participant.expiresAt > this.clock.now()) return { status: 'busy', who };
@@ -228,7 +229,18 @@ export class DuelService {
 			const loaded = await this.loadAcceptableDuel(tx, duelId, acceptorId);
 			if ('error' in loaded) return loaded.error;
 			const duel = loaded.duel;
-			const action = createBattleActionContext({ actorId: acceptorId, mode: 'duel', actionId: duel.duelId, now: this.clock.now() });
+			// Banned after challenge: a duel must not settle once either side
+			// is banned (mirrors the create-time participantGuard check).
+			const [acceptor] = await this.queries.findUser(tx, acceptorId);
+			if (!acceptor || (acceptor as { isBanned?: boolean }).isBanned) return { status: 'not-found' };
+			const [challenger] = await this.queries.findUser(tx, duel.challengerId);
+			if (!challenger || (challenger as { isBanned?: boolean }).isBanned) return { status: 'not-found' };
+			const action = createBattleActionContext({
+				actorId: acceptorId,
+				mode: 'duel',
+				actionId: duel.duelId,
+				now: this.clock.now(),
+			});
 
 			const stake = duel.stake ?? 0;
 			const bags = await this.lockBags(tx, duel.challengerId, duel.opponentId, stake);
@@ -319,8 +331,17 @@ export class DuelService {
 		  }
 		| { error: DuelAcceptResult }
 	> {
-		const challenger = await this.buildDuelist(tx, challengerId);
-		const opponent = await this.buildDuelist(tx, opponentId);
+		// Same global order as lockBags / RankedService.lockFighters: character
+		// rows must always lock in comparePlayerIds order, or a concurrent
+		// duel-accept + ranked-fight over the same pair can deadlock (40P01).
+		const duelists = new Map<string, Duelist>();
+		for (const id of [challengerId, opponentId].sort(comparePlayerIds)) {
+			const duelist = await this.buildDuelist(tx, id);
+			if (!duelist) return { error: { status: 'not-found' } };
+			duelists.set(id, duelist);
+		}
+		const challenger = duelists.get(challengerId);
+		const opponent = duelists.get(opponentId);
 		if (!challenger || !opponent) return { error: { status: 'not-found' } };
 		return { challenger, opponent };
 	}

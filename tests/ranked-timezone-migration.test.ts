@@ -23,10 +23,17 @@ it('preserves UTC history and weekly boundaries across database session timezone
 			SET TIME ZONE 'Asia/Bangkok';
 		`);
 		await testClient.exec(await readFile(new URL('0007_ranked_log_timezone.sql', root), 'utf8'));
+		// Apply the initiator-column migration too so the live schema (which
+		// selects is_initiator) matches this historically-migrated database.
+		await testClient.exec(await readFile(new URL('0009_ranked-log-initiator.sql', root), 'utf8'));
 		const [preserved] = await db.select().from(rankedLogs);
 		expect(preserved.timestamp.toISOString()).toBe('2026-09-20T16:59:59.999Z');
 		const repo = new RankedRepository();
 		const executor = db as unknown as Executor;
+		// findWeeklyFight only counts initiated fights — mark the legacy row
+		// as the initiator's so the boundary assertions keep testing the
+		// timestamp logic, not the initiator filter.
+		await db.update(rankedLogs).set({ isInitiator: true }).where(eq(rankedLogs.id, preserved.id));
 		const { startsAt } = weekWindowAt(new Date('2026-09-21T00:00:00Z'));
 		for (const timezone of ['UTC', 'Asia/Bangkok', 'America/New_York']) {
 			await testClient.exec(`SET TIME ZONE '${timezone}'`);

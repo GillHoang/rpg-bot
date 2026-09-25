@@ -40,10 +40,7 @@ export type CommandServices = ApplicationServices;
  * container is a visible, deliberate act — especially for the deploy
  * script, which needs one even though it only reads command metadata.
  */
-export function registerAllCommands(
-	services: CommandServices,
-	registry: Pick<CommandRegistry, 'register'>,
-): void {
+export function registerAllCommands(services: CommandServices, registry: Pick<CommandRegistry, 'register'>): void {
 	registry.register(new MenuCommand(services.menu));
 	registry.register(new StartCommand(services.start));
 	registry.register(new BalanceCommand(services.economyModule.getBalance));

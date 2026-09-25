@@ -78,10 +78,12 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 			1,
 			(findDebuff(attacker, 'atk_down')?.value ?? 0) + (findDebuff(attacker, 'blight')?.value ?? 0),
 		);
-		const defDownPct = findDebuff(defender, 'def_down')?.value ?? 0;
+		// Clamp shred to [0,1]: an unclamped def_down >= 1 would flip effDef
+		// negative and make mitigate() non-monotonic (def = -600 divides by zero).
+		const defDownPct = Math.min(1, Math.max(0, findDebuff(defender, 'def_down')?.value ?? 0));
 
 		const effAtk = attacker.atk * (1 - atkDownPct);
-		const effDef = defender.def * (1 - defDownPct) * (1 - effectivePierce(hit.armorPierceFraction));
+		const effDef = Math.max(0, defender.def * (1 - defDownPct) * (1 - effectivePierce(hit.armorPierceFraction)));
 
 		const variance = rollVariance(ctx.rng, hit.varianceRange);
 		const crit = !hit.suppressCrit && hit.forcedMultiplier == null && rollCrit(ctx.rng, attacker.crit);

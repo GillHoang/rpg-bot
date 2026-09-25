@@ -14,8 +14,8 @@ const DIZZY_MISS_CHANCE = 0.15;
  * Passive: Stun — ported from config/classes.js CLASS_PASSIVE_VALUES.Fighter.
  * All attacks carry +50% damage. Each attack can become a "Bash": +50% more
  * damage (so +100% total), Stun the target, and leave it Dizzy (15% miss on
- * its next attack). Bash is conditional pressure, not flat RNG: 25% base,
- * 50% against an already-Dizzy target, never against a stunned one
+ * its next attack). Bash is conditional pressure, not flat RNG: 15% base,
+ * 35% against an already-Dizzy target, never against a stunned one
  * (no stun-lock). Bashing a target below 30% HP stuns for 2 rounds
  * (execution) instead of 1.
  */

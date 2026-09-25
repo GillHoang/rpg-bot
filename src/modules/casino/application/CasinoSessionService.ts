@@ -1,4 +1,6 @@
 import { formatNumber } from '../../../shared/ui/text/format.js';
+import { CASINO_LOG_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { logger } from '../../../shared/utils/logger.js';
 import {
 	CASINO_SESSION_TEXT,
 	CASINO_SESSION_BAD_BET,
@@ -151,15 +153,19 @@ export class CasinoSessionService {
 			balanceAfter: after,
 			updatedAt: this.clock.now(),
 		});
+		// Ledger consistency: balanceBefore is the bag at settle time (after
+		// any interleaved grants between start and settle), so
+		// balanceBefore + payout === balanceAfter always holds. The
+		// start-of-session balance stays in metadata for forensics.
 		await this.queries.insertLog(tx, {
 			discordId: s.discordId,
 			game,
 			betAmount: s.betAmount,
 			result: view.result,
 			payout: view.payout,
-			balanceBefore: s.balanceBefore,
+			balanceBefore: bag.credux,
 			balanceAfter: after,
-			metadata: { sessionId: s.sessionId, actions: stored.actions },
+			metadata: { sessionId: s.sessionId, actions: stored.actions, balanceAtStart: s.balanceBefore },
 		});
 		await this.progress.apply(tx, s.discordId, 'casino', this.clock.now());
 		return {
@@ -173,6 +179,14 @@ export class CasinoSessionService {
 	}
 	async recoverExpired(): Promise<void> {
 		const expired = await this.queries.findExpiredSessions(this.persistence.executor, this.clock.now());
-		for (const s of expired) await this.act(s.discordId, s.sessionId, 'timeout');
+		// Per-session isolation: one poisoned row (corrupt stateJson, repeated
+		// deadlock) must never block recovery of every session behind it.
+		for (const s of expired) {
+			try {
+				await this.act(s.discordId, s.sessionId, 'timeout');
+			} catch (error) {
+				logger.error({ sessionId: s.sessionId, error }, CASINO_LOG_TEXT.sessionRecoveryFailed);
+			}
+		}
 	}
 }

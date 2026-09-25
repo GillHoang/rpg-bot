@@ -43,7 +43,6 @@ export interface MenuGameplay {
 /** Menu gameplay must come from `createAppContainer().menuGameplay` — there is
  * no global fallback (persistence is required, see kernel/persistence). */
 export function lazyGameplay(): MenuGameplay {
-	const missing = (): Promise<never> =>
-		Promise.reject(new AppError('DI_MENU_NOT_WIRED', DI_ERROR_TEXT.menuNotWired));
+	const missing = (): Promise<never> => Promise.reject(new AppError('DI_MENU_NOT_WIRED', DI_ERROR_TEXT.menuNotWired));
 	return { render: () => missing(), act: () => missing() };
 }
