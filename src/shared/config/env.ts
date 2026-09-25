@@ -30,6 +30,10 @@ const envSchema = z.object({
 		.refine((ids) => ids.length > 0, ENV_ERROR_TEXT.invalidOwners),
 	/** Ghi đè guild deploy khi chạy `deploy:commands` trên server thử nghiệm (tuỳ chọn). */
 	DEPLOY_GUILD_ID: z.string().regex(/^\d+$/, ENV_ERROR_TEXT.invalidGuild).optional(),
+	/** Giãn cách hunt raid (giây) — server test có thể hạ để test nhanh (mặc định 15). */
+	HUNT_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(15),
+	/** Lockout boss dạng lăn (phút) — 0 giữ luật 1 lượt/ngày lịch VN; >0 thay bằng cửa sổ lăn (cho server test). */
+	BOSS_COOLDOWN_MINUTES: z.coerce.number().int().min(0).default(0),
 });
 
 const parsed = envSchema.safeParse(process.env);

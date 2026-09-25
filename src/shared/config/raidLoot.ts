@@ -1,4 +1,5 @@
 import { rollChance } from '../utils/weightedRandom.js';
+import { env } from './env.js';
 /**
  * Regular raid loot preserves the ported values. Elite and boss values
  * below are new gameplay balance defaults documented in docs/gameplay-implementation.md.
@@ -34,7 +35,14 @@ export const RAID_LOOT_BOSS = {
 	loss: { exp: 150 },
 };
 export const BOSS_ENTRY = { minLevel: 10, credux: 10000, eclipseDamageBonus: 50, gearChance: 0.3 } as const;
-export const RAID_HUNT_COOLDOWN_SECONDS = 15;
+/**
+ * Hunt lockout (seconds) and rolling boss lockout (minutes) — read from env
+ * so test servers can shorten them without touching balance defaults:
+ * HUNT_COOLDOWN_SECONDS (default 15), BOSS_COOLDOWN_MINUTES (default 0 =
+ * keep the production once-per-Vietnam-day rule).
+ */
+export const RAID_HUNT_COOLDOWN_SECONDS = env.HUNT_COOLDOWN_SECONDS;
+export const BOSS_ROLLING_COOLDOWN_MINUTES = env.BOSS_COOLDOWN_MINUTES;
 
 export function randInt(rng: () => number, [min, max]: readonly [number, number]): number {
 	return min + Math.floor(rng() * (max - min + 1));

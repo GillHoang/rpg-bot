@@ -32,6 +32,7 @@ import {
 	RAID_LOOT_BOSS,
 	BOSS_ENTRY,
 	RAID_HUNT_COOLDOWN_SECONDS,
+	BOSS_ROLLING_COOLDOWN_MINUTES,
 	randInt,
 	rollRaidChest,
 } from '../../../shared/config/raidLoot.js';
@@ -72,6 +73,12 @@ export interface RaidRunOptions {
 	expectedDay?: string;
 }
 
+/** Cooldown overrides (seconds/minutes) — production defaults come from env-backed config. */
+export interface RaidCooldowns {
+	huntSeconds?: number;
+	bossMinutes?: number;
+}
+
 /** Dữ liệu đầu vào cho bước settle sau khi battle đã resolve trong transaction. */
 interface RaidSettlement {
 	now: Date;
@@ -105,6 +112,7 @@ export interface RaidDependencies {
 		| 'upsertHuntCooldown'
 		| 'updateCharacter'
 		| 'lockUser'
+		| 'findLastBossAttack'
 		| 'updateUser'
 		| 'updateBag'
 	>;
@@ -114,6 +122,7 @@ export interface RaidDependencies {
 	combat?: Pick<CombatSetup, 'statAssembly' | 'factory' | 'engine'>;
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	loot?: Pick<LootGrantService, 'gear'>;
+	cooldowns?: RaidCooldowns;
 }
 
 function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, mobType: string, combatLevel: number) {
@@ -183,6 +192,7 @@ export class RaidService {
 		| 'upsertHuntCooldown'
 		| 'updateCharacter'
 		| 'lockUser'
+		| 'findLastBossAttack'
 		| 'updateUser'
 		| 'updateBag'
 	>;
@@ -190,6 +200,7 @@ export class RaidService {
 	private readonly factory: Pick<PlayerCombatantFactory, 'createCombatant' | 'createStrategy'>;
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly loot: Pick<LootGrantService, 'gear'>;
+	private readonly cooldowns: Required<RaidCooldowns>;
 
 	constructor(options: RaidDependencies) {
 		// Compatibility fallback: production must inject via createAppContainer.
@@ -210,6 +221,10 @@ export class RaidService {
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.loot = options.loot ?? new LootGrantService();
+		this.cooldowns = {
+			huntSeconds: options.cooldowns?.huntSeconds ?? RAID_HUNT_COOLDOWN_SECONDS,
+			bossMinutes: options.cooldowns?.bossMinutes ?? BOSS_ROLLING_COOLDOWN_MINUTES,
+		};
 	}
 
 	async run(discordId: string, boss = false, options: RaidRunOptions = {}): Promise<RaidResult> {
@@ -284,7 +299,7 @@ export class RaidService {
 			await this.queries.upsertHuntCooldown(
 				tx,
 				discordId,
-				new Date(now.getTime() + RAID_HUNT_COOLDOWN_SECONDS * 1000),
+				new Date(now.getTime() + this.cooldowns.huntSeconds * 1000),
 			);
 		}
 		return this.settle(tx, discordId, boss, options, {
@@ -483,7 +498,7 @@ export class RaidService {
 		return null;
 	}
 
-	/** Boss entry gate: level, once-per-Vietnam-day cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
+	/** Boss entry gate: level, cooldown, Credux fee. Returns a locked result, or null when the fight may proceed. */
 	private async bossGate(
 		tx: Transaction,
 		discordId: string,
@@ -493,7 +508,15 @@ export class RaidService {
 		if (account.combatLevel < BOSS_ENTRY.minLevel)
 			return { status: 'boss-locked', message: BOSS_LEVEL_REQUIRED(BOSS_ENTRY.minLevel) };
 		const [user] = await this.queries.lockUser(tx, discordId);
-		if (user.lastBossAttackDate === day) return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
+		if (this.cooldowns.bossMinutes > 0) {
+			// Test-server mode: rolling window from the latest boss attempt
+			// (win or loss) replaces the calendar-day rule entirely.
+			const last = await this.queries.findLastBossAttack(tx, discordId);
+			if (last && this.clock.now().getTime() - last.getTime() < this.cooldowns.bossMinutes * 60_000)
+				return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
+		} else if (user.lastBossAttackDate === day) {
+			return { status: 'boss-locked', message: BOSS_ALREADY_DONE };
+		}
 		if (account.credux < BOSS_ENTRY.credux)
 			return { status: 'boss-locked', message: BOSS_FEE_REQUIRED(formatNumber(BOSS_ENTRY.credux)) };
 		await this.queries.updateUser(tx, discordId, { lastBossAttackDate: day });

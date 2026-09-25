@@ -14,6 +14,7 @@ import { db, pool } from '../src/db/client.js';
 import * as s from '../src/db/schema.js';
 import { StartService } from '../src/modules/identity/application/StartService.js';
 import { RankedService } from '../src/modules/pvp/application/RankedService.js';
+import { RaidService } from '../src/modules/pve/application/RaidService.js';
 import { CasinoSessionService } from '../src/modules/casino/application/CasinoSessionService.js';
 import { bankerDrawsThird } from '../src/modules/casino/domain/games/BaccaratGame.js';
 import { BlackjackSession } from '../src/modules/casino/domain/BlackjackSession.js';
@@ -252,5 +253,49 @@ describe('rune grant empty pool', () => {
 		const error = await grants.rune({} as never, id, () => 0.5, { tier: 'Mythic' }).catch((e) => e);
 		expect(error).toBeInstanceOf(AppError);
 		expect((error as AppError).code).toBe('LOOT_EMPTY_POOL');
+	});
+});
+
+describe('configurable raid cooldowns', () => {
+	it('hunts on a 2s lockout and bosses on a 15m rolling window when overridden', async () => {
+		let now = new Date();
+		const raid = new RaidService({
+			persistence: testPersistence(),
+			clock: { now: () => now },
+			cooldowns: { huntSeconds: 2, bossMinutes: 15 },
+		});
+		expect((await raid.run(id)).status).toBe('ok');
+		// Anchor on the STORED readyAt (immune to DB/reader TZ skew): the
+		// 2s window is proven by locked-just-before / open-just-after.
+		const [cd] = await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id));
+		now = new Date(cd.readyAt.getTime() - 1000);
+		const immediate = await raid.run(id);
+		expect(immediate.status).toBe('cooldown');
+		if (immediate.status !== 'cooldown') throw new Error('unreachable');
+		expect(immediate.retryAt.getTime()).toBe(cd.readyAt.getTime());
+		now = new Date(cd.readyAt.getTime() + 1000);
+		expect((await raid.run(id)).status).toBe('ok');
+	});
+
+	it('boss re-fight opens up after the rolling window elapses', async () => {
+		// Real start time: raid_logs timestamps come from the database clock,
+		// so the fake battle clock must start there too, not at a fixed date.
+		let now = new Date();
+		const raid = new RaidService({
+			persistence: testPersistence(),
+			clock: { now: () => now },
+			cooldowns: { bossMinutes: 15 },
+		});
+		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
+		await db.update(s.usersBag).set({ credux: 1000000 }).where(eq(s.usersBag.discordId, id));
+		expect((await raid.run(id, true)).status).toBe('ok');
+		expect((await raid.run(id, true)).status).toBe('boss-locked');
+		// Anchor on the STORED log timestamp (DB-clock, TZ-shifted on read):
+		// advancing the fake battle clock relative to it is immune to skew.
+		const [log] = await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id));
+		now = new Date(log.timestamp.getTime() + 14 * 60000);
+		expect((await raid.run(id, true)).status).toBe('boss-locked');
+		now = new Date(log.timestamp.getTime() + 16 * 60000);
+		expect((await raid.run(id, true)).status).toBe('ok');
 	});
 });

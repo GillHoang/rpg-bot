@@ -1,6 +1,6 @@
 import type { Executor } from '../../../db/client.js';
-import { and, eq } from 'drizzle-orm';
-import { huntCooldowns, users, usersBag, userCharacter, menuActionReceipts } from '../../../db/schema.js';
+import { and, desc, eq } from 'drizzle-orm';
+import { huntCooldowns, raidLogs, users, usersBag, userCharacter, menuActionReceipts } from '../../../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
 export class RaidRepository {
@@ -40,6 +40,17 @@ export class RaidRepository {
 
 	async lockUser(tx: Executor, discordId: string) {
 		return tx.select().from(users).where(eq(users.discordId, discordId)).for('update');
+	}
+
+	/** Latest boss attempt (win or loss) — backs the rolling test-server cooldown. */
+	async findLastBossAttack(tx: Executor, discordId: string): Promise<Date | null> {
+		const [row] = await tx
+			.select({ timestamp: raidLogs.timestamp })
+			.from(raidLogs)
+			.where(and(eq(raidLogs.discordId, discordId), eq(raidLogs.battleType, 'boss')))
+			.orderBy(desc(raidLogs.id))
+			.limit(1);
+		return row?.timestamp ?? null;
 	}
 
 	async updateUser(tx: Executor, discordId: string, values: Partial<typeof users.$inferInsert>) {
