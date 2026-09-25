@@ -110,7 +110,9 @@ function profileSummary(p: ProfileSummaryData): string {
 	);
 }
 
-export function profilePanel(p: ProfileCardData): GamePanel {
+export type ProfileTab = 'stats' | 'gear' | 'deity';
+
+export function profilePanel(p: ProfileCardData, tab: ProfileTab = 'stats'): GamePanel {
 	const summary = profileSummary(p);
 	const gear = (item: { name: string; enhancement: number } | null | undefined) =>
 		item
@@ -119,16 +121,18 @@ export function profilePanel(p: ProfileCardData): GamePanel {
 	const deities = p.loadout?.deities.length
 		? p.loadout.deities.map((d) => GAMEPLAY_TEXT.deityRow(escapeMarkdown(d.name), d.sigils)).join('\n')
 		: GAMEPLAY_TEXT.noDeities;
+	const title = p.title ? `*${escapeMarkdown(p.title)}*\n` : '';
+	const section =
+		tab === 'gear'
+			? GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor))
+			: tab === 'deity'
+				? GAMEPLAY_TEXT.deitiesSection(deities)
+				: GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def));
 	return {
 		title: GAMEPLAY_TEXT.profile,
 		withAvatar: true,
 		grouped: true,
-		body:
-			summary +
-			(p.title ? `*${escapeMarkdown(p.title)}*\n` : '') +
-			GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor)) +
-			GAMEPLAY_TEXT.deitiesSection(deities) +
-			GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def)),
+		body: summary + title + section,
 	};
 }
 

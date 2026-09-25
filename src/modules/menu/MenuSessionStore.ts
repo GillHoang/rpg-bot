@@ -16,6 +16,8 @@ export interface MenuSession {
 	history: MenuScreen[];
 	expiresAt: number;
 	busy: boolean;
+	/** Which profile sub-panel is open (info-toggle buttons on the profile screen). */
+	profileTab?: 'stats' | 'gear' | 'deity';
 	portalGate?: number;
 	/** Gate đang chọn ở màn tier (1-5). */
 	gateId?: number;

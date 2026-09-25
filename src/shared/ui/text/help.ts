@@ -11,6 +11,7 @@ export const HELP_PAGER_TTL_MS = 180_000;
 export const HELP_PREV_LABEL = 'Trước';
 export const HELP_NEXT_LABEL = 'Sau';
 export const HELP_PAGE_INDICATOR = (page: number, total: number): string => `Trang ${page}/${total}`;
+export const HELP_SELECT_PLACEHOLDER = 'Chọn chủ đề để đọc';
 export const HELP_TITLE = (title: string): string => `${ICONS.help.book} Hướng dẫn chơi — ${title}`;
 export const HELP_FOOTER =
 	'BETA — mọi con số, tỷ lệ và phần thưởng đều có thể thay đổi bất cứ lúc nào. Gõ /help để mở lại bảng này.';

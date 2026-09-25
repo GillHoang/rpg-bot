@@ -113,30 +113,48 @@ describe('pure gameplay panels', () => {
 	});
 
 	it('escapes player text, formats progress and keeps profile defaults', () => {
-		const panel = profilePanel(profile);
-		expect(panel.title).toBe('Nhân vật');
-		expect(panel.withAvatar).toBe(true);
-		expect(panel.body).toContain('**\\*Hero\\***');
-		expect(panel.body).toContain('Kinh nghiệm: <a:linee2:');
-		expect(panel.body).toContain(' `500/1.000`');
-		expect(panel.body).not.toMatch(/[▰▱]/);
-		expect(panel.body).toContain('HP 1.000 · ATK 200 · DEF 300');
-		expect(panel.body).toContain('Vũ khí: Chưa trang bị');
-		expect(panel.body).toContain('Chưa có thần đồng hành');
-		expect(panel.grouped).toBe(true);
-		expect(action(panel, { kind: 'profile' }, 'hunt')?.label).toBe('Săn quái');
-		const titled = profilePanel({
-			...profile,
-			title: '*Champion*',
-			loadout: {
-				weapon: { name: '*Sword*', enhancement: 3 },
-				armor: null,
-				deities: [{ name: '*Zeus*', sigils: 2 }],
+		const stats = profilePanel(profile, 'stats');
+		expect(stats.title).toBe('Nhân vật');
+		expect(stats.withAvatar).toBe(true);
+		expect(stats.body).toContain('**\\*Hero\\***');
+		expect(stats.body).toContain('Kinh nghiệm: <a:linee2:');
+		expect(stats.body).toContain(' `500/1.000`');
+		expect(stats.body).not.toMatch(/[▰▱]/);
+		expect(stats.body).toContain('HP 1.000 · ATK 200 · DEF 300');
+		expect(stats.body).not.toContain('Vũ khí');
+		expect(stats.grouped).toBe(true);
+		const gear = profilePanel(profile, 'gear');
+		expect(gear.body).toContain('Vũ khí: Chưa trang bị');
+		expect(gear.body).not.toContain('Chưa có thần đồng hành');
+		const deity = profilePanel(profile, 'deity');
+		expect(deity.body).toContain('Chưa có thần đồng hành');
+		expect(action(stats, { kind: 'profile' }, 'hunt')?.label).toBe('Săn quái');
+		const titled = profilePanel(
+			{
+				...profile,
+				title: '*Champion*',
+				loadout: {
+					weapon: { name: '*Sword*', enhancement: 3 },
+					armor: null,
+					deities: [{ name: '*Zeus*', sigils: 2 }],
+				},
 			},
-		});
+			'gear',
+		);
 		expect(titled.body).toContain('\\*Champion\\*');
 		expect(titled.body).toContain('**\\*Sword\\*** · +2');
-		expect(titled.body).toContain('**\\*Zeus\\*** · 2 Sigil');
+		const titledDeity = profilePanel(
+			{
+				...profile,
+				loadout: {
+					weapon: null,
+					armor: null,
+					deities: [{ name: '*Zeus*', sigils: 2 }],
+				},
+			},
+			'deity',
+		);
+		expect(titledDeity.body).toContain('**\\*Zeus\\*** · 2 Sigil');
 	});
 
 	it('keeps home groups without showing activity details', () => {

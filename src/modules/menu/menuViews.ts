@@ -55,9 +55,12 @@ function gameplayButton(session: MenuSession, button: GamePanelButton) {
 function addGameplayButtons(container: ContainerBuilder, session: MenuSession): void {
 	const buttons = session.gamePanel?.buttons ?? buildPanelButtons(session, session.gamePanel);
 	if (!buttons.length) return;
-	const groups = session.gamePanel?.grouped ? [...new Set(buttons.map((b) => b.group ?? ''))] : [undefined];
+	// Always separate groups so navigation never wraps into a combat row, but
+	// only print a heading when there is more than one group on screen.
+	const groups = [...new Set(buttons.map((b) => b.group ?? ''))];
+	const showHeaders = groups.length > 1;
 	for (const group of groups) {
-		if (group) {
+		if (showHeaders && group) {
 			container.addSeparatorComponents((s) => s.setDivider(true));
 			container.addTextDisplayComponents((t) => t.setContent(`### ${groupHeading(group)}`));
 		}

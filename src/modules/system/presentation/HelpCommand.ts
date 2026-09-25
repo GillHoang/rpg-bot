@@ -9,24 +9,35 @@ import {
 	HELP_PAGES,
 	HELP_PAGER_TTL_MS,
 	HELP_PREV_LABEL,
+	HELP_SELECT_PLACEHOLDER,
 	HELP_TITLE,
 } from '../../../shared/ui/text/help.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
-	ComponentType,
 	EmbedBuilder,
 	SlashCommandBuilder,
+	StringSelectMenuBuilder,
 	type ButtonInteraction,
 	type ChatInputCommandInteraction,
 	type Message,
+	type StringSelectMenuInteraction,
 } from 'discord.js';
 import type { ICommand } from '../../../shared/discord/command.js';
 import { logger } from '../../../shared/utils/logger.js';
 
 const prevCustomId = (page: number): string => `help:prev:${page}`;
 const nextCustomId = (page: number): string => `help:next:${page}`;
+
+function topicRow(): ActionRowBuilder<StringSelectMenuBuilder> {
+	return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+		new StringSelectMenuBuilder()
+			.setCustomId('help:select')
+			.setPlaceholder(HELP_SELECT_PLACEHOLDER)
+			.addOptions(HELP_PAGES.map((page, index) => ({ label: page.title, value: String(index + 1) }))),
+	);
+}
 
 function pagerRow(page: number, total: number): ActionRowBuilder<ButtonBuilder> {
 	return new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -68,27 +79,32 @@ export class HelpCommand implements ICommand {
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply({ ephemeral: true });
 		const total = HELP_PAGES.length;
-
-		const message: Message = await interaction.editReply({
-			embeds: [helpEmbed(1)],
-			components: total > 1 ? [pagerRow(1, total)] : [],
+		const view = (page: number) => ({
+			embeds: [helpEmbed(page)],
+			components: total > 1 ? [topicRow(), pagerRow(page, total)] : [topicRow()],
 		});
-		if (total <= 1) return;
+
+		const message: Message = await interaction.editReply(view(1));
 
 		const collector = message.createMessageComponentCollector({
-			componentType: ComponentType.Button,
-			filter: (button: ButtonInteraction) => button.user.id === interaction.user.id,
 			time: HELP_PAGER_TTL_MS,
+			filter: (component) => component.user.id === interaction.user.id,
 		});
-		collector.on('collect', async (button: ButtonInteraction) => {
+		collector.on('collect', async (component: ButtonInteraction | StringSelectMenuInteraction) => {
 			try {
-				const [, action, pageRaw] = button.customId.split(':');
-				if (action === 'indicator' || pageRaw === undefined || Number.isNaN(Number(pageRaw))) return;
-				const page = Math.min(Math.max(Number(pageRaw) + (action === 'next' ? 1 : -1), 1), total);
-				await button.update({ embeds: [helpEmbed(page)], components: [pagerRow(page, total)] });
+				let page: number | undefined;
+				if (component.isStringSelectMenu()) {
+					page = Number(component.values[0]);
+				} else if (component.isButton() && component.customId !== 'help:indicator') {
+					const [, action, pageRaw] = component.customId.split(':');
+					if (pageRaw === undefined || Number.isNaN(Number(pageRaw))) return;
+					page = Number(pageRaw) + (action === 'next' ? 1 : -1);
+				}
+				if (page === undefined || Number.isNaN(page)) return;
+				await component.update(view(Math.min(Math.max(page, 1), total)));
 			} catch (error) {
-				logger.error({ err: error, discordId: button.user.id }, LOG_EVENT_TEXT.helpPageFailed);
-				await button.reply({ content: HELP_FLOW_TEXT.failed, ephemeral: true }).catch(() => undefined);
+				logger.error({ err: error, discordId: component.user.id }, LOG_EVENT_TEXT.helpPageFailed);
+				await component.reply({ content: HELP_FLOW_TEXT.failed, ephemeral: true }).catch(() => undefined);
 			}
 		});
 		collector.on('end', async () => {

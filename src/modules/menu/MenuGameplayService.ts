@@ -97,7 +97,7 @@ export class MenuGameplayService implements MenuGameplay, MenuItemApi {
 		if (kind === undefined) return undefined;
 		if (kind === 'profile') {
 			const detail = await this.profiles.get(session.ownerId);
-			return detail.status === 'ok' ? profilePanel(detail.data) : onboardingPanel();
+			return detail.status === 'ok' ? profilePanel(detail.data, session.profileTab ?? 'stats') : onboardingPanel();
 		}
 		const profile = await this.profiles.get(session.ownerId, 'summary');
 		if (profile.status !== 'ok') return onboardingPanel();

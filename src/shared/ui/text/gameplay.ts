@@ -73,6 +73,9 @@ export const GAMEPLAY_TEXT = {
 		`${ICONS.deity.companion} **${name}** · ${sigils} Sigil`,
 	noDeities: 'Chưa có thần đồng hành',
 	profile: 'Nhân vật',
+	statsTab: 'Chỉ số',
+	gearTab: 'Trang bị',
+	deityTab: 'Thần',
 	equipmentSection: (weapon: string | number, armor: string | number): string =>
 		`\n**Đang sử dụng**\n${ICONS.gear.weapon} Vũ khí: ${weapon}\n${ICONS.gear.armor} Giáp: ${armor}\n`,
 	deitiesSection: (deities: string | number): string => `\n**Thần đồng hành**\n${deities}\n`,

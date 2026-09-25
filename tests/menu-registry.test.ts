@@ -90,6 +90,19 @@ describe('menu item registry', () => {
 		expect(buttons.find((button) => button.action === 'boss')).toBeUndefined();
 	});
 
+	it('shows the profile info-toggle tabs and highlights the open one', () => {
+		const session = sessionFor({ kind: 'profile' });
+		const tabs = buildPanelButtons(session, { title: '', body: '' })
+			.filter((button) => ['stats', 'gear', 'deity'].includes(button.action))
+			.map((button) => button.action);
+		expect(tabs).toEqual(['stats', 'gear', 'deity']);
+		session.profileTab = 'gear';
+		const gear = buildPanelButtons(session, { title: '', body: '' }).find((b) => b.action === 'gear');
+		expect(gear?.style).toBe('primary');
+		const stats = buildPanelButtons(session, { title: '', body: '' }).find((b) => b.action === 'stats');
+		expect(stats?.style).toBe('secondary');
+	});
+
 	it('themes each surface and labels buttons with icons', () => {
 		expect(menuAccent(sessionFor({ kind: 'home' }))).toBe(0xf1c232);
 		expect(menuAccent(sessionFor({ kind: 'profile' }))).toBe(0x5865f2);
