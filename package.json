@@ -1,6 +1,6 @@
 {
 	"name": "credd-bot-ts",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"description": "RPG Discord bot rewritten in TypeScript, OOP + design patterns, drizzle-orm/PostgreSQL.",
 	"type": "module",
 	"main": "dist/index.js",
