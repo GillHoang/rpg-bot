@@ -70,7 +70,9 @@ triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md) ·
    (hoặc khởi động lại bot — entrypoint tự deploy).
 
 3. **Khi cập nhật bot từ phiên bản cũ**, các bước chạy lại đã có trong
-   `docker-entrypoint.sh` (migrate → seed → deploy commands); chạy thủ công thì:
+   `docker-entrypoint.sh` (đợi DB → migrate → seed → deploy commands, retry
+   migrate ~60s nếu Postgres chưa sẵn sàng); đặt `SKIP_DEPLOY=1` khi không đổi
+   slash command để boot nhanh và tránh rate-limit Discord. Chạy thủ công thì:
    - `pnpm db:seed` — seed ở `src/seed/data/` upsert theo khóa nghiệp vụ,
      không xoá dữ liệu người chơi; thiếu seed mới (M7) thì genesis chest và
      title grant sẽ lỗi.

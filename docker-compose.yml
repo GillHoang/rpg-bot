@@ -11,6 +11,16 @@ services:
     container_name: credd-bot
     restart: unless-stopped
     env_file: .env
+    # Đặt SKIP_DEPLOY=1 khi không đổi slash command để boot nhanh,
+    # tránh global PUT ăn rate-limit Discord mỗi lần restart.
+    # environment:
+    #   - SKIP_DEPLOY=1
+    # Chặn log Discord (gateway verbose) lấp disk VPS.
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - homelab-db   # ← đổi thành network nơi Postgres đang chạy
 
