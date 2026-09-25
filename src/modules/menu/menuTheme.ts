@@ -21,6 +21,7 @@ export const MENU_ACCENT = {
 
 export const GROUP_EMOJI: Record<string, string> = {
 	[GAMEPLAY_TEXT.infoGroup]: ICONS.menu.profile,
+	[GAMEPLAY_TEXT.assetsGroup]: ICONS.menu.inventory,
 	[GAMEPLAY_TEXT.activityGroup]: ICONS.menu.hunt,
 	[GAMEPLAY_TEXT.confirmationGroup]: ICONS.status.success,
 	[GAMEPLAY_TEXT.navigationGroup]: ICONS.menu.home,
@@ -35,12 +36,16 @@ export function groupHeading(group: string): string {
 export function menuAccent(session: MenuSession): number {
 	switch (session.screen.kind) {
 		case 'profile':
+		case 'inventory':
+		case 'deities':
 			return MENU_ACCENT.info;
 		case 'quests':
 		case 'gateSelect':
 		case 'gateTiers':
 		case 'result':
 		case 'log':
+		case 'shop':
+		case 'casino':
 			return MENU_ACCENT.activity;
 		case 'confirm':
 			return MENU_ACCENT.danger;

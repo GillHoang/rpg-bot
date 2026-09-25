@@ -23,8 +23,6 @@ export interface MenuSession {
 	notice?: string;
 	avatarUrl?: string;
 	playerName?: string;
-	/** The original menu opens independent panels instead of replacing itself. */
-	launcher?: boolean;
 }
 
 type Acquisition =
@@ -50,7 +48,7 @@ export class MenuSessionStore {
 		this.sweep();
 		const owned = [...this.sessions.values()].filter((s) => s.ownerId === ownerId);
 		if (owned.length >= this.maxPerUser) {
-			const oldestIdle = owned.find((s) => !s.busy && !s.launcher) ?? owned.find((s) => !s.busy);
+			const oldestIdle = owned.find((s) => !s.busy);
 			if (!oldestIdle) throw new MenuCapacityError();
 			this.delete(oldestIdle.id);
 		}

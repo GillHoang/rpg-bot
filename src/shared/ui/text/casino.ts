@@ -60,3 +60,13 @@ export const CASINO_SESSION_TEXT = {
 	invalidAction: 'Thao tác không hợp lệ.',
 	timeoutHint: '\nTự Stand / Cash Out sau 60 giây tính từ khi mở ván. Tiền cược đã trừ.',
 };
+
+/** Trò chơi casino hiển thị ở menu xem trước (read-only). */
+export const CASINO_MENU_GAMES = [
+	{ icon: ICONS.casinoGame.coin, name: 'Coin Toss', desc: 'Đoán heads/tails · trả 1:1' },
+	{ icon: ICONS.casinoGame.dice, name: 'Dice Roll', desc: 'Đoán odd/even' },
+	{ icon: ICONS.casinoGame.slots, name: 'Slot Machine', desc: 'Quay slot · RTP 100%' },
+	{ icon: ICONS.casinoGame.baccarat, name: 'Baccarat', desc: 'player/banker · banker 1.95x' },
+	{ icon: ICONS.casinoGame.blackjack, name: 'Blackjack', desc: 'Hit/Stand · nút 60 giây' },
+	{ icon: ICONS.casinoGame.crash, name: 'Crash', desc: 'Push/Cash Out · nút 60 giây' },
+] as const;

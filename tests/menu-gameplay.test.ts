@@ -210,7 +210,8 @@ describe('phase 2 menu', () => {
 		const fight = fixture('button', action(tiers, 'fight', '2'));
 		await router.handle(fight.interaction);
 		expect(run).toHaveBeenCalledExactlyOnceWith(id, false, expect.objectContaining({ gate: 2, tier: 2 }));
-		const reopen = fixture('button', action(home, 'hunt'));
+		const result = fight.raw.editReply.mock.calls[0][0];
+		const reopen = fixture('button', action(result, 'hunt'));
 		await router.handle(reopen.interaction);
 		const fresh = reopen.raw.editReply.mock.calls[0][0];
 		expect(parseMenuId(action(fresh, 'gate', '1'))).toMatchObject({ action: 'gate', nonce: '1' });
@@ -368,7 +369,7 @@ describe('phase 2 menu', () => {
 		expect(await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id))).toHaveLength(0);
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
 	});
-	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
+	it('claims daily and edits every panel in place in the single menu message', async () => {
 		await start();
 		const router = new MenuRouter(
 			undefined,
@@ -387,7 +388,7 @@ describe('phase 2 menu', () => {
 		expect(JSON.stringify(updated)).toContain('Đã nhận daily');
 		expect(parseMenuId(action(updated, 'profile'))!.id).toBe(parseMenuId(action(initial, 'profile'))!.id);
 		let view = updated;
-		for (const name of ['quests', 'reroll', 'cancel', 'refresh', 'home']) {
+		for (const name of ['quests', 'reroll', 'cancel', 'refresh', 'home', 'profile']) {
 			const click = fixture('button', action(view, name));
 			await router.handle(click.interaction);
 			expect(click.raw.deferUpdate).toHaveBeenCalledOnce();
@@ -395,10 +396,6 @@ describe('phase 2 menu', () => {
 			view = click.raw.editReply.mock.calls[0][0];
 			expect(parseMenuId(action(view, 'home'))!.id).toBe(parseMenuId(action(initial, 'profile'))!.id);
 		}
-		const profile = fixture('button', action(view, 'profile'));
-		await router.handle(profile.interaction);
-		expect(profile.raw.deferReply).toHaveBeenCalledOnce();
-		expect(profile.raw.deferUpdate).not.toHaveBeenCalled();
 	});
 	it('requires confirmation for boss, allows cancel, and rejects changed balances', async () => {
 		await start();
@@ -530,8 +527,8 @@ describe('phase 2 menu', () => {
 		const confirm = action(view, 'confirm');
 		await click('confirm');
 		expect(JSON.stringify(view)).toContain('Thông tin');
+		expect(JSON.stringify(view)).toContain('Tài sản');
 		expect(JSON.stringify(view)).toContain('Hoạt động');
-		expect(JSON.stringify(view)).not.toContain('Tài sản');
 		expect(JSON.stringify(view)).toContain('"type":11');
 		expect((await bag()).beliefShards).toBe(1000);
 		const duplicate = fixture('button', confirm);

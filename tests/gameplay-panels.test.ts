@@ -165,10 +165,14 @@ describe('pure gameplay panels', () => {
 		expect(
 			buttonsFor(panel, { kind: 'home' })
 				.map(({ action: name, group }) => [name, group])
-				.slice(0, 6),
+				.slice(0, 10),
 		).toEqual([
 			['profile', 'Thông tin'],
 			['help', 'Thông tin'],
+			['inventory', 'Tài sản'],
+			['deities', 'Tài sản'],
+			['shop', 'Tài sản'],
+			['casino', 'Tài sản'],
 			['daily', 'Hoạt động'],
 			['hunt', 'Hoạt động'],
 			['boss', 'Hoạt động'],

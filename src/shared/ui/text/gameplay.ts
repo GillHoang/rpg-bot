@@ -85,6 +85,7 @@ export const GAMEPLAY_TEXT = {
 	help: 'Hướng dẫn',
 	searchHelp: 'Tìm hướng dẫn',
 	infoGroup: 'Thông tin',
+	assetsGroup: 'Tài sản',
 	activityGroup: 'Hoạt động',
 	navigationGroup: 'Điều hướng',
 	confirmationGroup: 'Xác nhận',
@@ -120,6 +121,22 @@ export const GAMEPLAY_TEXT = {
 	levelUp: (previousLevel: string | number, newLevel: string | number): string =>
 		`Lên cấp ${previousLevel} → ${newLevel}!\n`,
 	bossFee: (fee: string | number): string => `Phí vào boss: −${fee} Credux.\n`,
+	// --- Đợt 2: xem tài nguyên (read-only panels) ---
+	inventory: 'Kho đồ',
+	deities: 'Thần đồng hành',
+	shop: 'PVP Shop',
+	casino: 'Casino',
+	inventoryTitle: (category: string | number, page: string | number): string => `Kho đồ · ${category} · Trang ${page}`,
+	deitiesTitle: (page: string | number): string => `Thần đồng hành · Trang ${page}`,
+	inventoryPage: (page: string | number, total: string | number): string => `Trang ${page}/${total}`,
+	inventoryEmpty: 'Chưa có vật phẩm.',
+	deitiesEmpty: 'Chưa có thần đồng hành. Dùng /summon để triệu hồi.',
+	inventoryHint: '\nXem ID để dùng cho /equip · /enhance · /socket. Chơi bằng menu ở giai đoạn sau.',
+	deitiesHint: '\nID deity dùng cho /equip kind:deity · /deity sigil.',
+	shopValor: (valor: string | number): string => `Valor Medals hiện có: **${valor}**\n`,
+	shopHint: '\n/pvp buy item:<key> để mua. Chơi bằng menu ở giai đoạn sau.',
+	casinoIntro: '6 trò chơi, cược Credux (1–500.000):',
+	casinoHint: '\n/casino <game> bet:<số> để chơi. Chơi bằng menu ở giai đoạn sau.',
 };
 
 /** Display text for menu/MenuGameplayService. */

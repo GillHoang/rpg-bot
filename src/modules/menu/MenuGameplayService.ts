@@ -2,6 +2,8 @@ import { GATES, TIERS_PER_GATE } from '../../shared/config/portals.js';
 import { GATE_TEXT } from '../../shared/ui/text/portals.js';
 import { MENU_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
 import { MENU_SECTIONS } from '../../shared/ui/text/menu.js';
+import { GAMEPLAY_TEXT } from '../../shared/ui/text/gameplay.js';
+import { bagSummary } from '../../shared/ui/text/inventory.js';
 import { MenuPlayerRepository } from './infrastructure/MenuPlayerRepository.js';
 import { requirePersistence, type PersistenceContext } from '../../shared/kernel/persistence.js';
 import { systemClock, type Clock } from '../../shared/kernel/clock.js';
@@ -12,6 +14,8 @@ import { StartService } from '../identity/application/StartService.js';
 import { ClaimDailyUseCase } from '../economy/application/ClaimDailyUseCase.js';
 import { QuestService } from '../meta/application/QuestService.js';
 import { RaidService } from '../pve/application/RaidService.js';
+import { InventoryService, INVENTORY_PAGE_SIZE } from '../progression/application/InventoryService.js';
+import { PvpShopService } from '../pvp/application/PvpShopService.js';
 import { DailyCycle } from '../../shared/utils/dailyCycle.js';
 import type { GamePanel, MenuGameplay } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
@@ -21,10 +25,14 @@ import { buildPanelButtons, getMenuItem } from './MenuRegistry.js';
 import {
 	battlePanel,
 	confirmationPanel,
+	casinoPanel,
+	deitiesPanel,
 	homePanel,
+	inventoryPanel,
 	onboardingPanel,
 	profilePanel,
 	questsPanel,
+	shopPanel,
 } from './gameplayPanels.js';
 import { navigateBattleLogPage, assertBattleLogNavigable } from './MenuActionRouter.js';
 import { gateSelectPanel, gateTiersPanel } from './MenuGatePanels.js';
@@ -34,6 +42,8 @@ export interface MenuGameplayDependencies {
 	persistence: PersistenceContext;
 	clock?: Clock;
 	players?: Pick<MenuPlayerRepository, 'findState'>;
+	inventory?: Pick<InventoryService, 'bag' | 'count' | 'list'>;
+	pvpShop?: Pick<PvpShopService, 'list'>;
 }
 
 /** section của MenuScreen → kind panel tương ứng (các section khác chỉ hiển thị hướng dẫn tĩnh). */
@@ -62,6 +72,8 @@ export class MenuGameplayService implements MenuGameplay, MenuItemApi {
 	private readonly players: Pick<MenuPlayerRepository, 'findState'>;
 	private readonly profiles: Pick<ProfileService, 'get'>;
 	private readonly quests: Pick<QuestService, 'snapshot' | 'claimWeeklyGrand' | 'refresh'>;
+	private readonly inventory: Pick<InventoryService, 'bag' | 'count' | 'list'>;
+	private readonly shop: Pick<PvpShopService, 'list'>;
 	private readonly flow: MenuBattleFlow;
 
 	constructor(
@@ -76,6 +88,8 @@ export class MenuGameplayService implements MenuGameplay, MenuItemApi {
 		this.clock = options.clock ?? systemClock;
 		this.players = options.players ?? new MenuPlayerRepository(persistence.executor);
 		this.profiles = profiles ?? new ProfileService(undefined, undefined, undefined, { persistence });
+		this.inventory = options.inventory ?? new InventoryService(persistence.executor);
+		this.shop = options.pvpShop ?? new PvpShopService(undefined, { persistence });
 		const startSvc =
 			start ?? new StartService(undefined, undefined, undefined, undefined, undefined, { persistence });
 		const dailySvc = daily ?? new ClaimDailyUseCase(undefined, undefined, { persistence });
@@ -129,7 +143,48 @@ export class MenuGameplayService implements MenuGameplay, MenuItemApi {
 			session.screen = { kind: 'gateSelect' };
 			return this.buildPanel(session);
 		}
+		if (kind === 'inventory') {
+			const screen = session.screen as Extract<MenuScreen, { kind: 'inventory' }>;
+			return this.buildInventoryPanel(session, screen);
+		}
+		if (kind === 'deities') {
+			const screen = session.screen as Extract<MenuScreen, { kind: 'deities' }>;
+			return this.buildDeitiesPanel(session, screen);
+		}
+		if (kind === 'shop') {
+			const bag = await this.inventory.bag(session.ownerId);
+			return shopPanel(bag?.valorMedals ?? 0, this.shop.list());
+		}
+		if (kind === 'casino') return casinoPanel();
 		return homePanel(profile.data, { dailyDone, bossDone });
+	}
+
+	private async buildInventoryPanel(
+		session: MenuSession,
+		screen: Extract<MenuScreen, { kind: 'inventory' }>,
+	): Promise<GamePanel> {
+		if (screen.category === 'bag') {
+			const bag = await this.inventory.bag(session.ownerId);
+			return inventoryPanel(bag ? bagSummary(bag) : GAMEPLAY_TEXT.inventoryEmpty, 'bag', 1, 1);
+		}
+		const count = await this.inventory.count(session.ownerId, screen.category);
+		const total = Math.max(1, Math.ceil(count / INVENTORY_PAGE_SIZE));
+		const page = Math.min(Math.max(screen.page, 1), total);
+		screen.page = page;
+		const lines = await this.inventory.list(session.ownerId, screen.category, page);
+		return inventoryPanel(lines.join('\n\n') || GAMEPLAY_TEXT.inventoryEmpty, screen.category, page, total);
+	}
+
+	private async buildDeitiesPanel(
+		session: MenuSession,
+		screen: Extract<MenuScreen, { kind: 'deities' }>,
+	): Promise<GamePanel> {
+		const count = await this.inventory.count(session.ownerId, 'deities');
+		const total = Math.max(1, Math.ceil(count / INVENTORY_PAGE_SIZE));
+		const page = Math.min(Math.max(screen.page, 1), total);
+		screen.page = page;
+		const lines = await this.inventory.list(session.ownerId, 'deities', page);
+		return deitiesPanel(lines.join('\n\n') || GAMEPLAY_TEXT.deitiesEmpty, page, total);
 	}
 
 	/** Kind panel cho screen hiện tại; section đã xử lý riêng ở buildPanel. */

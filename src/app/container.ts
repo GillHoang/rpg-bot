@@ -181,12 +181,18 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 	});
 	// --- Menu + background lifecycle (no I/O or timers at construction) ---
 	const casinoSessions = new CasinoSessionService({ persistence, clock });
-	const menuGameplay = new MenuGameplayService(profile, start, daily, quests, raid, { persistence, clock });
+	const inventory = new InventoryService(persistence.executor);
+	const pvpShop = new PvpShopService(cosmetics, { persistence });
+	const menuGameplay = new MenuGameplayService(profile, start, daily, quests, raid, {
+		persistence,
+		clock,
+		inventory,
+		pvpShop,
+	});
 	const menu = options.menu ?? new MenuRouter(new MenuSessionStore(), menuGameplay);
 	const scheduler = new Scheduler(duel, new MaintenanceRepository(persistence.executor), clock);
 	const maintenance = new BotMaintenance(casinoSessions, scheduler, menu);
 	const summon = new RunSummonUseCase(characters, deities, events, { persistence });
-	const inventory = new InventoryService(persistence.executor);
 
 	return {
 		events,
@@ -208,7 +214,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		summon,
 		classChange: new ClassChangeService({ persistence }),
 		casino: new CasinoService(new CasinoRepository(), events, { persistence, clock }),
-		pvpShop: new PvpShopService(cosmetics, { persistence }),
+		pvpShop,
 		loot: new LootService(lootRepository, events, { persistence, grants, clock }),
 		loadout: new LoadoutService({ persistence }),
 		weapon: new WeaponService({ persistence }),

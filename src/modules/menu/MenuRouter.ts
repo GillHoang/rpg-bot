@@ -15,7 +15,6 @@ import type { MenuGameplay } from './MenuGameplay.js';
 import { CLASS_NAMES } from '../../shared/config/classes.js';
 import { menuView, recoveryView } from './menuViews.js';
 import { isNavigationAction } from './MenuRegistry.js';
-import { shouldForkSession } from './menuSessionPolicy.js';
 
 type MenuInteraction = ButtonInteraction | StringSelectMenuInteraction;
 
@@ -42,7 +41,6 @@ export class MenuRouter {
 		try {
 			await interaction.deferReply();
 			session = this.sessions.create(interaction.user.id);
-			session.launcher = true;
 			session.avatarUrl = interaction.user.displayAvatarURL?.({ size: 256 });
 			session.gamePanel = await this.gameplay?.render(session);
 			const message = await interaction.editReply(menuView(session));
@@ -83,38 +81,19 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT[result.status]);
 			return true;
 		}
-		const source = result.session;
-		let session = source;
+		const session = result.session;
 		try {
-			session = this.selectSession(source, parsed.action);
 			await this.dispatch(interaction, session, parsed.action, parsed.nonce);
 		} catch (error) {
 			// HTTP failures can be ambiguous. Retire the session, never replay an action.
 			this.sessions.delete(session.id);
-			if (!isNavigationAction(parsed.action)) this.sessions.delete(source.id);
 			logger.error({ err: error, sessionId: session.id, action: parsed.action }, MENU_LOG_TEXT.interactionFailed);
 			await this.notice(interaction, userMessage(error, MENU_TEXT.failed));
 		} finally {
-			if (session !== source && !session.messageId) this.sessions.delete(session.id);
 			this.sessions.release(session);
-			this.sessions.touch(source);
-			this.sessions.release(source);
+			this.sessions.touch(session);
 		}
 		return true;
-	}
-
-	private selectSession(source: MenuSession, action: MenuAction): MenuSession {
-		if (!shouldForkSession(source, action)) return source;
-		const session = this.sessions.create(source.ownerId);
-		Object.assign(session, {
-			screen: source.screen,
-			gamePanel: source.gamePanel,
-			avatarUrl: source.avatarUrl,
-			portalGate: source.portalGate,
-			gateId: source.gateId,
-			battle: source.battle,
-		});
-		return session;
 	}
 
 	private async dispatch(
@@ -153,10 +132,8 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		// Daily/quests and gameplay buttons update in place; other panels fork a child reply.
-		if (['daily', 'quests', 'claim', 'reroll'].includes(action) || session.gamePanel?.classes)
-			await interaction.deferUpdate();
-		else await this.acknowledge(interaction, session);
+		// Every gameplay action edits the /menu message in place.
+		await this.acknowledge(interaction);
 		session.notice = undefined;
 		session.playerName = interaction.user.username;
 		const next = await this.gameplay.act(
@@ -178,7 +155,7 @@ export class MenuRouter {
 			await this.notice(interaction, MENU_TEXT.invalid);
 			return;
 		}
-		await this.acknowledge(interaction, session);
+		await this.acknowledge(interaction);
 		if (action === 'close') {
 			this.sessions.delete(session.id);
 			await interaction.editReply(recoveryView(MENU_TEXT.closed));
@@ -200,9 +177,8 @@ export class MenuRouter {
 		this.sessions.sweep();
 	}
 
-	private async acknowledge(interaction: MenuInteraction, session: MenuSession): Promise<void> {
-		if (!session.messageId) await interaction.deferReply();
-		else await interaction.deferUpdate();
+	private async acknowledge(interaction: MenuInteraction): Promise<void> {
+		await interaction.deferUpdate();
 	}
 
 	private async navigate(

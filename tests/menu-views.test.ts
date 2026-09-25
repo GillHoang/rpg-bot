@@ -81,6 +81,10 @@ describe('menu payloads', () => {
 			{ kind: 'confirm', operation: 'boss', day: '2026-09-21' },
 			{ kind: 'result' },
 			{ kind: 'log', page: 0 },
+			{ kind: 'inventory', category: 'weapons', page: 1 },
+			{ kind: 'deities', page: 1 },
+			{ kind: 'shop' },
+			{ kind: 'casino' },
 		];
 		for (const screen of screens) {
 			session.screen = screen;

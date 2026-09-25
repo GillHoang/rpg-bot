@@ -17,10 +17,11 @@ describe('menu item registry', () => {
 		const names = MENU_ITEMS.map((item) => item.name);
 		expect(names.length).toBeGreaterThan(0);
 		expect(new Set(names).size).toBe(names.length);
+		const PARAMETERIZED = new Set(['gate', 'fight', 'invcat']);
 		for (const item of MENU_ITEMS) {
 			expect(item.name).toMatch(NAME_RE);
-			// Parameterized items (gate/fight) carry a value nonce and are checked below.
-			if (item.name !== 'gate' && item.name !== 'fight') {
+			// Parameterized items (gate/fight/invcat) carry a value nonce and are checked below.
+			if (!PARAMETERIZED.has(item.name)) {
 				expect(parseMenuId(menuId('a'.repeat(24), 0, item.name))?.action).toBe(item.name);
 			}
 			expect(typeof item.visibleWhen).toBe('function');
@@ -35,11 +36,17 @@ describe('menu item registry', () => {
 			['gate', '5'],
 			['fight', '1'],
 			['fight', '10'],
+			['invcat', 'bag'],
+			['invcat', 'weapons'],
+			['invcat', 'armors'],
+			['invcat', 'runes'],
 		] as const) {
 			expect(parseMenuId(menuId('a'.repeat(24), 0, name, value))).toMatchObject({ action: name, nonce: value });
 		}
 		expect(parseMenuId(menuId('a'.repeat(24), 0, 'gate', '6'))).toBeNull();
 		expect(parseMenuId(menuId('a'.repeat(24), 0, 'fight', '11'))).toBeNull();
+		expect(parseMenuId(menuId('a'.repeat(24), 0, 'invcat', 'deities'))).toBeNull();
+		expect(parseMenuId(menuId('a'.repeat(24), 0, 'invcat', 'bagx'))).toBeNull();
 		expect(parseMenuId(menuId('a'.repeat(24), 0, 'help', '1'))).toBeNull();
 	});
 
@@ -49,6 +56,10 @@ describe('menu item registry', () => {
 		expect(buttons.map((button) => [button.action, button.group])).toEqual([
 			['profile', 'Thông tin'],
 			['help', 'Thông tin'],
+			['inventory', 'Tài sản'],
+			['deities', 'Tài sản'],
+			['shop', 'Tài sản'],
+			['casino', 'Tài sản'],
 			['daily', 'Hoạt động'],
 			['hunt', 'Hoạt động'],
 			['boss', 'Hoạt động'],
@@ -143,6 +154,10 @@ describe('menu item registry', () => {
 			{ kind: 'result' },
 			{ kind: 'log', page: 0 },
 			{ kind: 'confirm', operation: 'boss', day: 'd' },
+			{ kind: 'inventory', category: 'weapons', page: 1 },
+			{ kind: 'deities', page: 1 },
+			{ kind: 'shop' },
+			{ kind: 'casino' },
 		] as const;
 		for (const item of MENU_ITEMS) {
 			for (const screen of screens) {

@@ -3,6 +3,7 @@ import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import type { RaidResult } from '../pve/application/RaidService.js';
 import type { MenuButtonStyle, MenuPanelData } from './MenuItem.js';
 import type { MenuAction } from './menuIds.js';
+import type { InventoryCategory } from '../../shared/ui/render/InventoryPager.js';
 import { AppError } from '../../shared/kernel/Result.js';
 import { DI_ERROR_TEXT } from '../../shared/ui/text/diagnostics.js';
 
@@ -11,7 +12,11 @@ export type GameplayScreen =
 	| { kind: 'confirm'; operation: 'start'; combatClass: CombatClass }
 	| { kind: 'confirm'; operation: 'boss' | 'reroll'; day: string }
 	| { kind: 'result' }
-	| { kind: 'log'; page: number };
+	| { kind: 'log'; page: number }
+	| { kind: 'inventory'; category: InventoryCategory; page: number }
+	| { kind: 'deities'; page: number }
+	| { kind: 'shop' }
+	| { kind: 'casino' };
 
 /** A rendered menu button. Items write these via the registry; the view only renders them. */
 export interface GamePanelButton {

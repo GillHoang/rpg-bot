@@ -67,17 +67,18 @@ async function opened(router: MenuRouter, user = 'alice', message = 'm1') {
 }
 
 describe('menu router', () => {
-	it('keeps the launcher reusable and binds each reply to its own message', async () => {
+	it('edits the single /menu message in place across navigations', async () => {
 		const router = new MenuRouter();
 		const root = await opened(router);
+		const sessionId = parseMenuId(action(root.view, 'refresh'))!.id;
+		let view = root.view;
 		for (let index = 0; index < 7; index++) {
-			const click = fixture('button', action(root.view, 'refresh'));
-			click.raw.editReply.mockResolvedValueOnce({ id: `child-${index}` });
+			const click = fixture('button', action(view, 'refresh'));
 			await router.handle(click.interaction);
-			expect(click.raw.deferReply).toHaveBeenCalledWith();
-			expect(click.raw.deferUpdate).not.toHaveBeenCalled();
-			const view = click.raw.editReply.mock.calls[0]![0];
-			expect(parseMenuId(action(view, 'home'))!.id).not.toBe(parseMenuId(action(root.view, 'refresh'))!.id);
+			expect(click.raw.deferUpdate).toHaveBeenCalledWith();
+			expect(click.raw.deferReply).not.toHaveBeenCalled();
+			view = click.raw.editReply.mock.calls[0]![0];
+			expect(parseMenuId(action(view, 'home'))!.id).toBe(sessionId);
 		}
 	});
 
@@ -148,7 +149,6 @@ describe('menu router', () => {
 			act,
 		} as never);
 		const session = store.create('alice');
-		session.launcher = true;
 		session.screen = { kind: 'home' };
 		session.gamePanel = { title: 't', body: 'b', buttons: [] };
 		store.bind(session, 'm1');
@@ -214,7 +214,7 @@ describe('menu router', () => {
 		expect(old.raw.editReply).not.toHaveBeenCalled();
 	});
 
-	it('retires a failed panel while keeping the launcher available', async () => {
+	it('retires the session when an in-place edit fails', async () => {
 		const router = new MenuRouter();
 		const f = await opened(router);
 		const broken = fixture('button', action(f.view, 'refresh'));
@@ -222,17 +222,18 @@ describe('menu router', () => {
 		await router.handle(broken.interaction);
 		expect(broken.raw.editReply).toHaveBeenCalledOnce();
 		expect(JSON.stringify(broken.raw.followUp.mock.calls)).toContain(MENU_TEXT.failed);
+		// The retired session cannot replay: the old button now reads as expired.
 		const retry = fixture('button', action(f.view, 'refresh'));
 		await router.handle(retry.interaction);
-		expect(retry.raw.deferReply).toHaveBeenCalledOnce();
-		expect(retry.raw.editReply).toHaveBeenCalledOnce();
+		expect(retry.raw.editReply).not.toHaveBeenCalled();
+		expect(JSON.stringify(retry.raw.reply.mock.calls)).toContain(MENU_TEXT.expired);
 	});
 
 	it('does not render after failed acknowledgement and tolerates failed recovery replies', async () => {
 		const router = new MenuRouter();
 		const f = await opened(router);
 		const broken = fixture('button', action(f.view, 'refresh'));
-		broken.raw.deferReply.mockRejectedValueOnce(new Error('expired'));
+		broken.raw.deferUpdate.mockRejectedValueOnce(new Error('expired'));
 		broken.raw.reply.mockRejectedValueOnce(new Error('expired'));
 		await expect(router.handle(broken.interaction)).resolves.toBe(true);
 		expect(broken.raw.editReply).not.toHaveBeenCalled();
@@ -246,7 +247,7 @@ describe('menu router', () => {
 		expect(f.raw.followUp).not.toHaveBeenCalled();
 	});
 
-	it('carries the viewed gate into child sessions for fight actions', async () => {
+	it('carries the viewed gate into the fight action', async () => {
 		const store = new MenuSessionStore();
 		const seen: Array<{ gateId?: number; action: string }> = [];
 		const panel = {
@@ -263,7 +264,6 @@ describe('menu router', () => {
 		};
 		const router = new MenuRouter(store, gameplay as never);
 		const session = store.create('alice');
-		session.launcher = true;
 		session.screen = { kind: 'gateTiers' };
 		session.gateId = 2;
 		session.portalGate = 2;

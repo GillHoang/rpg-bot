@@ -11,6 +11,9 @@ import {
 	WEAPON_LIST_LINE,
 } from '../../../shared/ui/text/inventory.js';
 
+/** Số vật phẩm mỗi trang của kho (khớp limit/offset trong InventoryService.list). */
+export const INVENTORY_PAGE_SIZE = 8;
+
 /** Projects persisted inventory into command-facing values and display text. */
 export class InventoryService {
 	constructor(
@@ -48,7 +51,7 @@ export class InventoryService {
 		return this.data.searchRunes(id, query);
 	}
 	async list(id: string, category: string, page: number): Promise<string[]> {
-		const offset = (page - 1) * 8;
+		const offset = (page - 1) * INVENTORY_PAGE_SIZE;
 		if (category === 'weapons')
 			return (await this.data.weapons(id, offset)).map(({ user_weapons: w, weapon_roster: r }) =>
 				WEAPON_LIST_LINE({

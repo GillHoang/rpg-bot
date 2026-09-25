@@ -10,6 +10,7 @@ const byName = new Map<string, MenuItem>(MENU_ITEMS.map((item) => [item.name, it
 /** Display order of the built-in groups; unknown (freestyle) groups follow, by first appearance. */
 const GROUP_ORDER = [
 	GAMEPLAY_TEXT.infoGroup,
+	GAMEPLAY_TEXT.assetsGroup,
 	GAMEPLAY_TEXT.activityGroup,
 	GAMEPLAY_TEXT.confirmationGroup,
 	GAMEPLAY_TEXT.navigationGroup,

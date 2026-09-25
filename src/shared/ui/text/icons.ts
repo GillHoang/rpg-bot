@@ -143,6 +143,16 @@ export const UNICODE_ICONS = {
 		lose: '💸',
 	},
 
+	/** Trò chơi casino (menu xem trước). */
+	casinoGame: {
+		coin: '🪙',
+		dice: '🎲',
+		slots: '🎰',
+		baccarat: '🃏',
+		blackjack: '♠️',
+		crash: '📈',
+	},
+
 	/** Shop. */
 	shop: {
 		pvp: '⚔️',

@@ -1,6 +1,8 @@
 import { formatNumber } from '../../shared/ui/text/format.js';
 import { ICONS } from '../../shared/ui/text/icons.js';
 import { GAMEPLAY_TEXT } from '../../shared/ui/text/gameplay.js';
+import { INVENTORY_CATEGORY_LABELS } from '../../shared/ui/text/inventory.js';
+import { CASINO_MENU_GAMES } from '../../shared/ui/text/casino.js';
 import { enhancementPlus } from '../../shared/utils/enhancementDisplay.js';
 import { escapeMarkdown } from 'discord.js';
 import { CLASSES } from '../../shared/config/classes.js';
@@ -188,8 +190,7 @@ export function continuationLabel(battle: MenuBattle): string | undefined {
 	return undefined;
 }
 
-export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {
-	const r = session.battle;
+export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {	const r = session.battle;
 	if (!r) {
 		return {
 			title: GAMEPLAY_TEXT.battleTitle,
@@ -233,5 +234,39 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			(r.progress.leveledUp ? GAMEPLAY_TEXT.levelUp(r.progress.previousLevel, r.progress.newLevel) : '') +
 			(r.boss ? GAMEPLAY_TEXT.bossFee(n(BOSS_ENTRY.credux)) : ''),
 		data,
+	};
+}
+
+// --- Đợt 2: read-only resource panels (inventory/deities/shop/casino) ---
+
+export function inventoryPanel(body: string, category: string, page: number, total: number): GamePanel {
+	const label = INVENTORY_CATEGORY_LABELS[category] ?? category;
+	return {
+		title: GAMEPLAY_TEXT.inventoryTitle(label, page),
+		body: body + GAMEPLAY_TEXT.inventoryHint,
+		data: { page, pages: total },
+	};
+}
+
+export function deitiesPanel(body: string, page: number, total: number): GamePanel {
+	return {
+		title: GAMEPLAY_TEXT.deitiesTitle(page),
+		body: body + GAMEPLAY_TEXT.deitiesHint,
+		data: { page, pages: total },
+	};
+}
+
+export function shopPanel(valor: number, items: string): GamePanel {
+	return {
+		title: GAMEPLAY_TEXT.shop,
+		body: GAMEPLAY_TEXT.shopValor(n(valor)) + items + GAMEPLAY_TEXT.shopHint,
+	};
+}
+
+export function casinoPanel(): GamePanel {
+	const lines = CASINO_MENU_GAMES.map((g) => `${g.icon} **${g.name}** — ${g.desc}`).join('\n');
+	return {
+		title: GAMEPLAY_TEXT.casino,
+		body: GAMEPLAY_TEXT.casinoIntro + '\n' + lines + GAMEPLAY_TEXT.casinoHint,
 	};
 }
