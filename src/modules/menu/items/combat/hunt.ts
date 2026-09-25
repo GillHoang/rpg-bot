@@ -1,6 +1,7 @@
 import type { MenuItemSpec } from '../../MenuItem.js';
 import { GAMEPLAY_TEXT } from '../../../../shared/ui/text/gameplay.js';
 import { GATE_TEXT } from '../../../../shared/ui/text/portals.js';
+import { ICONS } from '../../../../shared/ui/text/icons.js';
 
 export default {
 	kind: 'button',
@@ -18,6 +19,7 @@ export default {
 					? GATE_TEXT.chooseGate
 					: GAMEPLAY_TEXT.hunt,
 			style: 'primary',
+			emoji: ICONS.menu.hunt,
 		},
 	],
 	run: ({ session }) => {

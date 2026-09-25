@@ -1,6 +1,7 @@
 import type { MenuItemSpec } from '../../MenuItem.js';
 import { GAMEPLAY_TEXT } from '../../../../shared/ui/text/gameplay.js';
 import { GATE_TEXT } from '../../../../shared/ui/text/portals.js';
+import { ICONS } from '../../../../shared/ui/text/icons.js';
 
 export default {
 	kind: 'button',
@@ -13,6 +14,7 @@ export default {
 			value: String(tier.number),
 			disabled: tier.disabled,
 			style: 'primary' as const,
+			emoji: ICONS.menu.hunt,
 		})),
 	run: ({ session, value, api }) => api.fightTier(session, value),
 } satisfies MenuItemSpec;

@@ -1,5 +1,6 @@
 import type { MenuItemSpec } from '../../MenuItem.js';
 import { GAMEPLAY_TEXT } from '../../../../shared/ui/text/gameplay.js';
+import { ICONS } from '../../../../shared/ui/text/icons.js';
 
 export default {
 	kind: 'button',
@@ -12,6 +13,7 @@ export default {
 			value: String(gate.id),
 			disabled: gate.disabled,
 			style: 'secondary' as const,
+			emoji: ICONS.nav.next,
 		})),
 	run: ({ session, value }) => {
 		session.gateId = Number(value);
