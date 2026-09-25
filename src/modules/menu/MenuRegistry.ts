@@ -11,7 +11,6 @@ const byName = new Map<string, MenuItem>(MENU_ITEMS.map((item) => [item.name, it
 const GROUP_ORDER = [
 	GAMEPLAY_TEXT.infoGroup,
 	GAMEPLAY_TEXT.activityGroup,
-	GAMEPLAY_TEXT.assetsGroup,
 	GAMEPLAY_TEXT.confirmationGroup,
 	GAMEPLAY_TEXT.navigationGroup,
 ];

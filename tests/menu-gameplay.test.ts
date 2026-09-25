@@ -410,8 +410,6 @@ describe('phase 2 menu', () => {
 		expect(JSON.stringify(view)).toContain('HP');
 		expect(JSON.stringify(view)).not.toContain('Xem nhật ký');
 		await click('home');
-		await click('inventory');
-		expect(JSON.stringify(view)).toContain('Kho đồ');
 	});
 
 	it('keeps completed quests when rerolling and does not write on cancellation', async () => {
@@ -493,7 +491,7 @@ describe('phase 2 menu', () => {
 		await click('confirm');
 		expect(JSON.stringify(view)).toContain('Thông tin');
 		expect(JSON.stringify(view)).toContain('Hoạt động');
-		expect(JSON.stringify(view)).toContain('Tài sản');
+		expect(JSON.stringify(view)).not.toContain('Tài sản');
 		expect(JSON.stringify(view)).toContain('"type":11');
 		expect((await bag()).beliefShards).toBe(1000);
 		const duplicate = fixture('button', confirm);

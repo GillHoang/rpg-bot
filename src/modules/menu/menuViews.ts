@@ -16,6 +16,7 @@ import { CLASS_NAMES } from '../../shared/config/classes.js';
 import { buildBattleLogPage } from '../../shared/ui/render/BattleLogPager.js';
 import { raidBattleOptions } from '../../shared/ui/render/raidBattleOptions.js';
 import { menuButton, buildPanelButtons } from './MenuRegistry.js';
+import { groupHeading, menuAccent } from './menuTheme.js';
 
 function buttonStyle(style?: string): ButtonStyle {
 	switch (style) {
@@ -58,7 +59,7 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 	for (const group of groups) {
 		if (group) {
 			container.addSeparatorComponents((s) => s.setDivider(true));
-			container.addTextDisplayComponents((t) => t.setContent(`### ${group}`));
+			container.addTextDisplayComponents((t) => t.setContent(`### ${groupHeading(group)}`));
 		}
 		const grouped = group ? buttons.filter((b) => (b.group ?? '') === group) : buttons;
 		for (let i = 0; i < grouped.length; i += 5)
@@ -130,12 +131,16 @@ export function menuView(session: MenuSession) {
 		return battleMenuView(session, session.battle);
 	}
 	const id = (action: MenuAction) => menuId(session.id, session.revision, action);
-	const container = new ContainerBuilder().setAccentColor(0xf1c232);
+	const container = new ContainerBuilder().setAccentColor(menuAccent(session));
 	const { title, body } = viewContent(session);
 	container.addTextDisplayComponents((t) => t.setContent(MENU_VIEW_TEXT.heading(title)));
 	addMenuBody(container, session, body);
 	addClassSelector(container, session, id);
 	addGameplayButtons(container, session);
+	if (session.screen.kind !== 'gateSelect' && session.screen.kind !== 'gateTiers') {
+		container.addSeparatorComponents((s) => s.setDivider(true));
+		container.addTextDisplayComponents((t) => t.setContent(MENU_TEXT.footer));
+	}
 	return {
 		components: [container],
 		flags: MessageFlags.IsComponentsV2 as const,

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MENU_ITEMS, buildPanelButtons, getMenuItem } from '../src/modules/menu/MenuRegistry.js';
+import { menuAccent, groupHeading } from '../src/modules/menu/menuTheme.js';
 import { MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
 import { menuId, parseMenuId } from '../src/modules/menu/menuIds.js';
 
@@ -52,10 +53,6 @@ describe('menu item registry', () => {
 			['hunt', 'Hoạt động'],
 			['boss', 'Hoạt động'],
 			['quests', 'Hoạt động'],
-			['inventory', 'Tài sản'],
-			['deity', 'Tài sản'],
-			['shop', 'Tài sản'],
-			['casino', 'Tài sản'],
 			['home', 'Điều hướng'],
 			['back', 'Điều hướng'],
 			['refresh', 'Điều hướng'],
@@ -85,12 +82,24 @@ describe('menu item registry', () => {
 		).toEqual({ kind: 'gateTiers' });
 	});
 
-	it('exposes button options only on the screens they belong to', () => {
-		const session = sessionFor({ kind: 'quests' });
+	it('exposes button options only on the screens they belong to', () => {		const session = sessionFor({ kind: 'quests' });
 		const panel = { title: '', body: '', data: { claimDisabled: true, rerollDisabled: false } };
 		const buttons = buildPanelButtons(session, panel);
 		expect(buttons.find((button) => button.action === 'claim')?.disabled).toBe(true);
 		expect(buttons.find((button) => button.action === 'reroll')?.disabled).toBe(false);
 		expect(buttons.find((button) => button.action === 'boss')).toBeUndefined();
+	});
+
+	it('themes each surface and labels buttons with icons', () => {
+		expect(menuAccent(sessionFor({ kind: 'home' }))).toBe(0xf1c232);
+		expect(menuAccent(sessionFor({ kind: 'profile' }))).toBe(0x5865f2);
+		expect(menuAccent(sessionFor({ kind: 'quests' }))).toBe(0x57f287);
+		expect(menuAccent(sessionFor({ kind: 'confirm', operation: 'boss', day: 'd' }))).toBe(0xed4245);
+		const home = buildPanelButtons(sessionFor({ kind: 'home' }), { title: '', body: '' });
+		for (const action of ['profile', 'help', 'daily', 'hunt', 'boss', 'quests']) {
+			expect(home.find((button) => button.action === action)?.emoji).toBeTruthy();
+		}
+		expect(home.find((button) => button.action === 'hunt')?.style).toBe('primary');
+		expect(groupHeading('Hoạt động')).toContain('Hoạt động');
 	});
 });

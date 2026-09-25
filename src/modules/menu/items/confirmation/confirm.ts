@@ -1,5 +1,6 @@
 import type { MenuItemSpec } from '../../MenuItem.js';
 import { GAMEPLAY_TEXT } from '../../../../shared/ui/text/gameplay.js';
+import { ICONS } from '../../../../shared/ui/text/icons.js';
 
 export default {
 	kind: 'button',
@@ -12,6 +13,7 @@ export default {
 			{
 				label: start ? GAMEPLAY_TEXT.createCharacter : GAMEPLAY_TEXT.confirm,
 				style: start ? ('primary' as const) : ('danger' as const),
+				emoji: start ? ICONS.status.success : ICONS.menu.close,
 			},
 		];
 	},
