@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { Pool } from 'pg';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { readMigrationFiles } from 'drizzle-orm/migrator';
-import { eq, sql } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 vi.mock('../src/db/client.js', () => ({ db: {}, pool: {} }));
 import * as s from '../src/db/schema.js';
@@ -180,7 +180,13 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 		const [first, second] = await Promise.all([run(), run()]);
 		expect(first.status).toBe('ok');
 		expect(second.status).toBe('ok');
-		expect(await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, 'a'))).toHaveLength(2);
+		// Same seed picks the same Epic deity twice: the unique
+		// (discordId, deityId) key collapses the second grant into a dupe
+		// (+1 Epic essence) instead of double-granting ownership.
+		expect(await db.select().from(s.userDeities).where(eq(s.userDeities.discordId, 'a'))).toHaveLength(1);
+		expect((await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'a')))[0].epicEssence).toBe(1);
+		// Pity still counts both pulls: the bag lock serializes the two
+		// transactions, so the second reads the first's committed counter.
 		expect((await db.select().from(s.pityCounters).where(eq(s.pityCounters.discordId, 'a')))[0].pityCount).toBe(2);
 	});
 	it('charges both concurrent enhance attempts exactly once with consistent stats', async () => {
@@ -206,9 +212,16 @@ describe.skipIf(!url)('PostgreSQL multi-connection transactions', () => {
 			new EnhancementService(undefined, undefined, { persistence }).attempt('a', 'pg-rare-1');
 		const results = await Promise.all([attempt(), attempt()]);
 		expect(results.every((r) => r.status === 'success')).toBe(true);
-		expect((await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'a')))[0].credux).toBe(
-			1000000 - 1000 - 3000,
-		);
+		// The bag balance itself is quest-polluted (an enhance quest completes
+		// mid-test), so the exact-charge proof reads the Enhance ledger rows:
+		// +1 cost 1000 then +2 cost 3000, chained with no overlap or gap.
+		const logs = await db
+			.select()
+			.from(s.gameLogs)
+			.where(and(eq(s.gameLogs.discordId, 'a'), eq(s.gameLogs.action, 'Enhance')))
+			.orderBy(s.gameLogs.id);
+		expect(logs).toHaveLength(2);
+		expect(logs.map((l) => l.previousCredux! - l.updatedCredux!).sort((a, b) => a - b)).toEqual([1000, 3000]);
 		const [gear] = await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, 'pg-rare-1'));
 		expect(gear.enhancement).toBe(3);
 		expect(gear.currAtk).toBe(computeWeaponCurrAtk(100, 'Rare', 3));

@@ -48,7 +48,10 @@ export class InteractiveCasinoController {
 		});
 		const message = await i.editReply(render(start));
 		if (start.status !== 'ok' || start.done) return;
-		const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: CASINO_SESSION_TTL_MS });
+		const collector = message.createMessageComponentCollector({
+			componentType: ComponentType.Button,
+			time: CASINO_SESSION_TTL_MS,
+		});
 		let queue = Promise.resolve();
 		collector.on('collect', (button) => {
 			if (button.user.id !== i.user.id) {

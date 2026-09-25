@@ -20,7 +20,13 @@ export const SUMMON_DUPE_TIMES = (count: number): string => ` ×${count}`;
 /** Danh sách pull quá dài (x30 trùng) — phần cắt được tóm tắt bằng dòng này. */
 export const SUMMON_LINES_TRUNCATED = (hidden: number): string => `…và ${hidden} lượt nữa (xem essence trong /balance)`;
 
-export const SUMMON_SUCCESS = (pullCount: number, shardsSpent: string, lines: string, pity: number, maxPity: number): string =>
+export const SUMMON_SUCCESS = (
+	pullCount: number,
+	shardsSpent: string,
+	lines: string,
+	pity: number,
+	maxPity: number,
+): string =>
 	`${ICONS.summon.header} **Triệu hồi x${pullCount}** — đã dùng ${shardsSpent} ${CURRENCY.beliefShards}\n\n` +
 	`${lines}\n\n` +
 	`_Pity hiện tại: ${pity}/${maxPity}_`;
@@ -28,7 +34,13 @@ export const SUMMON_SUCCESS = (pullCount: number, shardsSpent: string, lines: st
 export const SUMMON_INSUFFICIENT_RELICS = (relic: string, needed: number, have: number): string =>
 	`Không đủ ${relic === 'sacred' ? 'Sacred' : 'Supreme'} Relic. Cần ${needed}, hiện có ${have}.`;
 
-export const SUMMON_SUCCESS_RELIC = (pullCount: number, relicLabel: string, lines: string, pity: number, maxPity: number): string =>
+export const SUMMON_SUCCESS_RELIC = (
+	pullCount: number,
+	relicLabel: string,
+	lines: string,
+	pity: number,
+	maxPity: number,
+): string =>
 	`${ICONS.summon.header} **Triệu hồi x${pullCount} (relic)** — đã dùng ${relicLabel}\n\n` +
 	`${lines}\n\n` +
 	`_Pity hiện tại: ${pity}/${maxPity} (relic không ảnh hưởng pity)_`;
