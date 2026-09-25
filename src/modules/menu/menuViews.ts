@@ -19,7 +19,7 @@ import {
 import { HELP_PAGES } from '../../shared/ui/text/help.js';
 
 import type { GamePanel } from './MenuGameplay.js';
-import type { MenuSession } from './MenuSessionStore.js';
+import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, type MenuAction } from './menuIds.js';
 import { CLASS_NAMES } from '../../shared/config/classes.js';
 import { buildBattleLogPage } from '../../shared/ui/render/BattleLogPager.js';
@@ -40,6 +40,13 @@ export function helpMatches(query: string): number[] {
 		const text = normalize(`${page.title} ${page.body}`);
 		return words.every((word) => text.includes(word)) ? [index] : [];
 	});
+}
+
+/** Topic indexes selectable on a help/search screen (help = every page). */
+export function availableTopics(screen: MenuScreen): number[] {
+	if (screen.kind === 'help') return HELP_PAGES.map((_, index) => index);
+	if (screen.kind === 'search') return helpMatches(screen.query).slice(0, 25);
+	return [];
 }
 
 export function recoveryView(text: string) {

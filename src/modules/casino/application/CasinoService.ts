@@ -5,7 +5,7 @@ import { CasinoGameRegistry, type StatelessCasinoGameKey } from '../domain/Casin
 import type { CasinoOutcome } from '../domain/ICasinoGame.js';
 import { MAX_BET } from '../../../shared/config/casinoPayouts.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type PlayResult =
@@ -43,7 +43,7 @@ export class CasinoService {
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new CasinoRepository();
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 	}
 
 	async play(discordId: string, game: StatelessCasinoGameKey, bet: number, choice?: string): Promise<PlayResult> {

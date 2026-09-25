@@ -7,7 +7,7 @@ import { LootInventoryRepository } from '../infrastructure/LootInventoryReposito
 import { LootRepository } from '../infrastructure/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../../../shared/config/chestLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
 import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import {
@@ -88,7 +88,7 @@ export class LootService {
 			(repo?.rune && repo.gear
 				? { rune: repo.rune.bind(repo), gear: repo.gear.bind(repo) }
 				: new LootGrantService());
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 		this.queries = options.queries ?? new LootInventoryRepository();
 	}
 	async open(id: string, key: ChestKey, count: number): Promise<Result<string, AppError>> {

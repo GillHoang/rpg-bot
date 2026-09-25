@@ -2,7 +2,7 @@ import { ok, type Result, AppError } from '../../../shared/kernel/Result.js';
 import type { UseCase } from '../../../shared/kernel/UseCase.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS } from '../../../shared/kernel/EventBus.js';
 import { SummonRepository } from '../infrastructure/SummonRepository.js';
 import { UserCharacterRepository } from '../../identity/infrastructure/UserCharacterRepository.js';
 import { DeityService, type DeityRosterRow } from './DeityService.js';
@@ -73,7 +73,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.characters = characters ?? new UserCharacterRepository();
 		this.deities = deities ?? new DeityService();
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 		this.queries = options.queries ?? new SummonRepository();
 	}
 

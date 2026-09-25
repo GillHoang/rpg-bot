@@ -14,8 +14,8 @@ import { MenuCapacityError, MenuSessionStore, type MenuScreen, type MenuSession 
 import { GAME_ACTIONS, MENU_OPEN_ID, MENU_PREFIX, parseMenuId, type MenuAction } from './menuIds.js';
 import type { MenuGameplay } from './MenuGameplay.js';
 import { CLASS_NAMES } from '../../shared/config/classes.js';
-import { helpMatches, menuView, recoveryView, searchModal } from './menuViews.js';
-import { HELP_PAGES } from '../../shared/ui/text/help.js';
+import { availableTopics, menuView, recoveryView, searchModal } from './menuViews.js';
+import { shouldForkSession } from './menuSessionPolicy.js';
 
 type MenuInteraction = ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction;
 
@@ -92,13 +92,7 @@ export class MenuRouter {
 	}
 
 	private selectSession(source: MenuSession, action: MenuAction): MenuSession {
-		if (
-			!source.launcher ||
-			this.updatesInPlace(source, action) ||
-			source.gamePanel?.classes ||
-			['search', 'close'].includes(action)
-		)
-			return source;
+		if (!shouldForkSession(source, action)) return source;
 		const session = this.sessions.create(source.ownerId);
 		Object.assign(session, {
 			screen: source.screen,
@@ -111,18 +105,6 @@ export class MenuRouter {
 		});
 		source.pendingModal = null;
 		return session;
-	}
-
-	private updatesInPlace(source: MenuSession, action: MenuAction): boolean {
-		if (source.gamePanel?.classes) return true;
-		if (['daily', 'quests', 'claim', 'reroll'].includes(action)) return true;
-		if (
-			source.screen.kind === 'confirm' &&
-			source.screen.operation === 'reroll' &&
-			['confirm', 'cancel'].includes(action)
-		)
-			return true;
-		return source.screen.kind !== 'home' && ['home', 'back', 'refresh'].includes(action);
 	}
 
 	private async dispatch(
@@ -214,7 +196,7 @@ export class MenuRouter {
 		if (action === 'section' && Object.hasOwn(MENU_SECTIONS, value)) {
 			next = { kind: 'section', section: value as MenuSection };
 		} else if (action === 'topic' && /^(0|[1-9]\d*)$/.test(value)) {
-			const available = this.availableTopics(session.screen);
+			const available = availableTopics(session.screen);
 			if (available.includes(Number(value))) next = { kind: 'topic', index: Number(value) };
 		}
 		if (!next) {
@@ -260,12 +242,6 @@ export class MenuRouter {
 		} else {
 			await this.navigate(interaction, session, { kind: 'help' });
 		}
-	}
-
-	private availableTopics(screen: MenuScreen): number[] {
-		if (screen.kind === 'help') return HELP_PAGES.map((_, n) => n);
-		if (screen.kind === 'search') return helpMatches(screen.query).slice(0, 25);
-		return [];
 	}
 
 	sweep(): void {

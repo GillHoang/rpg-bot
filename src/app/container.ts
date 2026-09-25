@@ -114,8 +114,9 @@ export interface AppContainer {
 }
 
 export function createAppContainer(options: ApplicationOptions = {}): AppContainer {
-	// Production wiring owns its live context explicitly — the deprecated
-	// defaultPersistence global stays reserved for the PGlite test suites.
+	// Production wiring owns its live context explicitly; there is no global
+	// default — a missing context is a wiring bug that `requirePersistence`
+	// fails fast on.
 	const persistence = options.persistence ?? createLivePersistence();
 	const events = options.events ?? new EventBus();
 	const clock = options.clock ?? systemClock;
