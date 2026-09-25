@@ -18,7 +18,8 @@ vào menu (lộ trình ở mục [Định hướng menu thuần](#định-hướ
   titles, relics, rune bag, Diamond/Genesis chest.
 
 triển khai gameflow: [docs/gameplay-implementation.md](docs/gameplay-implementation.md) ·
-triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md).
+triển khai M7: [docs/m7-implementation.md](docs/m7-implementation.md) ·
+**người chơi đọc [hướng dẫn chơi chi tiết](docs/player-guide.md)**.
 
 ## Yêu cầu
 
