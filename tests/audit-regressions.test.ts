@@ -121,11 +121,14 @@ it('reset rolls back deleted data if audit cannot be written', async () => {
 import { InventoryDataRepository } from '../src/modules/progression/infrastructure/InventoryDataRepository.js';
 it('starter equipment is selected from the active preset and switches correctly', async () => {
 	const inventory = new InventoryDataRepository(db);
-	expect((await inventory.searchWeapons('audit-a', ''))[0].equipped).toBe(true);
+	// Weapons are wielded by deities now: a preset-bound starter weapon is idle
+	// until attached via /weapon equip, while armor still follows the preset.
+	expect((await inventory.searchWeapons('audit-a', ''))[0].equipped).toBe(false);
 	expect((await inventory.searchArmors('audit-a', ''))[0].equipped).toBe(true);
 	await db.update(s.userCharacter).set({ activePresetSlot: 2 }).where(eq(s.userCharacter.discordId, 'audit-a'));
-	expect((await inventory.searchWeapons('audit-a', ''))[0].equipped).toBe(false);
+	expect((await inventory.searchArmors('audit-a', ''))[0]?.equipped ?? false).toBe(false);
 	await db.update(s.userCharacter).set({ activePresetSlot: 1 }).where(eq(s.userCharacter.discordId, 'audit-a'));
+	expect((await inventory.searchArmors('audit-a', ''))[0].equipped).toBe(true);
 });
 
 import { ProfileService } from '../src/modules/identity/application/ProfileService.js';

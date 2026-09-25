@@ -1,8 +1,6 @@
 import { selectGateTier } from './RaidGatePolicy.js';
 import type { GateTier } from '../../../shared/config/portals.js';
-import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
-import { LOOT_CHEST_NAMES } from '../../../shared/ui/text/loot.js';
 import {
 	RAID_CONFIRMATION_TEXT,
 	BOSS_ALREADY_DONE,
@@ -18,26 +16,22 @@ import { PlayerAccountRepository } from '../../identity/infrastructure/PlayerAcc
 import type { PlayerAccount } from '../../identity/domain/PlayerAccount.js';
 import { MonsterEncounterService, type MonsterStats } from './MonsterEncounterService.js';
 import { UserCharacterRepository } from '../../identity/infrastructure/UserCharacterRepository.js';
-import { RaidRewardService, type RaidRewardResult } from './RaidRewardService.js';
+import { RaidRewardService } from './RaidRewardService.js';
+import { RaidSettlementService } from './RaidSettlementService.js';
+import type { RaidResult, RaidRunOptions } from './RaidTypes.js';
 import { StatAssemblyService } from '../../combat-shared/application/StatAssemblyService.js';
 import type { CombatSetup } from '../../combat-shared/application/CombatSetup.js';
 import { createCombatant } from '../../combat-shared/domain/CombatantState.js';
 import { BattleEngine, type BattleResult } from '../../combat-shared/domain/BattleEngine.js';
 import { createBattleActionContext } from '../../combat-shared/domain/BattleActionContext.js';
 import { PlayerCombatantFactory } from '../../combat-shared/application/combatantFactory.js';
-import { scaleExpForMobLevel } from '../../../shared/config/expScaling.js';
 import {
-	RAID_LOOT_REGULAR,
-	RAID_LOOT_ELITE,
-	RAID_LOOT_BOSS,
 	BOSS_ENTRY,
 	RAID_HUNT_COOLDOWN_SECONDS,
 	BOSS_ROLLING_COOLDOWN_MINUTES,
-	randInt,
-	rollRaidChest,
 } from '../../../shared/config/raidLoot.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
 import { CosmeticService } from '../../meta/application/CosmeticService.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
@@ -45,50 +39,12 @@ import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
 import { MonsterStrategy } from '../../combat-shared/domain/classes/MonsterStrategy.js';
 import { LootGrantService } from '../../economy/application/LootGrantService.js';
 
-export type RaidResult =
-	| { status: 'already-processed' }
-	| { status: 'cooldown'; retryAt: Date }
-	| { status: 'not-registered' }
-	| { status: 'no-character' }
-	| { status: 'no-monsters-seeded' }
-	| { status: 'boss-locked'; message: string }
-	| { status: 'portal-locked'; message: string }
-	| {
-			status: 'ok';
-			battle: BattleResult;
-			monsterName: string;
-			credux: number;
-			shards: number;
-			expGained: number;
-			gotChest: boolean;
-			chestName: string;
-			gearDrop: string | null;
-			progress: RaidRewardResult;
-	  };
-
-export interface RaidRunOptions {
-	gate?: number;
-	tier?: number;
-	requestId?: string;
-	expectedDay?: string;
-}
+export type { RaidResult, RaidRunOptions } from './RaidTypes.js';
 
 /** Cooldown overrides (seconds/minutes) — production defaults come from env-backed config. */
 export interface RaidCooldowns {
 	huntSeconds?: number;
 	bossMinutes?: number;
-}
-
-/** Dữ liệu đầu vào cho bước settle sau khi battle đã resolve trong transaction. */
-interface RaidSettlement {
-	now: Date;
-	character: { highestRaidStreak: number };
-	combatLevel: number;
-	gatesCleared: number[];
-	gateTier?: GateTier;
-	monsterStats: MonsterStats;
-	lootRng: () => number;
-	battle: BattleResult;
 }
 
 export interface RaidDependencies {
@@ -123,43 +79,6 @@ export interface RaidDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	loot?: Pick<LootGrantService, 'gear'>;
 	cooldowns?: RaidCooldowns;
-}
-
-function rollBattleRewards(lootRng: () => number, won: boolean, boss: boolean, mobType: string, combatLevel: number) {
-	let table: typeof RAID_LOOT_BOSS | typeof RAID_LOOT_ELITE | typeof RAID_LOOT_REGULAR = RAID_LOOT_REGULAR;
-	let chestField: 'silverChest' | 'goldChest' | 'bossTreasureChest' = 'silverChest';
-	let chestName: string = LOOT_CHEST_NAMES.silver;
-	if (boss) {
-		table = RAID_LOOT_BOSS;
-		chestField = 'bossTreasureChest';
-		chestName = LOOT_CHEST_NAMES.boss;
-	} else if (mobType === 'final' || mobType === 'elite') {
-		// Final Boss gate & elite: thưởng bậc Elite (final miễn phí, không đụng daily boss fee).
-		table = RAID_LOOT_ELITE;
-		chestField = 'goldChest';
-		chestName = LOOT_CHEST_NAMES.gold;
-	}
-	let credux = 0;
-	let shards = 0;
-	let baseExp: number;
-	let gotChest = false;
-
-	if (won) {
-		credux = randInt(lootRng, table.win.creduxRange);
-		baseExp = randInt(lootRng, table.win.expRange);
-		shards = randInt(lootRng, table.win.shardsRange);
-		gotChest = rollRaidChest(lootRng, table.win.chestChance);
-	} else {
-		baseExp = table.loss.exp;
-	}
-	const expGained = scaleExpForMobLevel(baseExp, combatLevel);
-	return { credux, shards, expGained, gotChest, chestField, chestName };
-}
-
-/** Tên hiển thị của encounter: tiền tố portal (Gate/Tầng) + tên quái + bậc. */
-function raidMonsterName(gateTier: GateTier | undefined, monsterStats: MonsterStats): string {
-	const prefix = gateTier ? `${GATE_TEXT.gate(gateTier)} · ` : '';
-	return `${prefix}${monsterStats.name} [${monsterStats.mobType}]`;
 }
 
 /**
@@ -201,6 +120,7 @@ export class RaidService {
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
 	private readonly loot: Pick<LootGrantService, 'gear'>;
 	private readonly cooldowns: Required<RaidCooldowns>;
+	private readonly settlement: RaidSettlementService;
 
 	constructor(options: RaidDependencies) {
 		// Compatibility fallback: production must inject via createAppContainer.
@@ -215,7 +135,7 @@ export class RaidService {
 			options.combat?.statAssembly ??
 			new StatAssemblyService(undefined, undefined, undefined, { persistence: this.persistence });
 		this.cosmetics = options.cosmetics ?? new CosmeticService({ persistence: this.persistence });
-		this.events = options.events ?? new EventBus();
+		this.events = options.events ?? EMIT_ONLY_EVENT_BUS;
 		this.queries = options.queries ?? new RaidRepository();
 		this.engine = options.engine ?? options.combat?.engine ?? new BattleEngine();
 		this.factory = options.factory ?? options.combat?.factory ?? new PlayerCombatantFactory();
@@ -225,6 +145,13 @@ export class RaidService {
 			huntSeconds: options.cooldowns?.huntSeconds ?? RAID_HUNT_COOLDOWN_SECONDS,
 			bossMinutes: options.cooldowns?.bossMinutes ?? BOSS_ROLLING_COOLDOWN_MINUTES,
 		};
+		this.settlement = new RaidSettlementService({
+			queries: this.queries,
+			rewards: this.rewards,
+			cosmetics: this.cosmetics,
+			progress: this.progress,
+			loot: this.loot,
+		});
 	}
 
 	async run(discordId: string, boss = false, options: RaidRunOptions = {}): Promise<RaidResult> {
@@ -302,7 +229,7 @@ export class RaidService {
 				new Date(now.getTime() + this.cooldowns.huntSeconds * 1000),
 			);
 		}
-		return this.settle(tx, discordId, boss, options, {
+		return this.settlement.settle(tx, discordId, boss, options, {
 			now,
 			character,
 			combatLevel: account.combatLevel,
@@ -386,67 +313,6 @@ export class RaidService {
 		});
 	}
 
-	/** Roll thưởng, ghi tiến độ portal/streak/receipt — chỉ chạy sau khi battle đã resolve. */
-	private async settle(
-		tx: Transaction,
-		discordId: string,
-		boss: boolean,
-		options: RaidRunOptions,
-		ctx: RaidSettlement,
-	): Promise<RaidResult> {
-		const won = ctx.battle.outcome === 'player_win';
-		const mobType = ctx.gateTier?.finalBoss ? 'final' : ctx.monsterStats.mobType;
-		const { credux, shards, expGained, gotChest, chestField, chestName } = rollBattleRewards(
-			ctx.lootRng,
-			won,
-			boss,
-			mobType,
-			ctx.gateTier?.level ?? ctx.combatLevel,
-		);
-
-		const progress = await this.rewards.grant(tx, discordId, {
-			expGain: expGained,
-			credux,
-			shards,
-			grantChest: gotChest,
-			chestField,
-			boss: boss || ctx.gateTier?.finalBoss,
-			battleType: boss ? 'boss' : 'raid',
-			enemyName: ctx.monsterStats.name,
-			enemyTier: ctx.monsterStats.mobType as 'regular' | 'elite' | 'boss',
-			outcome: ctx.battle.outcome,
-		});
-		if (won && ctx.gateTier)
-			await this.queries.updateCharacter(tx, discordId, {
-				[`gate${ctx.gateTier.gate.id}TiersCleared`]: Math.max(
-					ctx.gatesCleared[ctx.gateTier.gate.id - 1] ?? 0,
-					ctx.gateTier.number,
-				),
-			});
-		await this.updateRaidStreak(tx, discordId, ctx.character.highestRaidStreak, won);
-		const gearDrop = await this.grantRaidExtras(tx, discordId, ctx.lootRng, won, boss);
-		if (won)
-			await this.progress.apply(tx, discordId, ctx.gateTier?.finalBoss ? 'final_boss_win' : 'raid_win', ctx.now);
-		if (options.requestId)
-			await this.queries.insertReceipt(tx, {
-				discordId,
-				requestId: options.requestId,
-				kind: boss ? 'boss' : 'hunt',
-			});
-		return {
-			status: 'ok',
-			battle: ctx.battle,
-			monsterName: raidMonsterName(ctx.gateTier, ctx.monsterStats),
-			credux,
-			shards,
-			expGained,
-			gotChest,
-			chestName,
-			gearDrop,
-			progress,
-		};
-	}
-
 	private async validateAttempt(
 		tx: Transaction,
 		discordId: string,
@@ -460,40 +326,6 @@ export class RaidService {
 		}
 		if (boss && options.expectedDay && options.expectedDay !== day) {
 			return { status: 'boss-locked', message: RAID_CONFIRMATION_TEXT.dayChanged };
-		}
-		return null;
-	}
-
-	/** Win streak from the raid_logs tail that grant() just appended to; only the record streak is persisted. */
-	private async updateRaidStreak(
-		tx: Transaction,
-		discordId: string,
-		highestRaidStreak: number,
-		won: boolean,
-	): Promise<void> {
-		if (!won) return;
-		const streak = await this.rewards.currentWinStreak(tx, discordId);
-		if (streak > highestRaidStreak) {
-			await this.queries.updateCharacter(tx, discordId, { highestRaidStreak: streak });
-		}
-		if (streak >= 10) {
-			// Chuỗi thắng raid 10 — title Unstoppable (idempotent).
-			await this.cosmetics.grantTitleInTx(tx, discordId, 'streak_master');
-		}
-	}
-
-	/** Boss-only extras: the Bakunawa Slayer title and the 30% Mythic gear drop. */
-	private async grantRaidExtras(
-		tx: Transaction,
-		discordId: string,
-		lootRng: () => number,
-		won: boolean,
-		boss: boolean,
-	): Promise<string | null> {
-		if (!won || !boss) return null;
-		await this.cosmetics.grantTitleInTx(tx, discordId, 'boss_slayer');
-		if (rollRaidChest(lootRng, BOSS_ENTRY.gearChance)) {
-			return this.loot.gear(tx, discordId, 'Mythic', lootRng);
 		}
 		return null;
 	}

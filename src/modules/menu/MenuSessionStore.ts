@@ -5,10 +5,7 @@ import type { GamePanel, GameplayScreen, MenuBattle } from './MenuGameplay.js';
 export type MenuScreen =
 	| GameplayScreen
 	| { kind: 'home' }
-	| { kind: 'section'; section: MenuSection }
-	| { kind: 'help' }
-	| { kind: 'topic'; index: number }
-	| { kind: 'search'; query: string };
+	| { kind: 'section'; section: MenuSection };
 
 export interface MenuSession {
 	id: string;
@@ -19,7 +16,6 @@ export interface MenuSession {
 	history: MenuScreen[];
 	expiresAt: number;
 	busy: boolean;
-	pendingModal: string | null;
 	portalGate?: number;
 	/** Gate đang chọn ở màn tier (1-5). */
 	gateId?: number;
@@ -69,7 +65,6 @@ export class MenuSessionStore {
 			history: [],
 			expiresAt: this.now() + this.ttlMs,
 			busy: true,
-			pendingModal: null,
 		};
 		this.sessions.set(session.id, session);
 		return session;

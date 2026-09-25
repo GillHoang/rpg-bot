@@ -123,7 +123,7 @@ describe('InventoryService projections and persistence isolation', () => {
 		const firstPage = await inventory.list('owner', 'weapons', 1);
 		expect(firstPage).toHaveLength(8);
 		expect(firstPage[0]).toBe(
-			'**Sword** (Common) +2\nID: `W01` · ATK 150 · CRIT 7.5%\nSockets: [null,"R02"] / [null]',
+			'**Sword** (Common · Common) +2\nID: `W01` · ATK 150 · CRIT 7.5%\nSockets: [null,"R02"] / [null]',
 		);
 		expect(firstPage[7]).toContain('`W08`');
 		const secondPage = await inventory.list('owner', 'weapons', 2);
@@ -157,7 +157,8 @@ describe('InventoryService projections and persistence isolation', () => {
 		const weapons = await inventory.searchWeapons('owner', 'sWoRd');
 		expect(weapons).toHaveLength(25);
 		expect(weapons[0]).toEqual({ id: 'W01', name: 'Sword', tier: 'Common', plus: 2, equipped: false });
-		expect(weapons.find((row) => row.id === 'W03')?.equipped).toBe(true);
+		// Equipped means wielded by a deity now — preset links no longer count.
+		expect(weapons.find((row) => row.id === 'W03')?.equipped).toBe(false);
 		expect(await inventory.searchWeapons('owner', 'w26')).toEqual([
 			{ id: 'W26', name: 'Sword', tier: 'Common', plus: 2, equipped: false },
 		]);

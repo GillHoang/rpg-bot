@@ -3,7 +3,7 @@ import { AppError } from '../../../shared/kernel/Result.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 
 import { PlayerAccountRepository } from '../../identity/infrastructure/PlayerAccountRepository.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
 import type { PlayerAccount } from '../../identity/domain/PlayerAccount.js';
 
 export interface EconomyDependencies {
@@ -34,7 +34,7 @@ export class EconomyService {
 	) {
 		this.persistence = requirePersistence(options, 'EconomyService');
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 	}
 
 	async getAccount(discordId: string): Promise<PlayerAccount | null> {

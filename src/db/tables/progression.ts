@@ -89,6 +89,13 @@ export const userWeapons = pgTable(
 		enhancement: integer('enhancement').notNull().default(1),
 		baseAtk: integer('base_atk').notNull(),
 		crit: real('crit').notNull(),
+		/** OwO-style rolled grade; multiplies stats at assembly time (see weaponQuality.ts). */
+		quality: text('quality').notNull().default('Common'),
+		/** Deity currently wielding this weapon (one weapon per deity). Only the
+		 * pantheon lead's weapon counts in battle — see StatAssemblyService. */
+		attachedDeityId: integer('attached_deity_id').references(() => userDeities.userDeityId, {
+			onDelete: 'set null',
+		}),
 		bonusDmgPct: real('bonus_dmg_pct'),
 		isLocked: boolean('is_locked').notNull().default(false),
 		obtainedAt: timestamp('obtained_at', { mode: 'date', withTimezone: false })

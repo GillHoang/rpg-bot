@@ -89,7 +89,13 @@ scheduler trong bot chỉ quét dọn duel hết hạn và lock treo mỗi 30 gi
 tác là nút/select có `revision` chống click cũ, receipt `menu_action_receipts`
 chống xử lý lại. Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) ·
 [Menu giai đoạn 2](docs/menu-phase-2.md). Khi nâng cấp lên giai đoạn 2, chạy
-`npm run db:migrate` trước khi khởi động bot để tạo bảng chống xử lý lại trận đấu.
+`pnpm db:migrate` trước khi khởi động bot để tạo bảng chống xử lý lại trận đấu.
+
+**Phần tử menu đăng ký qua file**: mỗi nút nằm trong một file
+`src/modules/menu/items/{category}/{name}.ts` (default-export một `MenuItemSpec`).
+Tên file = action, thư mục = category (freestyle, lồng nhau được). Thêm nút =
+thêm file rồi chạy `pnpm menu:registry` để sinh `items/registry.generated.ts`
+(CI chặn nếu file generated lệch qua `pnpm menu:registry:check`).
 
 | Màn hình | Nội dung |
 | --- | --- |
@@ -99,19 +105,20 @@ chống xử lý lại. Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) 
 | Daily | Điểm danh streak 1–30 + milestone chest |
 | Quests | Xem 3 daily + 3 weekly, reroll daily, claim Weekly Grand |
 | Battle | Chọn gate/tier (portal), đánh boss có confirm, nối tầng thắng, đọc log từng hiệp |
-| Help | Hướng dẫn + tìm kiếm bằng modal |
+| Help | Nút dẫn tới `/help` (menu không còn màn hình/tìm kiếm hướng dẫn) |
 
 ## Slash commands (lớp API nền)
 
 Mỗi lệnh là lớp mỏng trên service dùng chung với menu (cùng transaction,
 cùng rule) — dùng trực tiếp khi cần, không cần học hết để chơi. Cột **Menu**
-cho biết lệnh đã có trong `/menu` hay đang chờhút (xem lộ trình bên dưới).
+cho biết lệnh đã có trong `/menu` hay đang chờ hút (xem lộ trình bên dưới).
 
 Kinh tế và tiến trình cơ bản:
 
 | Lệnh | Chức năng | Menu |
 | --- | --- | --- |
-| `/start` | Onboarding một chạm: đồng ý điều khoản → chọn class → xác nhận | ✅ (màn tạo nhân vật) || `/help` | Hướng dẫn chơi đầy đủ, phân trang theo chủ đề (bot đang beta — số liệu có thể thay đổi) | ✅ (màn help + tìm kiếm) |
+| `/start` | Onboarding một chạm: đồng ý điều khoản → chọn class → xác nhận | ✅ (màn tạo nhân vật) |
+| `/help` | Hướng dẫn chơi đầy đủ, phân trang theo chủ đề (bot đang beta — số liệu có thể thay đổi) | ✅ (màn help + tìm kiếm) |
 | `/balance` | Credux, shards, rương, essence + gợi ý lệnh | ⏳ |
 | `/daily` | Quà hằng ngày theo streak 1–30, milestone chest theo streak tổng | ✅ |
 | `/profile` | Thẻ nhân vật canvas: stat trận đấu, EXP, title, believer level, pvp rating | ✅ |
@@ -168,8 +175,8 @@ Lịch sử thiết kế và port được lưu tại [port-history.md](docs/por
 ## Định hướng menu thuần
 
 Mục tiêu: người chơi mới **không cần học lệnh nào ngoài `/menu`**. Slash commands
-còn lại phục vụ power-user/automation và dần đượchút — service đã không
-phụ thuộc UI (command chỉ là lớp mỏng gọi use-case), nên mỗi đợthút chỉ
+còn lại phục vụ power-user/automation và dần được hút — service đã không
+phụ thuộc UI (command chỉ là lớp mỏng gọi use-case), nên mỗi đợt hút chỉ
 cần thêm panel + action + receipt, không sửa rule.
 
 | Đợt | Phạm vi | Trạng thái |

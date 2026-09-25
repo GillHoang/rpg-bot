@@ -10,7 +10,6 @@ import { GATE_TEXT } from '../../shared/ui/text/portals.js';
 import { battleLobbyPanel } from './gameplayPanels.js';
 import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
-import type { MenuAction } from './menuIds.js';
 import type { ProfileSummaryData } from '../identity/application/ProfileService.js';
 import type { MenuPlayerState } from './infrastructure/MenuPlayerRepository.js';
 
@@ -58,15 +57,10 @@ export function gateSelectPanel(
 		GATE_TEXT.rules,
 		panel.body,
 	].join('\n');
-	panel.buttons = [
-		...GATES.map((g) => ({
-			action: 'gate' as MenuAction,
-			label: `Gate ${g.id}`,
-			value: String(g.id),
-			disabled: !gateUnlocked(g, cleared, level),
-		})),
-		...panel.buttons.slice(1),
-	];
+	panel.data = {
+		...panel.data,
+		gates: GATES.map((g) => ({ id: g.id, disabled: !gateUnlocked(g, cleared, level) })),
+	};
 	return panel;
 }
 
@@ -99,15 +93,12 @@ export function gateTiersPanel(
 	]
 		.filter(Boolean)
 		.join('\n');
-	panel.buttons = [
-		...tiers.map((tier) => ({
-			action: 'fight' as const,
-			label: GATE_TEXT.fightTier(tier.number),
-			value: String(tier.number),
+	panel.data = {
+		...panel.data,
+		tiers: tiers.map((tier) => ({
+			number: tier.number,
 			disabled: !gateUnlocked(gate, cleared, level) || tier.number > gateCleared + 1,
 		})),
-		{ action: 'hunt', label: GATE_TEXT.chooseGate },
-		...panel.buttons.slice(1),
-	];
+	};
 	return panel;
 }

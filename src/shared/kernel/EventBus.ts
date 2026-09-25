@@ -55,3 +55,12 @@ export class EventBus {
 		this.emitter.emit(event, payload);
 	}
 }
+
+/**
+ * Test-friendly fallback for services constructed without an injected bus.
+ * A fresh `new EventBus()` here would look like a real bus but never have the
+ * application's observers wired (a silent trap); a no-op emit is honest about
+ * the fact that nobody is listening. Production always injects the shared bus
+ * from `createAppContainer`.
+ */
+export const EMIT_ONLY_EVENT_BUS: Pick<EventBus, 'emit'> = Object.freeze({ emit: () => {} });

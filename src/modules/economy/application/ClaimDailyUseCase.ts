@@ -1,7 +1,7 @@
 import { ok, type Result, AppError } from '../../../shared/kernel/Result.js';
 import type { UseCase } from '../../../shared/kernel/UseCase.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS } from '../../../shared/kernel/EventBus.js';
 import { DailyRepository } from '../infrastructure/DailyRepository.js';
 import { DailyRewardTable } from '../domain/DailyRewardTable.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
@@ -33,7 +33,7 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 		this.persistence = requirePersistence(options, 'ClaimDailyUseCase');
 		this.clock = options.clock ?? systemClock;
 		this.repo = repo ?? new DailyRepository();
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 	}
 

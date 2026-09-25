@@ -70,6 +70,7 @@ export const HELP_PAGES: readonly HelpPage[] = [
 			'Toàn bộ ID gear/rune tra ở `/inventory` — mọi lệnh khác đều nhận ID từ đó.',
 			`**${ICONS.menu.inventory} \`/inventory [bag|weapons|armors|runes] [page]\`** — ví + kho, 8 món/trang, có nút chuyển loại/trang.`,
 			`**${ICONS.gear.weapon} \`/equip kind:<weapon|armor|deity> id:<id> [preset:1|2]\`** — trang bị (gõ \`id\` sẽ có gợi ý tự động). \`/preset switch slot:<1|2>\` đảo nhanh giữa 2 bộ preset.`,
+			`**${ICONS.gear.weapon} \`/weapon\`** — \`crate\` quay vũ khí mới (150.000 Credux, phẩm ngẫu nhiên Common→Fabled) · \`view\` xem chi tiết · \`equip\` cho deity cầm (chỉ vũ khí của deity chủ đạo slot 1 tính vào combat) · \`unequip\` gỡ ra · \`upgrade\` nâng phẩm bằng weapon shard · \`dismantle\` rã lấy shard · \`sell\` bán lấy Credux. Nội tại vũ khí có tác dụng trong mọi trận đấu.`,
 			`**${ICONS.gear.enhance} \`/enhance gear_id:<id>\`** — nâng cấp **+1 mỗi lần thử**. Tỷ lệ thành công giảm dần: +1 100% → +10 10%; thất bại mất tiền nhưng giữ nguyên cấp. Tối đa **+10** (gear Divine tới +20). Giá tăng theo tier: Rare rẻ nhất → Supreme/Divine đắt nhất.`,
 			`**${ICONS.reward.chest} \`/open chest:<loại> [count:1–10]\`** — mở rương: Silver · Gold · Boss Treasure · Boss Golden · Diamond · Genesis. Rương càng hiếm càng nhiều rune/gear/essence/relic, và có thể rơi thêm **túi rune** (lb/gb/db).`,
 			'**Rune:** `/runes shop [lb|gb|db]` — xem giá/mua túi rune (Essence + Credux) · `/runes open bag:<lb|gb|db>` — mở túi, nhận rune ngẫu nhiên.',

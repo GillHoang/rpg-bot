@@ -34,7 +34,20 @@ export class ProfileQueryRepository extends PlayerLoadoutQueryRepository {
 		const ids = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id].filter(
 			(id): id is number => id !== null,
 		);
-		const [weapons, armors, deities] = await Promise.all([
+		const [leadWeapons, legacyWeapons, armors, deities] = await Promise.all([
+			preset.equippedDeity1Id
+				? executor
+						.select({ name: weaponRoster.name, enhancement: userWeapons.enhancement })
+						.from(userWeapons)
+						.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
+						.where(
+							and(
+								eq(userWeapons.discordId, discordId),
+								eq(userWeapons.attachedDeityId, preset.equippedDeity1Id),
+							),
+						)
+						.limit(1)
+				: [],
 			preset.equippedWeaponId
 				? executor
 						.select({ name: weaponRoster.name, enhancement: userWeapons.enhancement })
@@ -46,6 +59,7 @@ export class ProfileQueryRepository extends PlayerLoadoutQueryRepository {
 								eq(userWeapons.weaponId, preset.equippedWeaponId),
 							),
 						)
+						.limit(1)
 				: [],
 			preset.equippedArmorId
 				? executor
@@ -63,7 +77,7 @@ export class ProfileQueryRepository extends PlayerLoadoutQueryRepository {
 				: [],
 		]);
 		return {
-			weapon: weapons[0] ?? null,
+			weapon: leadWeapons[0] ?? legacyWeapons[0] ?? null,
 			armor: armors[0] ?? null,
 			deities: ids.flatMap((id) => {
 				const deity = deities.find((d) => d.id === id);

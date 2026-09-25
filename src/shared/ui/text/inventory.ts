@@ -46,9 +46,9 @@ export interface GearListEntry {
 	opposite: string;
 }
 
-export function WEAPON_LIST_LINE(e: GearListEntry & { atk: number; crit: number }): string {
+export function WEAPON_LIST_LINE(e: GearListEntry & { atk: number; crit: number; quality?: string }): string {
 	return (
-		`**${e.name}** (${e.tier}) +${e.plus}
+		`**${e.name}** (${e.tier}${e.quality ? ` · ${e.quality}` : ''}) +${e.plus}
 ` +
 		`ID: \`${e.id}\` · ATK ${e.atk} · CRIT ${e.crit}%
 ` +

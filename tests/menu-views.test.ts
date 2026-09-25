@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { MessageFlags } from 'discord.js';
-import { HELP_PAGES } from '../src/shared/ui/text/help.js';
-import { MENU_SECTIONS, type MenuSection } from '../src/shared/ui/text/menu.js';
+import { MENU_SECTIONS, MENU_TEXT, type MenuSection } from '../src/shared/ui/text/menu.js';
 import { MenuSessionStore, type MenuScreen } from '../src/modules/menu/MenuSessionStore.js';
 import { MENU_OPEN_ID, menuId, parseMenuId } from '../src/modules/menu/menuIds.js';
-import { helpMatches, menuView, recoveryView, searchModal } from '../src/modules/menu/menuViews.js';
+import { menuView, recoveryView } from '../src/modules/menu/menuViews.js';
+import { buildPanelButtons } from '../src/modules/menu/MenuRegistry.js';
 import { buildBattleLogPage } from '../src/shared/ui/render/BattleLogPager.js';
 import { raidBattleOptions } from '../src/shared/ui/render/raidBattleOptions.js';
 import { battlePanel } from '../src/modules/menu/gameplayPanels.js';
+
+function json(payload: unknown): Record<string, unknown> {
+	return JSON.parse(JSON.stringify(payload));
+}
 
 describe('menu payloads', () => {
 	it('renders every journal round identically to raid hunt, including pager controls', () => {
@@ -51,30 +55,36 @@ describe('menu payloads', () => {
 				page === -1 ? 2 : page,
 			).components[0];
 			expect(withoutIds(actual)).toEqual(withoutIds(expected));
-			const payload = JSON.parse(JSON.stringify(menuView(session)));
+			const payload = json(menuView(session));
 			expect(payload.components).toHaveLength(2);
-			expect(payload.components[1].components).toHaveLength(2);
-			expect(parseMenuId(payload.components[1].components[0].custom_id)?.action).toBe('home');
-			expect(parseMenuId(payload.components[1].components[1].custom_id)?.action).toBe('hunt');
-			expect(payload.components[1].components[1].label).toBe('Chọn Gate (Cửa)');
+			expect((payload.components as unknown[])[1] as Record<string, unknown>).toBeDefined();
+			const row = (payload.components as { components: { custom_id: string; label: string }[] }[])[1]!;
+			expect(row.components).toHaveLength(2);
+			expect(parseMenuId(row.components[0]!.custom_id)?.action).toBe('home');
+			expect(parseMenuId(row.components[1]!.custom_id)?.action).toBe('hunt');
+			expect(row.components[1]!.label).toBe('Chọn Gate (Cửa)');
 		}
 	});
+
 	it('serializes real V2 views within Discord limits with unique component IDs', () => {
-		const store = new MenuSessionStore(),
-			session = store.create('a');
+		const session = new MenuSessionStore().create('a');
 		const screens: MenuScreen[] = [
 			{ kind: 'home' },
-			{ kind: 'help' },
-			{ kind: 'search', query: 'rune' },
-			{ kind: 'search', query: 'not-a-topic-xyz' },
 			...Object.keys(MENU_SECTIONS).map((section) => ({
 				kind: 'section' as const,
 				section: section as MenuSection,
 			})),
-			...HELP_PAGES.map((_, index) => ({ kind: 'topic' as const, index })),
+			{ kind: 'profile' },
+			{ kind: 'quests' },
+			{ kind: 'gateSelect' },
+			{ kind: 'gateTiers' },
+			{ kind: 'confirm', operation: 'boss', day: '2026-09-21' },
+			{ kind: 'result' },
+			{ kind: 'log', page: 0 },
 		];
 		for (const screen of screens) {
 			session.screen = screen;
+			session.gamePanel = { title: 'T', body: 'B', buttons: buildPanelButtons(session, undefined) };
 			const view = menuView(session);
 			const payload = JSON.parse(JSON.stringify(view)); // Executes builder validation, not a copy of rendering logic.
 			expect(payload.flags).toBe(MessageFlags.IsComponentsV2);
@@ -108,25 +118,17 @@ describe('menu payloads', () => {
 		}
 	});
 
-	it('builds a valid modal with a one-time nonce and a Label/TextInput', () => {
+	it('renders the home buttons from the file registry and drops help-search/section selectors', () => {
 		const session = new MenuSessionStore().create('a');
-		const modal = searchModal(session, '1234567890abcdef').toJSON();
-		expect(parseMenuId(modal.custom_id)).toEqual({
-			id: session.id,
-			revision: 0,
-			action: 'find',
-			nonce: '1234567890abcdef',
-		});
-		expect(modal.components[0]!.type).toBe(18);
-		expect(JSON.stringify(modal)).toContain('"max_length":80');
-	});
-
-	it('matches Vietnamese help without requiring accents and treats input as literal text', () => {
-		expect(helpMatches('trieu hoi')).toContain(2);
-		expect(helpMatches('triệu hồi')).toEqual(helpMatches('trieu hoi'));
-		expect(helpMatches('[')).toContain(3);
-		expect(helpMatches('^.*$')).toEqual([]);
-		expect(helpMatches('not-a-topic-xyz')).toEqual([]);
+		session.screen = { kind: 'home' };
+		session.gamePanel = { title: 'T', body: 'B', buttons: buildPanelButtons(session, undefined) };
+		const payload = JSON.stringify(menuView(session));
+		for (const action of ['profile', 'daily', 'inventory', 'home', 'close']) {
+			expect(payload).toContain(`:${action}`);
+		}
+		expect(payload).not.toContain(MENU_TEXT.chooseSection);
+		expect(payload).not.toContain(MENU_TEXT.search);
+		expect(payload).not.toContain('"find"');
 	});
 
 	it('recovery has only the stateless open button', () => {
@@ -144,7 +146,8 @@ describe('menu payloads', () => {
 			`menu:v1:${id}:9007199254740992:help`,
 			`menu:v1:${id}:0:reset`,
 			`menu:v1:${id}:0:find`,
-			`menu:v1:${id}:0:help:1234567890abcdef`,
+			`menu:v1:${id}:0:section`,
+			`menu:v1:${id}:0:help:1`,
 			'x'.repeat(101),
 		])
 			expect(parseMenuId(value)).toBeNull();
@@ -153,6 +156,12 @@ describe('menu payloads', () => {
 			revision: 12,
 			action: 'refresh',
 			nonce: undefined,
+		});
+		expect(parseMenuId(menuId(id, 0, 'fight', '7'))).toEqual({
+			id,
+			revision: 0,
+			action: 'fight',
+			nonce: '7',
 		});
 	});
 });

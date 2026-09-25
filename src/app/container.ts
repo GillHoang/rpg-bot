@@ -34,6 +34,7 @@ import { RankedService } from '../modules/pvp/application/RankedService.js';
 import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
 import { LoadoutService } from '../modules/progression/application/LoadoutService.js';
+import { WeaponService } from '../modules/progression/application/WeaponService.js';
 import { SocketService } from '../modules/progression/application/SocketService.js';
 import { EnhancementService } from '../modules/progression/application/EnhancementService.js';
 import { ResetService } from '../modules/system/application/ResetService.js';
@@ -91,6 +92,7 @@ export interface AppContainer {
 	readonly pvpShop: PvpShopService;
 	readonly loot: LootService;
 	readonly loadout: LoadoutService;
+	readonly weapon: WeaponService;
 	readonly socket: SocketService;
 	readonly enhancement: EnhancementService;
 	readonly reset: ResetService;
@@ -112,8 +114,9 @@ export interface AppContainer {
 }
 
 export function createAppContainer(options: ApplicationOptions = {}): AppContainer {
-	// Production wiring owns its live context explicitly — the deprecated
-	// defaultPersistence global stays reserved for the PGlite test suites.
+	// Production wiring owns its live context explicitly; there is no global
+	// default — a missing context is a wiring bug that `requirePersistence`
+	// fails fast on.
 	const persistence = options.persistence ?? createLivePersistence();
 	const events = options.events ?? new EventBus();
 	const clock = options.clock ?? systemClock;
@@ -199,6 +202,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		pvpShop: new PvpShopService(cosmetics, { persistence }),
 		loot: new LootService(lootRepository, events, { persistence, grants, clock }),
 		loadout: new LoadoutService({ persistence }),
+		weapon: new WeaponService({ persistence }),
 		socket: new SocketService(runes, gear, { persistence }),
 		enhancement: new EnhancementService(undefined, events, { persistence, clock }),
 		reset: new ResetService({ persistence }),

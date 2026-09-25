@@ -39,8 +39,8 @@ Mở modal trả lời bằng `showModal` ngay; các thao tác cập nhật mess
 `tests/menu-router.test.ts`: hai user/hai phiên cùng user, điều hướng, stale button/modal, input giả, click đồng thời, restart, đóng, lỗi mạng/ack, phục hồi.
 `tests/menu-views.test.ts`: serialize builder thật, giới hạn component/text/options, ID duy nhất, modal Label/TextInput, tìm tiếng Việt.
 
-Chạy `npm test`, `npm run lint:check`, `npm run build` bằng dependencies hiện có. Repo vẫn giữ lockfile/packageManager pnpm; thay đổi đó là công việc riêng.
-Chưa xác minh Discord thật: triển khai command vào guild thử nghiệm bằng `npm run deploy:commands:guild -- <guildId>`, khởi động bot, rồi kiểm tra trên desktop/mobile.
+Chạy `pnpm test`, `pnpm lint:check`, `pnpm build` bằng dependencies hiện có; lệnh dài dùng dạng `pnpm <script>` (pnpm tự thêm `run`).
+Chưa xác minh Discord thật: triển khai command vào guild thử nghiệm bằng `pnpm deploy:commands:guild -- <guildId>`, khởi động bot, rồi kiểm tra trên desktop/mobile.
 Không chạy script deploy khi unit test; các test menu không kết nối Discord hoặc DB.
 
 ## Checklist thử trên guild

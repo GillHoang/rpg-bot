@@ -27,9 +27,7 @@ export class EquipCommand implements ICommand {
 				.setName('kind')
 				.setDescription(EQUIP_KIND_OPTION_DESC)
 				.setRequired(true)
-				.addChoices(
-					...['weapon', 'armor', 'deity', 'deity2', 'deity3'].map((value) => ({ name: value, value })),
-				),
+				.addChoices(...['armor', 'deity', 'deity2', 'deity3'].map((value) => ({ name: value, value }))),
 		)
 		.addStringOption((o) =>
 			o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true).setAutocomplete(true),
@@ -58,11 +56,11 @@ export class EquipCommand implements ICommand {
 			await interaction.respond(rows.map((d) => ({ name: DEITY_CHOICE_LABEL(d), value: String(d.id) })));
 			return;
 		}
-		// Lọc theo kind ngay trong query — vũ khí không lấn slot gợi ý của giáp.
+		// Weapons are wielded by deities via /weapon equip, never through /equip.
 		const rows =
-			kind === 'armor'
-				? await repo.searchArmors(interaction.user.id, query)
-				: await repo.searchWeapons(interaction.user.id, query);
+			kind === 'weapon'
+				? await repo.searchWeapons(interaction.user.id, query)
+				: await repo.searchArmors(interaction.user.id, query);
 		await interaction.respond(rows.map((g) => ({ name: GEAR_CHOICE_LABEL(g), value: g.id })));
 	}
 }

@@ -12,7 +12,7 @@ src/
   modules/              # one feature = one vertical slice (public barrel: index.ts)
     identity/           # start, profile, class-change
     economy/            # balance, daily (ClaimDailyUseCase), chest/open, loot-grant
-    combat-shared/      # BattleEngine, strategies, CombatSetup, stat assembly
+    combat-shared/      # BattleEngine, strategies, CombatSetup, stat assembly, seeded Rng
     pve/                # raid hunt/boss, encounter, rewards
     pvp/                # duel, ranked, pvp-shop
     progression/        # summon (RunSummonUseCase), deity/sigil/ascend, enhance,
@@ -20,16 +20,17 @@ src/
     meta/               # quest, reputation/believer, cosmetic/title, season
     casino/             # 4 one-shot games + blackjack/crash sessions
     menu/               # /menu orchestration only (router + gameplay service + panels)
+                        # items/{category}/{name}.ts = menu elements (registry.generated.ts)
     system/             # health, reset, ping, admin
   shared/
     kernel/             # Result, AppError, UseCase, EventBus, IUnitOfWork,
-                        # PersistenceContext, Rng, Clock
+                        # PersistenceContext, Clock
     discord/            # ICommand + CommandRegistry re-export
     ui/                 # text/ (wording), render/ (canvas, pagers)
     config/             # balance data (loot, gacha, ranked, quest, blessings…)
     utils/              # logger, RNG helpers, cycles, formatters
     progress/           # GameplayProgressCoordinator (cross-module quest/EXP)
-  db/                   # client, defaultPersistence, DrizzleUnitOfWork,
+  db/                   # client, livePersistence, DrizzleUnitOfWork,
                         # schema barrel + tables/<module>.ts, migrations
   scripts/              # ops tooling (deploy/clear commands, season rollover)
   seed/                 # seed runner (data lives in modules/*/seed/)
@@ -61,6 +62,7 @@ presentation/ (discord commands) -> application/ (use-cases, services)
 4. Command in `modules/<name>/presentation/` (thin) + one line in `app/registerAllCommands.ts`.
 5. Export the public surface from `modules/<name>/index.ts`; wire shared collaborators in `app/container.ts`.
 6. Balance numbers in `shared/config/` (or module `config/`), wording in `shared/ui/text/`, seed rows in `modules/<name>/seed/`.
+7. Menu element: add `modules/menu/items/{category}/{name}.ts` (default-export a `MenuItemSpec`) and run `pnpm menu:registry` — the router/view read the generated registry, so no central button list is edited.
 
 ## Migration status
 

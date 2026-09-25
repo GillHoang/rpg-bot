@@ -12,7 +12,7 @@ import {
 	computeArmorCurrStats,
 } from '../../../shared/config/enhancement.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { EventBus } from '../../../shared/kernel/EventBus.js';
+import { EMIT_ONLY_EVENT_BUS, type EventBus } from '../../../shared/kernel/EventBus.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 
 export type EnhanceResult =
@@ -60,7 +60,7 @@ export class EnhancementService {
 		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.repo = repo ?? new EnhancementRepository();
-		this.events = events ?? new EventBus();
+		this.events = events ?? EMIT_ONLY_EVENT_BUS;
 		this.queries = options.queries ?? new EnhancementStateRepository();
 	}
 

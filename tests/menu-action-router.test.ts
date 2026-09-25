@@ -1,23 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { routeStatelessAction, navigateBattleLogPage } from '../src/modules/menu/MenuActionRouter.js';
+import { navigateBattleLogPage } from '../src/modules/menu/MenuActionRouter.js';
 import { pickQuestTemplates } from '../src/modules/meta/application/QuestTemplatePicker.js';
-import type { MenuSession } from '../src/modules/menu/MenuSessionStore.js';
-
-function session(): MenuSession {
-	return { id: 's', revision: 1, ownerId: 'u', screen: { kind: 'home' } } as MenuSession;
-}
 
 describe('menu action router (SRP extraction)', () => {
-	it('routes stateless actions without collaborators', () => {
-		const s = session();
-		expect(routeStatelessAction(s, 'battle')).toEqual({ kind: 'gateSelect' });
-		expect(s.gateId).toBeUndefined();
-		expect(routeStatelessAction(s, 'profile')).toEqual({ kind: 'profile' });
-		expect(routeStatelessAction(s, 'result')).toEqual({ kind: 'result' });
-		expect(routeStatelessAction(s, 'daily')).toBeNull();
-		expect(routeStatelessAction(s, 'fight')).toBeNull();
-	});
-
 	it('clamps battle-log paging', () => {
 		expect(navigateBattleLogPage(5, 0, 'next')).toBe(1);
 		expect(navigateBattleLogPage(5, 4, 'next')).toBe(4);

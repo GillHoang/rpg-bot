@@ -10,6 +10,12 @@ import {
 	resonanceBonus,
 	type BlessingKey,
 } from '../../../shared/config/blessings.js';
+import {
+	WEAPON_QUALITY_ATK_MULT,
+	WEAPON_QUALITY_CRIT_BONUS,
+	isWeaponQuality,
+	type WeaponQuality,
+} from '../../../shared/config/weaponQuality.js';
 import { GearRepository } from '../../progression/infrastructure/GearRepository.js';
 import { DeityService } from '../../progression/application/DeityService.js';
 import { RuneRepository, type SocketedRuneEffect } from '../../progression/infrastructure/RuneRepository.js';
@@ -31,12 +37,18 @@ export interface AssembledBlessing {
 	strength: number;
 }
 
+export interface AssembledWeaponPassive {
+	passiveKey: string;
+}
+
 export interface AssembledPlayer {
 	stats: AssembledPlayerStats;
 	/** Combat-hook runes from both equipped weapon and armor, ready for RuneStrategyDecorator. */
 	combatEffectRunes: SocketedRuneEffect[];
 	/** Blessing of the pantheon lead (slot 1) with its Sigil-derived strength, ready for DeityBlessingDecorator. */
 	blessings: AssembledBlessing[];
+	/** Equipped weapon's roster passive, ready for WeaponPassiveDecorator. Null when 'none'/unequipped. */
+	weaponPassive: AssembledWeaponPassive | null;
 }
 
 const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct' | 'spdPct' | 'accPts'> = {
@@ -87,12 +99,12 @@ export interface StatAssemblyDependencies {
 
 export class StatAssemblyService {
 	private readonly persistence: PersistenceContext;
-	private readonly gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'>;
+	private readonly gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findWeaponByDeity' | 'findArmorCurrStats'>;
 	private readonly deities: Pick<DeityService, 'findUserDeityAssemblyInfo'>;
 	private readonly runes: Pick<RuneRepository, 'findSocketedEffects'>;
 	private readonly queries: NonNullable<StatAssemblyDependencies['queries']>;
 	constructor(
-		gear?: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'>,
+		gear?: Pick<GearRepository, 'findWeaponCurrStats' | 'findWeaponByDeity' | 'findArmorCurrStats'>,
 		deities?: Pick<DeityService, 'findUserDeityAssemblyInfo'>,
 		runes?: Pick<RuneRepository, 'findSocketedEffects'>,
 		options: StatAssemblyDependencies = {} as StatAssemblyDependencies,
@@ -115,9 +127,7 @@ export class StatAssemblyService {
 		const sec = computeClassSecondaryStats(combatClass, level);
 		const preset = suppliedPreset !== undefined ? suppliedPreset : await this.activePreset(executor, discordId);
 
-		const weapon = preset?.equippedWeaponId
-			? await this.gear.findWeaponCurrStats(executor, discordId, preset.equippedWeaponId)
-			: null;
+		const weapon = await this.resolveBattleWeapon(executor, discordId, preset);
 		const armor = preset?.equippedArmorId
 			? await this.gear.findArmorCurrStats(executor, discordId, preset.equippedArmorId)
 			: null;
@@ -126,9 +136,9 @@ export class StatAssemblyService {
 		const resonance = resonanceBonus(pantheon.map((p) => p.info.mythology));
 		const deityStats = this.pantheonStats(pantheon, resonance);
 		const blessings = this.allBlessings(pantheon);
-		const { statMods, combatEffectRunes } = await this.collectRunes(executor, preset);
+		const { statMods, combatEffectRunes } = await this.collectRunes(executor, preset, weapon?.weaponId);
 
-		const baseAtk = cls.atk + (weapon?.currAtk ?? 0);
+		const baseAtk = cls.atk + this.weaponAtk(weapon);
 		const baseHp = cls.hp + (armor?.currHp ?? 0);
 		const baseDef = cls.def + (armor?.currDef ?? 0);
 
@@ -136,14 +146,32 @@ export class StatAssemblyService {
 			atk: Math.floor(baseAtk * (1 + statMods.atkPct) + deityStats.atk),
 			hp: Math.floor(baseHp * (1 + statMods.hpPct) + deityStats.hp),
 			def: Math.floor(baseDef * (1 + statMods.defPct) + deityStats.def),
-			crit: cls.crit + (weapon?.crit ?? 0) + statMods.critPts * 100,
+			crit: cls.crit + (weapon?.crit ?? 0) + this.weaponCritBonus(weapon?.quality) + statMods.critPts * 100,
 			spd: Math.floor(sec.spd * (1 + statMods.spdPct)),
 			acc: sec.acc + statMods.accPts * 100,
 			eva: sec.eva,
 			ten: sec.ten,
 		};
 
-		return { stats, combatEffectRunes, blessings };
+		const passiveKey = weapon?.passiveKey;
+		return {
+			stats,
+			combatEffectRunes,
+			blessings,
+			weaponPassive: passiveKey && passiveKey !== 'none' ? { passiveKey } : null,
+		};
+	}
+
+	/** OwO quality multiplies the weapon's post-enhancement ATK (unknown grades fall back to 1.0). */
+	private weaponAtk(weapon: { currAtk: number; quality: string } | null): number {
+		if (!weapon) return 0;
+		const quality: WeaponQuality = isWeaponQuality(weapon.quality) ? weapon.quality : 'Common';
+		return Math.floor(weapon.currAtk * WEAPON_QUALITY_ATK_MULT[quality]);
+	}
+
+	private weaponCritBonus(quality: string | undefined): number {
+		if (!quality || !isWeaponQuality(quality)) return 0;
+		return WEAPON_QUALITY_CRIT_BONUS[quality];
 	}
 
 	private async activePreset(executor: Executor, discordId: string) {
@@ -151,6 +179,26 @@ export class StatAssemblyService {
 		if (!character) return null;
 		const [preset] = await this.queries.findPreset(executor, discordId, character.activePresetSlot);
 		return preset ?? null;
+	}
+
+	/**
+	 * Battle weapon is the one wielded by the pantheon lead (slot 1 deity).
+	 * Legacy preset-equipped weapons (pre deity-attach) still fall back so
+	 * starter gear and old loadouts keep working.
+	 */
+	private async resolveBattleWeapon(
+		executor: Executor,
+		discordId: string,
+		preset: typeof userPresets.$inferSelect | null,
+	) {
+		if (preset?.equippedDeity1Id != null) {
+			const wielded = await this.gear.findWeaponByDeity(executor, discordId, preset.equippedDeity1Id);
+			if (wielded) return wielded;
+		}
+		if (preset?.equippedWeaponId) {
+			return this.gear.findWeaponCurrStats(executor, discordId, preset.equippedWeaponId);
+		}
+		return null;
 	}
 
 	private async collectPantheon(
@@ -197,14 +245,13 @@ export class StatAssemblyService {
 	private async collectRunes(
 		executor: Executor,
 		preset: typeof userPresets.$inferSelect | null,
+		weaponId: string | undefined,
 	): Promise<{
 		statMods: { atkPct: number; hpPct: number; defPct: number; critPts: number; spdPct: number; accPts: number };
 		combatEffectRunes: SocketedRuneEffect[];
 	}> {
 		const allEffects: SocketedRuneEffect[] = [
-			...(preset?.equippedWeaponId
-				? await this.runes.findSocketedEffects(executor, preset.equippedWeaponId)
-				: []),
+			...(weaponId ? await this.runes.findSocketedEffects(executor, weaponId) : []),
 			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(executor, preset.equippedArmorId) : []),
 		];
 

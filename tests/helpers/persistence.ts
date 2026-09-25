@@ -4,8 +4,8 @@ import type { PersistenceContext } from '../../src/shared/kernel/persistence.js'
 
 /**
  * Explicit test persistence built from the mocked `db/client` (PGlite).
- * New tests must inject this instead of relying on the deprecated
- * `defaultPersistence` global — see `src/db/defaultPersistence.ts`.
+ * Every service must receive its `PersistenceContext` via injection — there
+ * is no global fallback (see `shared/kernel/persistence.ts`).
  */
 export function testPersistence(): PersistenceContext {
 	return { executor: db, unitOfWork: new DrizzleUnitOfWork(db) };

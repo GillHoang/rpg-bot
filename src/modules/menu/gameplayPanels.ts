@@ -16,23 +16,15 @@ import type { GamePanel, MenuBattle } from './MenuGameplay.js';
 import type { MenuScreen, MenuSession } from './MenuSessionStore.js';
 import { GATES, TIERS_PER_GATE } from '../../shared/config/portals.js';
 import { GATE_TEXT } from '../../shared/ui/text/portals.js';
-import type { MenuAction } from './menuIds.js';
+
+/**
+ * Pure panel builders: they own the title/body and the dynamic `data` values
+ * that registered menu items read for labels/disabled state. Button sets are
+ * NOT declared here — `MenuRegistry.buildPanelButtons` derives them from the
+ * files under `menu/items/`.
+ */
 
 const n = (value: number) => formatNumber(Number(value), 'vi-VN');
-const button = (action: MenuAction, label: string, disabled = false): GamePanel['buttons'][number] => ({
-	action,
-	label,
-	disabled,
-});
-const cancel = button('cancel', GAMEPLAY_TEXT.cancel);
-
-function activityButtons(dailyDone: boolean) {
-	return {
-		dailyButton: button('daily', dailyDone ? GAMEPLAY_TEXT.dailyClaimed : GAMEPLAY_TEXT.dailyClaim, dailyDone),
-		hunt: button('hunt', GAMEPLAY_TEXT.hunt),
-		quests: button('quests', GAMEPLAY_TEXT.quests),
-	};
-}
 
 export function confirmationPanel(screen: Extract<MenuScreen, { kind: 'confirm' }>): GamePanel {
 	if (screen.operation === 'start') {
@@ -43,7 +35,6 @@ export function confirmationPanel(screen: Extract<MenuScreen, { kind: 'confirm' 
 				`> ${c.flavor}\n${c.passiveLine}\n\n` +
 				GAMEPLAY_TEXT.baseStats(c.base.hp, c.base.atk, c.base.def, c.base.crit) +
 				GAMEPLAY_TEXT.starterRewards(n(GRANT_BELIEF_SHARDS), GRANT_SILVER_CHESTS),
-			buttons: [button('confirm', GAMEPLAY_TEXT.createCharacter), cancel],
 			classes: true,
 		};
 	}
@@ -53,7 +44,6 @@ export function confirmationPanel(screen: Extract<MenuScreen, { kind: 'confirm' 
 			screen.operation === 'boss'
 				? GAMEPLAY_TEXT.bossConfirmation(BOSS_ENTRY.minLevel, n(BOSS_ENTRY.credux), screen.day)
 				: GAMEPLAY_TEXT.rerollConfirmation(screen.day),
-		buttons: [{ action: 'confirm', label: GAMEPLAY_TEXT.confirm, danger: true }, cancel],
 	};
 }
 
@@ -62,12 +52,10 @@ export function onboardingPanel(): GamePanel {
 		title: GAMEPLAY_TEXT.onboardingTitle,
 		body: GAMEPLAY_TEXT.onboardingBody,
 		classes: true,
-		buttons: [],
 	};
 }
 
 export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
-	const { dailyButton, hunt } = activityButtons(dailyDone);
 	const rows = (weekly: boolean) =>
 		(weekly ? q.weeklies : q.dailies)
 			.map((row) => {
@@ -87,18 +75,15 @@ export function questsPanel(q: QuestSnapshot, dailyDone: boolean): GamePanel {
 		title: GAMEPLAY_TEXT.questsTitle,
 		body:
 			GAMEPLAY_TEXT.questSections(q.day, rows(false), q.week, rows(true)) + grandStatus + GAMEPLAY_TEXT.questHint,
-		buttons: [
-			dailyButton,
-			hunt,
-			button('claim', GAMEPLAY_TEXT.claimWeekly, !q.grandReady),
-			button('reroll', GAMEPLAY_TEXT.rerollDaily, !q.refreshAvailable || q.dailies.every((x) => x.completed)),
-		],
+		data: {
+			dailyDone,
+			claimDisabled: !q.grandReady,
+			rerollDisabled: !q.refreshAvailable || q.dailies.every((x) => x.completed),
+		},
 	};
 }
 
 export function battleLobbyPanel(p: ProfileSummaryData, bossDone: boolean, hasBattle: boolean): GamePanel {
-	const hunt = button('hunt', GAMEPLAY_TEXT.hunt);
-	const quests = button('quests', GAMEPLAY_TEXT.quests);
 	let bossStatus = GAMEPLAY_TEXT.bossReady;
 	if (bossDone) bossStatus = GAMEPLAY_TEXT.bossDone;
 	else if (p.level < BOSS_ENTRY.minLevel) bossStatus = GAMEPLAY_TEXT.bossLowLevel;
@@ -110,16 +95,10 @@ export function battleLobbyPanel(p: ProfileSummaryData, bossDone: boolean, hasBa
 			GAMEPLAY_TEXT.bossInfo(BOSS_ENTRY.minLevel, n(BOSS_ENTRY.credux)) +
 			bossStatus +
 			GAMEPLAY_TEXT.resetTime,
-		buttons: [
-			hunt,
-			button(
-				'boss',
-				GAMEPLAY_TEXT.boss,
-				bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
-			),
-			quests,
-			...(hasBattle ? [button('result', GAMEPLAY_TEXT.lastBattle)] : []),
-		],
+		data: {
+			bossDisabled: bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
+			hasBattle,
+		},
 	};
 }
 
@@ -150,41 +129,22 @@ export function profilePanel(p: ProfileCardData): GamePanel {
 			GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor)) +
 			GAMEPLAY_TEXT.deitiesSection(deities) +
 			GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def)),
-		buttons: [button('hunt', GAMEPLAY_TEXT.hunt)],
 	};
 }
 
 export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; bossDone: boolean }): GamePanel {
-	const { dailyDone, bossDone } = status;
-	const { dailyButton, hunt, quests } = activityButtons(dailyDone);
 	return {
 		title: GAMEPLAY_TEXT.home,
 		withAvatar: true,
 		grouped: true,
 		body: profileSummary(p),
-		buttons: [
-			...[
-				button('profile', GAMEPLAY_TEXT.profile),
-				button('help', GAMEPLAY_TEXT.help),
-				button('search', GAMEPLAY_TEXT.searchHelp),
-			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.infoGroup })),
-			...[
-				dailyButton,
-				hunt,
-				button(
-					'boss',
-					GAMEPLAY_TEXT.boss,
-					bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
-				),
-				quests,
-			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.activityGroup })),
-			...[
-				button('inventory', GAMEPLAY_TEXT.inventory),
-				button('deity', GAMEPLAY_TEXT.deitySummon),
-				button('shop', GAMEPLAY_TEXT.shop),
-				button('casino', GAMEPLAY_TEXT.casino),
-			].map((b) => ({ ...b, group: GAMEPLAY_TEXT.assetsGroup })),
-		],
+		data: {
+			dailyDone: status.dailyDone,
+			bossDisabled:
+				status.bossDone ||
+				p.level < BOSS_ENTRY.minLevel ||
+				p.credux < BOSS_ENTRY.credux,
+		},
 	};
 }
 
@@ -216,41 +176,39 @@ export function logPages(result: MenuBattle): string[] {
 	});
 }
 
-export function battleContinueButton(battle: MenuBattle): GamePanel['buttons'][number] | undefined {
+/** Label for the "continue" item after a portal fight, or undefined when there is no next step. */
+export function continuationLabel(battle: MenuBattle): string | undefined {
 	if (battle.boss || !battle.portal) return undefined;
-	if (battle.battle.outcome !== 'player_win') return button('continue', GATE_TEXT.retryTier);
-	if (battle.portal.tier < TIERS_PER_GATE) return button('continue', GATE_TEXT.nextTier);
-	if (battle.portal.gate < GATES.length) return button('continue', GATE_TEXT.nextGate);
+	if (battle.battle.outcome !== 'player_win') return GATE_TEXT.retryTier;
+	if (battle.portal.tier < TIERS_PER_GATE) return GATE_TEXT.nextTier;
+	if (battle.portal.gate < GATES.length) return GATE_TEXT.nextGate;
 	return undefined;
 }
 
 export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {
-	// NOTE: menuView() renders result/log screens through battleMenuView()
-	// (BattleLogPager), so this title/body is shadowed in production — but the
-	// BUTTONS below stay live: handleGameplay whitelists click actions against
-	// session.gamePanel.buttons. Keep them in sync with battleMenuView.
 	const r = session.battle;
-	if (!r)
+	if (!r) {
 		return {
 			title: GAMEPLAY_TEXT.battleTitle,
 			body: GAMEPLAY_TEXT.noBattle,
-			buttons: [button('hunt', GAMEPLAY_TEXT.hunt)],
+			data: { hasBattle: false, boss: false },
 		};
+	}
+	const total = r.battle.roundLogs.length;
+	const page = Math.max(0, Math.min(total - 1, session.screen.kind === 'log' ? session.screen.page : total - 1));
+	const continuation = continuationLabel(r);
+	const data = {
+		boss: r.boss,
+		hasBattle: true,
+		page,
+		pages: total,
+		continuation: continuation ? { label: continuation } : null,
+	};
 	if (session.screen.kind === 'log') {
-		const continuation = battleContinueButton(r);
-		const pages = r.battle.roundLogs;
-		const page = Math.max(0, Math.min(pages.length - 1, session.screen.page));
 		return {
-			title: GAMEPLAY_TEXT.logTitle(page + 1, Math.max(1, pages.length)),
-			body: pages[page]?.lines.join('\n').slice(-MENU_LOG_PAGE_CHARS) || GAMEPLAY_TEXT.noLog,
-			buttons: [
-				button('first', GAMEPLAY_TEXT.first, page === 0),
-				button('prev', GAMEPLAY_TEXT.previous, page === 0),
-				button('next', GAMEPLAY_TEXT.next, page >= pages.length - 1),
-				button('last', GAMEPLAY_TEXT.last, page >= pages.length - 1),
-				...(continuation ? [continuation] : []),
-				...(!r.boss ? [button('hunt', GAMEPLAY_TEXT.hunt)] : []),
-			],
+			title: GAMEPLAY_TEXT.logTitle(page + 1, Math.max(1, total)),
+			body: r.battle.roundLogs[page]?.lines.join('\n').slice(-MENU_LOG_PAGE_CHARS) || GAMEPLAY_TEXT.noLog,
+			data,
 		};
 	}
 	let outcome = GAMEPLAY_TEXT.draw;
@@ -271,7 +229,6 @@ export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): Ga
 			(r.gearDrop ? `${r.gearDrop}\n` : '') +
 			(r.progress.leveledUp ? GAMEPLAY_TEXT.levelUp(r.progress.previousLevel, r.progress.newLevel) : '') +
 			(r.boss ? GAMEPLAY_TEXT.bossFee(n(BOSS_ENTRY.credux)) : ''),
-		buttons: battlePanel({ battle: r, screen: { kind: 'log', page: Math.max(0, r.battle.roundLogs.length - 1) } })
-			.buttons,
+		data,
 	};
 }
