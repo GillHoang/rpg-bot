@@ -12,7 +12,7 @@ src/
   modules/              # one feature = one vertical slice (public barrel: index.ts)
     identity/           # start, profile, class-change
     economy/            # balance, daily (ClaimDailyUseCase), chest/open, loot-grant
-    combat-shared/      # BattleEngine, strategies, CombatSetup, stat assembly
+    combat-shared/      # BattleEngine, strategies, CombatSetup, stat assembly, seeded Rng
     pve/                # raid hunt/boss, encounter, rewards
     pvp/                # duel, ranked, pvp-shop
     progression/        # summon (RunSummonUseCase), deity/sigil/ascend, enhance,
@@ -23,13 +23,13 @@ src/
     system/             # health, reset, ping, admin
   shared/
     kernel/             # Result, AppError, UseCase, EventBus, IUnitOfWork,
-                        # PersistenceContext, Rng, Clock
+                        # PersistenceContext, Clock
     discord/            # ICommand + CommandRegistry re-export
     ui/                 # text/ (wording), render/ (canvas, pagers)
     config/             # balance data (loot, gacha, ranked, quest, blessings…)
     utils/              # logger, RNG helpers, cycles, formatters
     progress/           # GameplayProgressCoordinator (cross-module quest/EXP)
-  db/                   # client, defaultPersistence, DrizzleUnitOfWork,
+  db/                   # client, livePersistence, DrizzleUnitOfWork,
                         # schema barrel + tables/<module>.ts, migrations
   scripts/              # ops tooling (deploy/clear commands, season rollover)
   seed/                 # seed runner (data lives in modules/*/seed/)

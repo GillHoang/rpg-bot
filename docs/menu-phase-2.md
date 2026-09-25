@@ -32,9 +32,9 @@ Thông tin trên trang là snapshot; Làm mới đọc lại DB. Hai menu của 
 ## Cập nhật và kiểm tra
 
 Migration `0001_dazzling_maelstrom.sql` chỉ thêm `menu_action_receipts` và FK; không đổi dữ liệu/balance hiện có.
-Trên VPS, chạy `npm run db:migrate` trước `npm run build` và khởi động lại bot. Không cần đăng ký lại `/menu` nếu giai đoạn 1 đã được triển khai.
+Trên VPS, chạy `pnpm db:migrate` trước `pnpm build` và khởi động lại bot. Không cần đăng ký lại `/menu` nếu giai đoạn 1 đã được triển khai.
 
-Kiểm tra tự động: `npm run build`, `npm run lint:check`, `npm test -- --maxWorkers=2`.
+Kiểm tra tự động: `pnpm build`, `pnpm lint:check`, `pnpm test -- --maxWorkers=2`.
 Test dùng Discord builder thật và PostgreSQL trong bộ nhớ (PGlite), không cần bot token hoặc DB thật. [Helper DB dùng chung](../tests/helpers/database.ts) tạo DB riêng cho từng suite và áp toàn bộ migration theo journal.
 Các test bao phủ vòng chơi `/menu`, payload, giả mạo action, nút cũ, claim lặp, receipt qua nhiều service instance, rollback daily/boss và lỗi gửi Discord sau commit.
 

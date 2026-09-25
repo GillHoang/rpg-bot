@@ -38,12 +38,13 @@ Pure arithmetic helpers, immutable configuration and text formatting remain func
 
 - `PersistenceContext` is now **required**: every service takes it via constructor
   (`requirePersistence()` in `shared/kernel/persistence.ts` throws
-  `DI_MISSING_PERSISTENCE` when missing). The only `defaultPersistence`
-  fallback left is the composition root (`app/container.ts`) and the
-  `scripts/rolloverSeason.ts` entry point. Repositories take a required
+  `DI_MISSING_PERSISTENCE` when missing). The deprecated global
+  `defaultPersistence` is **removed** — the composition root
+  (`app/container.ts`) and entry points create their context explicitly via
+  `createLivePersistence()`. Repositories take a required
   executor; `Scheduler`/`BotMaintenance`/`DiscordBot`/all commands take required
   collaborators. Tests inject `tests/helpers/persistence.ts:testPersistence()`
-  (PGlite mock); an architecture test bans new `defaultPersistence` imports.
+  (PGlite mock); an architecture test bans any import of the removed global.
 - All service error channels are `AppError` with stable codes
   (`DI_*`, `*_MISSING_BAG`, …); `CommandRegistry.dispatch` maps `AppError` to
   the user message, unknown errors to `GENERIC_ERROR`. Pure validation utils
