@@ -34,7 +34,7 @@ Kiểm tra giao dịch đồng thời, thiếu seed phải rollback, quyền s�
 > - Stat mới: SPD (đi trước; hòa mới roll bias), ACC/EVA (hit 95% +1%/điểm,
 >   kẹp 80–100%), TEN (tỉ lệ kháng thẳng stun/paralyze/dizzy).
 > - Class: Swordsman detonate bleed 5 stack; Fighter Bash có điều kiện
->   (25%/50% khi dizzy, execution stun 2 dưới 30% HP, miễn stun-lock 2 round);
+>   (15%/35% khi dizzy, execution stun 2 dưới 30% HP, miễn stun-lock 2 round);
 >   Mage weave (tiêu debuff cũ lấy Overcharge 5.0 chắc chắn); Knight Bulwark
 >   (round 4: −75% + phản 25%) + Second Wind (xóa debuff dưới 30% HP 1 lần);
 >   Archer xen kẽ đánh thường/aimed (xuyên 45%, variance hẹp, +20%).

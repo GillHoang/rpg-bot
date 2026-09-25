@@ -82,7 +82,7 @@ export interface ClassSecondaryStats {
 
 /**
  * Secondary battle stats (P2 rebalance): speed decides turn order,
- * accuracy/evasion decide the hit roll, tenacity shortens hard CC.
+ * accuracy/evasion decide the hit roll, tenacity can shrug off hard CC entirely.
  * Archer is fast and accurate but fragile; Knight is slow but shrugs
  * off control; the other three sit in the middle with their own lean.
  */
