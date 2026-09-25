@@ -19,6 +19,10 @@ export class LootGrantService {
 		const pool = await this.repo.findRunePool(tx, filter);
 		if (filter.names?.some((name) => !pool.some((r) => r.name === name)))
 			throw new AppError('LOOT_SEED_MISSING_RUNE', LOOT_SEED_TEXT.missingRune);
+		// Fail closed with a coded error like the gear path: an empty pool
+		// must never fall through to choose(), whose plain Error would be
+		// misclassified as infrastructure failure and confuse the player.
+		if (!pool.length) throw new AppError('LOOT_EMPTY_POOL', LOOT_SEED_TEXT.emptyPool);
 		const rune = choose(pool, rng);
 		const runeUid = `r_${randomUUID()}`;
 		await this.repo.insertRune(tx, { discordId: id, runeUid, runeId: rune.runeId });

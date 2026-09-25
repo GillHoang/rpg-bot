@@ -36,9 +36,7 @@ export class MageStrategy extends NullClassStrategy {
 	/** Weave consumes to a guaranteed max roll; otherwise roll the 40% high chance. */
 	private overchargeMultiplier(ctx: StrategyContext, woven: boolean): number {
 		if (woven) return MAGE_OVERCHARGE_HIGH_MULT;
-		return rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
-			? MAGE_OVERCHARGE_HIGH_MULT
-			: MAGE_OVERCHARGE_MULT;
+		return rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng) ? MAGE_OVERCHARGE_HIGH_MULT : MAGE_OVERCHARGE_MULT;
 	}
 
 	/** Consume one pending weave debuff for a guaranteed max overcharge. */

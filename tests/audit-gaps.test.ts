@@ -18,6 +18,8 @@ import { CasinoSessionService } from '../src/modules/casino/application/CasinoSe
 import { bankerDrawsThird } from '../src/modules/casino/domain/games/BaccaratGame.js';
 import { BlackjackSession } from '../src/modules/casino/domain/BlackjackSession.js';
 import { isBlackjack } from '../src/modules/casino/domain/CardDeck.js';
+import { LootGrantService } from '../src/modules/economy/application/LootGrantService.js';
+import { AppError } from '../src/shared/kernel/Result.js';
 import { SLOT_LADDER, EVEN_MONEY } from '../src/shared/config/casinoPayouts.js';
 import { createRng } from '../src/modules/combat-shared/domain/Rng.js';
 import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
@@ -138,8 +140,7 @@ describe('blackjack natural payout policy', () => {
 	});
 });
 
-describe('recoverExpired isolates poisoned sessions', () => {
-	it('settles the healthy session even when another expired row is corrupt', async () => {
+describe('recoverExpired isolates poisoned sessions', () => {	it('settles the healthy session even when another expired row is corrupt', async () => {
 		await db.update(s.usersBag).set({ credux: 900 }).where(eq(s.usersBag.discordId, id));
 		const past = new Date(Date.now() - 5000);
 		await db.insert(s.activeCasinoSessions).values({
@@ -242,5 +243,14 @@ describe('ranked shield and floor service integration', () => {
 			.from(s.userCharacter)
 			.where(eq(s.userCharacter.discordId, fight.opponentId));
 		expect(winner.pvpRating).toBeGreaterThanOrEqual(1001);
+	});
+});
+
+describe('rune grant empty pool', () => {
+	it('fails closed with LOOT_EMPTY_POOL instead of a plain choose() error', async () => {
+		const grants = new LootGrantService({ findRunePool: async () => [] } as never);
+		const error = await grants.rune({} as never, id, () => 0.5, { tier: 'Mythic' }).catch((e) => e);
+		expect(error).toBeInstanceOf(AppError);
+		expect((error as AppError).code).toBe('LOOT_EMPTY_POOL');
 	});
 });

@@ -1,6 +1,7 @@
 import { ok, type Result, AppError } from '../../../shared/kernel/Result.js';
 import type { UseCase } from '../../../shared/kernel/UseCase.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
+import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { SummonRepository } from '../infrastructure/SummonRepository.js';
 import { UserCharacterRepository } from '../../identity/infrastructure/UserCharacterRepository.js';
@@ -54,6 +55,7 @@ export interface RunSummonInput {
  */
 export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 	private readonly persistence: PersistenceContext;
+	private readonly clock: Clock;
 	private readonly progress: SummonProgressPort;
 	private readonly characters: SummonCharactersPort;
 	private readonly deities: SummonDeitiesPort;
@@ -67,6 +69,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 		options: RunSummonOptions = {} as RunSummonOptions,
 	) {
 		this.persistence = requirePersistence(options, 'RunSummonUseCase');
+		this.clock = options.clock ?? systemClock;
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });
 		this.characters = characters ?? new UserCharacterRepository();
 		this.deities = deities ?? new DeityService();
@@ -158,7 +161,7 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 			});
 		}
 
-		await this.progress.apply(tx, discordId, 'summon', new Date(), count);
+		await this.progress.apply(tx, discordId, 'summon', this.clock.now(), count);
 		return { status: 'ok', pulls, finalPity: planned.pityAfter, shardsSpent: cost };
 	}
 

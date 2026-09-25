@@ -393,10 +393,17 @@ export class RankedService {
 			opponentChange,
 		} = input;
 
-		await this.settleParticipant(tx, me, opponentRow.discordId, { before: ratingBefore, after: ratingAfter }, rankedLogResultOf(draw, won), {
-			...meChange,
-			isInitiator: true,
-		});
+		await this.settleParticipant(
+			tx,
+			me,
+			opponentRow.discordId,
+			{ before: ratingBefore, after: ratingAfter },
+			rankedLogResultOf(draw, won),
+			{
+				...meChange,
+				isInitiator: true,
+			},
+		);
 		await this.settleParticipant(
 			tx,
 			opponentRow,

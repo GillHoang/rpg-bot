@@ -1,4 +1,5 @@
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
+import type { Clock } from '../../../shared/kernel/clock.js';
 import type { EventBus } from '../../../shared/kernel/EventBus.js';
 import type { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import type { SummonRepository } from '../infrastructure/SummonRepository.js';
@@ -41,5 +42,6 @@ export type SummonEventsPort = Pick<EventBus, 'emit'>;
 export interface RunSummonOptions {
 	progress?: SummonProgressPort;
 	persistence?: PersistenceContext;
+	clock?: Clock;
 	queries?: SummonRepoPort;
 }

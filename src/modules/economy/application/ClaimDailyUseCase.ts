@@ -29,11 +29,7 @@ export class ClaimDailyUseCase implements UseCase<ClaimDailyInput, ClaimDailyRes
 	private readonly events: DailyEventsPort;
 	private readonly progress: ProgressPort;
 
-	constructor(
-		repo?: DailyRepoPort,
-		events?: DailyEventsPort,
-		options: ClaimDailyOptions = {} as ClaimDailyOptions,
-	) {
+	constructor(repo?: DailyRepoPort, events?: DailyEventsPort, options: ClaimDailyOptions = {} as ClaimDailyOptions) {
 		this.persistence = requirePersistence(options, 'ClaimDailyUseCase');
 		this.clock = options.clock ?? systemClock;
 		this.repo = repo ?? new DailyRepository();

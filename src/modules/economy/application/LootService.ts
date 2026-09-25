@@ -152,7 +152,12 @@ export class LootService {
 		const items: string[] = [];
 		let creux = 0;
 		let shards = 0;
-		const essence: ChestGains['essence'] = { epicEssence: 0, mythicEssence: 0, legendaryEssence: 0, supremeEssence: 0 };
+		const essence: ChestGains['essence'] = {
+			epicEssence: 0,
+			mythicEssence: 0,
+			legendaryEssence: 0,
+			supremeEssence: 0,
+		};
 		const runeBags: ChestGains['runeBags'] = { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 0 };
 		const relics: ChestGains['relics'] = { sacredRelics: 0, supremeRelics: 0 };
 		for (let n = 0; n < count; n++) {
