@@ -8,7 +8,12 @@ export default {
 	order: 3,
 	visibleWhen: (session) => session.screen.kind === 'quests',
 	options: (_session, panel) => [
-		{ label: GAMEPLAY_TEXT.rerollDaily, style: 'secondary', emoji: ICONS.menu.refresh, disabled: !!panel?.data?.rerollDisabled },
+		{
+			label: GAMEPLAY_TEXT.rerollDaily,
+			style: 'secondary',
+			emoji: ICONS.menu.refresh,
+			disabled: !!panel?.data?.rerollDisabled,
+		},
 	],
 	run: ({ session, api }) => api.beginConfirmation(session, 'reroll'),
 } satisfies MenuItemSpec;

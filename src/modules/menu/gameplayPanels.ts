@@ -144,10 +144,7 @@ export function homePanel(p: ProfileSummaryData, status: { dailyDone: boolean; b
 		body: profileSummary(p),
 		data: {
 			dailyDone: status.dailyDone,
-			bossDisabled:
-				status.bossDone ||
-				p.level < BOSS_ENTRY.minLevel ||
-				p.credux < BOSS_ENTRY.credux,
+			bossDisabled: status.bossDone || p.level < BOSS_ENTRY.minLevel || p.credux < BOSS_ENTRY.credux,
 		},
 	};
 }

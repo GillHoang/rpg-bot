@@ -9,7 +9,12 @@ export default {
 	visibleWhen: (session, panel) =>
 		['home', 'gateSelect', 'gateTiers'].includes(session.screen.kind) && !panel?.classes,
 	options: (_session, panel) => [
-		{ label: GAMEPLAY_TEXT.boss, style: 'secondary', emoji: ICONS.menu.boss, disabled: !!panel?.data?.bossDisabled },
+		{
+			label: GAMEPLAY_TEXT.boss,
+			style: 'secondary',
+			emoji: ICONS.menu.boss,
+			disabled: !!panel?.data?.bossDisabled,
+		},
 	],
 	run: ({ session, api }) => api.beginConfirmation(session, 'boss'),
 } satisfies MenuItemSpec;

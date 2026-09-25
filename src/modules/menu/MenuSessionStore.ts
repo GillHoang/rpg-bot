@@ -2,10 +2,7 @@ import { randomBytes } from 'node:crypto';
 import type { MenuSection } from '../../shared/ui/text/menu.js';
 import type { GamePanel, GameplayScreen, MenuBattle } from './MenuGameplay.js';
 
-export type MenuScreen =
-	| GameplayScreen
-	| { kind: 'home' }
-	| { kind: 'section'; section: MenuSection };
+export type MenuScreen = GameplayScreen | { kind: 'home' } | { kind: 'section'; section: MenuSection };
 
 export interface MenuSession {
 	id: string;

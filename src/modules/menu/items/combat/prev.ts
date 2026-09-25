@@ -8,7 +8,12 @@ export default {
 	order: 9,
 	visibleWhen: (session) => ['result', 'log'].includes(session.screen.kind),
 	options: (_session, panel) => [
-		{ label: GAMEPLAY_TEXT.previous, style: 'secondary', emoji: ICONS.nav.prev, disabled: (panel?.data?.page ?? 0) <= 0 },
+		{
+			label: GAMEPLAY_TEXT.previous,
+			style: 'secondary',
+			emoji: ICONS.nav.prev,
+			disabled: (panel?.data?.page ?? 0) <= 0,
+		},
 	],
 	run: ({ session, api }) => api.navigateLog(session, 'prev'),
 } satisfies MenuItemSpec;
