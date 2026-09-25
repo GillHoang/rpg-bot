@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { SUMMON_SUCCESS, SUMMON_SUCCESS_RELIC } from '../src/shared/ui/text/summon.js';
+import { PITY_THRESHOLD } from '../src/shared/config/gachaRates.js';
 
 /**
  * Regression cho 50035 BASE_TYPE_MAX_LENGTH: /summon x30 toàn trùng từng
@@ -72,7 +74,7 @@ function summarizePulls(pulls: readonly PullLine[]): string {
 }
 
 function successMessage(pulls: readonly PullLine[]): string {
-	return `🔮 **Triệu hồi x${pulls.length}** — đã dùng ${(pulls.length * 100).toLocaleString()} Belief Shards\n\n${summarizePulls(pulls)}\n\n_Pity hiện tại: 9/500_`;
+	return `🔮 **Triệu hồi x${pulls.length}** — đã dùng ${(pulls.length * 100).toLocaleString()} Belief Shards\n\n${summarizePulls(pulls)}\n\n_Pity hiện tại: 9/150_`;
 }
 
 const dupe = (name: string, mythology: string, tier: string, essence: number): PullLine => ({
@@ -137,6 +139,12 @@ describe('Summon result fits Discord limits', () => {
 		if (summarizePulls(pulls).includes('…và')) {
 			expect(message).toMatch(/…và \d+ lượt nữa/);
 		}
+	});
+
+	it('renders the live pity threshold instead of a hardcoded one', () => {
+		expect(PITY_THRESHOLD).toBe(150);
+		expect(SUMMON_SUCCESS(13, '1,300', 'x', 11, PITY_THRESHOLD)).toContain('11/150');
+		expect(SUMMON_SUCCESS_RELIC(1, 'c', 'x', 11, PITY_THRESHOLD)).toContain('11/150');
 	});
 
 	it('total count in ×N groups adds up to the pull count (no lost pulls)', () => {

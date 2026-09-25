@@ -21,7 +21,7 @@ import {
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../../shared/discord/command.js';
 import { RunSummonUseCase } from '../application/RunSummonUseCase.js';
-import { MAX_PULLS, type RelicKind } from '../../../shared/config/gachaRates.js';
+import { MAX_PULLS, PITY_THRESHOLD, type RelicKind } from '../../../shared/config/gachaRates.js';
 
 /** Độ dài tối đa của content Discord. */
 const MAX_CONTENT_CHARS = 2000;
@@ -146,12 +146,13 @@ export class SummonCommand implements ICommand {
 				);
 				await interaction.editReply(
 					relic
-						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines, result.finalPity)
+						? SUMMON_SUCCESS_RELIC(result.pulls.length, cost, lines, result.finalPity, PITY_THRESHOLD)
 						: SUMMON_SUCCESS(
 								result.pulls.length,
 								formatNumber(result.shardsSpent),
 								lines,
 								result.finalPity,
+								PITY_THRESHOLD,
 							),
 				);
 			}
