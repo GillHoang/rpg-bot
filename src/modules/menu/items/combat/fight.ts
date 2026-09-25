@@ -7,6 +7,7 @@ export default {
 	kind: 'button',
 	group: GAMEPLAY_TEXT.activityGroup,
 	order: 12,
+	ownRow: true,
 	visibleWhen: (session) => session.screen.kind === 'gateTiers',
 	options: (_session, panel) =>
 		(panel?.data?.tiers ?? []).map((tier) => ({

@@ -65,12 +65,20 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 			container.addTextDisplayComponents((t) => t.setContent(`### ${groupHeading(group)}`));
 		}
 		const grouped = group ? buttons.filter((b) => (b.group ?? '') === group) : buttons;
-		for (let i = 0; i < grouped.length; i += 5)
-			container.addActionRowComponents(
-				new ActionRowBuilder<ButtonBuilder>().addComponents(
-					grouped.slice(i, i + 5).map((b) => gameplayButton(session, b)),
-				),
-			);
+		let row: ButtonBuilder[] = [];
+		const flush = () => {
+			if (!row.length) return;
+			container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(...row));
+			row = [];
+		};
+		for (const button of grouped) {
+			// `row` items (gate/tier grids) start a fresh line so they never mix
+			// with the action buttons; otherwise pack up to 5 per row.
+			if (button.row && row.length) flush();
+			row.push(gameplayButton(session, button));
+			if (row.length === 5) flush();
+		}
+		flush();
 	}
 }
 

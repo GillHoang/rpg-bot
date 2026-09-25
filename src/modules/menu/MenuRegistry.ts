@@ -34,6 +34,7 @@ function toPanelButton(item: MenuItem, option: MenuButtonOption): GamePanelButto
 		style: option.style,
 		emoji: option.emoji,
 		group: item.group ?? item.category,
+		row: item.ownRow,
 	};
 }
 

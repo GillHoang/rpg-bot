@@ -64,6 +64,8 @@ export interface MenuItemSpec {
 	group?: string;
 	/** Sort order within its group (ascending). */
 	order?: number;
+	/** Start a fresh action row before this item's buttons (keeps grids readable). */
+	ownRow?: boolean;
 	/** Structural visibility; `panel` is the panel being rendered (or the last one on act). */
 	visibleWhen: (session: MenuSession, panel: GamePanel | undefined) => boolean;
 	/** One or more buttons for this item on the current screen. */

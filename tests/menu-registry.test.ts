@@ -103,6 +103,16 @@ describe('menu item registry', () => {
 		expect(stats?.style).toBe('secondary');
 	});
 
+	it('marks grid items (gate/tier) to start their own action row', () => {
+		const panel = { title: '', body: '', data: { gates: [{ id: 1, disabled: false }], tiers: [{ number: 1, disabled: false }] } };
+		const gate = buildPanelButtons(sessionFor({ kind: 'gateSelect' }), panel).find((b) => b.action === 'gate');
+		expect(gate?.row).toBe(true);
+		const fight = buildPanelButtons(sessionFor({ kind: 'gateTiers' }), panel).find((b) => b.action === 'fight');
+		expect(fight?.row).toBe(true);
+		const boss = buildPanelButtons(sessionFor({ kind: 'home' }), { title: '', body: '' }).find((b) => b.action === 'boss');
+		expect(boss?.row).toBeFalsy();
+	});
+
 	it('only uses valid Discord emoji on buttons', () => {
 		// '✦'-style text glyphs look like icons but Discord rejects them as
 		// component emoji (COMPONENT_INVALID_EMOJI) — catch that at test time.

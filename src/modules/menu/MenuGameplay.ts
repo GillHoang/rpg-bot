@@ -23,6 +23,8 @@ export interface GamePanelButton {
 	style?: MenuButtonStyle;
 	emoji?: string;
 	group?: string;
+	/** When true the view starts a new action row before this button. */
+	row?: boolean;
 }
 
 export interface GamePanel {
