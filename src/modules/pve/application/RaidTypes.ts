@@ -22,6 +22,8 @@ export type RaidResult =
 			chestName: string;
 			gearDrop: string | null;
 			progress: RaidRewardResult;
+			/** Combat SPD of both sides, for the HUD speed bars (absent on legacy/manual results). */
+			spd?: { player: number; enemy: number };
 	  };
 
 export interface RaidRunOptions {
@@ -41,4 +43,6 @@ export interface RaidSettlement {
 	monsterStats: MonsterStats;
 	lootRng: () => number;
 	battle: BattleResult;
+	playerSpd?: number;
+	enemySpd?: number;
 }

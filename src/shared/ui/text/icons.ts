@@ -73,6 +73,11 @@ export const UNICODE_ICONS = {
 		shards: '🔮',
 	},
 
+	/** Chỉ số trận đấu hiển thị trên HUD. */
+	stat: {
+		speed: '⚡',
+	},
+
 	/** Điểm danh hằng ngày. */
 	daily: {
 		already: '⏳',

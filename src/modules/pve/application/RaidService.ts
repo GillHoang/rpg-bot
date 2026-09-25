@@ -237,7 +237,7 @@ export class RaidService {
 			gateTier,
 			monsterStats,
 			lootRng,
-			battle,
+			...battle,
 		});
 	}
 
@@ -288,7 +288,7 @@ export class RaidService {
 		account: PlayerAccount,
 		monsterStats: MonsterStats,
 		action: ReturnType<typeof createBattleActionContext>,
-	): Promise<BattleResult> {
+	): Promise<{ battle: BattleResult; playerSpd: number; enemySpd: number }> {
 		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
 		const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
 		const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
@@ -307,10 +307,11 @@ export class RaidService {
 		});
 		monster.immunityTags = monsterStats.immunityTags;
 		monster.flags.regen_pct = monsterStats.regenPct;
-		return this.engine.resolve(player, monster, action.seed, {
+		const battle = this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, { affixes: monsterStats.affixes }),
 		});
+		return { battle, playerSpd: assembled.stats.spd, enemySpd: monsterStats.spd };
 	}
 
 	private async validateAttempt(

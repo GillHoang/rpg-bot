@@ -89,6 +89,10 @@ export class RaidSettlementService {
 			chestName,
 			gearDrop,
 			progress,
+			spd:
+				ctx.playerSpd != null && ctx.enemySpd != null
+					? { player: ctx.playerSpd, enemy: ctx.enemySpd }
+					: undefined,
 		};
 	}
 
