@@ -120,19 +120,12 @@ export class MenuGameplayService implements MenuGameplay {
 		const routed = routeStatelessAction(session, action, value);
 		if (routed) return routed;
 		switch (action) {
-			case 'class': {
-				const combatClass = CLASS_NAMES.find((c) => c === value);
-				if (!combatClass) throw new AppError('MENU_INVALID_CLASS', MENU_ERROR_TEXT.invalidClass);
-				return { kind: 'confirm', operation: 'start', combatClass };
-			}
+			case 'class':
+				return this.startClassConfirm(value);
 			case 'daily':
 				return this.flow.claimDaily(session);
 			case 'claim':
-				{
-					const claimed = await this.quests.claimWeeklyGrand(session.ownerId);
-					session.notice = claimed.ok ? claimed.value : claimed.error.message;
-				}
-				return { kind: 'quests' };
+				return this.claimGrand(session);
 			case 'reroll':
 			case 'boss':
 				return { kind: 'confirm', operation: action, day: DailyCycle.keyAt(this.clock.now()) };
@@ -141,29 +134,9 @@ export class MenuGameplayService implements MenuGameplay {
 			case 'confirm':
 				return this.flow.confirm(session, username);
 			case 'fight':
-				if (session.screen.kind !== 'gateTiers' || !/^(?:[1-9]|10)$/.test(value ?? '')) {
-					session.notice = GATE_TEXT.invalid;
-					return { kind: 'gateSelect' };
-				}
-				session.portalGate = Number(value);
-				return this.flow.fight(session, false);
-			case 'continue': {
-				const battle = session.battle;
-				if (!battle?.portal || battle.boss || !['result', 'log'].includes(session.screen.kind)) {
-					return { kind: 'gateSelect' };
-				}
-				const { gate, tier } = battle.portal;
-				const won = battle.battle.outcome === 'player_win';
-				if (won && tier === TIERS_PER_GATE) {
-					if (gate >= GATES.length) return { kind: 'gateSelect' };
-					session.gateId = gate + 1;
-					session.portalGate = undefined;
-					return { kind: 'gateTiers' };
-				}
-				session.gateId = gate;
-				session.portalGate = won ? tier + 1 : tier;
-				return this.flow.fight(session, false);
-			}
+				return this.fightTier(session, value);
+			case 'continue':
+				return this.continueBattle(session);
 			// NOTE: result/log route statelessly via MenuActionRouter above.
 			case 'first':
 			case 'last':
@@ -173,6 +146,49 @@ export class MenuGameplayService implements MenuGameplay {
 			default:
 				throw new AppError('MENU_UNKNOWN_ACTION', MENU_ERROR_TEXT.unknownAction);
 		}
+	}
+
+	/** Class pick gate: unknown values never reach the confirm screen. */
+	private startClassConfirm(value?: string): MenuScreen {
+		const combatClass = CLASS_NAMES.find((c) => c === value);
+		if (!combatClass) throw new AppError('MENU_INVALID_CLASS', MENU_ERROR_TEXT.invalidClass);
+		return { kind: 'confirm', operation: 'start', combatClass };
+	}
+
+	/** Weekly-grand claim surfaces as an ephemeral menu notice. */
+	private async claimGrand(session: MenuSession): Promise<MenuScreen> {
+		const claimed = await this.quests.claimWeeklyGrand(session.ownerId);
+		session.notice = claimed.ok ? claimed.value : claimed.error.message;
+		return { kind: 'quests' };
+	}
+
+	/** Tier button gate: only a 1-10 tier on the tier screen starts a fight. */
+	private async fightTier(session: MenuSession, value?: string): Promise<MenuScreen> {
+		if (session.screen.kind !== 'gateTiers' || !/^(?:[1-9]|10)$/.test(value ?? '')) {
+			session.notice = GATE_TEXT.invalid;
+			return { kind: 'gateSelect' };
+		}
+		session.portalGate = Number(value);
+		return this.flow.fight(session, false);
+	}
+
+	/** Post-result continue: advance the portal cursor, then fight the next tier. */
+	private async continueBattle(session: MenuSession): Promise<MenuScreen> {
+		const battle = session.battle;
+		if (!battle?.portal || battle.boss || !['result', 'log'].includes(session.screen.kind)) {
+			return { kind: 'gateSelect' };
+		}
+		const { gate, tier } = battle.portal;
+		const won = battle.battle.outcome === 'player_win';
+		if (won && tier === TIERS_PER_GATE) {
+			if (gate >= GATES.length) return { kind: 'gateSelect' };
+			session.gateId = gate + 1;
+			session.portalGate = undefined;
+			return { kind: 'gateTiers' };
+		}
+		session.gateId = gate;
+		session.portalGate = won ? tier + 1 : tier;
+		return this.flow.fight(session, false);
 	}
 
 	private navigateBattleLog(session: MenuSession, action: 'first' | 'last' | 'prev' | 'next'): MenuScreen {

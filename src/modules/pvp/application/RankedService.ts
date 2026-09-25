@@ -393,25 +393,17 @@ export class RankedService {
 			opponentChange,
 		} = input;
 
-		await this.settleParticipant(
-			tx,
-			me,
-			opponentRow.discordId,
-			ratingBefore,
-			ratingAfter,
-			rankedLogResultOf(draw, won),
-			meChange,
-			true,
-		);
+		await this.settleParticipant(tx, me, opponentRow.discordId, { before: ratingBefore, after: ratingAfter }, rankedLogResultOf(draw, won), {
+			...meChange,
+			isInitiator: true,
+		});
 		await this.settleParticipant(
 			tx,
 			opponentRow,
 			discordId,
-			opponentRow.pvpRating,
-			opponentRatingAfter,
+			{ before: opponentRow.pvpRating, after: opponentRatingAfter },
 			rankedLogResultOf(draw, !won),
-			opponentChange,
-			false,
+			{ ...opponentChange, isInitiator: false },
 		);
 	}
 
@@ -419,29 +411,27 @@ export class RankedService {
 		tx: Transaction,
 		character: typeof userCharacter.$inferSelect,
 		opponentId: string,
-		ratingBefore: number,
-		ratingAfter: number,
+		rating: { before: number; after: number },
 		result: 'win' | 'loss' | 'draw',
-		change: { shield: boolean; promoted: boolean },
-		isInitiator: boolean,
+		outcome: { shield: boolean; promoted: boolean; isInitiator: boolean },
 	): Promise<void> {
 		const discordId = character.discordId;
-		if (change.promoted && bracketFor(ratingAfter).name !== 'Mortal') {
-			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(ratingAfter).name.toLowerCase()}`);
+		if (outcome.promoted && bracketFor(rating.after).name !== 'Mortal') {
+			await this.cosmetics.grantTitleInTx(tx, discordId, `rank_${bracketFor(rating.after).name.toLowerCase()}`);
 		}
 		await this.queries.insertLog(tx, {
 			playerId: discordId,
 			opponentId,
 			result,
-			ratingBefore,
-			ratingAfter,
-			isInitiator,
+			ratingBefore: rating.before,
+			ratingAfter: rating.after,
+			isInitiator: outcome.isInitiator,
 		});
 		const streak = await this.currentWinStreak(tx, discordId);
 		await this.queries.updateCharacter(tx, discordId, {
-			pvpRating: ratingAfter,
-			pvpPeak: Math.max(character.pvpPeak, ratingAfter),
-			pvpDemotionShield: change.shield,
+			pvpRating: rating.after,
+			pvpPeak: Math.max(character.pvpPeak, rating.after),
+			pvpDemotionShield: outcome.shield,
 			rankedWins: character.rankedWins + (result === 'win' ? 1 : 0),
 			rankedLosses: character.rankedLosses + (result === 'loss' ? 1 : 0),
 			pvpWins: character.pvpWins + (result === 'win' ? 1 : 0),

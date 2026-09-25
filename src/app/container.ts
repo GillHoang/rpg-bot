@@ -1,5 +1,5 @@
 import type { PersistenceContext } from '../shared/kernel/persistence.js';
-import { defaultPersistence } from '../db/defaultPersistence.js';
+import { createLivePersistence } from '../db/livePersistence.js';
 import type { Clock } from '../shared/kernel/clock.js';
 import { systemClock } from '../shared/kernel/clock.js';
 import { EventBus } from '../shared/kernel/EventBus.js';
@@ -112,7 +112,9 @@ export interface AppContainer {
 }
 
 export function createAppContainer(options: ApplicationOptions = {}): AppContainer {
-	const persistence = options.persistence ?? defaultPersistence;
+	// Production wiring owns its live context explicitly — the deprecated
+	// defaultPersistence global stays reserved for the PGlite test suites.
+	const persistence = options.persistence ?? createLivePersistence();
 	const events = options.events ?? new EventBus();
 	const clock = options.clock ?? systemClock;
 	const accounts = new PlayerAccountRepository(persistence.executor);

@@ -25,14 +25,12 @@ export class EconomyService {
 	>;
 	private readonly events: Pick<EventBus, 'emit'>;
 	constructor(
-		accounts:
-			| Pick<
-					PlayerAccountRepository,
-					'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor' | 'addCreduxWithExecutor'
-			  >
-			| undefined = undefined,
-		events: Pick<EventBus, 'emit'> | undefined = undefined,
-		options: EconomyDependencies,
+		accounts?: Pick<
+			PlayerAccountRepository,
+			'findById' | 'findByIdWithExecutor' | 'saveCreduxWithExecutor' | 'addCreduxWithExecutor'
+		>,
+		events?: Pick<EventBus, 'emit'>,
+		options: EconomyDependencies = {} as EconomyDependencies,
 	) {
 		this.persistence = requirePersistence(options, 'EconomyService');
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);

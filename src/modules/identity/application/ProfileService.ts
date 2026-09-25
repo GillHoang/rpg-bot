@@ -25,10 +25,10 @@ export class ProfileService {
 	private readonly statAssembly: Pick<StatAssemblyService, 'assemble'>;
 	private readonly queries: NonNullable<ProfileDependencies['queries']>;
 	constructor(
-		accounts: Pick<PlayerAccountRepository, 'findById'> | undefined = undefined,
-		_characters: Pick<UserCharacterRepository, 'hasCharacter'> | undefined = undefined,
-		statAssembly: Pick<StatAssemblyService, 'assemble'> | undefined = undefined,
-		options: ProfileDependencies,
+		accounts?: Pick<PlayerAccountRepository, 'findById'>,
+		_characters?: Pick<UserCharacterRepository, 'hasCharacter'>,
+		statAssembly?: Pick<StatAssemblyService, 'assemble'>,
+		options: ProfileDependencies = {} as ProfileDependencies,
 	) {
 		this.persistence = requirePersistence(options, 'ProfileService');
 		this.accounts = accounts ?? new PlayerAccountRepository(this.persistence.executor);

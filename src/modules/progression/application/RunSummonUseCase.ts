@@ -61,10 +61,10 @@ export class RunSummonUseCase implements UseCase<RunSummonInput, SummonResult> {
 	private readonly queries: SummonRepoPort;
 
 	constructor(
-		characters: SummonCharactersPort | undefined = undefined,
-		deities: SummonDeitiesPort | undefined = undefined,
-		events: SummonEventsPort | undefined = undefined,
-		options: RunSummonOptions,
+		characters?: SummonCharactersPort,
+		deities?: SummonDeitiesPort,
+		events?: SummonEventsPort,
+		options: RunSummonOptions = {} as RunSummonOptions,
 	) {
 		this.persistence = requirePersistence(options, 'RunSummonUseCase');
 		this.progress = options.progress ?? new GameplayProgressCoordinator({ persistence: this.persistence });

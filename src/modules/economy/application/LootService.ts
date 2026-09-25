@@ -2,6 +2,7 @@ import { formatNumber } from '../../../shared/ui/text/format.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { LootGrantService } from './LootGrantService.js';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
+import type { Executor } from '../../../db/client.js';
 import { LootInventoryRepository } from '../infrastructure/LootInventoryRepository.js';
 import { LootRepository } from '../infrastructure/LootRepository.js';
 import { CHESTS, rollChest, type ChestKey } from '../../../shared/config/chestLoot.js';
@@ -51,6 +52,18 @@ export interface LootDependencies {
 type LootSource = Pick<LootRepository, 'lockBag' | 'log' | 'logLedger' | 'bags' | 'findRunePool'> &
 	Partial<Pick<LootGrantService, 'rune' | 'gear'>>;
 
+type LockedBag = NonNullable<Awaited<ReturnType<LootRepository['lockBag']>>>;
+
+/** Zero-based chest-open gains; the caller adds them onto the locked bag row. */
+interface ChestGains {
+	items: string[];
+	creux: number;
+	shards: number;
+	essence: Record<'epicEssence' | 'mythicEssence' | 'legendaryEssence' | 'supremeEssence', number>;
+	runeBags: Record<'lesserRuneBag' | 'greaterRuneBag' | 'divineRuneBag', number>;
+	relics: Record<'sacredRelics' | 'supremeRelics', number>;
+}
+
 export class LootService {
 	private readonly grants: Pick<LootGrantService, 'rune' | 'gear'>;
 	private readonly progress: Pick<GameplayProgressCoordinator, 'apply'>;
@@ -89,97 +102,121 @@ export class LootService {
 			if (bag[table.column] < count) return err(new AppError('LOOT_NO_CHESTS', OPEN_NO_CHESTS));
 			opened = true;
 			const rng = createRng(createSecureSeed());
-			const items: string[] = [];
-			let creux = 0,
-				shards = 0;
-			const essence = {
-				epicEssence: bag.epicEssence,
-				mythicEssence: bag.mythicEssence,
-				legendaryEssence: bag.legendaryEssence,
-				supremeEssence: bag.supremeEssence,
-			};
-			const runeBags = { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 0 };
-			const relics = { sacredRelics: 0, supremeRelics: 0 };
-			for (let n = 0; n < count; n++) {
-				const roll = rollChest(key, rng);
-				creux += roll.credux;
-				shards += roll.shards;
-				if (roll.essence) {
-					essence[roll.essence]++;
-					items.push(OPEN_ITEM_ESSENCE(roll.essence));
-				}
-				if (roll.runeBag) {
-					runeBags[roll.runeBag] += 1;
-					items.push(OPEN_ITEM_RUNE_BAG(RUNE_BAG_SHORT_LABEL[roll.runeBag]));
-				}
-				if (roll.relic) {
-					relics[roll.relic] += 1;
-					items.push(OPEN_ITEM_RELIC(roll.relic));
-				}
-				if (roll.runeTier) items.push(await this.grants.rune(tx, id, rng, { tier: roll.runeTier }));
-				if (roll.gearTier) items.push(await this.grants.gear(tx, id, roll.gearTier, rng));
-			}
+			const gained = await this.accumulateRolls(tx, id, key, count, rng);
 			await this.queries.updateBag(tx, id, {
 				[table.column]: bag[table.column] - count,
-				credux: bag.credux + creux,
-				beliefShards: bag.beliefShards + shards,
-				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + creux,
-				...essence,
-				lesserRuneBag: bag.lesserRuneBag + runeBags.lesserRuneBag,
-				greaterRuneBag: bag.greaterRuneBag + runeBags.greaterRuneBag,
-				divineRuneBag: bag.divineRuneBag + runeBags.divineRuneBag,
-				sacredRelics: bag.sacredRelics + relics.sacredRelics,
-				supremeRelics: bag.supremeRelics + relics.supremeRelics,
+				credux: bag.credux + gained.creux,
+				beliefShards: bag.beliefShards + gained.shards,
+				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + gained.creux,
+				epicEssence: bag.epicEssence + gained.essence.epicEssence,
+				mythicEssence: bag.mythicEssence + gained.essence.mythicEssence,
+				legendaryEssence: bag.legendaryEssence + gained.essence.legendaryEssence,
+				supremeEssence: bag.supremeEssence + gained.essence.supremeEssence,
+				lesserRuneBag: bag.lesserRuneBag + gained.runeBags.lesserRuneBag,
+				greaterRuneBag: bag.greaterRuneBag + gained.runeBags.greaterRuneBag,
+				divineRuneBag: bag.divineRuneBag + gained.runeBags.divineRuneBag,
+				sacredRelics: bag.sacredRelics + gained.relics.sacredRelics,
+				supremeRelics: bag.supremeRelics + gained.relics.supremeRelics,
 			});
-			await this.repo.log(tx, id, `Open ${count} ${key}`, bag.credux, bag.credux + creux);
+			const action = `Open ${count} ${key}`;
+			await this.repo.log(tx, id, action, bag.credux, bag.credux + gained.creux);
 			await this.repo.logLedger(tx, {
 				discordId: id,
-				action: `Open ${count} ${key}`,
+				action,
 				itemType: table.column,
-				credux: [bag.credux, bag.credux + creux],
-				shards: [bag.beliefShards, bag.beliefShards + shards],
+				credux: [bag.credux, bag.credux + gained.creux],
+				shards: [bag.beliefShards, bag.beliefShards + gained.shards],
 				chest: [bag[table.column], bag[table.column] - count],
 			});
-			for (const [tier, gained] of Object.entries({
-				epicEssence: essence.epicEssence - bag.epicEssence,
-				mythicEssence: essence.mythicEssence - bag.mythicEssence,
-				legendaryEssence: essence.legendaryEssence - bag.legendaryEssence,
-				supremeEssence: essence.supremeEssence - bag.supremeEssence,
-			})) {
-				if (gained > 0) {
-					const before = bag[tier as keyof typeof bag] as number;
-					await this.repo.logLedger(tx, {
-						discordId: id,
-						action: `Open ${count} ${key}`,
-						itemType: tier,
-						essence: [before, before + gained],
-					});
-				}
-			}
-			for (const [relic, gained] of Object.entries({
-				sacredRelics: relics.sacredRelics,
-				supremeRelics: relics.supremeRelics,
-			})) {
-				if (gained > 0) {
-					const before = bag[relic as keyof typeof bag] as number;
-					await this.repo.logLedger(tx, {
-						discordId: id,
-						action: `Open ${count} ${key}`,
-						itemType: relic,
-						relic: [before, before + gained],
-					});
-				}
-			}
+			await this.logBonusLedgers(tx, id, action, bag, gained);
 			await this.progress.apply(tx, id, 'open_chest', this.clock.now(), count);
 			return ok(
-				OPEN_RESULT(count, table.label, formatNumber(creux), shards) +
-					(items.length ? '\n' + items.join('\n') : '') +
+				OPEN_RESULT(count, table.label, formatNumber(gained.creux), gained.shards) +
+					(gained.items.length ? '\n' + gained.items.join('\n') : '') +
 					OPEN_HINT,
 			);
 		});
 		if (message.ok && opened)
 			this.events.emit('chest.opened', { discordId: id, chest: key, count, progressApplied: true });
 		return message;
+	}
+
+	/** Roll every chest and grant rune/gear drops; pure accumulation, no bag writes. */
+	private async accumulateRolls(
+		tx: Executor,
+		id: string,
+		key: ChestKey,
+		count: number,
+		rng: () => number,
+	): Promise<ChestGains> {
+		const items: string[] = [];
+		let creux = 0;
+		let shards = 0;
+		const essence: ChestGains['essence'] = { epicEssence: 0, mythicEssence: 0, legendaryEssence: 0, supremeEssence: 0 };
+		const runeBags: ChestGains['runeBags'] = { lesserRuneBag: 0, greaterRuneBag: 0, divineRuneBag: 0 };
+		const relics: ChestGains['relics'] = { sacredRelics: 0, supremeRelics: 0 };
+		for (let n = 0; n < count; n++) {
+			const roll = rollChest(key, rng);
+			creux += roll.credux;
+			shards += roll.shards;
+			if (roll.essence) {
+				essence[roll.essence]++;
+				items.push(OPEN_ITEM_ESSENCE(roll.essence));
+			}
+			if (roll.runeBag) {
+				runeBags[roll.runeBag] += 1;
+				items.push(OPEN_ITEM_RUNE_BAG(RUNE_BAG_SHORT_LABEL[roll.runeBag]));
+			}
+			if (roll.relic) {
+				relics[roll.relic] += 1;
+				items.push(OPEN_ITEM_RELIC(roll.relic));
+			}
+			if (roll.runeTier) items.push(await this.grants.rune(tx, id, rng, { tier: roll.runeTier }));
+			if (roll.gearTier) items.push(await this.grants.gear(tx, id, roll.gearTier, rng));
+		}
+		return { items, creux, shards, essence, runeBags, relics };
+	}
+
+	/** Essence/relic audit rows for nonzero gains (the main chest delta is logged by the caller). */
+	private async logBonusLedgers(
+		tx: Executor,
+		id: string,
+		action: string,
+		bag: LockedBag,
+		gained: ChestGains,
+	): Promise<void> {
+		const rows: Array<{ itemType: string; before: number; after: number; kind: 'essence' | 'relic' }> = [
+			...(['epicEssence', 'mythicEssence', 'legendaryEssence', 'supremeEssence'] as const).map((tier) => ({
+				itemType: tier,
+				before: bag[tier],
+				after: bag[tier] + gained.essence[tier],
+				kind: 'essence' as const,
+			})),
+			...(['sacredRelics', 'supremeRelics'] as const).map((relic) => ({
+				itemType: relic,
+				before: bag[relic],
+				after: bag[relic] + gained.relics[relic],
+				kind: 'relic' as const,
+			})),
+		];
+		for (const row of rows) {
+			if (row.after <= row.before) continue;
+			if (row.kind === 'essence') {
+				await this.repo.logLedger(tx, {
+					discordId: id,
+					action,
+					itemType: row.itemType,
+					essence: [row.before, row.after],
+				});
+			} else {
+				await this.repo.logLedger(tx, {
+					discordId: id,
+					action,
+					itemType: row.itemType,
+					relic: [row.before, row.after],
+				});
+			}
+		}
 	}
 
 	/** /runes open bag:lb|gb|db — mở 1 túi rune đang nằm trong bag theo pool đã seed. */

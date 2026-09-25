@@ -92,10 +92,10 @@ export class StatAssemblyService {
 	private readonly runes: Pick<RuneRepository, 'findSocketedEffects'>;
 	private readonly queries: NonNullable<StatAssemblyDependencies['queries']>;
 	constructor(
-		gear: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'> | undefined = undefined,
-		deities: Pick<DeityService, 'findUserDeityAssemblyInfo'> | undefined = undefined,
-		runes: Pick<RuneRepository, 'findSocketedEffects'> | undefined = undefined,
-		options: StatAssemblyDependencies,
+		gear?: Pick<GearRepository, 'findWeaponCurrStats' | 'findArmorCurrStats'>,
+		deities?: Pick<DeityService, 'findUserDeityAssemblyInfo'>,
+		runes?: Pick<RuneRepository, 'findSocketedEffects'>,
+		options: StatAssemblyDependencies = {} as StatAssemblyDependencies,
 	) {
 		this.persistence = requirePersistence(options, 'StatAssemblyService');
 		this.gear = gear ?? new GearRepository();

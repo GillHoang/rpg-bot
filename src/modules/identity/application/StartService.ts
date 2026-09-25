@@ -53,17 +53,15 @@ export class StartService {
 	private readonly queries: NonNullable<StartDependencies['queries']>;
 	private readonly createGearIdGenerator: (executor: Executor) => Pick<GearIdGenerator, 'generateUniqueGearId'>;
 	constructor(
-		users: Pick<UserRepository, 'isRegistered' | 'registerNew'> | undefined = undefined,
-		characters: Pick<UserCharacterRepository, 'hasCharacter' | 'insert'> | undefined = undefined,
-		gear:
-			| Pick<
-					GearRepository,
-					'findWeaponRosterIdByName' | 'findArmorRosterIdByName' | 'grantWeapon' | 'grantArmor'
-			  >
-			| undefined = undefined,
-		presets: Pick<PresetRepository, 'createDefaultPresets'> | undefined = undefined,
-		cosmetics: Pick<CosmeticService, 'grantBaseInTx'> | undefined = undefined,
-		options: StartDependencies,
+		users?: Pick<UserRepository, 'isRegistered' | 'registerNew'>,
+		characters?: Pick<UserCharacterRepository, 'hasCharacter' | 'insert'>,
+		gear?: Pick<
+			GearRepository,
+			'findWeaponRosterIdByName' | 'findArmorRosterIdByName' | 'grantWeapon' | 'grantArmor'
+		>,
+		presets?: Pick<PresetRepository, 'createDefaultPresets'>,
+		cosmetics?: Pick<CosmeticService, 'grantBaseInTx'>,
+		options: StartDependencies = {} as StartDependencies,
 	) {
 		this.persistence = requirePersistence(options, 'StartService');
 		this.users = users ?? new UserRepository();

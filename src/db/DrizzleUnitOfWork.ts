@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { recordFailure } from '../shared/utils/operationalMetrics.js';
 import { AppError } from '../shared/kernel/Result.js';
 import type { db, Transaction } from './client.js';
@@ -31,8 +32,10 @@ export class DrizzleUnitOfWork implements IUnitOfWork {
 				attempt += 1;
 				if (!retryable || attempt > this.maxRetries) throw error;
 				// Exponential backoff with jitter: 25/50/100ms — keeps lock
-				// contention from turning into a thundering herd.
-				const delay = 25 * 2 ** (attempt - 1) + Math.random() * 10;
+				// contention from turning into a thundering herd. Jitter uses
+				// crypto randomness (not Math.random: weak PRNGs must not feed
+				// retry timing that an adversary could predict).
+				const delay = 25 * 2 ** (attempt - 1) + randomInt(0, 10);
 				await new Promise((resolve) => setTimeout(resolve, delay));
 			}
 		}

@@ -45,8 +45,8 @@ export class AscensionService {
 	private readonly deities: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'>;
 	private readonly queries: NonNullable<AscensionDependencies['queries']>;
 	constructor(
-		deities: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'> | undefined = undefined,
-		options: AscensionDependencies,
+		deities?: Pick<DeityService, 'findOwnedProgress' | 'setSigils' | 'setAscended'>,
+		options: AscensionDependencies = {} as AscensionDependencies,
 	) {
 		this.persistence = requirePersistence(options, 'AscensionService');
 		this.deities = deities ?? new DeityService();

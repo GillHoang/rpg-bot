@@ -20,7 +20,7 @@ export interface Debuff {
 }
 
 /** Tags whose application Tenacity can shrug off entirely. */
-const HARD_CC_TAGS: readonly DebuffTag[] = ['stun', 'paralyze', 'dizzy'];
+const HARD_CC_TAGS: ReadonlySet<DebuffTag> = new Set(['stun', 'paralyze', 'dizzy']);
 
 /**
  * Single choke point for applying a debuff. Tenacity gives a flat chance
@@ -38,7 +38,7 @@ export function applyDebuff(
 	rng: () => number,
 	log?: (message: string) => void,
 ): Debuff | null {
-	if (HARD_CC_TAGS.includes(debuff.tag)) {
+	if (HARD_CC_TAGS.has(debuff.tag)) {
 		const ten = target.ten ?? 0;
 		if (ten > 0 && rollChance(ten / 100, rng)) {
 			log?.(COMBAT_TENACITY_SHRUG(combatDisplayName(target)));

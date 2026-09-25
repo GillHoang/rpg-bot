@@ -28,13 +28,17 @@ export class MageStrategy extends NullClassStrategy {
 		if (ctx.round % MAGE_OVERCHARGE_EVERY !== 0) return;
 		hit.suppressCrit = true;
 		const woven = this.consumeWeave(ctx);
-		hit.forcedMultiplier = woven
-			? MAGE_OVERCHARGE_HIGH_MULT
-			: rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
-				? MAGE_OVERCHARGE_HIGH_MULT
-				: MAGE_OVERCHARGE_MULT;
+		hit.forcedMultiplier = this.overchargeMultiplier(ctx, woven);
 		if (woven) ctx.log(COMBAT_MAGE_WEAVE(combatDisplayName(ctx.self)));
 		ctx.self.flags.mage_overcharge_this_hit = true;
+	}
+
+	/** Weave consumes to a guaranteed max roll; otherwise roll the 40% high chance. */
+	private overchargeMultiplier(ctx: StrategyContext, woven: boolean): number {
+		if (woven) return MAGE_OVERCHARGE_HIGH_MULT;
+		return rollChance(MAGE_OVERCHARGE_HIGH_CHANCE, ctx.rng)
+			? MAGE_OVERCHARGE_HIGH_MULT
+			: MAGE_OVERCHARGE_MULT;
 	}
 
 	/** Consume one pending weave debuff for a guaranteed max overcharge. */

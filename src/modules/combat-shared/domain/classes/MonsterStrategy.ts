@@ -97,31 +97,8 @@ export class MonsterStrategy extends NullClassStrategy {
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
 		const hpFrac = ctx.self.hp / ctx.self.maxHp;
 
-		if (this.skill === 'moon_threshold') {
-			// Phase bonuses; announcements + DOT-shed live in trackBakunawaPhase.
-			if (hpFrac < 1 / 3) {
-				// P3 enrage replaces the eclipse bonus once crossed.
-				hit.damagePctBonus += 80;
-			} else if (hpFrac < 1 / 2) {
-				hit.damagePctBonus += BOSS_ENTRY.eclipseDamageBonus;
-			} else if (hpFrac < 2 / 3) {
-				hit.damagePctBonus += 20;
-			}
-			// Devour: consumed on the strike after the telegraphed charge round.
-			if (hpFrac < 1 / 3 && ctx.self.flags.devour_charging) {
-				ctx.self.flags.devour_charging = false;
-				hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 3.0);
-				ctx.log(COMBAT_MONSTER_DEVOUR(combatDisplayName(ctx.self)));
-			}
-		}
-		// Blood frenzy: below 40% HP the beast hits harder (M7 mob variety).
-		if (this.skill === 'blood_frenzy' && hpFrac < 0.4) {
-			hit.damagePctBonus += 40;
-			if (!ctx.self.flags.frenzy_logged) {
-				ctx.self.flags.frenzy_logged = true;
-				ctx.log(COMBAT_MONSTER_FRENZY(combatDisplayName(ctx.self)));
-			}
-		}
+		this.applyMoonThreshold(ctx, hit, hpFrac);
+		this.applyBloodFrenzy(ctx, hit, hpFrac);
 		// Frenzy echo (affix): a weaker, earlier frenzy below half HP.
 		if ((this.traits.affixes ?? []).includes('frenzy_echo') && hpFrac < 0.5) {
 			hit.damagePctBonus += 25;
@@ -131,6 +108,36 @@ export class MonsterStrategy extends NullClassStrategy {
 			ctx.self.flags.leap_charging = false;
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
 			ctx.log(COMBAT_MONSTER_LEAP(combatDisplayName(ctx.self)));
+		}
+	}
+
+	/** Bakunawa phase damage bonuses + telegraphed Devour strike. */
+	private applyMoonThreshold(ctx: StrategyContext, hit: OutgoingHit, hpFrac: number): void {
+		if (this.skill !== 'moon_threshold') return;
+		// Phase bonuses; announcements + DOT-shed live in trackBakunawaPhase.
+		if (hpFrac < 1 / 3) {
+			// P3 enrage replaces the eclipse bonus once crossed.
+			hit.damagePctBonus += 80;
+		} else if (hpFrac < 1 / 2) {
+			hit.damagePctBonus += BOSS_ENTRY.eclipseDamageBonus;
+		} else if (hpFrac < 2 / 3) {
+			hit.damagePctBonus += 20;
+		}
+		// Devour: consumed on the strike after the telegraphed charge round.
+		if (hpFrac < 1 / 3 && ctx.self.flags.devour_charging) {
+			ctx.self.flags.devour_charging = false;
+			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 3.0);
+			ctx.log(COMBAT_MONSTER_DEVOUR(combatDisplayName(ctx.self)));
+		}
+	}
+
+	/** Blood frenzy: below 40% HP the beast hits harder (M7 mob variety). */
+	private applyBloodFrenzy(ctx: StrategyContext, hit: OutgoingHit, hpFrac: number): void {
+		if (this.skill !== 'blood_frenzy' || hpFrac >= 0.4) return;
+		hit.damagePctBonus += 40;
+		if (!ctx.self.flags.frenzy_logged) {
+			ctx.self.flags.frenzy_logged = true;
+			ctx.log(COMBAT_MONSTER_FRENZY(combatDisplayName(ctx.self)));
 		}
 	}
 
@@ -196,7 +203,7 @@ export class MonsterStrategy extends NullClassStrategy {
 	/** Bakunawa phase transitions shed DOTs and announce themselves once each. */
 	private trackBakunawaPhase(ctx: StrategyContext): void {
 		const hpFrac = ctx.self.hp / ctx.self.maxHp;
-		const phase = hpFrac < 1 / 3 ? 3 : hpFrac < 1 / 2 ? 2 : 1;
+		const phase = bakunawaPhase(hpFrac);
 		const previous = (ctx.self.flags.baku_phase as number) ?? 1;
 		if (phase === previous) return;
 		const crossedTwo = previous < 2 && phase >= 2;
@@ -222,4 +229,11 @@ export class MonsterStrategy extends NullClassStrategy {
 		if (granted <= 0) return;
 		ctx.log(text(combatDisplayName(ctx.self), formatNumber(granted)));
 	}
+}
+
+/** Bakunawa phase from remaining HP fraction: P3 below a third, P2 below half, else P1. */
+function bakunawaPhase(hpFrac: number): number {
+	if (hpFrac < 1 / 3) return 3;
+	if (hpFrac < 1 / 2) return 2;
+	return 1;
 }

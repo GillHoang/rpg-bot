@@ -1,4 +1,4 @@
-import { CASINO_LOG_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { CASINO_LOG_TEXT, DI_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -9,7 +9,6 @@ import {
 import { CasinoSessionService, type SessionView } from '../application/CasinoSessionService.js';
 import type { CasinoAction, InteractiveGame } from '../domain/InteractiveGame.js';
 import { logger } from '../../../shared/utils/logger.js';
-import { DI_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
 import {
 	CASINO_CASH_OUT_LABEL,
 	CASINO_HIT_LABEL,

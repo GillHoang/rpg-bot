@@ -99,7 +99,7 @@ export class QuestService {
 	private readonly clock: Clock;
 	private readonly reputation: Pick<ReputationService, 'awardInTx'>;
 	private readonly queries: NonNullable<QuestDependencies['queries']>;
-	constructor(reputation: Pick<ReputationService, 'awardInTx'> | undefined = undefined, options: QuestDependencies) {
+	constructor(reputation?: Pick<ReputationService, 'awardInTx'>, options: QuestDependencies = {} as QuestDependencies) {
 		this.persistence = requirePersistence(options, 'QuestService');
 		this.clock = options.clock ?? systemClock;
 		this.reputation = reputation ?? new ReputationService({ persistence: this.persistence, clock: this.clock });

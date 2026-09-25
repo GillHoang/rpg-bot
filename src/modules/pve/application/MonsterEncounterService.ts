@@ -78,13 +78,16 @@ function rollAffixes(rng: () => number, count: number): string[] {
 	return picked;
 }
 
+/** Mob-type tier index into the secondary-stat tables below. */
+const MOB_TIER_INDEX: Record<string, number> = { boss: 2, elite: 1 };
+
 /** Secondary stats + traits derived in code (no roster migration needed). */
 function secondaryStats(
 	lv: number,
 	mobType: string,
 	gateModifier: GateModifier,
 ): { spd: number; acc: number; eva: number; ten: number; regenPct: number } {
-	const tier = mobType === 'boss' ? 2 : mobType === 'elite' ? 1 : 0;
+	const tier = MOB_TIER_INDEX[mobType] ?? 0;
 	return {
 		spd: Math.floor(95 + [0, 7, 15][tier]! + lv * 0.3),
 		acc: 0,
@@ -169,12 +172,19 @@ export class MonsterEncounterService {
 			immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
 			// Regulars in modifier gates roll one affix; final bosses roll two.
 			// Elites keep their signature skill; daily boss stays seeded-pure.
-			affixes:
-				type === 'regular' && gateModifier !== 'none'
-					? rollAffixes(rng, 1)
-					: finalBoss
-						? rollAffixes(rng, 2)
-						: [],
+			affixes: rollEncounterAffixes(type, gateModifier, finalBoss, rng),
 		};
 	}
+}
+
+/** Affix budget per encounter kind (see comment at the call site). */
+function rollEncounterAffixes(
+	type: string,
+	gateModifier: GateModifier,
+	finalBoss: boolean,
+	rng: () => number,
+): string[] {
+	if (type === 'regular' && gateModifier !== 'none') return rollAffixes(rng, 1);
+	if (finalBoss) return rollAffixes(rng, 2);
+	return [];
 }

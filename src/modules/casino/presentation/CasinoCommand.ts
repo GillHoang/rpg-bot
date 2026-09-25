@@ -72,6 +72,13 @@ export class CasinoCommand implements ICommand {
 	}
 }
 
+/** Discord-side choice whitelist per stateless game (see casinoOptions). */
+const CASINO_CHOICES: Record<string, readonly string[]> = {
+	coin_toss: ['heads', 'tails'],
+	dice_roll: ['odd', 'even'],
+	baccarat: ['player', 'banker'],
+};
+
 function casinoOptions(s: import('discord.js').SlashCommandSubcommandBuilder, name: string, description: string) {
 	s.setName(name)
 		.setDescription(description)
@@ -85,9 +92,8 @@ function casinoOptions(s: import('discord.js').SlashCommandSubcommandBuilder, na
 		);
 	// Discord-side whitelisting: without addChoices a typo like `Banker`
 	// silently remaps to the opposite side in the game normalize step.
-	if (name === 'coin_toss' || name === 'dice_roll' || name === 'baccarat') {
-		const choices =
-			name === 'coin_toss' ? ['heads', 'tails'] : name === 'dice_roll' ? ['odd', 'even'] : ['player', 'banker'];
+	const choices = CASINO_CHOICES[name];
+	if (choices) {
 		s.addStringOption((o) =>
 			o
 				.setName('choice')
