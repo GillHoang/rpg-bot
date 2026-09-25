@@ -1,5 +1,9 @@
 const TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
+/** Shared durations so weekly windows, season lengths and day math cannot drift apart. */
+export const DAY_MS = 24 * 60 * 60 * 1000;
+export const WEEK_MS = 7 * DAY_MS;
+
 const formatter = new Intl.DateTimeFormat('en-US', {
 	timeZone: TIME_ZONE,
 	year: 'numeric',
@@ -24,7 +28,6 @@ export class DailyCycle {
 	}
 
 	static yesterdayKeyAt(instant: Date = new Date()): string {
-		const oneDayMs = 24 * 60 * 60 * 1000;
-		return DailyCycle.keyAt(new Date(instant.getTime() - oneDayMs));
+		return DailyCycle.keyAt(new Date(instant.getTime() - DAY_MS));
 	}
 }

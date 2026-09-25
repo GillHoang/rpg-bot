@@ -23,7 +23,7 @@ const BOOST_TABLE: Record<number, number> = {
 };
 
 /** target display level (1..10) -> success probability. Divine +11..+20 reuse the +10 rate. */
-const SUCCESS_RATE: Record<number, number> = {
+export const SUCCESS_RATE: Record<number, number> = {
 	1: 1.0,
 	2: 0.95,
 	3: 0.85,

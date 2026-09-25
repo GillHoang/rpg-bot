@@ -38,7 +38,7 @@ import {
 import { randInt } from '../../../shared/config/raidLoot.js';
 import { pickQuestTemplates } from './QuestTemplatePicker.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
+import { DailyCycle, WEEK_MS } from '../../../shared/utils/dailyCycle.js';
 import { weekWindowAt } from '../../../shared/config/ranked.js';
 import { ReputationService } from './ReputationService.js';
 
@@ -247,7 +247,7 @@ export class QuestService {
 			// the grand silently vanishes at the week boundary).
 			const current = await this.tryClaimWeek(tx, discordId, week);
 			if (current) return current;
-			const prevWeek = weekWindowAt(new Date(now.getTime() - 7 * 86400000)).key;
+			const prevWeek = weekWindowAt(new Date(now.getTime() - WEEK_MS)).key;
 			if (prevWeek !== week) {
 				const prev = await this.tryClaimWeek(tx, discordId, prevWeek);
 				if (prev) return prev;

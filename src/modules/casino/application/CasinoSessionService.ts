@@ -19,7 +19,7 @@ import type { Executor } from '../../../db/client.js';
 import { createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { systemClock, type Clock } from '../../../shared/kernel/clock.js';
 import { replayGame, type InteractiveGame, type CasinoAction, type StoredGame } from '../domain/InteractiveGame.js';
-import { MAX_BET } from '../../../shared/config/casinoPayouts.js';
+import { MAX_BET, CASINO_SESSION_TTL_MS } from '../../../shared/config/casinoPayouts.js';
 
 export type SessionView =
 	| { status: 'ok'; sessionId: string; game: InteractiveGame; done: boolean; text: string; revision: number }
@@ -85,7 +85,7 @@ export class CasinoSessionService {
 				balanceBefore: bag.credux,
 				balanceAfterDebit: bag.credux - bet,
 				stateJson: stored,
-				expiresAt: new Date(this.clock.now().getTime() + 60000),
+				expiresAt: new Date(this.clock.now().getTime() + CASINO_SESSION_TTL_MS),
 			});
 			await this.queries.updateBag(tx, id, { credux: bag.credux - bet });
 			return this.resolve(tx, session, stored);

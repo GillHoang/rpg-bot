@@ -1,4 +1,5 @@
 import { CASINO_LOG_TEXT, DI_ERROR_TEXT } from '../../../shared/ui/text/diagnostics.js';
+import { CASINO_SESSION_TTL_MS } from '../../../shared/config/casinoPayouts.js';
 import {
 	ActionRowBuilder,
 	ButtonBuilder,
@@ -47,7 +48,7 @@ export class InteractiveCasinoController {
 		});
 		const message = await i.editReply(render(start));
 		if (start.status !== 'ok' || start.done) return;
-		const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+		const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: CASINO_SESSION_TTL_MS });
 		let queue = Promise.resolve();
 		collector.on('collect', (button) => {
 			if (button.user.id !== i.user.id) {

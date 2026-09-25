@@ -6,6 +6,12 @@
  */
 export const MAX_BET = 500_000;
 export const EVEN_MONEY = 2;
+
+/** Interactive sessions (blackjack/crash) and their Discord collectors share
+ * one 60s TTL — a single constant so the worker, the service and the buttons
+ * can never disagree on expiry. */
+export const CASINO_SESSION_TTL_MS = 60_000;
+
 /**
  * Baccarat banker wins pay 1.95x gross (standard 5% commission). Without it
  * the banker side is +EV (~+1.24%: banker wins ~46% vs player ~44.75% on a

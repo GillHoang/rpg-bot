@@ -1,4 +1,5 @@
 import { SEASON_NAME } from '../../../shared/ui/text/ranked.js';
+import { DAY_MS } from '../../../shared/utils/dailyCycle.js';
 import type { Transaction } from '../../../db/client.js';
 import { SeasonRepository } from '../infrastructure/SeasonRepository.js';
 import type { PersistenceContext } from '../../../shared/kernel/persistence.js';
@@ -33,7 +34,7 @@ export class SeasonService {
 		const created = await this.queries.create(tx, {
 			name: SEASON_NAME(count + 1),
 			startsAt: now,
-			endsAt: new Date(now.getTime() + 30 * 86400000),
+			endsAt: new Date(now.getTime() + 30 * DAY_MS),
 			isActive: true,
 		});
 		return created;

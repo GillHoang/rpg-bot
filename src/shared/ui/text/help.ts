@@ -32,9 +32,9 @@ export const HELP_PAGES: readonly HelpPage[] = [
 			[
 				'**5 class — mỗi class một nội tại riêng**',
 				`${ICONS.combatClass.swordsman} **Swordsman** — Chảy máu cộng dồn, +5% ATK mỗi lượt`,
-				`${ICONS.combatClass.fighter} **Fighter** — 30% cơ hội Bash: +50% sát thương và Choáng`,
+				`${ICONS.combatClass.fighter} **Fighter** — 15% cơ hội Bash (35% nếu địch đang Dizzy): +50% sát thương và Choáng`,
 				`${ICONS.combatClass.mage} **Mage** — mỗi lượt thứ 3 nổ 4x–5x sát thương`,
-				`${ICONS.combatClass.knight} **Knight** — giảm 25% sát thương nhận vào, hồi 2% HP mỗi lượt`,
+				`${ICONS.combatClass.knight} **Knight** — giảm 25% sát thương nhận vào, hồi 2,5% HP mỗi lượt`,
 				`${ICONS.combatClass.archer} **Archer** — bỏ qua 25% DEF, 35% cơ hội đánh đôi`,
 			].join('\n'),
 			`**Tài nguyên chính**\n${ICONS.help.credux} **Credux** — tiền mặt · ${ICONS.help.shards} **Belief Shards** — triệu hồi deity · ${ICONS.help.essence} **Essence** (4 tier) — Sigil & rune · ${ICONS.help.relic} **Sacred/Supreme Relic** — triệu hồi ép tier · ${ICONS.help.valor} **Valor Medals** — cửa hàng PvP`,
@@ -55,8 +55,8 @@ export const HELP_PAGES: readonly HelpPage[] = [
 	{
 		title: 'Deity, triệu hồi & Gacha',
 		body: [
-			'Deity là nguồn chỉ số lớn nhất về cuối game:',
-			`**${ICONS.summon.header} \`/summon count:1–30\`** — **100 Shards/lượt**. Tỷ lệ: Epic 64,5% · Mythic 34% · Legendary 1% · Supreme 0,5%. Pity 500 lượt: Legendary bảo đảm. Trúng trùng tự đổi thành **Essence** theo tier (Epic 1 · Mythic 2 · Legendary 5 · Supreme 10).`,
+			'Deity là nguồn chỉ số lớn ngoài class và gear về cuối game:',
+			`**${ICONS.summon.header} \`/summon count:1–30\`** — **100 Shards/lượt**. Tỷ lệ: Epic 64,5% · Mythic 34% · Legendary 1% · Supreme 0,5%. Pity 150 lượt: Legendary bảo đảm. Trúng trùng tự đổi thành **Essence** theo tier (Epic 1 · Mythic 2 · Legendary 5 · Supreme 10).`,
 			'**Tùy chọn `relic`** — `sacred` đảm bảo Mythic+ (70% Mythic · 28% Legendary · 2% Supreme), `supreme` đảm bảo Legendary+ (70/30). Mỗi lượt tốn 1 relic, **không tốn Shards**, không ảnh hưởng pity.',
 			`**${ICONS.deity.sigil} \`/deities\`** — danh sách deity đang sở hữu: ID (\`user_deity_id\`), Sigil, chỉ số.`,
 			'**`/deity sigil user_deity_id:<id>`** — mở Sigil bằng Essence: mỗi Sigil **+5% chỉ số base** của deity (bắt đầu ở 50%, tối đa 10 Sigil = 100%).',
