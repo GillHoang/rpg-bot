@@ -53,6 +53,13 @@ presentation/ (discord commands) -> application/ (use-cases, services)
 5. `modules/*/presentation/`: thin — parse interaction, call use-case, render reply. No SQL.
 6. RNG via `shared/kernel`; display copy in `shared/ui/text` (checked by `pnpm check:text`).
 7. Cross-module imports are allowed but must go through the target's public barrel or a port — never deep-link around it without reason.
+8. Error channel: public use-case/service methods return `Result` (user-recoverable
+   outcomes: validation, insufficient funds, not-registered) with stable `AppError`
+   codes; `throw new AppError` is reserved for invariants, tx-internal aborts
+   (missing locked rows, corrupt seeds — these roll the transaction back) and
+   DI-wiring bugs. Both transports map the boundary the same way
+   (`CommandRegistry.dispatch`, `MenuRouter` `userMessage`): `AppError` message
+   shown as-is, unknown errors → generic failure + logged stack.
 
 ## Adding a feature (checklist)
 
@@ -72,3 +79,9 @@ presentation/ (discord commands) -> application/ (use-cases, services)
   (`app db modules scripts seed shared`); all re-export shims deleted.
 - Next (per-feature, incremental): move each remaining legacy service transaction body
   into a module use-case (same pattern as `ClaimDailyUseCase`/`RunSummonUseCase`).
+- Known follow-ups (tracked, not blocking): `pnpm typecheck:tests` (advisory) still
+  reports pre-existing fixture staleness in 13 legacy test files (missing
+  P8 stat fields, drizzle overload strictness) — new/modified test files are
+  clean; branch coverage margin is razor-thin (80.05 vs gate 80), so gates stay
+  until branch-specific tests land; `InventoryDataRepository` stays one cohesive
+  read-model by decision (split cost > benefit).

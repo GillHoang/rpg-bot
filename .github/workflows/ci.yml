@@ -39,6 +39,9 @@ jobs:
       - name: Lint check
         run: pnpm lint:check
 
+      - name: Static gates (types, text, menu registry)
+        run: pnpm typecheck && pnpm check:text && pnpm menu:registry:check
+
       - name: Build
         run: pnpm build
 

@@ -37,8 +37,10 @@ export default defineConfig({
 		},
 		coverage: {
 			provider: 'v8',
-			// Floor measured 2026-09-25 (86.7/81.6/85.8/88.9 stmts/branch/funcs/lines):
-			// the gate fails `test:coverage` on regressions, plain `test` is unaffected.
+			// Floor measured 2026-09-25 (86.7/81.6/85.8/88.9 stmts/branch/funcs/lines),
+			// re-measured after phases 1-4 (86.7/80.1/86.4/89.0): branch margin is
+			// razor-thin, so gates stay put until branch-specific tests land.
+			// The gate fails `test:coverage` on regressions, plain `test` is unaffected.
 			thresholds: {
 				statements: 85,
 				branches: 80,

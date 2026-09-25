@@ -13,6 +13,25 @@ export default tseslint.config(
         'error',
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
+  {
+    // Phase 1 DI hardening: the menuRouter global is gone (MenuRouter comes
+    // from createAppContainer). Ban the module path so it cannot come back.
+    files: ['src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/menu/menuRuntime*'],
+              message: 'menuRuntime global was removed — inject MenuRouter via createAppContainer instead.',
+            },
+          ],
+        },
+      ],
     },
   },
   {

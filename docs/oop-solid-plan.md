@@ -47,7 +47,14 @@ Pure arithmetic helpers, immutable configuration and text formatting remain func
   (PGlite mock); an architecture test bans any import of the removed global.
 - All service error channels are `AppError` with stable codes
   (`DI_*`, `*_MISSING_BAG`, …); `CommandRegistry.dispatch` maps `AppError` to
-  the user message, unknown errors to `GENERIC_ERROR`. Pure validation utils
+  the user message, unknown errors to `GENERIC_ERROR`. The menu transport maps
+  the same way (`MenuRouter.userMessage`): `AppError` messages surface in menu
+  notices, unknown errors fall back to `MENU_TEXT.failed`. Policy: public
+  methods return `Result` for user-recoverable outcomes; `throw AppError` is
+  reserved for invariants, tx-internal aborts and DI-wiring bugs (see
+  `docs/architecture.md` rule 8). `LootService`/`SocketService` seed-corruption
+  guards return `err()` (total methods); repository/domain invariant throws
+  stay. Pure validation utils
   (`progressBar`, `weightedRandom`) keep native `RangeError`; CLI scripts keep
   `Error`. `Clock` is injected everywhere time matters (`BattleEngine` seeds
   from crypto instead of `Date.now()`); `DrizzleUnitOfWork` retries
@@ -104,7 +111,7 @@ Pure arithmetic helpers, immutable configuration and text formatting remain func
 
 Original positional constructor arguments remain supported with optional trailing dependency options. The unused InventoryRepository, DeityRepository, MonsterRepository and RaidRewardRepository aliases were removed on 2026-09-23; tests now import the policy services directly. LootService still honors legacy injected rune/gear methods, with explicit grant overrides taking precedence.
 
-Zero-argument registration uses the legacy shared EventBus and lazy menuRouter, matching zero-argument observer/bot setup. Explicit application graphs use independent buses and menu stores. Unused functional delegates for gameplay progress, battle attacks and combat status effects were also removed on 2026-09-23; active callers use the corresponding classes.
+Services default to an isolated `new EventBus()` when no bus is injected; production always injects the shared bus from `createAppContainer`. The `menuRouter` global (`menu/menuRuntime.ts`), `defaultFactory` combatant helpers and the `EMIT_ONLY_EVENT_BUS` no-op fallback were removed — `DiscordBot`, `BotMaintenance` and `MenuCommand` take required collaborators. `EMIT_ONLY_EVENT_BUS` remains exported as deprecated only.
 
 ## Verification
 
@@ -113,6 +120,14 @@ Zero-argument registration uses the legacy shared EventBus and lazy menuRouter, 
 - Tests cover dependency substitution, two-database isolation, rollback and commit ordering, event routing, lifecycle, inventory, command registration and architecture boundaries.
 - Combat characterization retains the original hashes for 276 seeded battles.
 - Final full-suite, static, clean build and manifest results are recorded below.
+- Post phases 1–4 (2026-09-25, `plans/260925-fix-oop-solid`): DI singletons removed
+  (`menuRuntime`, `defaultFactory`, `EMIT_ONLY` fallback, `= db` default),
+  decorator switches → injectable `EffectRegistry` tables, `CombatantState.flags`
+  typed as `BattleFlags`, menu error boundary parity with dispatch.
+  Characterization re-baselined after a flags-shape-only change proven identical
+  (168-trace flags-free hash `42357418…` matched pre/post migration).
+  Full suite: **613 passed / 9 skipped**; typecheck + lint + text-boundaries +
+  menu-registry + dist import check pass; 28 command manifests byte-identical.
 
 PGlite and simulated Discord tests do not establish live PostgreSQL lock scheduling or live Discord availability. No dependency upgrade, migration, production data operation or deployment is part of this refactor.
 

@@ -25,6 +25,7 @@
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"typecheck": "tsc -p tsconfig.json --noEmit",
+		"typecheck:tests": "tsc -p tsconfig.tests.json --noEmit",
 		"check": "pnpm lint:check && pnpm typecheck && pnpm check:text && pnpm menu:registry:check && pnpm test && pnpm check:links",
 		"check:text": "node scripts/check-text-boundaries.mjs",
 		"check:links": "node scripts/check-markdown-links.mjs README.md docs/audit-deployment.md",
