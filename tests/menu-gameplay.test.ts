@@ -52,7 +52,12 @@ beforeEach(() => {
 	vi.restoreAllMocks();
 	id = `menu-${++sequence}`;
 });
-const start = () => new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(id, id, 'Knight');
+const start = () =>
+	new StartService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }).start(
+		id,
+		id,
+		'Knight',
+	);
 const bag = async () => (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, id)))[0];
 
 function fixture(kind: 'command' | 'button' | 'select', customId = '', values: string[] = []) {
@@ -141,7 +146,9 @@ describe('phase 2 menu', () => {
 			enemyHpRemaining: 0,
 		});
 		const run = vi.spyOn(RaidService.prototype, 'run');
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const session = new MenuSessionStore().create(id);
 		session.screen = { kind: 'gateTiers' };
 		session.gateId = gate;
@@ -176,7 +183,12 @@ describe('phase 2 menu', () => {
 			.set({ combatLevel: 15, gate1TiersCleared: 3, gate2TiersCleared: 1 })
 			.where(eq(s.userCharacter.discordId, id));
 		const run = vi.spyOn(RaidService.prototype, 'run');
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		const home = open.raw.editReply.mock.calls[0][0];
@@ -190,7 +202,7 @@ describe('phase 2 menu', () => {
 		const tiers = choose.raw.editReply.mock.calls[0][0];
 		checkPayload(tiers);
 		expect(JSON.stringify(tiers)).toContain('Gate 2');
-		expect(JSON.stringify(tiers)).toContain('Đánh tầng 10');
+		expect(JSON.stringify(tiers)).toContain('Tầng 10');
 		const locked = fixture('button', action(tiers, 'fight', '3'));
 		await router.handle(locked.interaction);
 		expect(locked.raw.reply).toHaveBeenCalled();
@@ -202,7 +214,7 @@ describe('phase 2 menu', () => {
 		await router.handle(reopen.interaction);
 		const fresh = reopen.raw.editReply.mock.calls[0][0];
 		expect(parseMenuId(action(fresh, 'gate', '1'))).toMatchObject({ action: 'gate', nonce: '1' });
-		expect(JSON.stringify(fresh)).not.toContain('Đánh tầng');
+		expect(JSON.stringify(fresh)).not.toContain(':fight:');
 		expect(run).toHaveBeenCalledTimes(1);
 	});
 
@@ -272,7 +284,12 @@ describe('phase 2 menu', () => {
 		);
 	});
 	it('refreshes onboarding in place and keeps class selection bound to the same message', async () => {
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		const refresh = fixture('button', action(open.raw.editReply.mock.calls[0][0], 'refresh'));
@@ -300,7 +317,9 @@ describe('phase 2 menu', () => {
 			playerHpRemaining: 1,
 			enemyHpRemaining: 0,
 		});
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const session = new MenuSessionStore().create(id);
 		session.screen = { kind: 'gateTiers' };
 		session.gateId = 1;
@@ -329,7 +348,9 @@ describe('phase 2 menu', () => {
 	});
 	it('locks every tier above cleared+1: fresh players see only floor 1 enabled and forged clicks are rejected', async () => {
 		await start();
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const session = new MenuSessionStore().create(id);
 		session.screen = { kind: 'gateTiers' };
 		session.gateId = 1;
@@ -349,7 +370,12 @@ describe('phase 2 menu', () => {
 	});
 	it('claims daily in the launcher message and keeps other buttons opening separate replies', async () => {
 		await start();
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		const initial = open.raw.editReply.mock.calls[0][0];
@@ -378,7 +404,12 @@ describe('phase 2 menu', () => {
 		await start();
 		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
 		await db.update(s.usersBag).set({ credux: 10000 }).where(eq(s.usersBag.discordId, id));
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		let view = open.raw.editReply.mock.calls[0][0];
@@ -414,7 +445,9 @@ describe('phase 2 menu', () => {
 
 	it('keeps completed quests when rerolling and does not write on cancellation', async () => {
 		await start();
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const session = new MenuSessionStore().create(id);
 		const quests = new QuestService(undefined, { persistence: testPersistence() });
 		const before = (await quests.snapshot(id))!;
@@ -434,7 +467,9 @@ describe('phase 2 menu', () => {
 
 	it('keeps journal pagination aligned to rounds even for very long logs', async () => {
 		const session = new MenuSessionStore().create(id);
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const longLine = '🔥'.repeat(4000) + 'END';
 		session.battle = {
 			status: 'ok',
@@ -471,7 +506,12 @@ describe('phase 2 menu', () => {
 		expect(await db.select().from(s.users).where(eq(s.users.discordId, id))).toHaveLength(0);
 	});
 	it('plays onboarding → daily → quest → hunt → paginated log using only /menu', async () => {
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		let view = open.raw.editReply.mock.calls[0][0];
@@ -505,7 +545,7 @@ describe('phase 2 menu', () => {
 		expect(JSON.stringify(view)).toContain('Gate 1');
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(0);
 		await click('gate');
-		expect(JSON.stringify(view)).toContain('Đánh tầng 10');
+		expect(JSON.stringify(view)).toContain('Tầng 10');
 		await click('fight');
 		expect(JSON.stringify(view)).toContain('HP');
 		expect(JSON.stringify(view)).not.toContain('Chọn khu vực');
@@ -542,7 +582,12 @@ describe('phase 2 menu', () => {
 	}, 15000);
 
 	it('rejects forged gameplay actions and class values without writing', async () => {
-		const router = new MenuRouter(undefined, new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() }));
+		const router = new MenuRouter(
+			undefined,
+			new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+				persistence: testPersistence(),
+			}),
+		);
 		const open = fixture('command');
 		await router.open(open.command);
 		const parsed = parseMenuId(action(open.raw.editReply.mock.calls[0][0], 'class'))!;
@@ -584,7 +629,9 @@ describe('phase 2 menu', () => {
 		await start();
 		const before = await bag();
 		vi.spyOn(ReputationService.prototype, 'awardInTx').mockRejectedValueOnce(new Error('failure'));
-		await expect(new ClaimDailyUseCase(undefined, undefined, { persistence: testPersistence() }).claim(id, new Date())).rejects.toThrow('failure');
+		await expect(
+			new ClaimDailyUseCase(undefined, undefined, { persistence: testPersistence() }).claim(id, new Date()),
+		).rejects.toThrow('failure');
 		expect(await bag()).toEqual(before);
 		const [user] = await db.select().from(s.users).where(eq(s.users.discordId, id));
 		expect(user.lastDailyClaimDate).not.toBe(DailyCycle.keyAt());
@@ -592,10 +639,15 @@ describe('phase 2 menu', () => {
 
 	it('deduplicates raid rewards durably across service instances', async () => {
 		await start();
-		const first = await new RaidService({ persistence: testPersistence() }).run(id, false, { requestId: 'same-action' });
+		const first = await new RaidService({ persistence: testPersistence() }).run(id, false, {
+			requestId: 'same-action',
+		});
 		expect(first.status).toBe('ok');
 		const before = await bag();
-		expect((await new RaidService({ persistence: testPersistence() }).run(id, false, { requestId: 'same-action' })).status).toBe('already-processed');
+		expect(
+			(await new RaidService({ persistence: testPersistence() }).run(id, false, { requestId: 'same-action' }))
+				.status,
+		).toBe('already-processed');
 		expect(await bag()).toEqual(before);
 		expect(await db.select().from(s.raidLogs).where(eq(s.raidLogs.discordId, id))).toHaveLength(1);
 	});
@@ -614,7 +666,9 @@ describe('phase 2 menu', () => {
 			enemyHpRemaining: 0,
 		});
 		vi.spyOn(QuestService.prototype, 'progressInTx').mockRejectedValueOnce(new Error('quest failure'));
-		await expect(new RaidService({ persistence: testPersistence() }).run(id, true, { requestId: 'boss-failed' })).rejects.toThrow('quest failure');
+		await expect(
+			new RaidService({ persistence: testPersistence() }).run(id, true, { requestId: 'boss-failed' }),
+		).rejects.toThrow('quest failure');
 		expect(await bag()).toEqual(before);
 		expect(await db.select().from(s.menuActionReceipts).where(eq(s.menuActionReceipts.discordId, id))).toHaveLength(
 			0,
@@ -625,7 +679,9 @@ describe('phase 2 menu', () => {
 
 	it('revalidates boss gates and expired quest confirmations', async () => {
 		await start();
-		expect((await new RaidService({ persistence: testPersistence() }).run(id, true, { requestId: 'locked' })).status).toBe('boss-locked');
+		expect(
+			(await new RaidService({ persistence: testPersistence() }).run(id, true, { requestId: 'locked' })).status,
+		).toBe('boss-locked');
 		expect(await db.select().from(s.menuActionReceipts).where(eq(s.menuActionReceipts.discordId, id))).toHaveLength(
 			0,
 		);
@@ -656,7 +712,9 @@ describe('phase 2 menu', () => {
 
 	it('does not replay a committed hunt after Discord edit fails', async () => {
 		await start();
-		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, { persistence: testPersistence() });
+		const game = new MenuGameplayService(undefined, undefined, undefined, undefined, undefined, {
+			persistence: testPersistence(),
+		});
 		const act = vi.spyOn(game, 'act');
 		const router = new MenuRouter(new MenuSessionStore(), game);
 		const open = fixture('command');

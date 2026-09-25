@@ -103,6 +103,48 @@ describe('menu item registry', () => {
 		expect(stats?.style).toBe('secondary');
 	});
 
+	it('only uses valid Discord emoji on buttons', () => {
+		// '✦'-style text glyphs look like icons but Discord rejects them as
+		// component emoji (COMPONENT_INVALID_EMOJI) — catch that at test time.
+		const VALID_EMOJI = /^(?:<a?:\w+:\d+>|\p{Extended_Pictographic}\uFE0F?)$/u;
+		const panel = {
+			title: '',
+			body: '',
+			data: {
+				dailyDone: false,
+				bossDisabled: false,
+				hasBattle: true,
+				claimDisabled: false,
+				rerollDisabled: false,
+				boss: false,
+				page: 0,
+				pages: 1,
+				continuation: { label: 'x' },
+				gates: [{ id: 1, disabled: false }],
+				tiers: [{ number: 1, disabled: false }],
+			},
+		};
+		const screens = [
+			{ kind: 'home' },
+			{ kind: 'profile' },
+			{ kind: 'quests' },
+			{ kind: 'gateSelect' },
+			{ kind: 'gateTiers' },
+			{ kind: 'result' },
+			{ kind: 'log', page: 0 },
+			{ kind: 'confirm', operation: 'boss', day: 'd' },
+		] as const;
+		for (const item of MENU_ITEMS) {
+			for (const screen of screens) {
+				const session = new MenuSessionStore().create('a');
+				session.screen = screen;
+				for (const option of item.options(session, panel)) {
+					if (option.emoji) expect(option.emoji, `${item.name} uses an invalid emoji`).toMatch(VALID_EMOJI);
+				}
+			}
+		}
+	});
+
 	it('themes each surface and labels buttons with icons', () => {
 		expect(menuAccent(sessionFor({ kind: 'home' }))).toBe(0xf1c232);
 		expect(menuAccent(sessionFor({ kind: 'profile' }))).toBe(0x5865f2);

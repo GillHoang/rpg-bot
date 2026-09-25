@@ -36,16 +36,9 @@ export const RAID_FOOTER_TEXT = {
 	bossFee: 'Phí vào boss: -10.000 Credux (reset 00:00 giờ Việt Nam).',
 };
 
-/** HUD Speed line shown above the battle log (bars scaled to the faster side). */
-export const RAID_SPD_LINE = (
-	playerName: string,
-	playerBar: string,
-	playerSpd: number,
-	enemyName: string,
-	enemyBar: string,
-	enemySpd: number,
-): string =>
-	`${ICONS.stat.speed} **Tốc độ**\n${playerName} ${playerBar} **${playerSpd}** · ${enemyName} ${enemyBar} **${enemySpd}**`;
+/** Compact speed line above the battle log (numbers, no bars, to keep the HUD clean). */
+export const RAID_SPD_LINE = (playerName: string, playerSpd: number, enemyName: string, enemySpd: number): string =>
+	`${ICONS.stat.speed} **Tốc độ** · ${playerName} **${playerSpd}** · ${enemyName} **${enemySpd}**`;
 
 /** Display text for services/RaidService. */
 export const RAID_CONFIRMATION_TEXT = {

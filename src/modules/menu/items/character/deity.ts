@@ -11,7 +11,7 @@ export default {
 		{
 			label: GAMEPLAY_TEXT.deityTab,
 			style: session.profileTab === 'deity' ? 'primary' : 'secondary',
-			emoji: ICONS.deity.companion,
+			emoji: ICONS.menu.deity,
 		},
 	],
 	run: ({ session }) => {

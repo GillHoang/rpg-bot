@@ -48,7 +48,7 @@ export const GATE_TEXT = {
 	nextTier: 'Tầng tiếp theo',
 	nextGate: 'Gate tiếp theo',
 	retryTier: 'Đánh lại tầng này',
-	fightTier: (tier: number) => `Đánh tầng ${tier}${tier === TIERS ? ' · Boss' : ''}`,
+	fightTier: (tier: number) => `Tầng ${tier}`,
 	description: 'Săn quái theo Gate và tầng; tầng 10 là boss của Gate',
 	gateOption: 'Gate muốn vào (1-5)',
 	tierOption: 'Tầng muốn đánh trong Gate (1-10)',

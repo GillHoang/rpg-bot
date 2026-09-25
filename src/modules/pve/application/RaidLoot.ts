@@ -66,8 +66,10 @@ export function rollBattleRewards(
 	return { credux, shards, expGained, gotChest, chestField, chestName };
 }
 
-/** Tên hiển thị của encounter: tiền tố portal (Gate/Tầng) + tên quái + bậc. */
+/** Tên hiển thị của encounter: tiền tố portal (Gate/Tầng) + tên quái + bậc.
+ * Bậc chỉ gắn cho elite/boss để tên ngắn, tránh nhãn `[regular]` rườm rà. */
 export function raidMonsterName(gateTier: GateTier | undefined, monsterStats: MonsterStats): string {
 	const prefix = gateTier ? `${GATE_TEXT.gate(gateTier)} · ` : '';
-	return `${prefix}${monsterStats.name} [${monsterStats.mobType}]`;
+	const tag = monsterStats.mobType === 'elite' ? ' · Elite' : monsterStats.mobType === 'boss' ? ' · Boss' : '';
+	return `${prefix}${monsterStats.name}${tag}`;
 }
