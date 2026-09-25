@@ -2,7 +2,7 @@ import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { CombatantState } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
-import { mitigate, rollVariance, rollCrit, rollHit, hitMultiplier, effectivePierce } from './DamageCalculator.js';
+import { mitigate, rollVariance, rollCrit, rollHit, hitMultiplier, effectivePierce, armorTypeMultiplier } from './DamageCalculator.js';
 import { suddenDeathMultiplier } from './combatRules.js';
 import {
 	COMBAT_DEFEATED_SUFFIX,
@@ -83,22 +83,33 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		const defDownPct = Math.min(1, Math.max(0, findDebuff(defender, 'def_down')?.value ?? 0));
 
 		const effAtk = attacker.atk * (1 - atkDownPct);
-		const effDef = Math.max(0, defender.def * (1 - defDownPct) * (1 - effectivePierce(hit.armorPierceFraction)));
+		// Flat armor penetration chips effective DEF before mitigation (0 = none).
+		const effDef = Math.max(
+			0,
+			defender.def * (1 - defDownPct) * (1 - effectivePierce(hit.armorPierceFraction)) - attacker.penFlat,
+		);
 
 		const variance = rollVariance(ctx.rng, hit.varianceRange);
 		const crit = !hit.suppressCrit && hit.forcedMultiplier == null && rollCrit(ctx.rng, attacker.crit);
+		// Counter matrix (Phase 1): 1.0 while DAMAGE_TYPE_MATRIX_ENABLED is off.
+		const armorMult = armorTypeMultiplier(attacker.damageType, defender.armorType);
 
 		let amount: number;
 		if (hit.forcedMultiplier != null) {
 			amount = mitigate(effAtk, effDef) * variance * hit.forcedMultiplier;
 		} else {
-			amount = mitigate(effAtk, effDef) * variance * hitMultiplier(crit, hit.damagePctBonus);
+			amount = mitigate(effAtk, effDef) * variance * hitMultiplier(crit, hit.damagePctBonus, attacker.critDmg);
 		}
+		amount *= armorMult;
 		amount *= 1 - incoming.reductionFraction;
 		amount *= suddenDeathMultiplier(ctx.round);
 
 		const dealt = Math.max(0, Math.floor(amount));
-		defender.hp = Math.max(0, defender.hp - dealt);
+		// Shield absorbs before HP (0 shield = unchanged); damageDealt stays the
+		// total so lifesteal/thorns scale off the real hit, not the HP remainder.
+		const absorbed = Math.min(defender.shield, dealt);
+		defender.shield -= absorbed;
+		defender.hp = Math.max(0, defender.hp - (dealt - absorbed));
 
 		ctx.log(
 			COMBAT_HIT(

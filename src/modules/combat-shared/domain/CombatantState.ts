@@ -1,6 +1,16 @@
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
+import type { ArmorType, DamageType } from '../../../shared/config/damageTypes.js';
 import { COMBAT_STRIKE_EMOJIS, COMBAT_TENACITY_SHRUG } from '../../../shared/ui/text/combat.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
+
+/**
+ * Phase 1 combat-core defaults — every value reproduces pre-Phase-1 behaviour so
+ * characterization snapshots and existing content stay valid until gear/mob
+ * actually grants these stats.
+ */
+export const DEFAULT_CRIT_DMG_PCT = 200; // 200% = the old fixed ×2 crit
+export const DEFAULT_DAMAGE_TYPE: DamageType = 'physical';
+export const DEFAULT_ARMOR_TYPE: ArmorType = 'light';
 
 export type DebuffTag =
 	'bleed' | 'burn' | 'venom' | 'atk_down' | 'def_down' | 'paralyze' | 'stun' | 'dizzy' | 'blight' | 'slow';
@@ -154,6 +164,16 @@ export interface CombatantState {
 	atk: number;
 	def: number;
 	crit: number; // percent, e.g. 5 means 5%
+	/** Crit severity in percent (200 = ×2.0). Replaces the fixed ×2 — build crit with trade-offs. */
+	critDmg: number;
+	/** Flat armor penetration subtracted from effective DEF before mitigation (0 = none). */
+	penFlat: number;
+	/** Temporary shield HP: absorbed before hp on incoming hits (0 = none). */
+	shield: number;
+	/** Damage type this combatant deals — drives the counter matrix (Phase 1). */
+	damageType: DamageType;
+	/** Armor type this combatant wears — drives the counter matrix (Phase 1). */
+	armorType: ArmorType;
 	/** Speed: higher acts first each round (ties fall back to the initiative roll). */
 	spd: number;
 	/** Accuracy points vs the defender's evasion (see rollHit). */
@@ -219,6 +239,11 @@ export function createCombatant(params: {
 	atk: number;
 	def: number;
 	crit: number;
+	critDmg?: number;
+	penFlat?: number;
+	shield?: number;
+	damageType?: DamageType;
+	armorType?: ArmorType;
 	spd?: number;
 	acc?: number;
 	eva?: number;
@@ -236,6 +261,14 @@ export function createCombatant(params: {
 		atk: params.atk,
 		def: params.def,
 		crit: params.crit,
+		// Defaults reproduce the pre-Phase-1 behaviour exactly: critDmg 200 = the
+		// old fixed ×2, penFlat/shield 0 = no change. Characterization snapshots
+		// stay valid until content actually grants these stats.
+		critDmg: params.critDmg ?? DEFAULT_CRIT_DMG_PCT,
+		penFlat: params.penFlat ?? 0,
+		shield: params.shield ?? 0,
+		damageType: params.damageType ?? DEFAULT_DAMAGE_TYPE,
+		armorType: params.armorType ?? DEFAULT_ARMOR_TYPE,
 		spd: params.spd ?? 100,
 		acc: params.acc ?? 0,
 		eva: params.eva ?? 0,

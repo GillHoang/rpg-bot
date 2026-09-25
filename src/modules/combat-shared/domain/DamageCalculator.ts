@@ -1,4 +1,6 @@
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
+import { DEFAULT_CRIT_DMG_PCT } from './CombatantState.js';
+import { armorMultiplier, type ArmorType, type DamageType } from '../../../shared/config/damageTypes.js';
 /**
  * Pure damage-formula constants + functions, ported 1:1 from
  * config/combat.js. No battle state here — safe to unit test in
@@ -54,10 +56,19 @@ export function rollVariance(rng: () => number, range: readonly [number, number]
  * Final per-hit damage multiplier under the unified rule: every damage
  * bonus (class passive, future weapon/deity bonuses) is a plain
  * "damage %" that stacks additively and applies to BOTH crit and
- * non-crit hits.
+ * non-crit hits. Crit severity is `critDmg` percent (200 = ×2.0).
  */
-export function hitMultiplier(crit: boolean, damagePct: number): number {
-	return (crit ? CRIT_MULT : 1) + damagePct / 100;
+export function hitMultiplier(crit: boolean, damagePct: number, critDmg: number = DEFAULT_CRIT_DMG_PCT): number {
+	return (crit ? critDmg / 100 : 1) + damagePct / 100;
+}
+
+/**
+ * Counter-matrix multiplier (Phase 1). Reads the pure config matrix behind
+ * `DAMAGE_TYPE_MATRIX_ENABLED`; returns 1.0 while the flag is off so the
+ * damage formula and characterization snapshots are unchanged.
+ */
+export function armorTypeMultiplier(attackerDamage: DamageType, defenderArmor: ArmorType): number {
+	return armorMultiplier(attackerDamage, defenderArmor);
 }
 
 /** `critChance` is a percentage (e.g. 5 means 5%), capped at CRIT_CAP_PCT. */
