@@ -1,5 +1,5 @@
 import { formatNumber } from '../../../shared/ui/text/format.js';
-import { applyDebuff, combatDisplayName } from './CombatantState.js';
+import { applyDebuff, cappedHeal, combatDisplayName } from './CombatantState.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 import {
 	COMBAT_WEAPON_EAGLE_DIVE,
@@ -15,7 +15,6 @@ import {
 	COMBAT_WEAPON_TWIN_STING,
 	COMBAT_WEAPON_WARLORD_EDGE,
 } from '../../../shared/ui/text/combat.js';
-import { cappedHeal } from './CombatantState.js';
 import { EffectRegistry, type StrategyHooks } from './EffectRegistry.js';
 
 /** Key-only effect: tuning lives in the key itself, so params are unused. */

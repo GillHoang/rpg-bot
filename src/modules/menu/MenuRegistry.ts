@@ -45,7 +45,7 @@ export function menuButton(
 	panel: GamePanel | undefined,
 ): GamePanelButton | undefined {
 	const item = byName.get(name);
-	if (!item || !item.visibleWhen(session, panel)) return undefined;
+	if (!item?.visibleWhen(session, panel)) return undefined;
 	const [option] = item.options(session, panel);
 	return option ? toPanelButton(item, option) : undefined;
 }

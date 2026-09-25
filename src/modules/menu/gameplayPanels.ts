@@ -122,12 +122,14 @@ export function profilePanel(p: ProfileCardData, tab: ProfileTab = 'stats'): Gam
 		? p.loadout.deities.map((d) => GAMEPLAY_TEXT.deityRow(escapeMarkdown(d.name), d.sigils)).join('\n')
 		: GAMEPLAY_TEXT.noDeities;
 	const title = p.title ? `*${escapeMarkdown(p.title)}*\n` : '';
-	const section =
-		tab === 'gear'
-			? GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor))
-			: tab === 'deity'
-				? GAMEPLAY_TEXT.deitiesSection(deities)
-				: GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def));
+	let section: string;
+	if (tab === 'gear') {
+		section = GAMEPLAY_TEXT.equipmentSection(gear(p.loadout?.weapon), gear(p.loadout?.armor));
+	} else if (tab === 'deity') {
+		section = GAMEPLAY_TEXT.deitiesSection(deities);
+	} else {
+		section = GAMEPLAY_TEXT.combatStats(n(p.stats.hp), n(p.stats.atk), n(p.stats.def));
+	}
 	return {
 		title: GAMEPLAY_TEXT.profile,
 		withAvatar: true,

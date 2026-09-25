@@ -47,8 +47,9 @@ export interface GearListEntry {
 }
 
 export function WEAPON_LIST_LINE(e: GearListEntry & { atk: number; crit: number; quality?: string }): string {
+	const qualitySuffix = e.quality ? ` · ${e.quality}` : '';
 	return (
-		`**${e.name}** (${e.tier}${e.quality ? ` · ${e.quality}` : ''}) +${e.plus}
+		`**${e.name}** (${e.tier}${qualitySuffix}) +${e.plus}
 ` +
 		`ID: \`${e.id}\` · ATK ${e.atk} · CRIT ${e.crit}%
 ` +

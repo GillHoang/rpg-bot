@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, type AutocompleteInteraction, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../../shared/discord/command.js';
+import type { AppError, Result } from '../../../shared/kernel/Result.js';
 import type { WeaponService } from '../application/WeaponService.js';
 import type { InventoryService } from '../application/InventoryService.js';
 import { DEITY_CHOICE_LABEL, GEAR_CHOICE_LABEL } from '../../../shared/ui/text/autocomplete.js';
@@ -98,26 +99,35 @@ export class WeaponCommand implements ICommand {
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		await interaction.deferReply();
-		const sub = interaction.options.getSubcommand();
-		const weaponId = sub === 'crate' ? null : interaction.options.getString('weapon_id', true);
-		const result =
-			sub === 'crate'
-				? await this.weapons.openCrate(interaction.user.id)
-				: sub === 'equip'
-					? await this.weapons.attach(
-							interaction.user.id,
-							weaponId!,
-							Number(interaction.options.getString('deity_id', true)),
-						)
-					: sub === 'unequip'
-						? await this.weapons.detach(interaction.user.id, weaponId!)
-						: sub === 'upgrade'
-							? await this.weapons.upgrade(interaction.user.id, weaponId!)
-							: sub === 'dismantle'
-								? await this.weapons.dismantle(interaction.user.id, weaponId!)
-								: sub === 'sell'
-									? await this.weapons.sell(interaction.user.id, weaponId!)
-									: await this.weapons.view(interaction.user.id, weaponId!);
+		const result = await this.runSubcommand(interaction);
 		await interaction.editReply(result.ok ? result.value : result.error.message);
+	}
+
+	private weaponId(interaction: ChatInputCommandInteraction): string {
+		return interaction.options.getString('weapon_id', true);
+	}
+
+	private runSubcommand(interaction: ChatInputCommandInteraction): Promise<Result<string, AppError>> {
+		const userId = interaction.user.id;
+		switch (interaction.options.getSubcommand()) {
+			case 'crate':
+				return this.weapons.openCrate(userId);
+			case 'equip':
+				return this.weapons.attach(
+					userId,
+					this.weaponId(interaction),
+					Number(interaction.options.getString('deity_id', true)),
+				);
+			case 'unequip':
+				return this.weapons.detach(userId, this.weaponId(interaction));
+			case 'upgrade':
+				return this.weapons.upgrade(userId, this.weaponId(interaction));
+			case 'dismantle':
+				return this.weapons.dismantle(userId, this.weaponId(interaction));
+			case 'sell':
+				return this.weapons.sell(userId, this.weaponId(interaction));
+			default:
+				return this.weapons.view(userId, this.weaponId(interaction));
+		}
 	}
 }

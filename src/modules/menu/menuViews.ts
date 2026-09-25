@@ -51,6 +51,29 @@ function gameplayButton(session: MenuSession, button: GamePanelButton) {
 	return component;
 }
 
+/** Pack one group's buttons into rows of ≤5; a normal/grid change starts a new row. */
+function packButtonRows(session: MenuSession, grouped: GamePanelButton[]): ButtonBuilder[][] {
+	const rows: ButtonBuilder[][] = [];
+	let row: ButtonBuilder[] = [];
+	let rowGrid = false;
+	const flush = () => {
+		if (!row.length) return;
+		rows.push(row);
+		row = [];
+	};
+	for (const button of grouped) {
+		// Grid items (gate/tier) get their own lines, but still pack up to 5
+		// per row; only a change between normal and grid starts a new line.
+		const grid = !!button.row;
+		if (row.length && grid !== rowGrid) flush();
+		row.push(gameplayButton(session, button));
+		rowGrid = grid;
+		if (row.length === 5) flush();
+	}
+	flush();
+	return rows;
+}
+
 /** Buttons come pre-built from the registry (`session.gamePanel.buttons`); fall back to synthesizing them. */
 function addGameplayButtons(container: ContainerBuilder, session: MenuSession): void {
 	const buttons = session.gamePanel?.buttons ?? buildPanelButtons(session, session.gamePanel);
@@ -65,23 +88,9 @@ function addGameplayButtons(container: ContainerBuilder, session: MenuSession): 
 			container.addTextDisplayComponents((t) => t.setContent(`### ${groupHeading(group)}`));
 		}
 		const grouped = group ? buttons.filter((b) => (b.group ?? '') === group) : buttons;
-		let row: ButtonBuilder[] = [];
-		let rowGrid = false;
-		const flush = () => {
-			if (!row.length) return;
+		for (const row of packButtonRows(session, grouped)) {
 			container.addActionRowComponents(new ActionRowBuilder<ButtonBuilder>().addComponents(...row));
-			row = [];
-		};
-		for (const button of grouped) {
-			// Grid items (gate/tier) get their own lines, but still pack up to 5
-			// per row; only a change between normal and grid starts a new line.
-			const grid = !!button.row;
-			if (row.length && grid !== rowGrid) flush();
-			row.push(gameplayButton(session, button));
-			rowGrid = grid;
-			if (row.length === 5) flush();
 		}
-		flush();
 	}
 }
 

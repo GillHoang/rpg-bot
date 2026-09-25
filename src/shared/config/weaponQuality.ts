@@ -62,7 +62,7 @@ export function rollWeaponQuality(tier: string, rng: () => number): WeaponQualit
 		roll -= weight;
 		if (roll < 0) return quality;
 	}
-	return entries[entries.length - 1]![0];
+	return entries.at(-1)![0];
 }
 
 /** OwO-style weapon crate: spend credux, pull one random weapon. */
@@ -83,7 +83,7 @@ export function rollCrateTier(rng: () => number): string {
 		roll -= weight;
 		if (roll < 0) return tier;
 	}
-	return entries[entries.length - 1]![0];
+	return entries.at(-1)![0];
 }
 
 export interface WeaponUpgradeCost {

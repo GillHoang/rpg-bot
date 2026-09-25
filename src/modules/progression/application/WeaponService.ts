@@ -2,8 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { requirePersistence, type PersistenceContext } from '../../../shared/kernel/persistence.js';
 import { AppError, err, ok, type Result } from '../../../shared/kernel/Result.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
-import { choose } from '../../../shared/config/chestLoot.js';
-import { GEAR_STATS } from '../../../shared/config/chestLoot.js';
+import { choose, GEAR_STATS } from '../../../shared/config/chestLoot.js';
 import { randInt } from '../../../shared/config/raidLoot.js';
 import {
 	WEAPON_QUALITY_ATK_MULT,

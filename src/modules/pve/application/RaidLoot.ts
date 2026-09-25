@@ -70,6 +70,7 @@ export function rollBattleRewards(
  * Bậc chỉ gắn cho elite/boss để tên ngắn, tránh nhãn `[regular]` rườm rà. */
 export function raidMonsterName(gateTier: GateTier | undefined, monsterStats: MonsterStats): string {
 	const prefix = gateTier ? `${GATE_TEXT.gate(gateTier)} · ` : '';
-	const tag = monsterStats.mobType === 'elite' ? ' · Elite' : monsterStats.mobType === 'boss' ? ' · Boss' : '';
+	const tagByType: Record<string, string> = { elite: ' · Elite', boss: ' · Boss' };
+	const tag = tagByType[monsterStats.mobType] ?? '';
 	return `${prefix}${monsterStats.name}${tag}`;
 }
