@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { and, eq, isNotNull, sql } from 'drizzle-orm';
 import type { Executor } from '../../../db/client.js';
 import { userDeities, deityRoster, userRunes, userWeapons, usersBag, weaponRoster } from '../../../db/schema.js';
 
@@ -53,6 +53,21 @@ export class WeaponRepository {
 			.leftJoin(deityRoster, eq(userDeities.deityId, deityRoster.deityId))
 			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, weaponId)))
 			.limit(1);
+	}
+
+	/**
+	 * Locked read used by mutations that derive their next state from the
+	 * current row (quality upgrade). `of: userWeapons` keeps the join from
+	 * locking roster/deity catalog rows shared by every player.
+	 */
+	async findWeaponForUpdate(tx: Executor, discordId: string, weaponId: string) {
+		return tx
+			.select({ weaponId: userWeapons.weaponId, name: weaponRoster.name, quality: userWeapons.quality })
+			.from(userWeapons)
+			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
+			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, weaponId)))
+			.limit(1)
+			.for('update', { of: userWeapons });
 	}
 
 	async findEquippedRefs(tx: Executor, weaponId: string) {
@@ -128,14 +143,22 @@ export class WeaponRepository {
 			.where(and(eq(userWeapons.discordId, discordId), eq(userWeapons.weaponId, weaponId)));
 	}
 
+	/**
+	 * Atomic balance delta (single SQL statement). Callers that must guard a
+	 * cost still `lockBag` first; callers that only credit/debit a known
+	 * amount (dismantle/sell) are safe without a prior lock — a read-modify-
+	 * write on a JS snapshot would let two concurrent ops overwrite each
+	 * other's delta (lost update / erased debit = net currency creation).
+	 */
 	async adjustBag(tx: Executor, discordId: string, patch: { credux?: number; weaponShards?: number }) {
-		const [bag] = await tx.select().from(usersBag).where(eq(usersBag.discordId, discordId)).limit(1);
-		if (!bag) return null;
-		const next = {
-			credux: (bag.credux ?? 0) + (patch.credux ?? 0),
-			weaponShards: (bag.weaponShards ?? 0) + (patch.weaponShards ?? 0),
-		};
-		await tx.update(usersBag).set(next).where(eq(usersBag.discordId, discordId));
-		return { before: bag, after: next };
+		const [row] = await tx
+			.update(usersBag)
+			.set({
+				credux: sql`${usersBag.credux} + ${patch.credux ?? 0}`,
+				weaponShards: sql`${usersBag.weaponShards} + ${patch.weaponShards ?? 0}`,
+			})
+			.where(eq(usersBag.discordId, discordId))
+			.returning({ credux: usersBag.credux, weaponShards: usersBag.weaponShards });
+		return row ?? null;
 	}
 }

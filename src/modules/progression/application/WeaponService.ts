@@ -138,14 +138,18 @@ export class WeaponService {
 
 	async upgrade(discordId: string, weaponId: string): Promise<Result<string, AppError>> {
 		return this.persistence.unitOfWork.run(async (tx) => {
-			const [row] = await this.repo.findWeapon(tx, discordId, weaponId);
+			// Lock the bag before reading the weapon: two concurrent upgrades
+			// must not both read the old quality and charge twice for one step.
+			const [bag] = await this.repo.lockBag(tx, discordId);
+			if (!bag) return err(new AppError('WEAPON_NO_CHARACTER', WEAPON_NO_CHARACTER));
+			// Lock the weapon row too, so a concurrent dismantle/sell cannot
+			// delete it between our read and our write (charge with no effect).
+			const [row] = await this.repo.findWeaponForUpdate(tx, discordId, weaponId);
 			if (!row) return err(new AppError('WEAPON_NOT_FOUND', WEAPON_NOT_FOUND));
 			const quality: WeaponQuality = isWeaponQuality(row.quality) ? row.quality : 'Common';
 			const next = nextWeaponQuality(quality);
 			if (!next) return err(new AppError('WEAPON_MAX_QUALITY', WEAPON_MAX_QUALITY));
 			const cost = WEAPON_UPGRADE_COSTS[quality]!;
-			const [bag] = await this.repo.lockBag(tx, discordId);
-			if (!bag) return err(new AppError('WEAPON_NO_CHARACTER', WEAPON_NO_CHARACTER));
 			if ((bag.weaponShards ?? 0) < cost.shards) {
 				return err(
 					new AppError(

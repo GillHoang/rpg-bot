@@ -398,6 +398,19 @@ describe('weapon service lifecycle', () => {
 				imageFilename: null,
 				isAvailable: true,
 			},
+			{
+				weaponRosterId: 401,
+				name: 'Crate Crown',
+				type: 'Scepter',
+				tier: 'Supreme',
+				mythology: 'Neutral',
+				passiveKey: 'storm_echo',
+				passiveName: 'Storm Echo',
+				passiveDescription: 'Echoes after crits.',
+				lore: 'Crate crown.',
+				imageFilename: null,
+				isAvailable: true,
+			},
 		]);
 		await db.insert(s.deityRoster).values({
 			deityId: 1,
@@ -470,9 +483,14 @@ describe('weapon service lifecycle', () => {
 		expect(freed!.attachedDeityId).toBeNull();
 	}, 120000);
 
-	it('dismantles spares into shards and sells the rest for credux', async () => {
+	it('dismantles spares into shards and sells the rest for exactly the configured yield', async () => {
 		const service = new WeaponService({ persistence: testPersistence() });
 		const first = (await db.select().from(s.userWeapons).where(eq(s.userWeapons.discordId, 'owo')))[0]!;
+		const [roster] = await db
+			.select()
+			.from(s.weaponRoster)
+			.where(eq(s.weaponRoster.weaponRosterId, first.weaponRosterId));
+		const quality = isWeaponQuality(first.quality) ? first.quality : 'Common';
 		await db.insert(s.userWeapons).values({
 			...first,
 			weaponId: 'w_spare_dismantle',
@@ -484,7 +502,10 @@ describe('weapon service lifecycle', () => {
 		const dismantled = await service.dismantle('owo', 'w_spare_dismantle');
 		expect(dismantled.ok).toBe(true);
 		const bagAfter = (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'owo')))[0]!;
-		expect(bagAfter.weaponShards).toBeGreaterThan(bagBefore.weaponShards);
+		// Exact delta proves the credit is applied once and is not lost/duplicated.
+		const expectedDismantle = dismantleYield(roster!.tier, quality);
+		expect(bagAfter.weaponShards - bagBefore.weaponShards).toBe(expectedDismantle.shards);
+		expect(bagAfter.credux - bagBefore.credux).toBe(expectedDismantle.credux);
 		expect(await db.select().from(s.userWeapons).where(eq(s.userWeapons.weaponId, 'w_spare_dismantle'))).toEqual(
 			[],
 		);
@@ -499,7 +520,7 @@ describe('weapon service lifecycle', () => {
 		const sold = await service.sell('owo', 'w_spare_sell');
 		expect(sold.ok).toBe(true);
 		const bagFinal = (await db.select().from(s.usersBag).where(eq(s.usersBag.discordId, 'owo')))[0]!;
-		expect(bagFinal.credux).toBeGreaterThan(bagAfter.credux);
+		expect(bagFinal.credux - bagAfter.credux).toBe(sellValue(roster!.tier, quality));
 		expect(await service.view('owo', 'missing')).toEqual(expect.objectContaining({ ok: false }));
 	}, 120000);
 });
