@@ -20,6 +20,7 @@ src/
     meta/               # quest, reputation/believer, cosmetic/title, season
     casino/             # 4 one-shot games + blackjack/crash sessions
     menu/               # /menu orchestration only (router + gameplay service + panels)
+                        # items/{category}/{name}.ts = menu elements (registry.generated.ts)
     system/             # health, reset, ping, admin
   shared/
     kernel/             # Result, AppError, UseCase, EventBus, IUnitOfWork,
@@ -61,6 +62,7 @@ presentation/ (discord commands) -> application/ (use-cases, services)
 4. Command in `modules/<name>/presentation/` (thin) + one line in `app/registerAllCommands.ts`.
 5. Export the public surface from `modules/<name>/index.ts`; wire shared collaborators in `app/container.ts`.
 6. Balance numbers in `shared/config/` (or module `config/`), wording in `shared/ui/text/`, seed rows in `modules/<name>/seed/`.
+7. Menu element: add `modules/menu/items/{category}/{name}.ts` (default-export a `MenuItemSpec`) and run `pnpm menu:registry` — the router/view read the generated registry, so no central button list is edited.
 
 ## Migration status
 

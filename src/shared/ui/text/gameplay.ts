@@ -88,6 +88,9 @@ export const GAMEPLAY_TEXT = {
 	shop: 'Cửa hàng',
 	casino: 'Casino',
 	assetsGroup: 'Tài sản',
+	navigationGroup: 'Điều hướng',
+	confirmationGroup: 'Xác nhận',
+	helpLink: 'Gõ /help để xem hướng dẫn đầy đủ.',
 	roundLog: (
 		round: string | number,
 		playerHp: string | number,

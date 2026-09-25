@@ -91,6 +91,12 @@ chống xử lý lại. Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) 
 [Menu giai đoạn 2](docs/menu-phase-2.md). Khi nâng cấp lên giai đoạn 2, chạy
 `pnpm db:migrate` trước khi khởi động bot để tạo bảng chống xử lý lại trận đấu.
 
+**Phần tử menu đăng ký qua file**: mỗi nút nằm trong một file
+`src/modules/menu/items/{category}/{name}.ts` (default-export một `MenuItemSpec`).
+Tên file = action, thư mục = category (freestyle, lồng nhau được). Thêm nút =
+thêm file rồi chạy `pnpm menu:registry` để sinh `items/registry.generated.ts`
+(CI chặn nếu file generated lệch qua `pnpm menu:registry:check`).
+
 | Màn hình | Nội dung |
 | --- | --- |
 | Home / section | Cửa vào 3 nhánh: nhân vật, hằng ngày, chiến đấu |
@@ -99,7 +105,7 @@ chống xử lý lại. Chi tiết: [Menu giai đoạn 1](docs/menu-phase-1.md) 
 | Daily | Điểm danh streak 1–30 + milestone chest |
 | Quests | Xem 3 daily + 3 weekly, reroll daily, claim Weekly Grand |
 | Battle | Chọn gate/tier (portal), đánh boss có confirm, nối tầng thắng, đọc log từng hiệp |
-| Help | Hướng dẫn + tìm kiếm bằng modal |
+| Help | Nút dẫn tới `/help` (menu không còn màn hình/tìm kiếm hướng dẫn) |
 
 ## Slash commands (lớp API nền)
 

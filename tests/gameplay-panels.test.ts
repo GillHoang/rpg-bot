@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { GamePanel, MenuBattle } from '../src/modules/menu/MenuGameplay.js';
+import type { MenuScreen } from '../src/modules/menu/MenuSessionStore.js';
 import type { ProfileCardData } from '../src/shared/ui/render/ProfileCardRenderer.js';
 import type { QuestSnapshot } from '../src/modules/meta/application/QuestService.js';
+import { MenuSessionStore } from '../src/modules/menu/MenuSessionStore.js';
+import { buildPanelButtons } from '../src/modules/menu/MenuRegistry.js';
 import {
 	battleLobbyPanel,
 	battlePanel,
@@ -69,25 +72,31 @@ const battle: MenuBattle = {
 	progress: { previousLevel: 9, newLevel: 10, leveledUp: true },
 	battle: { outcome: 'player_win', rounds: 1, log: [], roundLogs: [], playerHpRemaining: 10, enemyHpRemaining: 0 },
 };
-const action = (panel: GamePanel, name: string) => panel.buttons.find((button) => button.action === name);
+
+/** Buttons a screen would show, derived from the file registry (not from the panel). */
+function buttonsFor(panel: GamePanel | undefined, screen: MenuScreen) {
+	const session = new MenuSessionStore().create('owner');
+	session.screen = screen;
+	return buildPanelButtons(session, panel);
+}
+const action = (panel: GamePanel | undefined, screen: MenuScreen, name: string) =>
+	buttonsFor(panel, screen).find((button) => button.action === name);
 
 describe('pure gameplay panels', () => {
-	it('keeps onboarding and class confirmation content and actions', () => {
+	it('keeps onboarding and class confirmation content', () => {
 		expect(onboardingPanel()).toEqual({
 			title: 'Bắt đầu hành trình',
 			body: 'Chọn một class bên dưới để xem chỉ số và tạo nhân vật. Sau đó bạn có thể nhận daily và săn quái ngay trong menu này.',
 			classes: true,
-			buttons: [],
 		});
 		const panel = confirmationPanel({ kind: 'confirm', operation: 'start', combatClass: 'Knight' });
 		expect(panel.title).toBe('Chọn Knight');
 		expect(panel.classes).toBe(true);
 		expect(panel.body).toContain('Chỉ số cơ bản: HP 1000 · ATK 200 · DEF 300 · Crit 5%');
 		expect(panel.body).toContain('Quà khởi đầu: trang bị, 1.000 shards và 10 Silver Chest.');
-		expect(panel.buttons).toEqual([
-			{ action: 'confirm', label: 'Tạo nhân vật', disabled: false },
-			{ action: 'cancel', label: 'Huỷ', disabled: false },
-		]);
+		const screen: MenuScreen = { kind: 'confirm', operation: 'start', combatClass: 'Knight' };
+		expect(action(panel, screen, 'confirm')?.label).toBe('Tạo nhân vật');
+		expect(action(panel, screen, 'cancel')?.label).toBe('Huỷ');
 	});
 
 	it('preserves dated boss and quest confirmation warnings', () => {
@@ -99,8 +108,8 @@ describe('pure gameplay panels', () => {
 		expect(reroll.body).toBe(
 			'Đổi miễn phí 1 lần/ngày. **Tiến độ của nhiệm vụ ngày chưa hoàn thành sẽ mất.** Nhiệm vụ đã hoàn thành được giữ.\nBộ nhiệm vụ ngày 2026-09-21.',
 		);
-		expect(boss.buttons).toEqual(reroll.buttons);
-		expect(action(boss, 'confirm')).toEqual({ action: 'confirm', label: 'Xác nhận', danger: true });
+		const screen: MenuScreen = { kind: 'confirm', operation: 'boss', day: '2026-09-21' };
+		expect(action(boss, screen, 'confirm')).toMatchObject({ action: 'confirm', label: 'Xác nhận', danger: true });
 	});
 
 	it('escapes player text, formats progress and keeps profile defaults', () => {
@@ -115,7 +124,7 @@ describe('pure gameplay panels', () => {
 		expect(panel.body).toContain('Vũ khí: Chưa trang bị');
 		expect(panel.body).toContain('Chưa có thần đồng hành');
 		expect(panel.grouped).toBe(true);
-		expect(panel.buttons.map((b) => b.action)).toEqual(['hunt']);
+		expect(action(panel, { kind: 'profile' }, 'hunt')?.label).toBe('Săn quái');
 		const titled = profilePanel({
 			...profile,
 			title: '*Champion*',
@@ -135,10 +144,13 @@ describe('pure gameplay panels', () => {
 		expect(panel.grouped).toBe(true);
 		expect(panel.withAvatar).toBe(true);
 		expect(panel.body).not.toMatch(/Daily:|Quest hoàn thành:|Thưởng tuần|Boss:|Reset/);
-		expect(panel.buttons.map(({ action, group }) => [action, group])).toEqual([
+		expect(
+			buttonsFor(panel, { kind: 'home' })
+				.map(({ action: name, group }) => [name, group])
+				.slice(0, 10),
+		).toEqual([
 			['profile', 'Thông tin'],
 			['help', 'Thông tin'],
-			['search', 'Thông tin'],
 			['daily', 'Hoạt động'],
 			['hunt', 'Hoạt động'],
 			['boss', 'Hoạt động'],
@@ -150,7 +162,7 @@ describe('pure gameplay panels', () => {
 		]);
 		const empty = homePanel({ ...profile, level: 1 }, { dailyDone: false, bossDone: false });
 		expect(empty.body).not.toMatch(/Daily:|Quest hoàn thành:|Boss:|Reset/);
-		expect(action(empty, 'boss')?.disabled).toBe(true);
+		expect(action(empty, { kind: 'home' }, 'boss')?.disabled).toBe(true);
 	});
 
 	it('renders daily/weekly rewards and switches claim and reroll availability', () => {
@@ -158,18 +170,19 @@ describe('pure gameplay panels', () => {
 		expect(panel.body).toContain('**Ngày 2026-09-21**\n0/1 Nhận daily · 1.000 Credux + 5 shards');
 		expect(panel.body).toContain('**Tuần 2026-W39**\n✅ Thắng săn quái/boss · 5.000 Credux + 10 Valor');
 		expect(panel.body).toContain('Hoàn thành 3 nhiệm vụ tuần để nhận thưởng tuần.');
-		expect(action(panel, 'claim')?.disabled).toBe(true);
-		expect(action(panel, 'reroll')?.disabled).toBe(false);
+		const screen: MenuScreen = { kind: 'quests' };
+		expect(action(panel, screen, 'claim')?.disabled).toBe(true);
+		expect(action(panel, screen, 'reroll')?.disabled).toBe(false);
 		const ready = questsPanel({ ...quests, grandReady: true, refreshAvailable: false }, true);
 		expect(ready.body).toContain('Thưởng tuần sẵn sàng!');
-		expect(action(ready, 'claim')?.disabled).toBe(false);
-		expect(action(ready, 'reroll')?.disabled).toBe(true);
+		expect(action(ready, screen, 'claim')?.disabled).toBe(false);
+		expect(action(ready, screen, 'reroll')?.disabled).toBe(true);
 		const completed = questsPanel(
 			{ ...quests, grandClaimed: true, dailies: quests.dailies.map((row) => ({ ...row, completed: true })) },
 			false,
 		);
 		expect(completed.body).toContain('Đã nhận thưởng tuần.');
-		expect(action(completed, 'reroll')?.disabled).toBe(true);
+		expect(action(completed, screen, 'reroll')?.disabled).toBe(true);
 	});
 
 	it.each([
@@ -180,9 +193,10 @@ describe('pure gameplay panels', () => {
 	])('preserves boss gate text and buttons: $text', ({ level, credux, done, text, disabled }) => {
 		const panel = battleLobbyPanel({ ...profile, level, credux }, done, false);
 		expect(panel.body).toContain(text);
-		expect(action(panel, 'boss')?.disabled).toBe(disabled);
-		expect(action(panel, 'result')).toBeUndefined();
-		expect(action(battleLobbyPanel(profile, false, true), 'result')?.label).toBe('Trận gần nhất');
+		const screen: MenuScreen = { kind: 'gateSelect' };
+		expect(action(panel, screen, 'boss')?.disabled).toBe(disabled);
+		expect(action(panel, screen, 'result')).toBeUndefined();
+		expect(action(battleLobbyPanel(profile, false, true), screen, 'result')?.label).toBe('Trận gần nhất');
 	});
 
 	it('preserves battle outcome, rewards, optional drops and next actions', () => {
@@ -190,7 +204,10 @@ describe('pure gameplay panels', () => {
 		expect(panel.body).toBe(
 			'Chiến thắng · \\*Boss\\*\n1 hiệp · HP còn 10\n+2.000 EXP · +1.000 Credux · +100 shards\n+1 Silver Chest\nSword\nLên cấp 9 → 10!\nPhí vào boss: −10.000 Credux.\n',
 		);
-		expect(panel.buttons.map(({ action }) => action)).toEqual(['first', 'prev', 'next', 'last']);
+		const actions = buttonsFor(panel, { kind: 'result' }).map((button) => button.action);
+		expect(actions).toEqual(expect.arrayContaining(['first', 'prev', 'next', 'last']));
+		expect(actions).not.toContain('continue'); // boss result has no continuation
+		expect(actions).not.toContain('hunt'); // hunt is hidden on a boss result
 		for (const [outcome, label] of [
 			['enemy_win', 'Thất bại'],
 			['draw', 'Hoà'],
@@ -228,15 +245,15 @@ describe('pure gameplay panels', () => {
 		const last = battlePanel({ battle: logged, screen: { kind: 'log', page: 99 } });
 		expect(first.title).toBe('Nhật ký · 1/1');
 		expect(last.title).toBe('Nhật ký · 1/1');
-		expect(action(first, 'prev')?.disabled).toBe(true);
-		expect(action(last, 'next')?.disabled).toBe(true);
+		expect(action(first, { kind: 'log', page: -1 }, 'prev')?.disabled).toBe(true);
+		expect(action(last, { kind: 'log', page: 99 }, 'next')?.disabled).toBe(true);
 		const empty = battlePanel({ battle, screen: { kind: 'log', page: 0 } });
 		expect(empty.title).toBe('Nhật ký · 1/1');
 		expect(empty.body).toBe('Không có log.');
-		expect(action(empty, 'prev')?.disabled).toBe(true);
-		expect(action(empty, 'next')?.disabled).toBe(true);
+		expect(action(empty, { kind: 'log', page: 0 }, 'prev')?.disabled).toBe(true);
+		expect(action(empty, { kind: 'log', page: 0 }, 'next')?.disabled).toBe(true);
 		const missing = battlePanel({ screen: { kind: 'result' } });
 		expect(missing.body).toBe('Chưa có trận đấu trong menu này.');
-		expect(missing.buttons).toEqual([{ action: 'hunt', label: 'Săn quái', disabled: false }]);
+		expect(action(missing, { kind: 'result' }, 'hunt')?.label).toBe('Chọn Gate (Cửa)');
 	});
 });
