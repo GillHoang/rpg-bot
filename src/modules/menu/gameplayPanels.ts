@@ -190,7 +190,8 @@ export function continuationLabel(battle: MenuBattle): string | undefined {
 	return undefined;
 }
 
-export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {	const r = session.battle;
+export function battlePanel(session: Pick<MenuSession, 'battle' | 'screen'>): GamePanel {
+	const r = session.battle;
 	if (!r) {
 		return {
 			title: GAMEPLAY_TEXT.battleTitle,

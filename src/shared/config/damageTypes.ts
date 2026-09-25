@@ -15,13 +15,7 @@
 export type DamageType = 'physical' | 'magical' | 'ranged' | 'holy' | 'shadow';
 export type ArmorType = 'light' | 'medium' | 'heavy' | 'ethereal';
 
-export const DAMAGE_TYPES: readonly DamageType[] = [
-	'physical',
-	'magical',
-	'ranged',
-	'holy',
-	'shadow',
-];
+export const DAMAGE_TYPES: readonly DamageType[] = ['physical', 'magical', 'ranged', 'holy', 'shadow'];
 
 export const ARMOR_TYPES: readonly ArmorType[] = ['light', 'medium', 'heavy', 'ethereal'];
 

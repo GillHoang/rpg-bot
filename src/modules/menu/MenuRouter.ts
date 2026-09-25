@@ -49,10 +49,7 @@ export class MenuRouter {
 			if (session) this.sessions.delete(session.id);
 			logger.error({ err: error, userId: interaction.user.id }, MENU_LOG_TEXT.openFailed);
 			// Use V2 even on failure: a failed HTTP response may have already applied the flag.
-			const text =
-				error instanceof MenuCapacityError
-					? MENU_TEXT.capacity
-					: userMessage(error, MENU_TEXT.failed);
+			const text = error instanceof MenuCapacityError ? MENU_TEXT.capacity : userMessage(error, MENU_TEXT.failed);
 			if (interaction.deferred) {
 				try {
 					await interaction.editReply(recoveryView(text));

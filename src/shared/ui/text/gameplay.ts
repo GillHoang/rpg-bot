@@ -126,7 +126,8 @@ export const GAMEPLAY_TEXT = {
 	deities: 'Thần đồng hành',
 	shop: 'PVP Shop',
 	casino: 'Casino',
-	inventoryTitle: (category: string | number, page: string | number): string => `Kho đồ · ${category} · Trang ${page}`,
+	inventoryTitle: (category: string | number, page: string | number): string =>
+		`Kho đồ · ${category} · Trang ${page}`,
 	deitiesTitle: (page: string | number): string => `Thần đồng hành · Trang ${page}`,
 	inventoryPage: (page: string | number, total: string | number): string => `Trang ${page}/${total}`,
 	inventoryEmpty: 'Chưa có vật phẩm.',

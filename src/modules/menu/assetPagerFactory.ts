@@ -11,10 +11,7 @@ import type { MenuItemSpec } from './MenuItem.js';
  * `items/assets/` re-exports a single call of this factory so the
  * file-per-element registry contract stays intact.
  */
-export function makeAssetPagerItem(
-	screen: 'inventory' | 'deities',
-	direction: 'prev' | 'next',
-): MenuItemSpec {
+export function makeAssetPagerItem(screen: 'inventory' | 'deities', direction: 'prev' | 'next'): MenuItemSpec {
 	const isPrev = direction === 'prev';
 	return {
 		kind: 'button',
