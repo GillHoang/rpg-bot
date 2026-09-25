@@ -31,10 +31,10 @@ describe('seeded weighted randomness', () => {
 		} finally { forbidden.mockRestore(); }
 	});
 	it('preserves sequential pity and natural Supreme at the pity threshold', () => {
-		expect(resolveRoll(498, () => 0)).toEqual({ tier: 'Epic', newPity: 499, pityReset: false });
-		expect(resolveRoll(499, () => 0)).toEqual({ tier: 'Legendary', newPity: 0, pityReset: true });
-		expect(resolveRoll(499, () => 0.999)).toEqual({ tier: 'Supreme', newPity: 0, pityReset: true });
-		expect(resolveRoll(400, () => 0.99).newPity).toBe(0);
+		expect(resolveRoll(148, () => 0)).toEqual({ tier: 'Epic', newPity: 149, pityReset: false });
+		expect(resolveRoll(149, () => 0)).toEqual({ tier: 'Legendary', newPity: 0, pityReset: true });
+		expect(resolveRoll(149, () => 0.999)).toEqual({ tier: 'Supreme', newPity: 0, pityReset: true });
+		expect(resolveRoll(100, () => 0.99).newPity).toBe(0);
 	});
 	it('filters zero weights and implements guaranteed chest rewards', () => {
 		for (const n of [0, 0.5, 0.999999]) {

@@ -12,6 +12,6 @@ exports[`combat behavior before responsibility extraction > preserves every seed
 
 exports[`combat behavior before responsibility extraction > preserves every seeded class matchup for null 1`] = `"21ffe6af2af53688fe1aae526bb40f106c3e7300df3c3827fdde19e3d43529e5"`;
 
-exports[`combat behavior before responsibility extraction > preserves rune/blessing chains, monster hooks, immunities and status durations 1`] = `"439a893a6c35a5d338a44a883a07e64b9a48d9f6f366238faaaed4aca4970db3"`;
+exports[`combat behavior before responsibility extraction > preserves rune/blessing chains, monster hooks, immunities and status durations 1`] = `"7fe64ce449b96f882c80e3303389a61fb0fce39351128ea6cee71dfd3b971571"`;
 
 exports[`combat behavior before responsibility extraction > preserves sudden death, round-limit ties and pre-defeated combatants 1`] = `"94c94a8aabb9789a7c4fd6d2a67a78a5ad754c5ce1ad0b872690d786a1cb554a"`;

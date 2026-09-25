@@ -103,7 +103,7 @@ it('R2: solar and tidal bonuses match their advertised percentages', () => {
 	self.hp = 50;
 	const tidal = { ...solar, damagePctBonus: 0 };
 	new DeityBlessingDecorator(new NullClassStrategy(), 'tidal_wrath', 1).prepareOutgoingHit(context, tidal);
-	expect(hitMultiplier(false, tidal.damagePctBonus)).toBeCloseTo(1.175);
+	expect(hitMultiplier(false, tidal.damagePctBonus)).toBeCloseTo(1.1);
 });
 
 it('R3: tailwind keeps a fixed initiative bonus across rounds', () => {

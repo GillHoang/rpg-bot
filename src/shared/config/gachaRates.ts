@@ -9,8 +9,12 @@ export const TIER_WEIGHTS: ReadonlyArray<[DeityTier, number]> = [
 	['Supreme', 0.005],
 ];
 
-/** pity_count increments per natural roll; at 500 a Legendary is forced. */
-export const PITY_THRESHOLD = 500;
+/** pity_count increments per natural roll; at 150 a Legendary is forced.
+ * Calibrated 2026-09: at the natural 1.5% Legendary+ rate a 150-pull drought
+ * happens ~10% of the time (0.985^150), so the safety net actually binds —
+ * the old 500 (≈0.05% droughts) was decorative. Extra Legendary supply from
+ * forcing is negligible (~1 forced per ~1500 pulls). */
+export const PITY_THRESHOLD = 150;
 
 export const SHARDS_PER_PULL = 100;
 export const MAX_PULLS = 30;
@@ -64,7 +68,7 @@ export interface RollOutcome {
  * from config/gachaRates.js's resolveRoll.
  *  1. Natural weighted roll.
  *  2. Natural Legendary/Supreme -> keep it, pity resets to 0.
- *  3. Else (Epic/Mythic) -> pity += 1; at 500, force Legendary and reset.
+ *  3. Else (Epic/Mythic) -> pity += 1; at PITY_THRESHOLD, force Legendary and reset.
  */
 export function resolveRoll(pity: number, rng: () => number): RollOutcome {
 	const natural = rollTier(rng);

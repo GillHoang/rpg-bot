@@ -79,8 +79,8 @@ describe('pity counter persistence', () => {
 		expect(await pityCount()).toBe(8);
 	});
 
-	it('forces Legendary at 500 and resets the persisted counter', async () => {
-		await db.update(s.pityCounters).set({ pityCount: 499 }).where(eq(s.pityCounters.discordId, id));
+	it('forces Legendary at 150 and resets the persisted counter', async () => {
+		await db.update(s.pityCounters).set({ pityCount: 149 }).where(eq(s.pityCounters.discordId, id));
 		const result = await new RunSummonUseCase(undefined, undefined, undefined, {
 			persistence: testPersistence(),
 		}).run(id, 1);

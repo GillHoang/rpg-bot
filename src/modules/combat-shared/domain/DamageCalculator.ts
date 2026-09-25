@@ -8,6 +8,12 @@ import { rollChance } from '../../../shared/utils/weightedRandom.js';
 /** A crit doubles the hit (before the additive damage-% rider). */
 export const CRIT_MULT = 2.0;
 
+/** Crit-chance cap: precision runes + weapon crit stack additively with no
+ * in-game ceiling (measured 42% on an L50 whale, unbounded above), which
+ * would turn the ×2.0 multiplier into a near-guaranteed +100% damage.
+ * 60% keeps crit builds strong without letting them become deterministic. */
+export const CRIT_CAP_PCT = 60;
+
 /** §12 (P1 rebalance): mitigation = min(CAP, DEF/(DEF+K)). K=600: def 200
  * chặn 25%, def 400 chặn 40%, def 600 chặn 50% — giáp có ý nghĩa trở lại
  * mà không bóp chết sát thương như K cũ (200). Cap 75% giữ chip damage
@@ -54,9 +60,9 @@ export function hitMultiplier(crit: boolean, damagePct: number): number {
 	return (crit ? CRIT_MULT : 1) + damagePct / 100;
 }
 
-/** `critChance` is a percentage (e.g. 5 means 5%), matching how it's stored throughout the schema. */
+/** `critChance` is a percentage (e.g. 5 means 5%), capped at CRIT_CAP_PCT. */
 export function rollCrit(rng: () => number, critChance: number): boolean {
-	return rollChance(critChance / 100, rng);
+	return rollChance(Math.min(CRIT_CAP_PCT, critChance) / 100, rng);
 }
 
 /**

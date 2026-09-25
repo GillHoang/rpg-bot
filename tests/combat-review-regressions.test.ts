@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BattleAttackResolver } from '../src/modules/combat-shared/domain/BattleAttack.js';
 import { CombatStatusEffectProcessor } from '../src/modules/combat-shared/domain/CombatStatusEffects.js';
-import { createCombatant, applyDebuff, type DebuffTag } from '../src/modules/combat-shared/domain/CombatantState.js';
+import {
+	createCombatant,
+	applyDebuff,
+	cappedHeal,
+	immunityMultiplier,
+	type DebuffTag,
+} from '../src/modules/combat-shared/domain/CombatantState.js';
+import { CRIT_CAP_PCT, rollCrit } from '../src/modules/combat-shared/domain/DamageCalculator.js';
+import { createRng } from '../src/modules/combat-shared/domain/Rng.js';
 import { DeityBlessingDecorator } from '../src/modules/combat-shared/domain/DeityBlessingDecorator.js';
 import { wrapWithRunes } from '../src/modules/combat-shared/domain/RuneStrategyDecorator.js';
 import { ArcherStrategy } from '../src/modules/combat-shared/domain/classes/ArcherStrategy.js';
@@ -167,5 +175,43 @@ describe('combat review regressions', () => {
 		// DOTs ignore tenacity entirely.
 		const dot = applyDebuff(target, { tag: 'burn', turnsLeft: 2, value: 10 }, () => 0.5);
 		expect(dot).not.toBeNull();
+	});
+
+	it('crit chance caps at 60%: uncapped stacking can never force a crit', () => {
+		expect(CRIT_CAP_PCT).toBe(60);
+		const rate = (chance: number) => {
+			let hits = 0;
+			const N = 20000;
+			for (let seed = 1; seed <= N; seed++) if (rollCrit(createRng(seed), chance)) hits++;
+			return hits / N;
+		};
+		expect(rate(30)).toBeGreaterThan(0.29);
+		expect(rate(30)).toBeLessThan(0.31);
+		expect(rate(100)).toBeGreaterThan(0.59);
+		expect(rate(100)).toBeLessThan(0.61);
+		expect(rate(1000)).toBeGreaterThan(0.59);
+		expect(rate(1000)).toBeLessThan(0.61);
+	});
+
+	it('stacked venom never exceeds 25% of the victim max HP', () => {
+		const ctx = setup();
+		const strategy = wrapWithRunes(new NullClassStrategy(), [{ effectKey: 'venom', value: 0.03 }]);
+		const resolved = { damageDealt: 100, crit: false, missed: false, triggerExtraAttack: false };
+		for (let n = 0; n < 10; n++) strategy.onHitLanded(ctx, resolved);
+		expect(ctx.enemy.debuffs).toHaveLength(1);
+		expect(ctx.enemy.debuffs[0]).toMatchObject({ tag: 'venom', value: 250 });
+	});
+
+	it('shared heal budget caps at 8% max HP per round', () => {
+		const side = createCombatant({ name: 'H', combatClass: null, hp: 1000, atk: 10, def: 10, crit: 0 });
+		side.hp = 500;
+		expect(cappedHeal(side, 1000)).toBe(80);
+		expect(cappedHeal(side, 1000)).toBe(0);
+		expect(side.hp).toBe(580);
+	});
+
+	it('immunity budget nullifies twice, then halves', () => {
+		const side = createCombatant({ name: 'I', combatClass: null, hp: 1000, atk: 10, def: 10, crit: 0 });
+		expect([immunityMultiplier(side), immunityMultiplier(side), immunityMultiplier(side)]).toEqual([1, 1, 0.5]);
 	});
 });

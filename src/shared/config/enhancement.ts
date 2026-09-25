@@ -36,6 +36,14 @@ const SUCCESS_RATE: Record<number, number> = {
 	10: 0.1,
 };
 
+/**
+ * Enhancement economy (measured 2026-09, expected credux to +10 at 100%
+ * success-equivalent Σ cost/rate): Rare ≈2.1M · Mythic ≈15.7M · Legendary
+ * ≈33.3M · Supreme ≈62.5M · Divine +20 ≈418M total. Costs are the endgame
+ * credux sink by design (casino pays ~1.0 EV, ranked pays weekly) — tune
+ * incomes before touching these, or the sink stops absorbing the faucets.
+ */
+
 const ENHANCE_COST: Record<GearTier, Record<number, number>> = {
 	Rare: { 1: 1000, 2: 3000, 3: 6000, 4: 12000, 5: 20000, 6: 35000, 7: 55000, 8: 90000, 9: 100000, 10: 100000 },
 	Mythic: {

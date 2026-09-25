@@ -12,8 +12,13 @@ describe('unified outcome selection', () => {
 			expect(rollChance(0, () => n)).toBe(false);
 			expect(rollChance(1, () => n)).toBe(true);
 			expect(rollCrit(() => n, -10)).toBe(false);
-			expect(rollCrit(() => n, 150)).toBe(true);
 		}
+		// Crit caps at 60%: uncapped inputs still roll at the cap, and a high
+		// roll stays a miss no matter how far past the cap the stat goes.
+		expect(rollCrit(() => 0.5, 60)).toBe(true);
+		expect(rollCrit(() => 0.5, 150)).toBe(true);
+		expect(rollCrit(() => 0.99, 100)).toBe(false);
+		expect(rollCrit(() => 0.99, 1000)).toBe(false);
 		expect(() => rollChance(NaN, () => 0)).toThrow();
 		expect(() => choose([], () => 0)).toThrow();
 	});

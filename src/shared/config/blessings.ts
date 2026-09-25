@@ -14,13 +14,18 @@ export interface BlessingDef {
 }
 
 export const BLESSINGS = {
-	guardian_light: { scaling: 'scalable', value: 0.04 },
+	// Rebalanced 2026-09 from mirror-match measurement: guardian_light and
+	// tidal_wrath were 100%/94% winners, mountain_grace and moon_devourer far
+	// above the pack. Sustain still wins long mirrors by design (any per-round
+	// heal decides a 34-round fight) but is negligible in burst matchups, so
+	// the nerfs stop here — bands verified in Knight/Archer mirrors.
+	guardian_light: { scaling: 'scalable', value: 0.02 },
 	tailwind: { scaling: 'scalable', value: 0.25 },
-	tidal_wrath: { scaling: 'scalable', value: 0.35 },
-	moon_devourer: { scaling: 'scalable', value: 0.15 },
+	tidal_wrath: { scaling: 'scalable', value: 0.2 },
+	moon_devourer: { scaling: 'scalable', value: 0.12 },
 	lunar_veil: { scaling: 'scalable', value: 0.3 },
 	solar_fury: { scaling: 'scalable', value: 0.06 },
-	mountain_grace: { scaling: 'scalable', value: 0.35 },
+	mountain_grace: { scaling: 'scalable', value: 0.25 },
 	sky_sovereign: { scaling: 'binary', value: 1 },
 } as const satisfies Record<string, BlessingDef>;
 
