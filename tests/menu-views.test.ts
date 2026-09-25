@@ -123,7 +123,7 @@ describe('menu payloads', () => {
 		session.screen = { kind: 'home' };
 		session.gamePanel = { title: 'T', body: 'B', buttons: buildPanelButtons(session, undefined) };
 		const payload = JSON.stringify(menuView(session));
-		for (const action of ['profile', 'daily', 'inventory', 'home', 'close']) {
+		for (const action of ['profile', 'daily', 'home', 'close']) {
 			expect(payload).toContain(`:${action}`);
 		}
 		expect(payload).not.toContain(MENU_TEXT.chooseSection);

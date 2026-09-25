@@ -147,7 +147,7 @@ describe('pure gameplay panels', () => {
 		expect(
 			buttonsFor(panel, { kind: 'home' })
 				.map(({ action: name, group }) => [name, group])
-				.slice(0, 10),
+				.slice(0, 6),
 		).toEqual([
 			['profile', 'Thông tin'],
 			['help', 'Thông tin'],
@@ -155,10 +155,6 @@ describe('pure gameplay panels', () => {
 			['hunt', 'Hoạt động'],
 			['boss', 'Hoạt động'],
 			['quests', 'Hoạt động'],
-			['inventory', 'Tài sản'],
-			['deity', 'Tài sản'],
-			['shop', 'Tài sản'],
-			['casino', 'Tài sản'],
 		]);
 		const empty = homePanel({ ...profile, level: 1 }, { dailyDone: false, bossDone: false });
 		expect(empty.body).not.toMatch(/Daily:|Quest hoàn thành:|Boss:|Reset/);

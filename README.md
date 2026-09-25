@@ -99,7 +99,7 @@ thêm file rồi chạy `pnpm menu:registry` để sinh `items/registry.generate
 
 | Màn hình | Nội dung |
 | --- | --- |
-| Home / section | Cửa vào 3 nhánh: nhân vật, hằng ngày, chiến đấu |
+| Home | Lối vào các nhóm: nhân vật, hằng ngày, chiến đấu, điều hướng (nhóm tài sản sẽ tích hợp sau) |
 | Tạo nhân vật | Chọn class → xác nhận (starter gear auto-equip, +1.000 shards, +10 Silver Chest) |
 | Profile | Thẻ nhân vật: stat trận đấu, EXP, title, believer level, pvp rating |
 | Daily | Điểm danh streak 1–30 + milestone chest |

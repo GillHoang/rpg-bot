@@ -41,25 +41,9 @@ export const MENU_SECTIONS = {
 		title: 'Daily & nhiệm vụ',
 		body: '`/daily` nhận quà hằng ngày.\n`/quest view` xem tiến độ · `/quest claim` nhận thưởng tuần · `/quest refresh` đổi nhiệm vụ ngày.',
 	},
-	inventory: {
-		title: 'Kho đồ & trang bị',
-		body: '`/inventory` xem kho · `/equip` trang bị · `/enhance` nâng cấp.\n`/socket` gắn rune · `/open` mở rương · `/runes` mua và mở túi rune.',
-	},
-	deity: {
-		title: 'Deity & triệu hồi',
-		body: '`/summon` triệu hồi · `/deities` xem deity đã sở hữu.\n`/deity sigil` mở Sigil · `/deity ascend` thăng hoa.',
-	},
 	battle: {
 		title: 'Chiến đấu & PvP',
 		body: '`/raid hunt` săn quái · `/raid boss` đánh boss.\n`/ranked` đấu xếp hạng · `/duel` thách đấu người chơi.',
-	},
-	casino: {
-		title: 'Casino',
-		body: '`/casino` chọn trò chơi và số tiền cược. Blackjack và Crash có nút thao tác trong từng ván.',
-	},
-	shop: {
-		title: 'Cửa hàng',
-		body: '`/pvp shop` xem cửa hàng Valor · `/pvp buy` mua vật phẩm.\n`/runes shop` xem giá hoặc mua túi rune.',
 	},
 } as const;
 
