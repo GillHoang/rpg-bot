@@ -4,6 +4,9 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 import type { ICommand } from '../../../shared/discord/command.js';
 import { sendBattleLog } from '../../../shared/ui/render/BattleLogPager.js';
 import { RaidService } from '../application/RaidService.js';
+import type { TowerService } from '../application/TowerService.js';
+import { TOWER } from '../../../shared/config/tower.js';
+import { TOWER_TEXT } from '../../../shared/ui/text/tower.js';
 import { NO_CHARACTER, NOT_REGISTERED } from '../../../shared/ui/text/common.js';
 import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../../shared/ui/text/raid.js';
 import { raidBattleOptions } from '../../../shared/ui/render/raidBattleOptions.js';
@@ -27,9 +30,20 @@ export class RaidCommand implements ICommand {
 					o.setName('tier').setDescription(GATE_TEXT.tierOption).setMinValue(1).setMaxValue(TIERS_PER_GATE),
 				),
 		)
-		.addSubcommand((s) => s.setName('boss').setDescription(RAID_FLOW_TEXT.bossDescription));
+		.addSubcommand((s) => s.setName('boss').setDescription(RAID_FLOW_TEXT.bossDescription))
+		.addSubcommand((s) =>
+			s
+				.setName('tower')
+				.setDescription(TOWER_TEXT.description)
+				.addIntegerOption((o) =>
+					o.setName('floor').setDescription(TOWER_TEXT.floorOption).setMinValue(1).setMaxValue(TOWER.maxFloor),
+				),
+		);
 
-	constructor(private readonly raid: Pick<RaidService, 'run'>) {}
+	constructor(
+		private readonly raid: Pick<RaidService, 'run'>,
+		private readonly tower?: Pick<TowerService, 'run'>,
+	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.
@@ -46,6 +60,10 @@ export class RaidCommand implements ICommand {
 			return;
 		}
 		const boss = interaction.options.getSubcommand(false) === 'boss';
+		if (interaction.options.getSubcommand(false) === 'tower') {
+			await this.executeTower(interaction);
+			return;
+		}
 		const selection = {
 			gate: interaction.options.getInteger('gate') ?? undefined,
 			tier: interaction.options.getInteger('tier') ?? undefined,
@@ -110,6 +128,38 @@ export class RaidCommand implements ICommand {
 				},
 			};
 		}
+		await sendBattleLog(interaction, options, 'edit');
+	}
+
+	/** Phase 4 Tower climb: one floor per attempt, best gated per ISO week. */
+	private async executeTower(interaction: ChatInputCommandInteraction): Promise<void> {
+		if (!this.tower) {
+			await interaction.editReply(TOWER_TEXT.description);
+			return;
+		}
+		const floor = interaction.options.getInteger('floor') ?? undefined;
+		const result = await this.tower.run(interaction.user.id, { floor, requestId: interaction.id });
+		if (result.status === 'already-processed') {
+			await interaction.editReply(RAID_FLOW_TEXT.alreadyProcessed);
+			return;
+		}
+		if (result.status === 'tower-locked') {
+			await interaction.editReply(result.message);
+			return;
+		}
+		if (result.status === 'not-registered') {
+			await interaction.editReply({ content: NOT_REGISTERED });
+			return;
+		}
+		if (result.status === 'no-character') {
+			await interaction.editReply({ content: NO_CHARACTER });
+			return;
+		}
+		if (result.status === 'no-monsters-seeded') {
+			await interaction.editReply({ content: RAID_NO_MONSTERS_SEEDED });
+			return;
+		}
+		const options = raidBattleOptions(result, false, interaction.user.username);
 		await sendBattleLog(interaction, options, 'edit');
 	}
 }

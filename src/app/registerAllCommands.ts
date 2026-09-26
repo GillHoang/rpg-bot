@@ -48,7 +48,7 @@ export function registerAllCommands(services: CommandServices, registry: Pick<Co
 	registry.register(new StartCommand(services.start));
 	registry.register(new BalanceCommand(services.economyModule.getBalance));
 	registry.register(new DailyCommand(services.economyModule.claimDaily));
-	registry.register(new RaidCommand(services.raid));
+	registry.register(new RaidCommand(services.raid, services.tower));
 	registry.register(new SummonCommand(services.progressionModule.runSummon));
 	registry.register(new EnhanceCommand(services.enhancement, services.inventory));
 	registry.register(new SocketCommand(services.socket, services.inventory));

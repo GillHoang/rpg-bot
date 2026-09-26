@@ -156,6 +156,10 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
 ### Phase 4 — Enemy & encounter 🔄
 - ✅ Gate-final identity (4a): mỗi Gate boss đánh skill riêng theo level band (daily boss giữ Bakunawa); final boss non-Baku telegraph hiệp 4k+3 → đòn nặng ×2 hiệp 4k+4 (không flag mới, characterization giữ nguyên).
 - ⏳ Modifier mở rộng + 2 modifier/gate (4b) · affix mở rộng (4c) · weekly modifier (4d) · Tower mode (4e).
+  - ✅ 4b: 5 modifier hành vi (reflect/drain/enrage/shielded/rupture) + gate 4–5 xếp chồng 2 modifier (clamp).
+  - ✅ 4c: 5 affix (executioner/bulwark/lifedrinker/berserk/deadeye); elite 1–2, final boss 3.
+  - ✅ 4d: weekly modifier xoay theo ISO week (bloodmoon/frenzy/drought) cho hunt thường.
+  - ✅ 4e: Tower mode leo tầng vô hạn (`/raid tower`, migration 0015 `tower_floor`/`tower_week`, reset tuần).
 
 ### Phase 5 — Battle modes (6–10 ngày)
 - **World Boss guild** (kích hoạt `boss_*`, `auto_raids`, `boss_top_damage`) + bảng xếp hạng.

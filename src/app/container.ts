@@ -30,6 +30,7 @@ import { CasinoService } from '../modules/casino/application/CasinoService.js';
 import { CasinoSessionService } from '../modules/casino/application/CasinoSessionService.js';
 import { DuelService } from '../modules/pvp/application/DuelService.js';
 import { RaidService } from '../modules/pve/application/RaidService.js';
+import { TowerService } from '../modules/pve/application/TowerService.js';
 import { RankedService } from '../modules/pvp/application/RankedService.js';
 import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
@@ -85,6 +86,7 @@ export interface AppContainer {
 	readonly reputation: ReputationService;
 	readonly cosmetics: CosmeticService;
 	readonly raid: RaidService;
+	readonly tower: TowerService;
 	readonly duel: DuelService;
 	readonly ranked: RankedService;
 	readonly casinoSessions: CasinoSessionService;
@@ -183,6 +185,17 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		factory,
 		combat: combatSetup,
 	});
+	const tower = new TowerService({
+		accounts,
+		monsters: new MonsterEncounterService(),
+		characters,
+		statAssembly,
+		events,
+		clock,
+		persistence,
+		engine,
+		factory,
+	});
 	// --- Menu + background lifecycle (no I/O or timers at construction) ---
 	const casinoSessions = new CasinoSessionService({ persistence, clock });
 	const inventory = new InventoryService(persistence.executor);
@@ -209,6 +222,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		reputation,
 		cosmetics,
 		raid,
+		tower,
 		duel,
 		ranked,
 		casinoSessions,

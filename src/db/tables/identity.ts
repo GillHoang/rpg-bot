@@ -73,6 +73,10 @@ export const userCharacter = pgTable(
 		battleOrder: text('battle_order').notNull().default('balanced'),
 		/** Phase 3 class branch key (nullable = no branch chosen). */
 		classBranch: text('class_branch'),
+		/** Phase 4 Tower best floor this ISO week (tower_week gates the reset). */
+		towerFloor: integer('tower_floor').notNull().default(0),
+		/** ISO week key of the stored Tower best (null = no climb yet). */
+		towerWeek: text('tower_week'),
 	},
 	(t) => [
 		check('character_valid_class', sql`${t.class} IN ('Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer')`),
@@ -87,6 +91,7 @@ export const userCharacter = pgTable(
 		check('gate3_tiers_valid', sql`${t.gate3TiersCleared} BETWEEN 0 AND 10`),
 		check('gate4_tiers_valid', sql`${t.gate4TiersCleared} BETWEEN 0 AND 10`),
 		check('gate5_tiers_valid', sql`${t.gate5TiersCleared} BETWEEN 0 AND 10`),
+		check('tower_floor_valid', sql`${t.towerFloor} BETWEEN 0 AND 100`),
 	],
 );
 
