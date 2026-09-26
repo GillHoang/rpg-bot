@@ -29,6 +29,18 @@ export const RAID_FLOW_TEXT = {
 	huntDescription: 'Săn mob thường hoặc elite (20%)',
 	bossDescription: 'Bakunawa: cấp 10, phí 10.000 Credux, 1 lần/ngày (00:00 giờ Việt Nam)',
 	alreadyProcessed: 'Trận đấu này đã được xử lý.',
+	previewDescription: 'Mô phỏng 100 trận với loadout hiện tại, ước lượng tỉ lệ thắng (không tốn gì)',
+	previewResult: (
+		monsterName: string,
+		gate: number,
+		tier: number,
+		sims: number,
+		wins: number,
+		winRate: string,
+		avgRounds: string,
+		avgDamage: string,
+	) =>
+		`Preview Gate ${gate} tầng ${tier} vs ${monsterName} (${sims} mô phỏng): thắng ${wins} · tỉ lệ ${winRate} · trung bình ${avgRounds} hiệp · ${avgDamage} damage.`,
 };
 
 /** Display text for render/raidBattleOptions. */
@@ -43,4 +55,11 @@ export const RAID_SPD_LINE = (playerName: string, playerSpd: number, enemyName: 
 /** Display text for services/RaidService. */
 export const RAID_CONFIRMATION_TEXT = {
 	dayChanged: 'Đã sang ngày mới. Hãy xác nhận lại lượt đánh boss.',
+};
+
+/** Phase 6 sweep result (instant re-clear at 60%, no chests). */
+export const SWEEP_TEXT = {
+	description: 'Quét nhanh tầng đã thắng: nhận ngay 60% thưởng, tốn cooldown hunt',
+	result: (gate: number, tier: number, monster: string, credux: string, exp: string, shards: number) =>
+		`Quét Gate ${gate} tầng ${tier} (${monster}): +${credux} Credux · +${exp} EXP${shards > 0 ? ` · +${shards} Shards` : ''}.`,
 };

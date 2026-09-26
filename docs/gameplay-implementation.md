@@ -65,6 +65,23 @@ Kiểm tra giao dịch đồng thời, thiếu seed phải rollback, quyền s�
 Đây là mặc định mới cho flow, không tuyên bố port số liệu boss/elite từ bản gốc.
 Thông số rương giữ đúng §5, các drop item độc lập với nhau và currency luôn được cấp.
 
+### Battle upgrade Phase 4–6 (2026-09)
+
+- **Phase 4**: final boss mỗi Gate một skill riêng + telegraph 4k+3/đòn nặng
+  4k+4; 5 modifier hành vi (reflect/drain/enrage/shielded/rupture), Gate 4–5
+  xếp chồng 2 modifier (clamp); 5 affix mới (executioner/bulwark/lifedrinker/
+  berserk/deadeye), elite 1–2 / final boss 3; weekly modifier hunt
+  (bloodmoon/frenzy/drought); Tower `/raid tower` (migration 0015).
+- **Phase 5**: World Boss pool chung/server + purse theo rank (`boss_state`,
+  `boss_spawn_queue`, `boss_attack_log`, `auto_raids`, `boss_top_damage`,
+  migration 0016); Guild War board `/raid wwar` (`user_guild_activity`);
+  season payout `/ranked season` (`season_end_payload` + `last_season_claim_id`,
+  migration 0017).
+- **Phase 6**: `/raid preview` (100 sims, read-only), `/raid sweep` (60%,
+  tốn cooldown, không rương), gợi ý loadout theo modifier trong menu Gate.
+- Test mới: `gate-modifiers`, `weekly-modifier`, `tower`, `world-boss`,
+  `ranked-season`, `preview`, `sweep` (mock + PGlite); portal-balance pins giữ.
+
 ## Kiểm chứng và triển khai
 
 - [x] 34 test domain/integration/Discord collector qua.

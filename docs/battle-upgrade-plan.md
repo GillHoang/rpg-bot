@@ -171,9 +171,12 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
   - ✅ 5c: season payout lazy-claim `/ranked season` — seed đầy `seasonEndPayload` mọi bracket,
     track `last_season_claim_id` (migration 0017), cần ≥1 trận initiated trong mùa.
 
-### Phase 6 — QoL & polish (3–5 ngày)
-- Battle preview, auto-repeat/sweep, battle log nâng cấp, gợi ý loadout, preset theo nội dung.
-- Docs: player-guide, gameplay-implementation cập nhật toàn bộ cơ chế mới.
+### Phase 6 — QoL & polish (3–5 ngày) 🔄
+- ✅ Battle preview (`/raid preview`, 100 sims read-only), sweep (`/raid sweep`,
+  60% + tốn cooldown + không rương), gợi ý loadout theo modifier trong menu Gate.
+- ✅ Docs: player-guide, gameplay-implementation cập nhật toàn bộ cơ chế mới.
+- ⏳ (tùy chọn, dời lại): battle log timeline nâng cấp, preset autoswitch theo gate,
+  co-op 2-vs-1.
 
 ---
 

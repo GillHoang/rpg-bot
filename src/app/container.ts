@@ -32,6 +32,8 @@ import { DuelService } from '../modules/pvp/application/DuelService.js';
 import { RaidService } from '../modules/pve/application/RaidService.js';
 import { TowerService } from '../modules/pve/application/TowerService.js';
 import { WorldBossService } from '../modules/pve/application/WorldBossService.js';
+import { PreviewService } from '../modules/pve/application/PreviewService.js';
+import { SweepService } from '../modules/pve/application/SweepService.js';
 import { RankedService } from '../modules/pvp/application/RankedService.js';
 import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
@@ -89,6 +91,8 @@ export interface AppContainer {
 	readonly raid: RaidService;
 	readonly tower: TowerService;
 	readonly worldBoss: WorldBossService;
+	readonly preview: PreviewService;
+	readonly sweep: SweepService;
 	readonly duel: DuelService;
 	readonly ranked: RankedService;
 	readonly casinoSessions: CasinoSessionService;
@@ -208,6 +212,21 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		engine,
 		factory,
 	});
+	const preview = new PreviewService({
+		accounts,
+		characters,
+		statAssembly,
+		persistence,
+	});
+	const sweep = new SweepService({
+		accounts,
+		characters,
+		rewards: new RaidRewardService(),
+		progress,
+		events,
+		clock,
+		persistence,
+	});
 	// --- Menu + background lifecycle (no I/O or timers at construction) ---
 	const casinoSessions = new CasinoSessionService({ persistence, clock });
 	const inventory = new InventoryService(persistence.executor);
@@ -236,6 +255,8 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		raid,
 		tower,
 		worldBoss,
+		preview,
+		sweep,
 		duel,
 		ranked,
 		casinoSessions,

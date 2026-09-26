@@ -36,6 +36,25 @@ export function modifierList(modifiers: readonly string[]): string {
 	return modifiers.map((m) => GATE_MODIFIERS[m] ?? m).join(' + ');
 }
 
+/** Phase 6 loadout tips per gate modifier (Trục G — gợi ý build khắc chế). */
+export const GATE_MODIFIER_TIPS: Record<string, string> = {
+	none: 'Build cân bằng dùng được mọi Gate',
+	tanky: 'Mang pierce/Mage để ăn giáp dày',
+	aggressive: 'Ưu tiên DEF/HP và hồi máu',
+	regen: 'Dồn burst, mang execute/bleed',
+	evasive: 'Stack ACC/eagle-eye',
+	reflect: 'Tránh đòn multi-hit, ưu tiên trâu bò',
+	drain: 'Kết liễu nhanh bằng burst',
+	enrage: 'Thủ chắc khi quái dưới nửa máu',
+	shielded: 'Mang pierce để xuyên khiên mở đầu',
+	rupture: 'Stack DEF, tránh giáp mỏng',
+};
+
+/** Tip line for a gate's modifiers. */
+export function modifierTips(modifiers: readonly string[]): string {
+	return `Gợi ý: ${modifiers.map((m) => GATE_MODIFIER_TIPS[m] ?? m).join(' · ')}`;
+}
+
 /** Icon trạng thái một Gate: đã thắng boss / đang mở / còn khóa. */
 function gateStatusIcon(cleared: number, id: number, minLevel: number, level: number): string {
 	if (cleared >= TIERS) return ICONS.status.success;
@@ -84,6 +103,8 @@ export const GATE_TEXT = {
 	gateRowBoss: (id: number, name: string, modifiers: readonly string[], minLevel: number, bossLevel: number) =>
 		`Gate ${id} · ${GATE_NAMES[name] ?? name} · ${modifierList(modifiers)} · 10 tầng · Cần Lv.${minLevel} → Boss Lv.${bossLevel}`,
 	tiersStatus: (cleared: number) => `${cleared}/${TIERS} tầng`,
+	/** Phase 6 loadout tips line (see GATE_MODIFIER_TIPS). */
+	modifierTips: (modifiers: readonly string[]) => modifierTips(modifiers),
 	/** Phase 4 weekly modifier line shown on gate panels + /raid gates. */
 	weeklyLine: (name: string, desc: string) => `🗓️ Tuần này: **${name}** — ${desc}`,
 	tierRow: (tier: GateTierLike, clearedTiers: number) =>

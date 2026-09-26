@@ -6,12 +6,14 @@ import { sendBattleLog } from '../../../shared/ui/render/BattleLogPager.js';
 import { RaidService } from '../application/RaidService.js';
 import type { TowerService } from '../application/TowerService.js';
 import type { WorldBossService } from '../application/WorldBossService.js';
+import type { PreviewService } from '../application/PreviewService.js';
+import type { SweepService } from '../application/SweepService.js';
 import { TOWER } from '../../../shared/config/tower.js';
 import { TOWER_TEXT } from '../../../shared/ui/text/tower.js';
 import { WORLD_BOSS_TEXT } from '../../../shared/ui/text/worldBoss.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
 import { NO_CHARACTER, NOT_REGISTERED } from '../../../shared/ui/text/common.js';
-import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../../shared/ui/text/raid.js';
+import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED, SWEEP_TEXT } from '../../../shared/ui/text/raid.js';
 import { raidBattleOptions } from '../../../shared/ui/render/raidBattleOptions.js';
 import { GAMEPLAY_NOTICE } from '../../../shared/ui/text/gameplay.js';
 import { RAID_HUNT_COOLDOWN_SECONDS } from '../../../shared/config/raidLoot.js';
@@ -45,12 +47,36 @@ export class RaidCommand implements ICommand {
 		.addSubcommand((s) => s.setName('worldboss').setDescription(WORLD_BOSS_TEXT.description))
 		.addSubcommand((s) => s.setName('wboard').setDescription(WORLD_BOSS_TEXT.boardDescription))
 		.addSubcommand((s) => s.setName('wauto').setDescription('Bật/tắt auto-raid World Boss (+2 lượt/ngày)'))
-		.addSubcommand((s) => s.setName('wwar').setDescription(WORLD_BOSS_TEXT.warDescription));
+		.addSubcommand((s) => s.setName('wwar').setDescription(WORLD_BOSS_TEXT.warDescription))
+		.addSubcommand((s) =>
+			s
+				.setName('preview')
+				.setDescription(RAID_FLOW_TEXT.previewDescription)
+				.addIntegerOption((o) =>
+					o.setName('gate').setDescription(GATE_TEXT.gateOption).setMinValue(1).setMaxValue(GATES.length),
+				)
+				.addIntegerOption((o) =>
+					o.setName('tier').setDescription(GATE_TEXT.tierOption).setMinValue(1).setMaxValue(TIERS_PER_GATE),
+				),
+		)
+		.addSubcommand((s) =>
+			s
+				.setName('sweep')
+				.setDescription(SWEEP_TEXT.description)
+				.addIntegerOption((o) =>
+					o.setName('gate').setDescription(GATE_TEXT.gateOption).setMinValue(1).setMaxValue(GATES.length),
+				)
+				.addIntegerOption((o) =>
+					o.setName('tier').setDescription(GATE_TEXT.tierOption).setMinValue(1).setMaxValue(TIERS_PER_GATE),
+				),
+		);
 
 	constructor(
 		private readonly raid: Pick<RaidService, 'run'>,
 		private readonly tower?: Pick<TowerService, 'run'>,
 		private readonly worldBoss?: Pick<WorldBossService, 'attack' | 'board' | 'toggleAuto' | 'warBoard'>,
+		private readonly preview?: Pick<PreviewService, 'preview'>,
+		private readonly sweep?: Pick<SweepService, 'run'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -75,6 +101,94 @@ export class RaidCommand implements ICommand {
 		}
 		if (subcommand === 'worldboss' || subcommand === 'wboard' || subcommand === 'wauto' || subcommand === 'wwar') {
 			await this.executeWorldBoss(interaction, subcommand);
+			return;
+		}
+		if (subcommand === 'preview') {
+			if (!this.preview) {
+				await interaction.editReply(RAID_FLOW_TEXT.previewDescription);
+				return;
+			}
+			const result = await this.preview.preview(
+				interaction.user.id,
+				interaction.options.getInteger('gate') ?? undefined,
+				interaction.options.getInteger('tier') ?? undefined,
+			);
+			if (result.status === 'portal-locked') {
+				await interaction.editReply(result.message);
+				return;
+			}
+			if (result.status === 'not-registered') {
+				await interaction.editReply({ content: NOT_REGISTERED });
+				return;
+			}
+			if (result.status === 'no-character') {
+				await interaction.editReply({ content: NO_CHARACTER });
+				return;
+			}
+			if (result.status === 'no-monsters-seeded') {
+				await interaction.editReply({ content: RAID_NO_MONSTERS_SEEDED });
+				return;
+			}
+			await interaction.editReply(
+				RAID_FLOW_TEXT.previewResult(
+					result.monsterName,
+					result.gate,
+					result.tier,
+					result.sims,
+					result.wins,
+					`${Math.round(result.winRate * 100)}%`,
+					result.avgRounds.toFixed(1),
+					formatNumber(result.avgDamageDealt),
+				),
+			);
+			return;
+		}
+		if (subcommand === 'sweep') {
+			if (!this.sweep) {
+				await interaction.editReply(SWEEP_TEXT.description);
+				return;
+			}
+			const sweep = await this.sweep.run(interaction.user.id, {
+				gate: interaction.options.getInteger('gate') ?? undefined,
+				tier: interaction.options.getInteger('tier') ?? undefined,
+				requestId: interaction.id,
+			});
+			if (sweep.status === 'already-processed') {
+				await interaction.editReply(RAID_FLOW_TEXT.alreadyProcessed);
+				return;
+			}
+			if (sweep.status === 'portal-locked' || sweep.status === 'sweep-locked') {
+				await interaction.editReply(sweep.message);
+				return;
+			}
+			if (sweep.status === 'cooldown') {
+				await interaction.editReply(
+					GAMEPLAY_NOTICE.cooldown(Math.max(1, Math.ceil((sweep.retryAt.getTime() - Date.now()) / 1000))),
+				);
+				return;
+			}
+			if (sweep.status === 'not-registered') {
+				await interaction.editReply({ content: NOT_REGISTERED });
+				return;
+			}
+			if (sweep.status === 'no-character') {
+				await interaction.editReply({ content: NO_CHARACTER });
+				return;
+			}
+			if (sweep.status === 'no-monsters-seeded') {
+				await interaction.editReply({ content: RAID_NO_MONSTERS_SEEDED });
+				return;
+			}
+			await interaction.editReply(
+				SWEEP_TEXT.result(
+					sweep.gate,
+					sweep.tier,
+					sweep.monsterName,
+					formatNumber(sweep.credux),
+					formatNumber(sweep.expGained),
+					sweep.shards,
+				),
+			);
 			return;
 		}
 		const selection = {

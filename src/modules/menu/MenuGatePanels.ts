@@ -93,6 +93,7 @@ export function gateTiersPanel(
 	panel.body = [
 		GATE_TEXT.gateHeader(gate.id, gate.name, gateModifiers(gate), gate.minLevel),
 		GATE_TEXT.weeklyLine(weekly.name, weekly.desc),
+		GATE_TEXT.modifierTips(gateModifiers(gate)),
 		...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
 		gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
 		panel.body,

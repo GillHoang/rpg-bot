@@ -59,6 +59,23 @@ thương từ giáp tối đa 75%, hồi máu tối đa 8% HP/round, độc Veno
 - **Boss ngày Bakunawa**: cần cấp 10, phí vào cửa 10.000, **1 lượt/ngày**.
   Thưởng lớn (25.000–50.000 + chắc chắn có rương + 30% rơi gear hiếm). Dưới
   50% HP boss vào Eclipse: sát thương tăng mạnh. Thua vẫn mất phí và lượt.
+- **Gate modifier**: mỗi Gate có bản sắc riêng (Gate 4–5 có tới 2):
+  tanky/aggressive/regen/evasive + reflect (phản đòn), drain (hút máu),
+  enrage (cuồng nộ dưới nửa máu), shielded (khiên mở đầu), rupture (xuyên
+  giáp). Tầng 5/10/15… có elite/boss với affix riêng (1–3 cái). Menu Gate hiện
+  **gợi ý build khắc chế** từng modifier — đọc trước khi đánh.
+- **Tuần biến động**: mỗi tuần hunt thường có 1 modifier xoay (Huyết Nguyệt:
+  tử chiến từ hiệp 16 · Cuồng Nộ: +20% sát thương · Hạn Hán: hồi máu giảm
+  nửa). Boss/final/duel/ranked không bị ảnh hưởng.
+- **Tháp Vô Hạn** (`/raid tower`): leo tầng, thắng tầng N mở N+1, kỷ lục reset
+  mỗi tuần, lần đầu qua tầng thưởng gấp đôi.
+- **World Boss** (`/raid worldboss`): cả server góp damage vào 1 pool chung
+  (3 lượt/ngày, +2 nếu bật `/raid wauto`), hạ boss chia thưởng theo hạng
+  (`/raid wboard`, hạng 1 có Supreme Chest). `/raid wwar` đua damage liên
+  server.
+- **Tiện ích**: `/raid preview` mô phỏng 100 trận ước lượng tỉ lệ thắng
+  (miễn phí); `/raid sweep` quét nhanh tầng đã thắng (60% thưởng, tốn
+  cooldown, không rương).
 
 ## 5. Triệu hồi deity (`/summon`)
 
@@ -140,6 +157,10 @@ giữ hạng** (rớt về sàn bracket, khiên mất; thăng hạng được c�
 **`/pvp shop`**: tiêu Valor mua Change-Class Token, Diamond Chest,
 cosmetic/title (giới hạn 1/season).
 
+**Thưởng mùa** (`/ranked season`): sau khi mùa kết thúc, ai có ≥1 trận trong
+mùa được claim theo bracket hiện tại (Divine: 1,6tr Credux + 2 Genesis +
+200 Valor).
+
 ## 10. Quest, Believer, Cosmetic, Title
 
 - **Quest** (`/quest`, có trong menu): mỗi ngày/tuần tự sinh 3 quest theo việc
@@ -158,8 +179,8 @@ cosmetic/title (giới hạn 1/season).
 ## 11. Mùa (Season)
 
 Mỗi mùa dài 30 ngày, tự sang mùa mới (rating giữ nguyên, quota shop reset
-theo mùa). Hết mùa không mất gì ngoài việc phải mua lại các món giới hạn
-mùa mới.
+theo mùa). Hết mùa nhớ `/ranked season` nhận thưởng mùa trước trước khi đánh
+mùa mới (mỗi mùa claim 1 lần).
 
 ## 12. Mẹo chơi
 
