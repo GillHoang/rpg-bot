@@ -42,6 +42,8 @@ export class PlayerCombatantFactory implements IPlayerCombatantFactory {
 			ten: assembled.stats.ten,
 			damageType: assembled.damageType,
 			armorType: assembled.armorType,
+			skills: [...assembled.skills],
+			stance: assembled.stance,
 		});
 	}
 

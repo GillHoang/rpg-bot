@@ -24,6 +24,9 @@ function loadout(decorated = true): AssembledPlayer {
 		stats: { hp: 4200, atk: 390, def: 170, crit: 23, spd: 100, acc: 0, eva: 0, ten: 0 },
 		damageType: 'physical',
 		armorType: 'light',
+		skills: [],
+		stance: 'balanced',
+		branch: null,
 		weaponPassive: null,
 		combatEffectRunes: decorated
 			? [
@@ -69,6 +72,8 @@ describe('assembled player combatant factory', () => {
 			shield: 0,
 			damageType: 'physical',
 			armorType: 'light',
+			skills: [],
+			stance: 'balanced',
 			spd: 100,
 			acc: 0,
 			eva: 0,
@@ -140,6 +145,9 @@ describe('assembled player combatant factory', () => {
 			stats: { hp: 500, atk: 50, def: 10, crit: 0, spd: 100, acc: 0, eva: 0, ten: 0 },
 			damageType: 'ranged',
 			armorType: 'heavy',
+			skills: [],
+			stance: 'balanced',
+			branch: null,
 			weaponPassive: null,
 			combatEffectRunes: [{ effectKey: 'aegis_rune', value: 1 }],
 			blessings: [{ key: 'sky_sovereign', strength: 1 }],

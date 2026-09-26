@@ -66,11 +66,19 @@ export const userCharacter = pgTable(
 		pvpDemotionShield: boolean('pvp_demotion_shield').notNull().default(true),
 		bossTopDamage: integer('boss_top_damage').notNull().default(0),
 		lifetimeExp: bigint('lifetime_exp', { mode: 'number' }).notNull().default(0),
+		/** Phase 2 skill loadout: equipped skill keys (max 2, nullable = empty slot). */
+		skillSlot1: text('skill_slot_1'),
+		skillSlot2: text('skill_slot_2'),
+		/** Phase 2 battle order stance. */
+		battleOrder: text('battle_order').notNull().default('balanced'),
+		/** Phase 3 class branch key (nullable = no branch chosen). */
+		classBranch: text('class_branch'),
 	},
 	(t) => [
 		check('character_valid_class', sql`${t.class} IN ('Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer')`),
 		check('character_valid_preset', sql`${t.activePresetSlot} IN (1, 2)`),
 		check('character_valid_level', sql`${t.combatLevel} BETWEEN 1 AND 100`),
+		check('character_valid_battle_order', sql`${t.battleOrder} IN ('aggressive', 'balanced', 'defensive', 'counter')`),
 		check('gate1_tiers_valid', sql`${t.gate1TiersCleared} BETWEEN 0 AND 10`),
 		check('gate2_tiers_valid', sql`${t.gate2TiersCleared} BETWEEN 0 AND 10`),
 		check('gate3_tiers_valid', sql`${t.gate3TiersCleared} BETWEEN 0 AND 10`),

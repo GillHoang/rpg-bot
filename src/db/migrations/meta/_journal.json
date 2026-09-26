@@ -92,6 +92,13 @@
       "when": 1790500000000,
       "tag": "0012_weapon-deity-attach",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790600000000,
+      "tag": "0013_skill-loadout",
+      "breakpoints": true
     }
   ]
 }

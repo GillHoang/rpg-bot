@@ -26,6 +26,16 @@ import {
 	type ArmorType,
 	type DamageType,
 } from '../../../shared/config/damageTypes.js';
+import {
+	BATTLE_STANCES,
+	DEFAULT_BATTLE_STANCE,
+	SKILL_DEFS,
+	type BattleStance,
+} from '../../../shared/config/skills.js';
+
+function isBattleStance(value: unknown): value is BattleStance {
+	return typeof value === 'string' && (BATTLE_STANCES as readonly string[]).includes(value);
+}
 
 export interface AssembledPlayerStats {
 	atk: number;
@@ -58,6 +68,12 @@ export interface AssembledPlayer {
 	/** Combat identity derived from class (Phase 1 counter matrix) — drives armorTypeMultiplier. */
 	damageType: DamageType;
 	armorType: ArmorType;
+	/** Phase 2 equipped skill keys (max 2) — engine casts via SkillDecorator. */
+	skills: string[];
+	/** Phase 2 battle order — drives skill selection priority. */
+	stance: BattleStance;
+	/** Phase 3 class branch key (null = no branch). */
+	branch: string | null;
 }
 
 const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct' | 'spdPct' | 'accPts'> = {
@@ -134,7 +150,13 @@ export class StatAssemblyService {
 	): Promise<AssembledPlayer> {
 		const cls = computeClassStats(combatClass, level);
 		const sec = computeClassSecondaryStats(combatClass, level);
-		const preset = suppliedPreset !== undefined ? suppliedPreset : await this.activePreset(executor, discordId);
+		const [character] = await this.queries.findCharacter(executor, discordId);
+		const preset =
+			suppliedPreset !== undefined
+				? suppliedPreset
+				: character
+					? ((await this.queries.findPreset(executor, discordId, character.activePresetSlot))[0] ?? null)
+					: null;
 
 		const weapon = await this.resolveBattleWeapon(executor, discordId, preset);
 		const armor = preset?.equippedArmorId
@@ -171,6 +193,13 @@ export class StatAssemblyService {
 			// Combat identity (Phase 1): class-derived, no roster migration needed.
 			damageType: damageTypeForClass(combatClass),
 			armorType: armorTypeForClass(combatClass),
+			// Phase 2 loadout (skill_slot_1/2 + battle_order columns); unknown or
+			// wrong-class keys are filtered so a stale slot can never crash combat.
+			skills: [character?.skillSlot1, character?.skillSlot2].filter(
+				(key): key is string => typeof key === 'string' && SKILL_DEFS[key]?.combatClass === combatClass,
+			),
+			stance: isBattleStance(character?.battleOrder) ? character.battleOrder : DEFAULT_BATTLE_STANCE,
+			branch: character?.classBranch ?? null,
 		};
 	}
 
@@ -184,13 +213,6 @@ export class StatAssemblyService {
 	private weaponCritBonus(quality: string | undefined): number {
 		if (!quality || !isWeaponQuality(quality)) return 0;
 		return WEAPON_QUALITY_CRIT_BONUS[quality];
-	}
-
-	private async activePreset(executor: Executor, discordId: string) {
-		const [character] = await this.queries.findCharacter(executor, discordId);
-		if (!character) return null;
-		const [preset] = await this.queries.findPreset(executor, discordId, character.activePresetSlot);
-		return preset ?? null;
 	}
 
 	/**

@@ -50,6 +50,9 @@ export const SKILL_CAST = (name: string): string => `${name} tung chiêu!`;
 
 export const SKILL_DESCRIPTION = 'Tuyệt kỹ chiến đấu (tốn resource, chờ hồi chiêu)';
 export const SKILL_SLOT_OPTION_DESC = 'Ô skill (1 hoặc 2, trống để gỡ)';
+export const SKILL_LIST_SUBCOMMAND = 'Xem tuyệt kỹ của class';
+export const SKILL_EQUIP_SUBCOMMAND = 'Gắn skill vào ô (trống key để gỡ)';
+export const SKILL_ORDER_SUBCOMMAND = 'Đổi thế trận';
 export const SKILL_KEY_OPTION_DESC = 'Tên skill của class hiện tại';
 export const SKILL_ORDER_OPTION_DESC = 'Thế trận: aggressive/balanced/defensive/counter';
 

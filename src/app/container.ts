@@ -34,6 +34,7 @@ import { RankedService } from '../modules/pvp/application/RankedService.js';
 import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
 import { LoadoutService } from '../modules/progression/application/LoadoutService.js';
+import { SkillService } from '../modules/progression/application/SkillService.js';
 import { WeaponService } from '../modules/progression/application/WeaponService.js';
 import { SocketService } from '../modules/progression/application/SocketService.js';
 import { EnhancementService } from '../modules/progression/application/EnhancementService.js';
@@ -98,6 +99,7 @@ export interface AppContainer {
 	readonly weapon: WeaponService;
 	readonly socket: SocketService;
 	readonly enhancement: EnhancementService;
+	readonly skills: SkillService;
 	readonly reset: ResetService;
 	readonly inventory: InventoryService;
 	readonly health: HealthService;
@@ -220,6 +222,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		weapon: new WeaponService({ persistence }),
 		socket: new SocketService(runes, gear, { persistence }),
 		enhancement: new EnhancementService(new EnhancementRepository(), events, { persistence, clock }),
+		skills: new SkillService({ persistence }),
 		reset: new ResetService({ persistence }),
 		inventory,
 		health: new HealthService(persistence.executor),
