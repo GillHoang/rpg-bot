@@ -103,7 +103,15 @@ function secondaryStats(
 	lv: number,
 	mobType: string,
 	gateModifier: GateModifier,
-): { spd: number; acc: number; eva: number; ten: number; regenPct: number; damageType: 'physical'; armorType: 'light' | 'medium' | 'heavy' } {
+): {
+	spd: number;
+	acc: number;
+	eva: number;
+	ten: number;
+	regenPct: number;
+	damageType: 'physical';
+	armorType: 'light' | 'medium' | 'heavy';
+} {
 	const tier = MOB_TIER_INDEX[mobType] ?? 0;
 	return {
 		spd: Math.floor(95 + [0, 7, 15][tier]! + lv * 0.3),

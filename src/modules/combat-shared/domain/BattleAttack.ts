@@ -2,8 +2,17 @@ import { formatNumber } from '../../../shared/ui/text/format.js';
 import type { CombatantState } from './CombatantState.js';
 import { combatDisplayName, findDebuff } from './CombatantState.js';
 import type { IClassStrategy, StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from './IClassStrategy.js';
-import { mitigate, rollVariance, rollCrit, rollHit, hitMultiplier, effectivePierce, armorTypeMultiplier } from './DamageCalculator.js';
+import {
+	mitigate,
+	rollVariance,
+	rollCrit,
+	rollHit,
+	hitMultiplier,
+	effectivePierce,
+	armorTypeMultiplier,
+} from './DamageCalculator.js';
 import { suddenDeathMultiplier } from './combatRules.js';
+import { SKILL_RESOURCE } from '../../../shared/config/skills.js';
 import {
 	COMBAT_DEFEATED_SUFFIX,
 	COMBAT_GUARD,
@@ -127,6 +136,17 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 
 		const resolved: ResolvedHit = { damageDealt: dealt, crit, missed: false, triggerExtraAttack: false };
 		atkStrategy.onHitLanded(ctx, resolved);
+		// Phase 2 skill resource: loadout runners build resource when they deal
+		// or take real damage (0 skills = zero behavior change). Shield-absorbed
+		// damage counts — the hit still landed.
+		if (!resolved.missed && resolved.damageDealt > 0) {
+			if (attacker.skills.length > 0) {
+				attacker.flags.resource = Math.min(SKILL_RESOURCE.max, attacker.flags.resource + SKILL_RESOURCE.gainDealt);
+			}
+			if (defender.skills.length > 0) {
+				defender.flags.resource = Math.min(SKILL_RESOURCE.max, defender.flags.resource + SKILL_RESOURCE.gainTaken);
+			}
+		}
 
 		if (defender.hp > 0) {
 			const defTakenCtx: StrategyContext = {

@@ -1,5 +1,6 @@
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
 import type { CombatantState } from './CombatantState.js';
+import type { BattleStance, ReadySkill } from '../../../shared/config/skills.js';
 
 /** Shared context every strategy hook receives. */
 export interface StrategyContext {
@@ -68,4 +69,13 @@ export interface IClassStrategy {
 
 	/** Called for both sides at the end of every round, after DOT ticks (Knight regen). */
 	onRoundEnd(ctx: StrategyContext): void;
+
+	/**
+	 * Phase 2 skill selection: called for the attacker at the start of their
+	 * turn with the ready (off-cooldown, affordable) equipped skills. Returns
+	 * a skill key to cast this turn, or null for a basic attack. MUST NOT roll
+	 * RNG — selection is deterministic priority so the RNG stream is unchanged
+	 * when no skill is cast.
+	 */
+	chooseSkill?(ctx: StrategyContext, skills: readonly ReadySkill[], stance: BattleStance): string | null;
 }

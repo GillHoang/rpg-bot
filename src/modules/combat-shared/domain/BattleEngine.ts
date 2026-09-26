@@ -7,6 +7,8 @@ import { createRng, createSecureSeed } from './Rng.js';
 import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
 import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
 import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier, BLOOD_MOON_PCT } from './combatRules.js';
+import { SKILL_DEFS, type ReadySkill } from '../../../shared/config/skills.js';
+import { SkillDecorator } from './SkillDecorator.js';
 import { COMBAT_BLOOD_MOON, COMBAT_ROUND_HEADER, COMBAT_SUDDEN_DEATH_HEADER } from '../../../shared/ui/text/combat.js';
 import { formatNumber } from '../../../shared/ui/text/format.js';
 
@@ -133,6 +135,11 @@ export class BattleEngine {
 		// always deals exactly 2 ticks.
 		ctx.existingDebuffs = new Set<Debuff>([...player.debuffs, ...enemy.debuffs]);
 
+		// Phase 2 skill cooldowns tick at round start (before turns). Gated on
+		// equipped skills so skill-less battles keep identical RNG/state.
+		this.tickSkillCooldowns(player);
+		this.tickSkillCooldowns(enemy);
+
 		for (const [attacker, defender, atkStrategy, defStrategy] of this.turnOrder(ctx)) {
 			if (player.hp <= 0 || enemy.hp <= 0) break;
 			this.takeTurn(attacker, defender, atkStrategy, defStrategy, round, ctx);
@@ -214,7 +221,47 @@ export class BattleEngine {
 		};
 		this.statuses.removeImmuneDebuffs(attacker);
 		if (this.statuses.isTurnDisabled(attacker, battle.rng, battle.log)) return;
-		this.attacks.executeStrike(attacker, defender, atkStrategy, defStrategy, ctx);
+		this.attacks.executeStrike(attacker, defender, this.chooseBattleStrategy(attacker, atkStrategy, ctx), defStrategy, ctx);
+	}
+
+	/**
+	 * Phase 2 skill selection. Returns the base strategy unchanged when the
+	 * attacker runs no skill loadout (zero behavior/RNG change for legacy
+	 * battles). Otherwise asks the strategy for one ready skill, pays its
+	 * cost, arms its cooldown and wraps the turn in a SkillDecorator.
+	 * Selection itself never rolls RNG.
+	 */
+	private chooseBattleStrategy(
+		attacker: CombatantState,
+		base: IClassStrategy,
+		ctx: StrategyContext,
+	): IClassStrategy {
+		if (!attacker.skills.length) return base;
+		const ready: ReadySkill[] = [];
+		for (const key of attacker.skills) {
+			const def = SKILL_DEFS[key];
+			if (!def) continue;
+			if ((attacker.flags.skillCooldowns[key] ?? 0) > 0) continue;
+			if (attacker.flags.resource < def.cost) continue;
+			ready.push({ key, cost: def.cost, kind: def.kind });
+		}
+		if (!ready.length) return base;
+		const chosen = base.chooseSkill?.(ctx, ready, attacker.stance) ?? null;
+		const def = chosen ? SKILL_DEFS[chosen] : undefined;
+		if (!chosen || !def) return base;
+		attacker.flags.resource -= def.cost;
+		attacker.flags.skillCooldowns[chosen] = def.cooldown;
+		return new SkillDecorator(base, chosen, def);
+	}
+
+	/** Decrements one side's skill cooldowns (no-op without a loadout). */
+	private tickSkillCooldowns(side: CombatantState): void {
+		if (!side.skills.length) return;
+		for (const key of Object.keys(side.flags.skillCooldowns)) {
+			const left = side.flags.skillCooldowns[key]! - 1;
+			if (left <= 0) delete side.flags.skillCooldowns[key];
+			else side.flags.skillCooldowns[key] = left;
+		}
 	}
 
 	private endOfRound(

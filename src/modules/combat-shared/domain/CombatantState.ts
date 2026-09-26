@@ -6,6 +6,7 @@ import {
 	type ArmorType,
 	type DamageType,
 } from '../../../shared/config/damageTypes.js';
+import { DEFAULT_BATTLE_STANCE, type BattleStance } from '../../../shared/config/skills.js';
 import { COMBAT_STRIKE_EMOJIS, COMBAT_TENACITY_SHRUG } from '../../../shared/ui/text/combat.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
 
@@ -108,6 +109,10 @@ export interface BattleFlags {
 	bakuPhase: number;
 	immunityUsed: number;
 	healedThisRound: number;
+	/** Phase 2 skill resource (0–SKILL_RESOURCE.max) — builds on dealing/taking damage. */
+	resource: number;
+	/** Phase 2 skill cooldowns: skill key → rounds left. */
+	skillCooldowns: Record<string, number>;
 }
 
 /** Fresh per-battle flags; every combatant starts from these defaults. */
@@ -141,6 +146,8 @@ export function createBattleFlags(): BattleFlags {
 		bakuPhase: 1,
 		immunityUsed: 0,
 		healedThisRound: 0,
+		resource: 0,
+		skillCooldowns: {},
 	};
 }
 
@@ -179,6 +186,10 @@ export interface CombatantState {
 	eva: number;
 	/** Tenacity: % chance to shrug off incoming stun/paralyze/dizzy entirely (see applyDebuff). */
 	ten: number;
+	/** Phase 2 equipped skill keys (max 2) — engine casts via SkillDecorator. Empty = basic attacks only. */
+	skills: string[];
+	/** Phase 2 battle order — drives skill selection priority. */
+	stance: BattleStance;
 	debuffs: Debuff[];
 	immunityTags?: string[];
 	/** Typed per-battle scratch space (see BattleFlags); every key starts from `createBattleFlags()`. */
@@ -197,6 +208,9 @@ export function effectiveSpd(side: CombatantState): number {
 
 /** P8 heal cap: all healing shares one per-round budget (8% max HP). */
 export const HEAL_CAP_PCT = 0.08;
+
+/** Phase 2 shield cap: temporary shields stack but never exceed 25% max HP. */
+export const SHIELD_CAP_PCT = 0.25;
 
 /** P8 immunity budget shared by aegis/lunar-veil/sky-sovereign: the first
  * two full nullifies per battle apply in full; further ones halve
@@ -224,6 +238,26 @@ export function cappedHeal(side: CombatantState, amount: number): number {
 	return healed;
 }
 
+/**
+ * Phase 2 shield: temporary HP absorbed before real HP (see BattleAttack).
+ * Stacks across casts but capped at SHIELD_CAP_PCT of max HP (anti-exploit).
+ */
+export function grantShield(side: CombatantState, amount: number): number {
+	if (amount <= 0 || side.hp <= 0) return 0;
+	const room = Math.floor(side.maxHp * SHIELD_CAP_PCT) - side.shield;
+	const granted = Math.max(0, Math.min(amount, room));
+	side.shield += granted;
+	return granted;
+}
+
+/** Phase 2 cleanse: removes up to `count` debuffs, oldest first. */
+export function cleanseDebuffs(side: CombatantState, count: number): number {
+	if (count <= 0) return 0;
+	const removed = Math.min(count, side.debuffs.length);
+	side.debuffs.splice(0, removed);
+	return removed;
+}
+
 /** ``🐅 Tiger`` — tên dạng inline code: username chứa __ không vỡ markdown Discord. */
 export function combatDisplayName(c: CombatantState): string {
 	return c.emoji ? `\`${c.emoji} ${c.name}\`` : `\`${c.name}\``;
@@ -245,6 +279,8 @@ export function createCombatant(params: {
 	acc?: number;
 	eva?: number;
 	ten?: number;
+	skills?: string[];
+	stance?: BattleStance;
 	emoji?: string;
 	attackEmoji?: string;
 }): CombatantState {
@@ -270,6 +306,8 @@ export function createCombatant(params: {
 		acc: params.acc ?? 0,
 		eva: params.eva ?? 0,
 		ten: params.ten ?? 0,
+		skills: params.skills ?? [],
+		stance: params.stance ?? DEFAULT_BATTLE_STANCE,
 		debuffs: [],
 		flags: createBattleFlags(),
 	};
