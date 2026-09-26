@@ -3,6 +3,7 @@ import {
 	GATE_TIERS,
 	TIERS_PER_GATE,
 	defaultGateTier,
+	gateModifiers,
 	gateUnlocked,
 	highestAccessibleGate,
 } from '../../shared/config/portals.js';
@@ -49,7 +50,7 @@ export function gateSelectPanel(
 		...GATES.map((g) => {
 			const done = cleared[g.id - 1] ?? 0;
 			return (
-				GATE_TEXT.gateRow(g.id, g.name, g.modifier, g.minLevel, done, level) +
+				GATE_TEXT.gateRow(g.id, g.name, gateModifiers(g), g.minLevel, done, level) +
 				` · ` +
 				GATE_TEXT.tiersStatus(done)
 			);
@@ -86,7 +87,7 @@ export function gateTiersPanel(
 	const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
 	panel.title = GATE_TEXT.title;
 	panel.body = [
-		GATE_TEXT.gateHeader(gate.id, gate.name, gate.modifier, gate.minLevel),
+		GATE_TEXT.gateHeader(gate.id, gate.name, gateModifiers(gate), gate.minLevel),
 		...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
 		gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
 		panel.body,

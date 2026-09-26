@@ -191,7 +191,7 @@ describe('closed gameplay economy', () => {
 		const repo = new MonsterEncounterService();
 		expect((await repo.pickForLevel(db, 1, () => 0))?.mobType).toBe('regular');
 		expect((await repo.pickForLevel(db, 1, () => 0.9))?.mobType).toBe('elite');
-		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Elite', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'elite', skillKey: 'none', immunityTags: [] });
+		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Elite', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'elite', skillKey: 'none', immunityTags: [], modifiers: [], finalBoss: false });
 		vi.spyOn(rngModule, 'createRng').mockReturnValue(() => 0);
 		const result = await new RaidService({ persistence: testPersistence() }).run(id);
 		expect(result.status).toBe('ok');
@@ -208,7 +208,7 @@ describe('closed gameplay economy', () => {
 		const pick = vi
 			.spyOn(MonsterEncounterService.prototype, 'pickForLevel')
 			.mockResolvedValueOnce(null)
-			.mockResolvedValue({ name: 'Pugot', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'regular', skillKey: 'none', immunityTags: [] });
+			.mockResolvedValue({ name: 'Pugot', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'regular', skillKey: 'none', immunityTags: [], modifiers: [], finalBoss: false });
 		const first = await new RaidService({ persistence: testPersistence() }).run(id);
 		expect(first.status).toBe('no-monsters-seeded');
 		expect(await db.select().from(s.huntCooldowns).where(eq(s.huntCooldowns.discordId, id))).toHaveLength(0);
@@ -225,7 +225,7 @@ describe('closed gameplay economy', () => {
 		await db.update(s.userCharacter).set({ combatLevel: 10 }).where(eq(s.userCharacter.discordId, id));
 		expect((await raid.run(id, true)).status).toBe('boss-locked');
 		await db.update(s.usersBag).set({ credux: 10000 }).where(eq(s.usersBag.discordId, id));
-		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Boss', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'boss', skillKey: 'moon_threshold', immunityTags: ['stun'] });
+		vi.spyOn(MonsterEncounterService.prototype, 'pickForLevel').mockResolvedValue({ name: 'Boss', hp: 1, atk: 1, def: 0, crit: 0, mobType: 'boss', skillKey: 'moon_threshold', immunityTags: ['stun'], modifiers: [], finalBoss: false });
 		const first = await raid.run(id, true);
 		expect(first.status).toBe('ok');
 		expect((await bag()).bossTreasureChest).toBe(1);

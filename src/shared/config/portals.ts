@@ -7,7 +7,17 @@
 export const GATE_COUNT = 5;
 export const TIERS_PER_GATE = 10;
 
-export type GateModifier = 'none' | 'tanky' | 'aggressive' | 'regen' | 'evasive';
+export type GateModifier =
+	| 'none'
+	| 'tanky'
+	| 'aggressive'
+	| 'regen'
+	| 'evasive'
+	| 'reflect'
+	| 'drain'
+	| 'enrage'
+	| 'shielded'
+	| 'rupture';
 
 export interface Gate {
 	id: number;
@@ -16,6 +26,8 @@ export interface Gate {
 	/** Cấp quái của tầng boss (tầng 10). */
 	bossLevel: number;
 	modifier: GateModifier;
+	/** Phase 4: gate 4+ có thêm modifier thứ hai (xếp chồng, có cap). */
+	modifier2?: GateModifier;
 }
 
 /** Tên Gate ở src/shared/ui/text/portals.ts (GATE_NAMES) — config chỉ giữ dữ liệu thuần. */
@@ -23,9 +35,14 @@ export const GATES: readonly Gate[] = [
 	{ id: 1, name: 'forest', minLevel: 1, bossLevel: 12, modifier: 'none' },
 	{ id: 2, name: 'ruins', minLevel: 15, bossLevel: 26, modifier: 'tanky' },
 	{ id: 3, name: 'abyss', minLevel: 30, bossLevel: 42, modifier: 'aggressive' },
-	{ id: 4, name: 'volcano', minLevel: 45, bossLevel: 58, modifier: 'regen' },
-	{ id: 5, name: 'celestial', minLevel: 60, bossLevel: 75, modifier: 'evasive' },
+	{ id: 4, name: 'volcano', minLevel: 45, bossLevel: 58, modifier: 'regen', modifier2: 'enrage' },
+	{ id: 5, name: 'celestial', minLevel: 60, bossLevel: 75, modifier: 'evasive', modifier2: 'shielded' },
 ];
+
+/** Mọi modifier của một gate (phase 4: gate 4+ có 2). */
+export function gateModifiers(gate: Gate): GateModifier[] {
+	return gate.modifier2 ? [gate.modifier, gate.modifier2] : [gate.modifier];
+}
 
 export interface GateTier {
 	gate: Gate;

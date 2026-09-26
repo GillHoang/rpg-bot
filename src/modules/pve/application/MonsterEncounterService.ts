@@ -22,6 +22,8 @@ export interface MonsterStats {
 	regenPct: number;
 	damageType: 'physical';
 	armorType: 'light' | 'medium' | 'heavy';
+	/** Behavior gate modifiers for MonsterStrategy hooks (numbers stay in scale). */
+	modifiers: string[];
 	/** Gate final-boss encounter (tier 10) — drives the heavy-cycle rhythm. */
 	finalBoss: boolean;
 }
@@ -80,7 +82,29 @@ const GATE_MODIFIER_BONUS: Record<GateModifier, { hp: number; atk: number; def: 
 	aggressive: { hp: 0.9, atk: 1.35, def: 0.9 },
 	regen: { hp: 1.35, atk: 0.95, def: 1.1 },
 	evasive: { hp: 1.1, atk: 1.1, def: 1.25 },
+	reflect: { hp: 1.1, atk: 1.0, def: 1.1 },
+	drain: { hp: 1.15, atk: 1.05, def: 1.0 },
+	enrage: { hp: 0.95, atk: 1.15, def: 1.0 },
+	shielded: { hp: 1.2, atk: 1.0, def: 1.1 },
+	rupture: { hp: 1.0, atk: 1.15, def: 1.0 },
 };
+
+/**
+ * Phase 4 stacked modifiers: multiply both bonuses, clamped per stat so two
+ * heavy gates cannot compound into a wall (anti-exploit).
+ */
+export function combineModifierBonus(
+	first: GateModifier,
+	second: GateModifier,
+): { hp: number; atk: number; def: number } {
+	const a = GATE_MODIFIER_BONUS[first] ?? GATE_MODIFIER_BONUS.none!;
+	const b = GATE_MODIFIER_BONUS[second] ?? GATE_MODIFIER_BONUS.none!;
+	const clamp = (value: number): number => Math.min(1.6, Math.max(0.8, value));
+	return { hp: clamp(a.hp * b.hp), atk: clamp(a.atk * b.atk), def: clamp(a.def * b.def) };
+}
+
+/** Behavior modifiers need strategy hooks (the rest are pure numbers above). */
+const BEHAVIOR_MODIFIERS: ReadonlySet<string> = new Set(['reflect', 'drain', 'enrage', 'shielded', 'rupture']);
 
 /** Elite affix pool (P4): trash variety in modifier gates + final-boss menace. */
 const AFFIX_POOL = ['vampiric', 'frenzy_echo', 'stone_skin', 'swift', 'tenacious'] as const;
@@ -118,6 +142,7 @@ function secondaryStats(
 	lv: number,
 	mobType: string,
 	gateModifier: GateModifier,
+	gateModifier2: GateModifier = 'none',
 ): {
 	spd: number;
 	acc: number;
@@ -128,18 +153,24 @@ function secondaryStats(
 	armorType: 'light' | 'medium' | 'heavy';
 } {
 	const tier = MOB_TIER_INDEX[mobType] ?? 0;
+	const modifiers = [gateModifier, gateModifier2];
 	return {
 		spd: Math.floor(95 + [0, 7, 15][tier]! + lv * 0.3),
 		acc: 0,
-		eva: [0, 3, 5][tier]! + (gateModifier === 'evasive' ? 10 : 0),
+		eva: [0, 3, 5][tier]! + (modifiers.includes('evasive') ? 10 : 0),
 		ten: [0, 15, 40][tier]!,
-		regenPct: gateModifier === 'regen' ? 0.03 : 0,
+		regenPct: modifiers.includes('regen') ? 0.03 : 0,
 		// Counter-matrix traits derived in code (no roster migration): tier maps to
 		// armor weight, regulars harden from gate 3; mobs deal physical damage
 		// by default. Live since DAMAGE_TYPE_MATRIX_ENABLED.
 		damageType: 'physical' as const,
 		armorType: armorForEncounter(mobType, lv),
 	};
+}
+
+/** Behavior modifiers of this encounter for MonsterStrategy hooks. */
+export function behaviorModifiers(gateModifier: GateModifier, gateModifier2: GateModifier = 'none'): string[] {
+	return [gateModifier, gateModifier2].filter((m) => BEHAVIOR_MODIFIERS.has(m));
 }
 
 export class MonsterEncounterService {
@@ -155,6 +186,7 @@ export class MonsterEncounterService {
 		boss = false,
 		finalBoss = false,
 		gateModifier: GateModifier = 'none',
+		gateModifier2: GateModifier = 'none',
 	): Promise<MonsterStats | null> {
 		const rows = await this.roster.listForEncounter(executor, boss || finalBoss);
 		if (!rows.length) return null;
@@ -175,7 +207,7 @@ export class MonsterEncounterService {
 		const lv = Math.max(1, level);
 		if (boss && !finalBoss) {
 			// Daily Bakunawa retains its separate entry fee and seeded balance.
-			const sec = secondaryStats(lv, 'boss', gateModifier);
+			const sec = secondaryStats(lv, 'boss', gateModifier, gateModifier2);
 			return {
 				name: row.name,
 				hp: Math.round(row.baseHp + row.hpPerLevel * lv),
@@ -187,6 +219,7 @@ export class MonsterEncounterService {
 				skillKey: row.skillKey,
 				immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
 				affixes: [],
+				modifiers: behaviorModifiers(gateModifier, gateModifier2),
 				finalBoss: false,
 			};
 		}
@@ -199,7 +232,7 @@ export class MonsterEncounterService {
 		// Steep early slope + low cap: low tiers stay demanding in starter
 		// gear while endgame stays reachable for geared builds.
 		const difficulty = 1 + Math.min(0.5, (lv - 1) * 0.08);
-		const modifier = GATE_MODIFIER_BONUS[gateModifier] ?? GATE_MODIFIER_BONUS.none!;
+		const modifier = combineModifierBonus(gateModifier, gateModifier2);
 		const bonus = tierBonus(finalBoss, type);
 		const scale = {
 			hp: REGULAR_SCALE.hp * bonus.hp * modifier.hp * difficulty,
@@ -212,7 +245,7 @@ export class MonsterEncounterService {
 			atk: Math.round(AVG_CLASS_CURVE.atk(lv) * shape * scale.atk),
 			def: Math.round(AVG_CLASS_CURVE.def(lv) * shape * scale.def),
 			crit: row.baseCrit,
-			...secondaryStats(lv, row.mobType, gateModifier),
+			...secondaryStats(lv, row.mobType, gateModifier, gateModifier2),
 			mobType: row.mobType,
 			// Gate finals fight with their own gate skill (Phase 4); the daily
 			// boss keeps its seeded Bakunawa skill.
@@ -221,6 +254,7 @@ export class MonsterEncounterService {
 			// Regulars in modifier gates roll one affix; final bosses roll two.
 			// Elites keep their signature skill; daily boss stays seeded-pure.
 			affixes: rollEncounterAffixes(type, gateModifier, finalBoss, rng),
+			modifiers: behaviorModifiers(gateModifier, gateModifier2),
 			finalBoss,
 		};
 	}

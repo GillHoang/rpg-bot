@@ -1,21 +1,25 @@
 import { formatNumber } from '../../../../shared/ui/text/format.js';
 import { rollChance } from '../../../../shared/utils/weightedRandom.js';
 import { NullClassStrategy } from './NullClassStrategy.js';
-import { applyDebuff, cappedHeal, combatDisplayName, findDebuff } from '../CombatantState.js';
+import { applyDebuff, cappedHeal, combatDisplayName, findDebuff, grantShield } from '../CombatantState.js';
 import type { StrategyContext, OutgoingHit, IncomingHit, ResolvedHit } from '../IClassStrategy.js';
 import { BOSS_ENTRY } from '../../../../shared/config/raidLoot.js';
 import {
 	COMBAT_MONSTER_DEVOUR,
 	COMBAT_MONSTER_DEVOUR_CHARGE,
+	COMBAT_MONSTER_DRAIN,
 	COMBAT_MONSTER_ECLIPSE,
+	COMBAT_MONSTER_ENRAGE,
 	COMBAT_MONSTER_FEAST,
 	COMBAT_MONSTER_FRENZY,
 	COMBAT_MONSTER_HAZE,
 	COMBAT_MONSTER_LEAP,
 	COMBAT_MONSTER_PHASE_THREE,
 	COMBAT_MONSTER_PHASE_TWO,
+	COMBAT_MONSTER_REFLECT,
 	COMBAT_MONSTER_REGEN,
 	COMBAT_MONSTER_SHED,
+	COMBAT_MONSTER_SHIELDED,
 	COMBAT_MONSTER_CLIPPERS,
 	COMBAT_MONSTER_HEAVY,
 	COMBAT_MONSTER_SMOKE,
@@ -32,6 +36,8 @@ export interface MonsterTraits {
 	 * bespoke phase/devour cycle instead.
 	 */
 	finalBoss?: boolean;
+	/** Phase 4 behavior gate modifiers (reflect/drain/enrage/shielded/rupture). */
+	modifiers?: string[];
 }
 
 /** Generic final-boss heavy cycle (Phase 4): telegraphed round, then a ×2 strike. */
@@ -60,6 +66,11 @@ export class MonsterStrategy extends NullClassStrategy {
 			return this.traits.affixes ?? [];
 		}
 		return [];
+	}
+
+	/** Phase 4 behavior gate modifiers for this encounter. */
+	private modifiers(): string[] {
+		return this.traits.modifiers ?? [];
 	}
 
 	override onRoundStart(ctx: StrategyContext): void {
@@ -103,6 +114,11 @@ export class MonsterStrategy extends NullClassStrategy {
 			flags.leapCharging = true;
 			ctx.log(COMBAT_MONSTER_DEVOUR_CHARGE(combatDisplayName(ctx.self)));
 		}
+		// Phase 4 shielded gate: opens the battle behind a shield wall.
+		if (flags.monsterRounds === 1 && this.modifiers().includes('shielded')) {
+			const granted = grantShield(ctx.self, Math.floor(ctx.self.maxHp * 0.2));
+			if (granted > 0) ctx.log(COMBAT_MONSTER_SHIELDED(combatDisplayName(ctx.self), formatNumber(granted)));
+		}
 		// Generic final-boss telegraph (Phase 4): derived from the round
 		// counter, no extra flags. Bakunawa is exempt (bespoke cycle above).
 		if (this.heavyCycle() && flags.monsterRounds % HEAVY_CYCLE === HEAVY_CYCLE - 1) {
@@ -124,6 +140,17 @@ export class MonsterStrategy extends NullClassStrategy {
 			ctx.self.flags.leapCharging = false;
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
 			ctx.log(COMBAT_MONSTER_LEAP(combatDisplayName(ctx.self)));
+		}
+		// Phase 4 gate modifiers: enrage below half HP, rupture ignores armor.
+		if (this.modifiers().includes('enrage') && ctx.self.hp < ctx.self.maxHp / 2) {
+			hit.damagePctBonus += 30;
+			if (!ctx.self.flags.frenzyLogged) {
+				ctx.self.flags.frenzyLogged = true;
+				ctx.log(COMBAT_MONSTER_ENRAGE(combatDisplayName(ctx.self)));
+			}
+		}
+		if (this.modifiers().includes('rupture')) {
+			hit.armorPierceFraction += 0.25;
 		}
 		// Generic final-boss heavy: the strike after the telegraphed round.
 		if (this.heavyCycle() && ctx.self.flags.monsterRounds % HEAVY_CYCLE === 0) {
@@ -187,6 +214,11 @@ export class MonsterStrategy extends NullClassStrategy {
 			const healed = Math.floor(hit.damageDealt * 0.1);
 			this.healSelf(ctx, healed, (name, amount) => COMBAT_MONSTER_FEAST(name, amount));
 		}
+		// Phase 4 drain gate: the strike drinks its victim.
+		if (this.modifiers().includes('drain')) {
+			const healed = Math.floor(hit.damageDealt * 0.08);
+			this.healSelf(ctx, healed, (name, amount) => COMBAT_MONSTER_DRAIN(name, amount));
+		}
 		if ((this.traits.affixes ?? []).includes('vampiric')) {
 			const healed = Math.floor(hit.damageDealt * 0.05);
 			this.healSelf(ctx, healed, (name, amount) => COMBAT_MONSTER_FEAST(name, amount));
@@ -224,6 +256,18 @@ export class MonsterStrategy extends NullClassStrategy {
 			}
 			ctx.log(COMBAT_MONSTER_SMOKE(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy)));
 		}
+	}
+
+	/** Phase 4 reflect gate: spikes return part of every landed hit. */
+	override onDamageTaken(ctx: StrategyContext, resolved: ResolvedHit): void {
+		if (resolved.missed || resolved.damageDealt <= 0) return;
+		if (!this.modifiers().includes('reflect')) return;
+		const reflected = Math.floor(resolved.damageDealt * 0.15);
+		if (reflected <= 0) return;
+		ctx.enemy.hp = Math.max(0, ctx.enemy.hp - reflected);
+		ctx.log(
+			COMBAT_MONSTER_REFLECT(combatDisplayName(ctx.self), combatDisplayName(ctx.enemy), formatNumber(reflected)),
+		);
 	}
 
 	/** Bakunawa phase transitions shed DOTs and announce themselves once each. */

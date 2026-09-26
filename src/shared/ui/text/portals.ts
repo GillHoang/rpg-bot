@@ -24,7 +24,17 @@ export const GATE_MODIFIERS: Record<string, string> = {
 	aggressive: 'Đánh đau (+ATK)',
 	regen: 'Máu dày (+HP)',
 	evasive: 'Toàn diện',
+	reflect: 'Phản đòn',
+	drain: 'Hút máu',
+	enrage: 'Cuồng nộ (<50% HP)',
+	shielded: 'Khiên mở đầu',
+	rupture: 'Xuyên giáp',
 };
+
+/** Full modifier label list for a gate (phase 4: gate 4+ shows two). */
+export function modifierList(modifiers: readonly string[]): string {
+	return modifiers.map((m) => GATE_MODIFIERS[m] ?? m).join(' + ');
+}
 
 /** Icon trạng thái một Gate: đã thắng boss / đang mở / còn khóa. */
 function gateStatusIcon(cleared: number, id: number, minLevel: number, level: number): string {
@@ -60,12 +70,19 @@ export const GATE_TEXT = {
 	rules: 'Mỗi Gate có 10 tầng tăng dần, tầng 10 là boss. Vượt boss Gate N để mở Gate N+1 (hoặc đủ level). Thua/hòa giữ nguyên tiến độ tầng. Mở lại menu sẽ quay về màn chọn Gate.',
 	gate: (tier: GateTierLike) =>
 		`${GATE_NAMES[tier.gate.name] ?? tier.gate.name} · Tầng ${tier.number}/${TIERS}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,
-	gateHeader: (id: number, name: string, modifier: string, minLevel: number) =>
-		`**Gate ${id} · ${GATE_NAMES[name] ?? name}** · ${GATE_MODIFIERS[modifier] ?? modifier} · Cần Lv.${minLevel}`,
-	gateRow: (id: number, name: string, modifier: string, minLevel: number, cleared: number, level: number) =>
-		`${gateStatusIcon(cleared, id, minLevel, level)} Gate ${id} · ${GATE_NAMES[name] ?? name} · ${GATE_MODIFIERS[modifier] ?? modifier} · 10 tầng · Cần Lv.${minLevel}`,
-	gateRowBoss: (id: number, name: string, modifier: string, minLevel: number, bossLevel: number) =>
-		`Gate ${id} · ${GATE_NAMES[name] ?? name} · ${GATE_MODIFIERS[modifier] ?? modifier} · 10 tầng · Cần Lv.${minLevel} → Boss Lv.${bossLevel}`,
+	gateHeader: (id: number, name: string, modifiers: readonly string[], minLevel: number) =>
+		`**Gate ${id} · ${GATE_NAMES[name] ?? name}** · ${modifierList(modifiers)} · Cần Lv.${minLevel}`,
+	gateRow: (
+		id: number,
+		name: string,
+		modifiers: readonly string[],
+		minLevel: number,
+		cleared: number,
+		level: number,
+	) =>
+		`${gateStatusIcon(cleared, id, minLevel, level)} Gate ${id} · ${GATE_NAMES[name] ?? name} · ${modifierList(modifiers)} · 10 tầng · Cần Lv.${minLevel}`,
+	gateRowBoss: (id: number, name: string, modifiers: readonly string[], minLevel: number, bossLevel: number) =>
+		`Gate ${id} · ${GATE_NAMES[name] ?? name} · ${modifierList(modifiers)} · 10 tầng · Cần Lv.${minLevel} → Boss Lv.${bossLevel}`,
 	tiersStatus: (cleared: number) => `${cleared}/${TIERS} tầng`,
 	tierRow: (tier: GateTierLike, clearedTiers: number) =>
 		`${tierStatusIcon(tier.number, clearedTiers)} Tầng ${tier.number}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,

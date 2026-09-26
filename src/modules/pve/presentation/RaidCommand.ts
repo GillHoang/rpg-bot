@@ -1,4 +1,4 @@
-import { GATES, TIERS_PER_GATE } from '../../../shared/config/portals.js';
+import { GATES, TIERS_PER_GATE, gateModifiers } from '../../../shared/config/portals.js';
 import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import type { ICommand } from '../../../shared/discord/command.js';
@@ -35,7 +35,7 @@ export class RaidCommand implements ICommand {
 		await interaction.deferReply();
 		if (interaction.options.getSubcommand(false) === 'gates') {
 			await interaction.editReply(
-				GATES.map((g) => GATE_TEXT.gateRowBoss(g.id, g.name, g.modifier, g.minLevel, g.bossLevel)).join('\n') +
+				GATES.map((g) => GATE_TEXT.gateRowBoss(g.id, g.name, gateModifiers(g), g.minLevel, g.bossLevel)).join('\n') +
 					'\n\n' +
 					GATE_TEXT.rules,
 			);

@@ -278,6 +278,7 @@ export class RaidService {
 			boss,
 			gateTier?.finalBoss ?? false,
 			gateTier?.gate.modifier ?? 'none',
+			gateTier?.gate.modifier2 ?? 'none',
 		);
 	}
 
@@ -313,6 +314,7 @@ export class RaidService {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, {
 				affixes: monsterStats.affixes,
+				modifiers: monsterStats.modifiers,
 				finalBoss: monsterStats.finalBoss,
 			}),
 		});

@@ -189,6 +189,14 @@ export const COMBAT_MONSTER_SMOKE = (name: string, enemy: string): string =>
 	`${combatTag(COMBAT_TAGS.BURN)} Khói xì gà của ${name} bóp nghẹt hồi phục của ${enemy}!`;
 export const COMBAT_MONSTER_REGEN = (name: string, healed: string): string =>
 	`${combatTag(COMBAT_TAGS.REGEN)} ${name} hồi __${healed} HP__ qua từng hiệp.`;
+export const COMBAT_MONSTER_DRAIN = (name: string, healed: string): string =>
+	`${combatTag(COMBAT_TAGS.LIFEST)} ${ICONS.effect.feast} ${name} hút __${healed} HP__ từ đòn đánh!`;
+export const COMBAT_MONSTER_ENRAGE = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.FRENZY)} ${name} cuồng nộ — sát thương tăng mạnh khi yếu máu!`;
+export const COMBAT_MONSTER_REFLECT = (name: string, enemy: string, reflected: string): string =>
+	`${combatTag(COMBAT_TAGS.THORN)} ${ICONS.effect.thorns} ${name} phản lại __${reflected} HP__ vào ${enemy}!`;
+export const COMBAT_MONSTER_SHIELDED = (name: string, amount: string): string =>
+	`${combatTag(COMBAT_TAGS.GUARD)} ${name} dựng khiên __${amount} HP__ mở đầu trận!`;
 export const COMBAT_MONSTER_SWIFT = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.BLESS)} ${name} nhanh như chớp — luôn tranh lượt trước!`;
 export const COMBAT_MONSTER_FRENZY = (name: string): string =>
