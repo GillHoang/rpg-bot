@@ -1,6 +1,6 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 import type { Executor } from '../../../db/client.js';
-import { autoRaids, bossAttackLog, bossSpawnQueue, bossState, usersBag } from '../../../db/schema.js';
+import { autoRaids, bossAttackLog, bossSpawnQueue, bossState, userGuildActivity, usersBag } from '../../../db/schema.js';
 
 /** Named persistence operations for the guild World Boss (see WorldBossService). */
 export class WorldBossRepository {
@@ -68,6 +68,31 @@ export class WorldBossRepository {
 
 	async findAuto(tx: Executor, discordId: string) {
 		return tx.select().from(autoRaids).where(eq(autoRaids.discordId, discordId));
+	}
+
+	/** Phase 5 Guild War: every World Boss attack marks the player active in that guild. */
+	async touchActivity(tx: Executor, discordId: string, guildId: string, now: Date) {
+		return tx
+			.insert(userGuildActivity)
+			.values({ discordId, guildId, lastActive: now })
+			.onConflictDoUpdate({
+				target: [userGuildActivity.discordId, userGuildActivity.guildId],
+				set: { lastActive: now },
+			});
+	}
+
+	/** Cross-guild damage race (one row per guild with any contribution). */
+	async guildWarBoard(tx: Executor, limit: number) {
+		return tx
+			.select({
+				guildId: bossAttackLog.guildId,
+				totalDamage: sql<number>`sum(${bossAttackLog.totalDamage})::int`,
+				attackers: sql<number>`count(distinct ${bossAttackLog.discordId})::int`,
+			})
+			.from(bossAttackLog)
+			.groupBy(bossAttackLog.guildId)
+			.orderBy(sql`sum(${bossAttackLog.totalDamage}) desc`)
+			.limit(limit);
 	}
 
 	async upsertAuto(tx: Executor, values: typeof autoRaids.$inferInsert) {

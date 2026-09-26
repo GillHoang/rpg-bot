@@ -44,6 +44,7 @@ function harness(opts: {
 	auto?: Record<string, unknown>[];
 	battle?: BattleResult;
 	board?: Record<string, unknown>[];
+	war?: Record<string, unknown>[];
 	usernames?: Record<string, string>;
 }) {
 	const bossRows = opts.boss === undefined ? [] : opts.boss;
@@ -68,6 +69,8 @@ function harness(opts: {
 		findAuto: vi.fn().mockResolvedValue(opts.auto ?? []),
 		upsertAuto: vi.fn().mockResolvedValue([]),
 		grantPurse: vi.fn().mockResolvedValue([]),
+		touchActivity: vi.fn().mockResolvedValue([]),
+		guildWarBoard: vi.fn().mockResolvedValue(opts.war ?? []),
 	};
 	const accounts = {
 		findByIdWithExecutor: vi
@@ -211,5 +214,85 @@ describe('WorldBossService.board + toggleAuto', () => {
 		const off = harness({ auto: [{ endsAt: new Date('2026-04-01T00:00:00+07:00'), startedAt: new Date(), combatLevel: 50 }] });
 		const result = await off.service.toggleAuto('hero');
 		expect(result.active).toBe(false);
+	});
+
+	it('marks guild activity on every attack', async () => {
+		const { service, bosses } = harness({ boss: [ACTIVE] });
+		await service.attack('guild-1', 'hero', 'req-act');
+		expect(bosses.touchActivity).toHaveBeenCalledWith(expect.anything(), 'hero', 'guild-1', expect.any(Date));
+	});
+
+	it('ranks guilds by total damage with eligibility', async () => {
+		const { service } = harness({
+			war: [
+				{ guildId: 'g1', totalDamage: '9000', attackers: '4' },
+				{ guildId: 'g2', totalDamage: 1000, attackers: 1 },
+			],
+		});
+		const war = await service.warBoard();
+		expect(war).toEqual([
+			{ rank: 1, guildId: 'g1', totalDamage: 9000, attackers: 4, eligible: true },
+			{ rank: 2, guildId: 'g2', totalDamage: 1000, attackers: 1, eligible: false },
+		]);
+	});
+});
+
+describe('WorldBossRepository (PGlite)', () => {
+	it('aggregates the war board and tracks activity on real SQL', async () => {
+		const { createTestDatabase, migrateTestDatabase } = await import('./helpers/database.js');
+		const { db, testClient } = createTestDatabase();
+		try {
+			await migrateTestDatabase(testClient);
+			const { WorldBossRepository } = await import(
+				'../src/modules/pve/infrastructure/WorldBossRepository.js'
+			);
+			const repo = new WorldBossRepository();
+			const s = await import('../src/db/schema.js');
+			await db.insert(s.users).values([
+				{ discordId: 'u1', username: 'U1' },
+				{ discordId: 'u2', username: 'U2' },
+				{ discordId: 'u3', username: 'U3' },
+			]);
+			const now = new Date('2026-03-02T12:00:00+07:00');
+			await repo.touchActivity(db as never, 'u1', 'g1', now);
+			await repo.touchActivity(db as never, 'u1', 'g1', now);
+			await repo.upsertAttack(
+				db as never,
+				{ bossSpawnId: 's1', guildId: 'g1', discordId: 'u1', mobId: 201, attackedAt: now, lastDailyReset: 'day' },
+				5000,
+				1,
+				'day',
+			);
+			await repo.upsertAttack(
+				db as never,
+				{ bossSpawnId: 's1', guildId: 'g1', discordId: 'u2', mobId: 201, attackedAt: now, lastDailyReset: 'day' },
+				3000,
+				1,
+				'day',
+			);
+			await repo.upsertAttack(
+				db as never,
+				{ bossSpawnId: 's1', guildId: 'g1', discordId: 'u1', mobId: 201, attackedAt: now, lastDailyReset: 'day' },
+				1000,
+				2,
+				'day',
+			);
+			await repo.upsertAttack(
+				db as never,
+				{ bossSpawnId: 's2', guildId: 'g2', discordId: 'u3', mobId: 201, attackedAt: now, lastDailyReset: 'day' },
+				7000,
+				1,
+				'day',
+			);
+			const board = await repo.guildWarBoard(db as never, 10);
+			expect(board.map((row) => [row.guildId, Number(row.totalDamage), Number(row.attackers)])).toEqual([
+				['g1', 9000, 2],
+				['g2', 7000, 1],
+			]);
+			const activity = await db.select().from(s.userGuildActivity);
+			expect(activity).toHaveLength(1);
+		} finally {
+			await testClient.close();
+		}
 	});
 });

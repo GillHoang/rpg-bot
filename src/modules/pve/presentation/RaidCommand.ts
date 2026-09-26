@@ -44,12 +44,13 @@ export class RaidCommand implements ICommand {
 		)
 		.addSubcommand((s) => s.setName('worldboss').setDescription(WORLD_BOSS_TEXT.description))
 		.addSubcommand((s) => s.setName('wboard').setDescription(WORLD_BOSS_TEXT.boardDescription))
-		.addSubcommand((s) => s.setName('wauto').setDescription('Bật/tắt auto-raid World Boss (+2 lượt/ngày)'));
+		.addSubcommand((s) => s.setName('wauto').setDescription('Bật/tắt auto-raid World Boss (+2 lượt/ngày)'))
+		.addSubcommand((s) => s.setName('wwar').setDescription(WORLD_BOSS_TEXT.warDescription));
 
 	constructor(
 		private readonly raid: Pick<RaidService, 'run'>,
 		private readonly tower?: Pick<TowerService, 'run'>,
-		private readonly worldBoss?: Pick<WorldBossService, 'attack' | 'board' | 'toggleAuto'>,
+		private readonly worldBoss?: Pick<WorldBossService, 'attack' | 'board' | 'toggleAuto' | 'warBoard'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -72,7 +73,7 @@ export class RaidCommand implements ICommand {
 			await this.executeTower(interaction);
 			return;
 		}
-		if (subcommand === 'worldboss' || subcommand === 'wboard' || subcommand === 'wauto') {
+		if (subcommand === 'worldboss' || subcommand === 'wboard' || subcommand === 'wauto' || subcommand === 'wwar') {
 			await this.executeWorldBoss(interaction, subcommand);
 			return;
 		}
@@ -192,7 +193,23 @@ export class RaidCommand implements ICommand {
 		if (subcommand === 'wauto') {
 			const auto = await this.worldBoss.toggleAuto(interaction.user.id);
 			await interaction.editReply(
-				auto.active ? `Auto-raid bật đến ${auto.endsAt.toISOString()}.` : 'Auto-raid đã tắt.',
+				WORLD_BOSS_TEXT.warToggled(auto.active, auto.endsAt.toISOString()),
+			);
+			return;
+		}
+		if (subcommand === 'wwar') {
+			const war = await this.worldBoss.warBoard();
+			if (!war.length) {
+				await interaction.editReply(WORLD_BOSS_TEXT.warEmpty);
+				return;
+			}
+			await interaction.editReply(
+				`**${WORLD_BOSS_TEXT.warTitle}**\n` +
+					war
+						.map((row) =>
+							WORLD_BOSS_TEXT.warRow(row.rank, row.guildId, formatNumber(row.totalDamage), row.attackers, row.eligible),
+						)
+						.join('\n'),
 			);
 			return;
 		}

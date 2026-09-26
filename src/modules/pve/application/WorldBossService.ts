@@ -51,6 +51,15 @@ export interface WorldBossBoardRow {
 	totalDamage: number;
 }
 
+export interface GuildWarRow {
+	rank: number;
+	guildId: string;
+	totalDamage: number;
+	attackers: number;
+	/** War-eligible: at least 3 distinct attackers (no solo-guild farming). */
+	eligible: boolean;
+}
+
 /**
  * Phase 5 guild World Boss: one shared HP pool per Discord guild, lazy spawn
  * on first attack, daily attack budget (auto_raids subscribers get +2), kill
@@ -142,6 +151,20 @@ export class WorldBossService {
 		});
 	}
 
+	/** Cross-guild damage race (Guild War board). */
+	async warBoard(limit = 10): Promise<GuildWarRow[]> {
+		return this.persistence.unitOfWork.run(async (tx) => {
+			const rows = await this.bosses.guildWarBoard(tx, limit);
+			return rows.map((row, index) => ({
+				rank: index + 1,
+				guildId: row.guildId,
+				totalDamage: Number(row.totalDamage),
+				attackers: Number(row.attackers),
+				eligible: Number(row.attackers) >= 3,
+			}));
+		});
+	}
+
 	/** Toggle the auto-raid subscription (+2 daily attacks, 7 days). */
 	async toggleAuto(discordId: string): Promise<{ active: boolean; endsAt: Date }> {
 		const now = this.clock.now();
@@ -221,6 +244,8 @@ export class WorldBossService {
 			day,
 		);
 		const totalDamage = (attack?.totalDamage ?? 0) + contribution;
+		// Phase 5 Guild War: participation marks guild activity for the war board.
+		await this.bosses.touchActivity(tx, discordId, guildId, now);
 		await this.bosses.updateBoss(tx, guildId, {
 			currentHp: remaining,
 			lastAttackAt: now,
