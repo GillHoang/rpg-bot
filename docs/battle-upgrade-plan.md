@@ -132,11 +132,11 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
 - ✅ **Doc drift**: tenacity (`classes.ts:85` "shortens" → "shrug off entirely"), Fighter Bash (`gameplay-implementation.md:37` "25%/50%" → "15%/35%" khớp `FighterStrategy.ts`). Knight đã khớp sẵn (25/30/2.5/25) — claim "2/15" trong audit là stale. `package.json` description đã đúng "PostgreSQL".
 - **Deliverable:** test mới pass (11 test), `pnpm check` + `pnpm build` xanh, không đổi behavior.
 
-### Phase 1 — Combat core: khắc hệ + crit severity + shield (3–5 ngày)
-- Bật ma trận khắc hệ vào `DamageCalculator` (feature flag, mặc định off cho các mode cũ nếu cần an toàn).
-- `critDmg%` thay `×2` cố định; thêm stat `critDmg`, `penFlat`, `shield`.
-- Cập nhật `StatAssemblyService` + seed weapon/mob có `damageType`/`armorType`.
-- Test: characterization mới cho ma trận, test EV không đổi khi tắt flag.
+### Phase 1 — Combat core: khắc hệ + crit severity + shield (3–5 ngày) 🔄
+- ✅ `critDmg%` thay `×2` cố định; thêm stat `critDmg`, `penFlat`, `shield` vào `CombatantState` + `createCombatant` (default 200/0/0 = tái hiện behavior cũ). Wire ma trận khắc vào `BattleAttack` qua `armorTypeMultiplier` (inert khi flag off). Characterization re-baseline shape-only.
+- ✅ Derive `damageType`/`armorType` cho **mob** trong `MonsterEncounterService` (no migration — pattern như `regenPct`), truyền qua `RaidService.createCombatant`.
+- ⏳ Derive cho **player**: `StatAssemblyService` + `combatantFactory` (weapon.type → damageType, armor tier → armorType).
+- ⏳ Bật `DAMAGE_TYPE_MATRIX_ENABLED` + test EV (sẽ đổi balance → re-baseline characterization lần nữa).
 
 ### Phase 2 — Skill system + tài nguyên + Battle Order (5–8 ngày) ★ giá trị lớn nhất
 - `IClassStrategy` thêm `chooseAction`; `EffectRegistry` đăng ký skill pool theo class.
