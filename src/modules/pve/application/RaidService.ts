@@ -311,7 +311,10 @@ export class RaidService {
 		monster.flags.regenPct = monsterStats.regenPct;
 		const battle = this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
-			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, { affixes: monsterStats.affixes }),
+			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, {
+				affixes: monsterStats.affixes,
+				finalBoss: monsterStats.finalBoss,
+			}),
 		});
 		return { battle, playerSpd: assembled.stats.spd, enemySpd: monsterStats.spd };
 	}

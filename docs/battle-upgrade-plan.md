@@ -153,10 +153,9 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
 - ✅ Echo deity (`/equip kind:echo`, stat ×0.25 flat, không blessing/resonance).
 - ✅ Class branch (10 nhánh, Lv.40+, stat tilt, stale-branch sau đổi class bị lọc; `/branch list|set`, 31 commands).
 
-### Phase 4 — Enemy & encounter (4–6 ngày)
-- Monster skill rotation + telegraph cho mọi gate boss.
-- Modifier mở rộng + 2 modifier/gate; elite/boss affix mở rộng.
-- Tower/Infinite mode + weekly modifier.
+### Phase 4 — Enemy & encounter 🔄
+- ✅ Gate-final identity (4a): mỗi Gate boss đánh skill riêng theo level band (daily boss giữ Bakunawa); final boss non-Baku telegraph hiệp 4k+3 → đòn nặng ×2 hiệp 4k+4 (không flag mới, characterization giữ nguyên).
+- ⏳ Modifier mở rộng + 2 modifier/gate (4b) · affix mở rộng (4c) · weekly modifier (4d) · Tower mode (4e).
 
 ### Phase 5 — Battle modes (6–10 ngày)
 - **World Boss guild** (kích hoạt `boss_*`, `auto_raids`, `boss_top_damage`) + bảng xếp hạng.

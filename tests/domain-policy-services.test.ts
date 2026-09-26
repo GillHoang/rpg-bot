@@ -125,6 +125,7 @@ describe('MonsterEncounterService', () => {
 			immunityTags: ['poison'],
 			affixes: [],
 			regenPct: 0,
+			finalBoss: false,
 		});
 		expect(roster.listForEncounter).toHaveBeenCalledExactlyOnceWith(executor, false);
 		expect(rng).toHaveBeenCalledTimes(2);
@@ -154,6 +155,7 @@ describe('MonsterEncounterService', () => {
 			immunityTags: ['poison'],
 			affixes: [],
 			regenPct: 0,
+			finalBoss: false,
 		});
 		expect(rng).toHaveBeenCalledTimes(2);
 	});
@@ -182,6 +184,7 @@ describe('MonsterEncounterService', () => {
 			immunityTags: [],
 			affixes: [],
 			regenPct: 0,
+			finalBoss: false,
 		});
 		expect(roster.listForEncounter).toHaveBeenCalledExactlyOnceWith(executor, true);
 		expect(rng).toHaveBeenCalledOnce();
@@ -199,6 +202,30 @@ describe('MonsterEncounterService', () => {
 		expect(await service.pickForLevel(executor, 0, rng)).toBeNull();
 		expect(rng).not.toHaveBeenCalled();
 		expect(await service.pickForLevel(executor, 0, rng)).toMatchObject({ hp: 1500, atk: 256, def: 74 });
+	});
+
+	it.each([
+		[12, 'blood_frenzy'],
+		[26, 'stone_hide'],
+		[42, 'venom_spit'],
+		[58, 'flesh_feast'],
+		[75, 'moon_threshold'],
+	] as const)('gives the gate-%s final boss its own skill instead of Bakunawa', async (level, skillKey) => {
+		const roster = {
+			listForEncounter: vi.fn<MonsterRosterRepository['listForEncounter']>().mockResolvedValue([mob({ mobType: 'boss' })]),
+		};
+		const encounter = await new MonsterEncounterService(roster).pickForLevel(executor, level, () => 0, false, true);
+		expect(encounter).toMatchObject({ skillKey, finalBoss: true });
+	});
+
+	it('keeps the daily boss on its seeded Bakunawa skill', async () => {
+		const roster = {
+			listForEncounter: vi
+				.fn<MonsterRosterRepository['listForEncounter']>()
+				.mockResolvedValue([mob({ mobType: 'boss', skillKey: 'moon_threshold', immunityTags: null })]),
+		};
+		const encounter = await new MonsterEncounterService(roster).pickForLevel(executor, 10, () => 0, true);
+		expect(encounter).toMatchObject({ skillKey: 'moon_threshold', finalBoss: false });
 	});
 });
 

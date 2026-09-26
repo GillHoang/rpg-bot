@@ -17,6 +17,7 @@ import {
 	COMBAT_MONSTER_REGEN,
 	COMBAT_MONSTER_SHED,
 	COMBAT_MONSTER_CLIPPERS,
+	COMBAT_MONSTER_HEAVY,
 	COMBAT_MONSTER_SMOKE,
 	COMBAT_MONSTER_SWIFT,
 	COMBAT_MONSTER_VENOM_SPIT,
@@ -25,7 +26,17 @@ import {
 export interface MonsterTraits {
 	/** Elite affixes rolled at encounter time (see MonsterEncounterService). */
 	affixes?: string[];
+	/**
+	 * Phase 4 gate-final rhythm: non-Bakunawa final bosses telegraph on
+	 * rounds 4k+3 and land a heavy strike on 4k+4. Bakunawa keeps its
+	 * bespoke phase/devour cycle instead.
+	 */
+	finalBoss?: boolean;
 }
+
+/** Generic final-boss heavy cycle (Phase 4): telegraphed round, then a ×2 strike. */
+const HEAVY_CYCLE = 4;
+const HEAVY_MULT = 2.0;
 
 /**
  * P4 monster AI: HP-threshold phases, telegraphed heavies and a round
@@ -92,6 +103,11 @@ export class MonsterStrategy extends NullClassStrategy {
 			flags.leapCharging = true;
 			ctx.log(COMBAT_MONSTER_DEVOUR_CHARGE(combatDisplayName(ctx.self)));
 		}
+		// Generic final-boss telegraph (Phase 4): derived from the round
+		// counter, no extra flags. Bakunawa is exempt (bespoke cycle above).
+		if (this.heavyCycle() && flags.monsterRounds % HEAVY_CYCLE === HEAVY_CYCLE - 1) {
+			ctx.log(COMBAT_MONSTER_DEVOUR_CHARGE(combatDisplayName(ctx.self)));
+		}
 	}
 
 	override prepareOutgoingHit(ctx: StrategyContext, hit: OutgoingHit): void {
@@ -109,6 +125,16 @@ export class MonsterStrategy extends NullClassStrategy {
 			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, 2.0);
 			ctx.log(COMBAT_MONSTER_LEAP(combatDisplayName(ctx.self)));
 		}
+		// Generic final-boss heavy: the strike after the telegraphed round.
+		if (this.heavyCycle() && ctx.self.flags.monsterRounds % HEAVY_CYCLE === 0) {
+			hit.forcedMultiplier = Math.max(hit.forcedMultiplier ?? 0, HEAVY_MULT);
+			ctx.log(COMBAT_MONSTER_HEAVY(combatDisplayName(ctx.self)));
+		}
+	}
+
+	/** Whether the generic heavy cycle applies (final boss, not Bakunawa). */
+	private heavyCycle(): boolean {
+		return !!this.traits.finalBoss && this.skill !== 'moon_threshold';
 	}
 
 	/** Bakunawa phase damage bonuses + telegraphed Devour strike. */

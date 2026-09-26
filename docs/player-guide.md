@@ -53,7 +53,9 @@ thương từ giáp tối đa 75%, hồi máu tối đa 8% HP/round, độc Veno
 - **Hunt**: mỗi 15 giây một lượt; 80% quái thường (500–1.000 Credux),
   20% elite (2.500–5.000 + loot riêng). Thua vẫn có chút EXP.
 - **5 Gate × 10 tầng**: tầng sau mở khi qua tầng trước; Gate sau mở khi xong
-  Gate trước hoặc đủ cấp (15/30/45/60). Tầng 10 mỗi Gate là **final boss**.
+  Gate trước hoặc đủ cấp (15/30/45/60). Tầng 10 mỗi Gate là **final boss** —
+  mỗi Gate một boss riêng (kỹ năng khác nhau); boss tích nộ 3 hiệp rồi tung
+  đòn nặng, hãy dè chừng hiệp telegraph.
 - **Boss ngày Bakunawa**: cần cấp 10, phí vào cửa 10.000, **1 lượt/ngày**.
   Thưởng lớn (25.000–50.000 + chắc chắn có rương + 30% rơi gear hiếm). Dưới
   50% HP boss vào Eclipse: sát thương tăng mạnh. Thua vẫn mất phí và lượt.

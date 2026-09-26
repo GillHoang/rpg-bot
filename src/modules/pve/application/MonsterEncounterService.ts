@@ -22,6 +22,21 @@ export interface MonsterStats {
 	regenPct: number;
 	damageType: 'physical';
 	armorType: 'light' | 'medium' | 'heavy';
+	/** Gate final-boss encounter (tier 10) — drives the heavy-cycle rhythm. */
+	finalBoss: boolean;
+}
+
+/**
+ * Phase 4 gate-final identity: every gate boss fights with its own skill
+ * instead of sharing Bakunawa's. Bands follow gate boss levels
+ * (12/26/42/58/75); the final gate and the daily boss keep moon_threshold.
+ */
+function finalBossSkill(lv: number): string {
+	if (lv < 15) return 'blood_frenzy';
+	if (lv < 30) return 'stone_hide';
+	if (lv < 45) return 'venom_spit';
+	if (lv < 60) return 'flesh_feast';
+	return 'moon_threshold';
 }
 
 /**
@@ -172,6 +187,7 @@ export class MonsterEncounterService {
 				skillKey: row.skillKey,
 				immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
 				affixes: [],
+				finalBoss: false,
 			};
 		}
 
@@ -198,11 +214,14 @@ export class MonsterEncounterService {
 			crit: row.baseCrit,
 			...secondaryStats(lv, row.mobType, gateModifier),
 			mobType: row.mobType,
-			skillKey: row.skillKey,
+			// Gate finals fight with their own gate skill (Phase 4); the daily
+			// boss keeps its seeded Bakunawa skill.
+			skillKey: finalBoss && !boss ? finalBossSkill(lv) : row.skillKey,
 			immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
 			// Regulars in modifier gates roll one affix; final bosses roll two.
 			// Elites keep their signature skill; daily boss stays seeded-pure.
 			affixes: rollEncounterAffixes(type, gateModifier, finalBoss, rng),
+			finalBoss,
 		};
 	}
 }

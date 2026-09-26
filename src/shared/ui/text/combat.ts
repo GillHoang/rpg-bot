@@ -175,6 +175,8 @@ export const COMBAT_MONSTER_SHED = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.GUARD)} ${name} rũ bỏ mọi hiệu ứng chảy máu/độc!`;
 export const COMBAT_MONSTER_DEVOUR_CHARGE = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} ${name} đang tụ lực cho đòn kết liễu…`;
+export const COMBAT_MONSTER_HEAVY = (name: string): string =>
+	`${combatTag(COMBAT_TAGS.SKILL)} ${name} tung đòn nặng — đỡ đòn!`;
 export const COMBAT_MONSTER_DEVOUR = (name: string): string =>
 	`${combatTag(COMBAT_TAGS.SKILL)} ${ICONS.effect.feast} ${name} NGOẠM — đòn hủy diệt!`;
 export const COMBAT_MONSTER_LEAP = (name: string): string =>
