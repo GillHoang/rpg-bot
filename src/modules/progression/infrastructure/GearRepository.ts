@@ -8,11 +8,13 @@ export interface WeaponCurrStats {
 	crit: number;
 	quality: string;
 	passiveKey: string;
+	setKey: string | null;
 }
 
 export interface ArmorCurrStats {
 	currHp: number;
 	currDef: number;
+	setKey: string | null;
 }
 
 export interface GearSocketInfo {
@@ -46,6 +48,7 @@ export class GearRepository {
 				crit: userWeapons.crit,
 				quality: userWeapons.quality,
 				passiveKey: weaponRoster.passiveKey,
+				setKey: weaponRoster.setKey,
 			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
@@ -67,6 +70,7 @@ export class GearRepository {
 				crit: userWeapons.crit,
 				quality: userWeapons.quality,
 				passiveKey: weaponRoster.passiveKey,
+				setKey: weaponRoster.setKey,
 			})
 			.from(userWeapons)
 			.innerJoin(weaponRoster, eq(userWeapons.weaponRosterId, weaponRoster.weaponRosterId))
@@ -78,8 +82,9 @@ export class GearRepository {
 	/** Read the equipped armor's current HP/DEF (post-enhancement), for stat assembly. */
 	async findArmorCurrStats(executor: Executor, discordId: string, armorId: string): Promise<ArmorCurrStats | null> {
 		const [row] = await executor
-			.select({ currHp: userArmors.currHp, currDef: userArmors.currDef })
+			.select({ currHp: userArmors.currHp, currDef: userArmors.currDef, setKey: armorRoster.setKey })
 			.from(userArmors)
+			.innerJoin(armorRoster, eq(userArmors.armorRosterId, armorRoster.armorRosterId))
 			.where(and(eq(userArmors.discordId, discordId), eq(userArmors.armorId, armorId)))
 			.limit(1);
 		return row ?? null;

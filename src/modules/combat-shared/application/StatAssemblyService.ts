@@ -32,6 +32,7 @@ import {
 	SKILL_DEFS,
 	type BattleStance,
 } from '../../../shared/config/skills.js';
+import { applyGearSetBonus, type GearSetMods } from '../../../shared/config/gearSets.js';
 
 function isBattleStance(value: unknown): value is BattleStance {
 	return typeof value === 'string' && (BATTLE_STANCES as readonly string[]).includes(value);
@@ -168,6 +169,8 @@ export class StatAssemblyService {
 		const deityStats = this.pantheonStats(pantheon, resonance);
 		const blessings = this.allBlessings(pantheon);
 		const { statMods, combatEffectRunes } = await this.collectRunes(executor, preset, weapon?.weaponId);
+		// Phase 3 gear set: weapon + armor sharing a set key add one 2pc bonus.
+		applyGearSetBonus(statMods, weapon?.setKey, armor?.setKey);
 
 		const baseAtk = cls.atk + this.weaponAtk(weapon);
 		const baseHp = cls.hp + (armor?.currHp ?? 0);
@@ -281,7 +284,7 @@ export class StatAssemblyService {
 		preset: typeof userPresets.$inferSelect | null,
 		weaponId: string | undefined,
 	): Promise<{
-		statMods: { atkPct: number; hpPct: number; defPct: number; critPts: number; spdPct: number; accPts: number };
+		statMods: GearSetMods;
 		combatEffectRunes: SocketedRuneEffect[];
 	}> {
 		const allEffects: SocketedRuneEffect[] = [

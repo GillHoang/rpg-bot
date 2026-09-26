@@ -26,12 +26,15 @@ export interface WeaponSeed {
 	lore: string | null;
 	imageFilename: string | null;
 	isAvailable: boolean;
+	/** Phase 3 gear set key (null = starter/không set). */
+	setKey: string | null;
 }
 
 export const WEAPON_SEED: WeaponSeed[] = [
 	// ── Starter (bắt buộc, tra cứu theo tên) ─────────────────────────────────
 	{
 		weaponRosterId: 1,
+		setKey: null,
 		name: WEAPONS_TEXT['1'].name,
 		type: 'Sword',
 		tier: 'Common',
@@ -47,6 +50,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	// ── Rare ─────────────────────────────────────────────────────────────────
 	{
 		weaponRosterId: 101,
+		setKey: 'bloodfang',
 		name: WEAPONS_TEXT['101'].name,
 		type: 'Sword',
 		tier: 'Rare',
@@ -60,6 +64,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 102,
+		setKey: 'stoneward',
 		name: WEAPONS_TEXT['102'].name,
 		type: 'Bow',
 		tier: 'Rare',
@@ -75,6 +80,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	// ── Mythic ───────────────────────────────────────────────────────────────
 	{
 		weaponRosterId: 201,
+		setKey: 'bloodfang',
 		name: WEAPONS_TEXT['201'].name,
 		type: 'Spear',
 		tier: 'Mythic',
@@ -90,6 +96,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	// ── Legendary ────────────────────────────────────────────────────────────
 	{
 		weaponRosterId: 301,
+		setKey: 'bloodfang',
 		name: WEAPONS_TEXT['301'].name,
 		type: 'Dagger',
 		tier: 'Legendary',
@@ -105,6 +112,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	// ── Supreme ──────────────────────────────────────────────────────────────
 	{
 		weaponRosterId: 401,
+		setKey: 'bloodfang',
 		name: WEAPONS_TEXT['401'].name,
 		type: 'Sword',
 		tier: 'Supreme',
@@ -120,6 +128,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	// ── M7 mở rộng: đa dạng loot ─────────────────────────────────────────────
 	{
 		weaponRosterId: 103,
+		setKey: 'swiftwind',
 		name: WEAPONS_TEXT['103'].name,
 		type: 'Spear',
 		tier: 'Rare',
@@ -133,6 +142,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 104,
+		setKey: 'bloodfang',
 		name: WEAPONS_TEXT['104'].name,
 		type: 'Dagger',
 		tier: 'Rare',
@@ -146,6 +156,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 202,
+		setKey: 'stoneward',
 		name: WEAPONS_TEXT['202'].name,
 		type: 'Axe',
 		tier: 'Mythic',
@@ -159,6 +170,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 203,
+		setKey: 'swiftwind',
 		name: WEAPONS_TEXT['203'].name,
 		type: 'Spear',
 		tier: 'Mythic',
@@ -172,6 +184,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 302,
+		setKey: 'stoneward',
 		name: WEAPONS_TEXT['302'].name,
 		type: 'Sword',
 		tier: 'Legendary',
@@ -185,6 +198,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 303,
+		setKey: 'swiftwind',
 		name: WEAPONS_TEXT['303'].name,
 		type: 'Spear',
 		tier: 'Legendary',
@@ -198,6 +212,7 @@ export const WEAPON_SEED: WeaponSeed[] = [
 	},
 	{
 		weaponRosterId: 402,
+		setKey: 'stoneward',
 		name: WEAPONS_TEXT['402'].name,
 		type: 'Spear',
 		tier: 'Supreme',

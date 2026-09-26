@@ -25,6 +25,8 @@ export const weaponRoster = pgTable('weapon_roster', {
 	lore: text('lore'),
 	imageFilename: text('image_filename'),
 	isAvailable: boolean('is_available').notNull().default(true),
+	/** Phase 3 gear set key (nullable = no set, e.g. starter gear). */
+	setKey: text('set_key'),
 });
 
 export const armorRoster = pgTable('armor_roster', {
@@ -39,6 +41,8 @@ export const armorRoster = pgTable('armor_roster', {
 	lore: text('lore'),
 	imageFilename: text('image_filename'),
 	isAvailable: boolean('is_available').notNull().default(true),
+	/** Phase 3 gear set key (nullable = no set, e.g. starter gear). */
+	setKey: text('set_key'),
 });
 
 export const deityRoster = pgTable(

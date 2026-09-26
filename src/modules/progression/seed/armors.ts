@@ -24,12 +24,15 @@ export interface ArmorSeed {
 	lore: string | null;
 	imageFilename: string | null;
 	isAvailable: boolean;
+	/** Phase 3 gear set key (null = starter/không set). */
+	setKey: string | null;
 }
 
 export const ARMOR_SEED: ArmorSeed[] = [
 	// ── Starter (bắt buộc, tra cứu theo tên) ─────────────────────────────────
 	{
 		armorRosterId: 1,
+		setKey: null,
 		name: ARMORS_TEXT['1'].name,
 		type: 'Medium',
 		tier: 'Common',
@@ -45,6 +48,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	// ── Rare ─────────────────────────────────────────────────────────────────
 	{
 		armorRosterId: 101,
+		setKey: 'bloodfang',
 		name: ARMORS_TEXT['101'].name,
 		type: 'Heavy',
 		tier: 'Rare',
@@ -58,6 +62,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 102,
+		setKey: 'stoneward',
 		name: ARMORS_TEXT['102'].name,
 		type: 'Light',
 		tier: 'Rare',
@@ -73,6 +78,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	// ── Mythic ───────────────────────────────────────────────────────────────
 	{
 		armorRosterId: 201,
+		setKey: 'bloodfang',
 		name: ARMORS_TEXT['201'].name,
 		type: 'Heavy',
 		tier: 'Mythic',
@@ -88,6 +94,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	// ── Supreme ──────────────────────────────────────────────────────────────
 	{
 		armorRosterId: 401,
+		setKey: 'bloodfang',
 		name: ARMORS_TEXT['401'].name,
 		type: 'Heavy',
 		tier: 'Supreme',
@@ -103,6 +110,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	// ── M7 mở rộng: đa dạng loot ─────────────────────────────────────────────
 	{
 		armorRosterId: 103,
+		setKey: 'swiftwind',
 		name: ARMORS_TEXT['103'].name,
 		type: 'Light',
 		tier: 'Rare',
@@ -116,6 +124,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 104,
+		setKey: 'bloodfang',
 		name: ARMORS_TEXT['104'].name,
 		type: 'Medium',
 		tier: 'Rare',
@@ -129,6 +138,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 202,
+		setKey: 'stoneward',
 		name: ARMORS_TEXT['202'].name,
 		type: 'Medium',
 		tier: 'Mythic',
@@ -142,6 +152,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 203,
+		setKey: 'swiftwind',
 		name: ARMORS_TEXT['203'].name,
 		type: 'Heavy',
 		tier: 'Mythic',
@@ -155,6 +166,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 302,
+		setKey: 'bloodfang',
 		name: ARMORS_TEXT['302'].name,
 		type: 'Light',
 		tier: 'Legendary',
@@ -168,6 +180,7 @@ export const ARMOR_SEED: ArmorSeed[] = [
 	},
 	{
 		armorRosterId: 402,
+		setKey: 'stoneward',
 		name: ARMORS_TEXT['402'].name,
 		type: 'Heavy',
 		tier: 'Supreme',
