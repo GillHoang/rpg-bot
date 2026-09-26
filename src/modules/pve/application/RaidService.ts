@@ -304,6 +304,8 @@ export class RaidService {
 			acc: monsterStats.acc,
 			eva: monsterStats.eva,
 			ten: monsterStats.ten,
+			damageType: monsterStats.damageType,
+			armorType: monsterStats.armorType,
 		});
 		monster.immunityTags = monsterStats.immunityTags;
 		monster.flags.regenPct = monsterStats.regenPct;

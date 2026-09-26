@@ -20,6 +20,8 @@ export interface MonsterStats {
 	/** Elite affixes + gate traits resolved at pick time (read by MonsterStrategy). */
 	affixes: string[];
 	regenPct: number;
+	damageType: 'physical';
+	armorType: 'light' | 'medium' | 'heavy';
 }
 
 /**
@@ -86,7 +88,7 @@ function secondaryStats(
 	lv: number,
 	mobType: string,
 	gateModifier: GateModifier,
-): { spd: number; acc: number; eva: number; ten: number; regenPct: number } {
+): { spd: number; acc: number; eva: number; ten: number; regenPct: number; damageType: 'physical'; armorType: 'light' | 'medium' | 'heavy' } {
 	const tier = MOB_TIER_INDEX[mobType] ?? 0;
 	return {
 		spd: Math.floor(95 + [0, 7, 15][tier]! + lv * 0.3),
@@ -94,6 +96,11 @@ function secondaryStats(
 		eva: [0, 3, 5][tier]! + (gateModifier === 'evasive' ? 10 : 0),
 		ten: [0, 15, 40][tier]!,
 		regenPct: gateModifier === 'regen' ? 0.03 : 0,
+		// Counter-matrix traits derived in code (no roster migration): tier maps to
+		// armor weight; mobs deal physical damage by default. Inert while
+		// DAMAGE_TYPE_MATRIX_ENABLED is off.
+		damageType: 'physical' as const,
+		armorType: (['light', 'medium', 'heavy'] as const)[tier]!,
 	};
 }
 
