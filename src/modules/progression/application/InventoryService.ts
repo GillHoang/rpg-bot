@@ -9,6 +9,7 @@ import {
 	RUNE_LIST_LINE,
 	RUNE_NOT_SOCKETED,
 	WEAPON_LIST_LINE,
+	formatSockets,
 } from '../../../shared/ui/text/inventory.js';
 
 /** Số vật phẩm mỗi trang của kho (khớp limit/offset trong InventoryService.list). */
@@ -26,6 +27,7 @@ export class InventoryService {
 			| 'armors'
 			| 'runes'
 			| 'deities'
+			| 'socketedRuneNames'
 			| 'searchWeapons'
 			| 'searchArmors'
 			| 'searchDeities'
@@ -52,21 +54,23 @@ export class InventoryService {
 	}
 	async list(id: string, category: string, page: number): Promise<string[]> {
 		const offset = (page - 1) * INVENTORY_PAGE_SIZE;
-		if (category === 'weapons')
-			return (await this.data.weapons(id, offset)).map(({ user_weapons: w, weapon_roster: r }) =>
-				WEAPON_LIST_LINE({
-					name: r.name,
-					tier: r.tier,
-					quality: w.quality,
-					plus: enhancementPlus(w.enhancement),
-					id: w.weaponId,
-					atk: w.currAtk,
-					crit: w.crit,
-					native: JSON.stringify(w.nativeSockets),
-					opposite: JSON.stringify(w.oppositeSockets),
-				}),
-			);
-		if (category === 'armors')
+		if (category === 'weapons' || category === 'armors') {
+			// Một query tên rune cho cả trang — so sánh gear không cần qua lại tab rune.
+			const names = await this.data.socketedRuneNames(id);
+			if (category === 'weapons')
+				return (await this.data.weapons(id, offset)).map(({ user_weapons: w, weapon_roster: r }) =>
+					WEAPON_LIST_LINE({
+						name: r.name,
+						tier: r.tier,
+						quality: w.quality,
+						plus: enhancementPlus(w.enhancement),
+						id: w.weaponId,
+						atk: w.currAtk,
+						crit: w.crit,
+						native: formatSockets(w.nativeSockets, names),
+						opposite: formatSockets(w.oppositeSockets, names),
+					}),
+				);
 			return (await this.data.armors(id, offset)).map(({ user_armors: a, armor_roster: r }) =>
 				ARMOR_LIST_LINE({
 					name: r.name,
@@ -75,10 +79,11 @@ export class InventoryService {
 					id: a.armorId,
 					hp: a.currHp,
 					def: a.currDef,
-					native: JSON.stringify(a.nativeSockets),
-					opposite: JSON.stringify(a.oppositeSockets),
+					native: formatSockets(a.nativeSockets, names),
+					opposite: formatSockets(a.oppositeSockets, names),
 				}),
 			);
+		}
 		if (category === 'runes')
 			return (await this.data.runes(id, offset)).map(({ user_runes: u, rune_roster: r }) =>
 				RUNE_LIST_LINE({

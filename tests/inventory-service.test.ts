@@ -11,6 +11,7 @@ const defaultQuery = vi.hoisted(() =>
 vi.mock('../src/db/client.js', () => ({ db: { select: defaultQuery, transaction: defaultQuery }, pool: {} }));
 import { InventoryService } from '../src/modules/progression/application/InventoryService.js';
 import type { InventoryDataRepository } from '../src/modules/progression/infrastructure/InventoryDataRepository.js';
+import { formatSockets } from '../src/shared/ui/text/inventory.js';
 import { WEAPON_SEED } from '../src/modules/progression/seed/weapons.js';
 import { ARMOR_SEED } from '../src/modules/progression/seed/armors.js';
 import { RUNE_SEED } from '../src/modules/progression/seed/runes.js';
@@ -123,7 +124,7 @@ describe('InventoryService projections and persistence isolation', () => {
 		const firstPage = await inventory.list('owner', 'weapons', 1);
 		expect(firstPage).toHaveLength(8);
 		expect(firstPage[0]).toBe(
-			'**Sword** (Common · Common) +2\nID: `W01` · ATK 150 · CRIT 7.5%\nSockets: [null,"R02"] / [null]',
+			'**Sword** (Common · Common) +2\nID: `W01` · ATK 150 · CRIT 7.5%\nSockets: [trống, Rune] / [trống]',
 		);
 		expect(firstPage[7]).toContain('`W08`');
 		const secondPage = await inventory.list('owner', 'weapons', 2);
@@ -135,8 +136,19 @@ describe('InventoryService projections and persistence isolation', () => {
 		]);
 		expect(await inventory.list('owner', 'weapons', 5)).toEqual([]);
 		expect(await inventory.list('owner', 'armors', 1)).toEqual([
-			'**Armor** (Common) +1\nID: `A01` · HP 250 · DEF 75\nSockets: [null] / ["R01"]',
+			'**Armor** (Common) +1\nID: `A01` · HP 250 · DEF 75\nSockets: [trống] / [Rune]',
 		]);
+	});
+
+	it('renders gear sockets by rune name with empty and unknown fallbacks', () => {
+		const names = new Map([['R01', 'Rune']]);
+		expect(formatSockets([null, 'R01'], names)).toBe('[trống, Rune]');
+		expect(formatSockets(['R01'], names)).toBe('[Rune]');
+		expect(formatSockets([], names)).toBe('[]');
+		// UID lạ (dữ liệu lệch) giữ nguyên để không mất dấu.
+		expect(formatSockets(['R99'], names)).toBe('[R99]');
+		expect(formatSockets(null, names)).toBe('[]');
+		expect(formatSockets('oops', names)).toBe('[]');
 	});
 
 	it('preserves rune ordering/socket text and computes deity stats from sigils rather than legacy values', async () => {
@@ -183,6 +195,7 @@ describe('InventoryService projections and persistence isolation', () => {
 			armors: vi.fn<InventoryDataRepository['armors']>().mockResolvedValue([]),
 			runes: vi.fn<InventoryDataRepository['runes']>().mockResolvedValue([]),
 			deities: vi.fn<InventoryDataRepository['deities']>().mockResolvedValue([]),
+			socketedRuneNames: vi.fn<InventoryDataRepository['socketedRuneNames']>().mockResolvedValue(new Map()),
 			searchWeapons: vi.fn<InventoryDataRepository['searchWeapons']>().mockResolvedValue([]),
 			searchArmors: vi.fn<InventoryDataRepository['searchArmors']>().mockResolvedValue([]),
 			searchDeities: vi.fn<InventoryDataRepository['searchDeities']>().mockResolvedValue([]),
@@ -201,6 +214,8 @@ describe('InventoryService projections and persistence isolation', () => {
 		expect(data.weapons).toHaveBeenCalledExactlyOnceWith('player', 16);
 		expect(data.armors).toHaveBeenCalledExactlyOnceWith('player', 8);
 		expect(data.runes).toHaveBeenCalledExactlyOnceWith('player', 24);
+		expect(data.socketedRuneNames).toHaveBeenCalledTimes(2);
+		expect(data.socketedRuneNames).toHaveBeenNthCalledWith(1, 'player');
 		expect(data.deities).toHaveBeenCalledExactlyOnceWith('player', 0);
 		expect(await service.bag('player')).toBeNull();
 		expect(await service.count('player', 'runes')).toBe(42);

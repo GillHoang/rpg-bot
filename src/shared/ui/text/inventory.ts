@@ -84,6 +84,15 @@ export const DEITY_ASCENDED_YES = 'Có (prestige)';
 export const DEITY_ASCENDED_NO = 'Chưa';
 export const RUNE_NOT_SOCKETED = 'chưa gắn';
 
+/** Ô socket trống trong list gear. */
+export const SOCKET_EMPTY = 'trống';
+
+/** Render 1 hàng socket gear bằng tên rune (UID lạ giữ nguyên để không mất dấu). */
+export function formatSockets(sockets: unknown, names: Map<string, string>): string {
+	const slots = Array.isArray(sockets) ? sockets : [];
+	return `[${slots.map((uid) => (typeof uid === 'string' ? (names.get(uid) ?? uid) : SOCKET_EMPTY)).join(', ')}]`;
+}
+
 export function DEITY_LIST_LINE(e: {
 	name: string;
 	tier: string;

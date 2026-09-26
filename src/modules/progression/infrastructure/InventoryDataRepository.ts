@@ -31,6 +31,16 @@ export class InventoryDataRepository {
 		return row?.count ?? 0;
 	}
 
+	/** Tên rune theo uid của chủ kho — để render socket gear bằng tên thay vì UID thô. */
+	async socketedRuneNames(id: string): Promise<Map<string, string>> {
+		const rows = await this.executor
+			.select({ uid: userRunes.runeUid, name: runeRoster.name })
+			.from(userRunes)
+			.innerJoin(runeRoster, eq(userRunes.runeId, runeRoster.runeId))
+			.where(eq(userRunes.discordId, id));
+		return new Map(rows.map((r) => [r.uid, r.name]));
+	}
+
 	async searchWeapons(id: string, query: string): Promise<GearSearchRow[]> {
 		const pattern = `%${query}%`;
 		const rows = await this.executor
