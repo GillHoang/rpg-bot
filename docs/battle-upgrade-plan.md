@@ -132,11 +132,14 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
 - ✅ **Doc drift**: tenacity (`classes.ts:85` "shortens" → "shrug off entirely"), Fighter Bash (`gameplay-implementation.md:37` "25%/50%" → "15%/35%" khớp `FighterStrategy.ts`). Knight đã khớp sẵn (25/30/2.5/25) — claim "2/15" trong audit là stale. `package.json` description đã đúng "PostgreSQL".
 - **Deliverable:** test mới pass (11 test), `pnpm check` + `pnpm build` xanh, không đổi behavior.
 
-### Phase 1 — Combat core: khắc hệ + crit severity + shield (3–5 ngày) 🔄
-- ✅ `critDmg%` thay `×2` cố định; thêm stat `critDmg`, `penFlat`, `shield` vào `CombatantState` + `createCombatant` (default 200/0/0 = tái hiện behavior cũ). Wire ma trận khắc vào `BattleAttack` qua `armorTypeMultiplier` (inert khi flag off). Characterization re-baseline shape-only.
-- ✅ Derive `damageType`/`armorType` cho **mob** trong `MonsterEncounterService` (no migration — pattern như `regenPct`), truyền qua `RaidService.createCombatant`.
-- ⏳ Derive cho **player**: `StatAssemblyService` + `combatantFactory` (weapon.type → damageType, armor tier → armorType).
-- ⏳ Bật `DAMAGE_TYPE_MATRIX_ENABLED` + test EV (sẽ đổi balance → re-baseline characterization lần nữa).
+### Phase 1 — Combat core: khắc hệ + crit severity + shield (3–5 ngày) ✅
+- ✅ `critDmg%` thay `×2` cố định (default 200 = identical); stat `critDmg`, `penFlat`, `shield` vào `CombatantState` (default 200/0/0). Wire ma trận vào `BattleAttack` (`armorTypeMultiplier`, shield absorb trước HP, penFlat trừ DEF trước mitigate).
+- ✅ Derive `damageType`/`armorType` cho **mob** (tier + level, no migration) và **player** (`StatAssemblyService` theo class, `combatantFactory` pass-through).
+- ✅ **Bật `DAMAGE_TYPE_MATRIX_ENABLED`** — design đã chốt sau 2 vòng balance:
+  - Default neutral pair = physical/**medium** (test combatant giữ nguyên damage).
+  - Armor progressive theo content: boss/elite gate 1-2 medium, gate 3+ heavy; regular light → medium từ lv 30.
+  - Kết quả: Mage (magical→heavy 1.2) thành boss-killer, Knight (heavy) tank physical (0.8), Archer/Mage (light) squishy vs physical (1.1).
+- ✅ Verification: characterization **chứng minh behavior-identical** (strip 5 field inert → khớp snapshot gốc) rồi re-baseline shape; `combat-review-regressions` (pin HP) pass; **portal-balance pins giữ nguyên** (gate 1 >60%, final boss upgraded >80%, starter late <20%).
 
 ### Phase 2 — Skill system + tài nguyên + Battle Order (5–8 ngày) ★ giá trị lớn nhất
 - `IClassStrategy` thêm `chooseAction`; `EffectRegistry` đăng ký skill pool theo class.
