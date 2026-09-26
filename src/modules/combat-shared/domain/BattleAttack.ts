@@ -141,10 +141,16 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		// damage counts — the hit still landed.
 		if (!resolved.missed && resolved.damageDealt > 0) {
 			if (attacker.skills.length > 0) {
-				attacker.flags.resource = Math.min(SKILL_RESOURCE.max, attacker.flags.resource + SKILL_RESOURCE.gainDealt);
+				attacker.flags.resource = Math.min(
+					SKILL_RESOURCE.max,
+					attacker.flags.resource + SKILL_RESOURCE.gainDealt,
+				);
 			}
 			if (defender.skills.length > 0) {
-				defender.flags.resource = Math.min(SKILL_RESOURCE.max, defender.flags.resource + SKILL_RESOURCE.gainTaken);
+				defender.flags.resource = Math.min(
+					SKILL_RESOURCE.max,
+					defender.flags.resource + SKILL_RESOURCE.gainTaken,
+				);
 			}
 		}
 

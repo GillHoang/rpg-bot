@@ -3,7 +3,14 @@ import { PlayerLoadoutQueryRepository } from '../../progression/infrastructure/P
 import type { Executor } from '../../../db/client.js';
 import type { userPresets } from '../../../db/schema.js';
 import { computeClassStats, computeClassSecondaryStats } from '../../../shared/config/classes.js';
-import { STAT_EFFECT_KEYS, type RuneEffectKey } from '../../../shared/config/runes.js';
+import {
+	STAT_EFFECT_KEYS,
+	RUNE_GROUP_OF,
+	RUNE_RESONANCE_THRESHOLD,
+	RUNE_RESONANCE_BONUS,
+	type RuneEffectKey,
+	type RuneGroup,
+} from '../../../shared/config/runes.js';
 import {
 	blessingStrength,
 	PANTHEON_SLOT_WEIGHT,
@@ -26,12 +33,7 @@ import {
 	type ArmorType,
 	type DamageType,
 } from '../../../shared/config/damageTypes.js';
-import {
-	BATTLE_STANCES,
-	DEFAULT_BATTLE_STANCE,
-	SKILL_DEFS,
-	type BattleStance,
-} from '../../../shared/config/skills.js';
+import { BATTLE_STANCES, DEFAULT_BATTLE_STANCE, SKILL_DEFS, type BattleStance } from '../../../shared/config/skills.js';
 import { applyGearSetBonus, type GearSetMods } from '../../../shared/config/gearSets.js';
 
 function isBattleStance(value: unknown): value is BattleStance {
@@ -75,6 +77,8 @@ export interface AssembledPlayer {
 	stance: BattleStance;
 	/** Phase 3 class branch key (null = no branch). */
 	branch: string | null;
+	/** Phase 3 rune resonance groups triggered (song song với deity resonance). */
+	runeResonance: RuneGroup[];
 }
 
 const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct' | 'spdPct' | 'accPts'> = {
@@ -168,7 +172,11 @@ export class StatAssemblyService {
 		const resonance = resonanceBonus(pantheon.map((p) => p.info.mythology));
 		const deityStats = this.pantheonStats(pantheon, resonance);
 		const blessings = this.allBlessings(pantheon);
-		const { statMods, combatEffectRunes } = await this.collectRunes(executor, preset, weapon?.weaponId);
+		const { statMods, combatEffectRunes, runeResonance } = await this.collectRunes(
+			executor,
+			preset,
+			weapon?.weaponId,
+		);
 		// Phase 3 gear set: weapon + armor sharing a set key add one 2pc bonus.
 		applyGearSetBonus(statMods, weapon?.setKey, armor?.setKey);
 
@@ -203,6 +211,7 @@ export class StatAssemblyService {
 			),
 			stance: isBattleStance(character?.battleOrder) ? character.battleOrder : DEFAULT_BATTLE_STANCE,
 			branch: character?.classBranch ?? null,
+			runeResonance,
 		};
 	}
 
@@ -286,13 +295,14 @@ export class StatAssemblyService {
 	): Promise<{
 		statMods: GearSetMods;
 		combatEffectRunes: SocketedRuneEffect[];
+		runeResonance: RuneGroup[];
 	}> {
 		const allEffects: SocketedRuneEffect[] = [
 			...(weaponId ? await this.runes.findSocketedEffects(executor, weaponId) : []),
 			...(preset?.equippedArmorId ? await this.runes.findSocketedEffects(executor, preset.equippedArmorId) : []),
 		];
 
-		const statMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0, spdPct: 0, accPts: 0 };
+		const statMods: GearSetMods = { atkPct: 0, hpPct: 0, defPct: 0, critPts: 0, spdPct: 0, accPts: 0 };
 		const combatEffectRunes: SocketedRuneEffect[] = [];
 		for (const effect of allEffects) {
 			if ((STAT_EFFECT_KEYS as readonly RuneEffectKey[]).includes(effect.effectKey)) {
@@ -301,6 +311,31 @@ export class StatAssemblyService {
 				combatEffectRunes.push(effect);
 			}
 		}
-		return { statMods, combatEffectRunes };
+		// Phase 3 rune resonance: 3+ sockets of one family (across both gear)
+		// grant its bonus once, summed with the other stat-mods.
+		const runeResonance = applyRuneResonance(statMods, allEffects);
+		return { statMods, combatEffectRunes, runeResonance };
 	}
+}
+
+/** Counts socketed runes by family; triggers resonance at the threshold. Exported for tests. */
+export function applyRuneResonance(statMods: GearSetMods, effects: Array<{ effectKey: string }>): RuneGroup[] {
+	const counts = new Map<RuneGroup, number>();
+	for (const effect of effects) {
+		const group = RUNE_GROUP_OF[effect.effectKey as RuneEffectKey];
+		if (group) counts.set(group, (counts.get(group) ?? 0) + 1);
+	}
+	const triggered: RuneGroup[] = [];
+	for (const [group, count] of counts) {
+		if (count < RUNE_RESONANCE_THRESHOLD) continue;
+		const bonus = RUNE_RESONANCE_BONUS[group];
+		statMods.atkPct += bonus.atkPct ?? 0;
+		statMods.hpPct += bonus.hpPct ?? 0;
+		statMods.defPct += bonus.defPct ?? 0;
+		statMods.critPts += bonus.critPts ?? 0;
+		statMods.spdPct += bonus.spdPct ?? 0;
+		statMods.accPts += bonus.accPts ?? 0;
+		triggered.push(group);
+	}
+	return triggered.sort();
 }

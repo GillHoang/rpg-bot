@@ -75,8 +75,7 @@ export class SkillService {
 			}
 			const def = SKILL_DEFS[key];
 			if (!def) return err(new AppError('SKILL_UNKNOWN', SKILL_UNKNOWN));
-			if (def.combatClass !== character.class)
-				return err(new AppError('SKILL_WRONG_CLASS', SKILL_WRONG_CLASS));
+			if (def.combatClass !== character.class) return err(new AppError('SKILL_WRONG_CLASS', SKILL_WRONG_CLASS));
 			const other = slot === 1 ? character.skillSlot2 : character.skillSlot1;
 			const patch: { skillSlot1?: string | null; skillSlot2?: string | null } =
 				slot === 1 ? { skillSlot1: key } : { skillSlot2: key };

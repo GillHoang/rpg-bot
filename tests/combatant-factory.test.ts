@@ -27,6 +27,7 @@ function loadout(decorated = true): AssembledPlayer {
 		skills: [],
 		stance: 'balanced',
 		branch: null,
+		runeResonance: [],
 		weaponPassive: null,
 		combatEffectRunes: decorated
 			? [
@@ -148,6 +149,7 @@ describe('assembled player combatant factory', () => {
 			skills: [],
 			stance: 'balanced',
 			branch: null,
+			runeResonance: [],
 			weaponPassive: null,
 			combatEffectRunes: [{ effectKey: 'aegis_rune', value: 1 }],
 			blessings: [{ key: 'sky_sovereign', strength: 1 }],

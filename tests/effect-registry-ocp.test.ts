@@ -109,6 +109,7 @@ describe('effect registries are open for extension', () => {
 			skills: [],
 			stance: 'balanced',
 			branch: null,
+			runeResonance: [],
 			combatEffectRunes: [],
 			blessings: [],
 			weaponPassive: { passiveKey: 'test_nuke' },

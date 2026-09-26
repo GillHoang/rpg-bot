@@ -23,7 +23,12 @@ export class SkillCommand implements ICommand {
 				.setName('equip')
 				.setDescription(SKILL_EQUIP_SUBCOMMAND)
 				.addIntegerOption((o) =>
-					o.setName('slot').setDescription(SKILL_SLOT_OPTION_DESC).setRequired(true).setMinValue(1).setMaxValue(2),
+					o
+						.setName('slot')
+						.setDescription(SKILL_SLOT_OPTION_DESC)
+						.setRequired(true)
+						.setMinValue(1)
+						.setMaxValue(2),
 				)
 				.addStringOption((o) => o.setName('key').setDescription(SKILL_KEY_OPTION_DESC).setRequired(false)),
 		)
@@ -36,7 +41,12 @@ export class SkillCommand implements ICommand {
 						.setName('order')
 						.setDescription(SKILL_ORDER_OPTION_DESC)
 						.setRequired(true)
-						.addChoices(...['aggressive', 'balanced', 'defensive', 'counter'].map((value) => ({ name: value, value }))),
+						.addChoices(
+							...['aggressive', 'balanced', 'defensive', 'counter'].map((value) => ({
+								name: value,
+								value,
+							})),
+						),
 				),
 		);
 

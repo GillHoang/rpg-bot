@@ -252,6 +252,7 @@ describe('weapon passive decorator', () => {
 			skills: [],
 			stance: 'balanced',
 			branch: null,
+			runeResonance: [],
 			combatEffectRunes: [],
 			blessings: [],
 			weaponPassive: null,

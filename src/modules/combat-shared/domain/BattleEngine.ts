@@ -221,7 +221,13 @@ export class BattleEngine {
 		};
 		this.statuses.removeImmuneDebuffs(attacker);
 		if (this.statuses.isTurnDisabled(attacker, battle.rng, battle.log)) return;
-		this.attacks.executeStrike(attacker, defender, this.chooseBattleStrategy(attacker, atkStrategy, ctx), defStrategy, ctx);
+		this.attacks.executeStrike(
+			attacker,
+			defender,
+			this.chooseBattleStrategy(attacker, atkStrategy, ctx),
+			defStrategy,
+			ctx,
+		);
 	}
 
 	/**
@@ -231,11 +237,7 @@ export class BattleEngine {
 	 * cost, arms its cooldown and wraps the turn in a SkillDecorator.
 	 * Selection itself never rolls RNG.
 	 */
-	private chooseBattleStrategy(
-		attacker: CombatantState,
-		base: IClassStrategy,
-		ctx: StrategyContext,
-	): IClassStrategy {
+	private chooseBattleStrategy(attacker: CombatantState, base: IClassStrategy, ctx: StrategyContext): IClassStrategy {
 		if (!attacker.skills.length) return base;
 		const ready: ReadySkill[] = [];
 		for (const key of attacker.skills) {

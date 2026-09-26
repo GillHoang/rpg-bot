@@ -78,7 +78,10 @@ export const userCharacter = pgTable(
 		check('character_valid_class', sql`${t.class} IN ('Swordsman', 'Fighter', 'Mage', 'Knight', 'Archer')`),
 		check('character_valid_preset', sql`${t.activePresetSlot} IN (1, 2)`),
 		check('character_valid_level', sql`${t.combatLevel} BETWEEN 1 AND 100`),
-		check('character_valid_battle_order', sql`${t.battleOrder} IN ('aggressive', 'balanced', 'defensive', 'counter')`),
+		check(
+			'character_valid_battle_order',
+			sql`${t.battleOrder} IN ('aggressive', 'balanced', 'defensive', 'counter')`,
+		),
 		check('gate1_tiers_valid', sql`${t.gate1TiersCleared} BETWEEN 0 AND 10`),
 		check('gate2_tiers_valid', sql`${t.gate2TiersCleared} BETWEEN 0 AND 10`),
 		check('gate3_tiers_valid', sql`${t.gate3TiersCleared} BETWEEN 0 AND 10`),
