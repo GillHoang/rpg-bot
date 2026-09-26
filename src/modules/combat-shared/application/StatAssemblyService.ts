@@ -36,6 +36,7 @@ import {
 } from '../../../shared/config/damageTypes.js';
 import { BATTLE_STANCES, DEFAULT_BATTLE_STANCE, SKILL_DEFS, type BattleStance } from '../../../shared/config/skills.js';
 import { applyGearSetBonus, type GearSetMods } from '../../../shared/config/gearSets.js';
+import { CLASS_BRANCHES } from '../../../shared/config/branches.js';
 
 function isBattleStance(value: unknown): value is BattleStance {
 	return typeof value === 'string' && (BATTLE_STANCES as readonly string[]).includes(value);
@@ -191,16 +192,28 @@ export class StatAssemblyService {
 		// Phase 3 gear set: weapon + armor sharing a set key add one 2pc bonus.
 		applyGearSetBonus(statMods, weapon?.setKey, armor?.setKey);
 
-		const baseAtk = cls.atk + this.weaponAtk(weapon);
-		const baseHp = cls.hp + (armor?.currHp ?? 0);
-		const baseDef = cls.def + (armor?.currDef ?? 0);
+		const baseAtkRaw = cls.atk + this.weaponAtk(weapon);
+		const baseHpRaw = cls.hp + (armor?.currHp ?? 0);
+		const baseDefRaw = cls.def + (armor?.currDef ?? 0);
+		// Phase 3 branch tilt (multiplicative on base, before rune/set mods).
+		// A branch from another class (stale after /class change) never applies.
+		const branchDef = character?.classBranch ? CLASS_BRANCHES[character.classBranch] : undefined;
+		const tilt = branchDef?.combatClass === combatClass ? branchDef.tilt : {};
+		const baseAtk = baseAtkRaw * (1 + (tilt.atkPct ?? 0));
+		const baseHp = baseHpRaw * (1 + (tilt.hpPct ?? 0));
+		const baseDef = baseDefRaw * (1 + (tilt.defPct ?? 0));
 
 		const stats: AssembledPlayerStats = {
 			atk: Math.floor(baseAtk * (1 + statMods.atkPct) + deityStats.atk),
 			hp: Math.floor(baseHp * (1 + statMods.hpPct) + deityStats.hp),
 			def: Math.floor(baseDef * (1 + statMods.defPct) + deityStats.def),
-			crit: cls.crit + (weapon?.crit ?? 0) + this.weaponCritBonus(weapon?.quality) + statMods.critPts * 100,
-			spd: Math.floor(sec.spd * (1 + statMods.spdPct)),
+			crit:
+				cls.crit +
+				(weapon?.crit ?? 0) +
+				this.weaponCritBonus(weapon?.quality) +
+				(tilt.critPts ?? 0) * 100 +
+				statMods.critPts * 100,
+			spd: Math.floor(sec.spd * (1 + (tilt.spdPct ?? 0)) * (1 + statMods.spdPct)),
 			acc: sec.acc + statMods.accPts * 100,
 			eva: sec.eva,
 			ten: sec.ten,

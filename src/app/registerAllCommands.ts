@@ -12,6 +12,7 @@ import { DeityCommand } from '../modules/progression/presentation/DeityCommand.j
 import { InventoryCommand, DeitiesCommand } from '../modules/progression/presentation/InventoryCommand.js';
 import { OpenCommand, RunesCommand } from '../modules/progression/presentation/LootCommand.js';
 import { EquipCommand, PresetCommand } from '../modules/progression/presentation/LoadoutCommand.js';
+import { BranchCommand } from '../modules/progression/presentation/BranchCommand.js';
 import { SkillCommand } from '../modules/progression/presentation/SkillCommand.js';
 import { WeaponCommand } from '../modules/progression/presentation/WeaponCommand.js';
 import { DuelCommand } from '../modules/pvp/presentation/DuelCommand.js';
@@ -59,6 +60,7 @@ export function registerAllCommands(services: CommandServices, registry: Pick<Co
 	registry.register(new OpenCommand(services.loot));
 	registry.register(new RunesCommand(services.loot));
 	registry.register(new EquipCommand(services.loadout, services.inventory));
+	registry.register(new BranchCommand(services.branch));
 	registry.register(new SkillCommand(services.skills));
 	registry.register(new WeaponCommand(services.weapon, services.inventory));
 	registry.register(new PresetCommand(services.loadout));

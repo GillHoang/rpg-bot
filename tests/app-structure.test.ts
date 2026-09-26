@@ -61,7 +61,7 @@ describe('app bootstrap', () => {
 		const registry = new CommandRegistry();
 		const bot = createBot(container, { client, registry });
 		expect(bot).toBeInstanceOf(DiscordBot);
-		expect(registry.getAll()).toHaveLength(30);
+		expect(registry.getAll()).toHaveLength(31);
 		expect(client.once).toHaveBeenCalled();
 		await bot.stop();
 		expect(client.destroy).toHaveBeenCalledTimes(1);

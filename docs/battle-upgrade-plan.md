@@ -141,19 +141,17 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
   - Kết quả: Mage (magical→heavy 1.2) thành boss-killer, Knight (heavy) tank physical (0.8), Archer/Mage (light) squishy vs physical (1.1).
 - ✅ Verification: characterization **chứng minh behavior-identical** (strip 5 field inert → khớp snapshot gốc) rồi re-baseline shape; `combat-review-regressions` (pin HP) pass; **portal-balance pins giữ nguyên** (gate 1 >60%, final boss upgraded >80%, starter late <20%).
 
-### Phase 2 — Skill system + tài nguyên + Battle Order (5–8 ngày) ★ giá trị lớn nhất
-- `IClassStrategy` thêm `chooseAction`; `EffectRegistry` đăng ký skill pool theo class.
-- Resource (`BattleFlags` thêm `resource`, `resourceMax`); ultimate meter.
-- Loadout skill (UI `/skill set` + menu P3) + **Battle Order** (4 stance).
-- `BattleEngine` tiêu resource + gọi skill theo priority/stance.
-- Test: mỗi class 4 skill proc đúng, resource tích/tiêu đúng, stance đổi priority.
+### Phase 2 — Skill system + tài nguyên + Battle Order ✅
+- ✅ 20 skill (4/class) dạng EffectRegistry handler + SkillDecorator bọc theo turn; sustain effect chạy cả khi miss (prepareOutgoingHit).
+- ✅ Battle Order 4 stance (priority deterministic, không roll RNG); resource tích khi gây/nhận damage (cap 100), cooldown theo round — tất cả gated trên loadout (skill-less battle bit-identical, đã strip-verify).
+- ✅ Migration 0013 (skill_slot_1/2, battle_order + CHECK, class_branch prep); SkillService + `/skill list|equip|order` (31 commands).
+- ✅ Test: registry validity, stance priority, engine flow, loadout DB, assembly carry.
 
-### Phase 3 — Build diversity: gear set, rune resonance, echo deity, branch (5–8 ngày)
-- Bảng `gear_set`/`set_bonus` + migration; set bonus apply trong `StatAssembly`.
-- Rune resonance khi socket ≥3 cùng group.
-- Kích hoạt `active_echo_deity_id` (echo deity slot, blessing ×0.25).
-- Branch class ở Lv.40 (choice persisted trong `user_character`).
-- Test: set bonus, resonance, echo blessing strength, branch đổi passive.
+### Phase 3 — Build diversity ✅
+- ✅ Gear set (migration 0014 `set_key`, 3 set/tier, bonus 2 món cộng một lần).
+- ✅ Rune resonance (3 socket cùng family offense/defense/mystic, không migration).
+- ✅ Echo deity (`/equip kind:echo`, stat ×0.25 flat, không blessing/resonance).
+- ✅ Class branch (10 nhánh, Lv.40+, stat tilt, stale-branch sau đổi class bị lọc; `/branch list|set`, 31 commands).
 
 ### Phase 4 — Enemy & encounter (4–6 ngày)
 - Monster skill rotation + telegraph cho mọi gate boss.

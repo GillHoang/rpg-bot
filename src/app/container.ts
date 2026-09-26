@@ -35,6 +35,7 @@ import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
 import { LoadoutService } from '../modules/progression/application/LoadoutService.js';
 import { SkillService } from '../modules/progression/application/SkillService.js';
+import { BranchService } from '../modules/progression/application/BranchService.js';
 import { WeaponService } from '../modules/progression/application/WeaponService.js';
 import { SocketService } from '../modules/progression/application/SocketService.js';
 import { EnhancementService } from '../modules/progression/application/EnhancementService.js';
@@ -96,6 +97,7 @@ export interface AppContainer {
 	readonly pvpShop: PvpShopService;
 	readonly loot: LootService;
 	readonly loadout: LoadoutService;
+	readonly branch: BranchService;
 	readonly weapon: WeaponService;
 	readonly socket: SocketService;
 	readonly enhancement: EnhancementService;
@@ -219,6 +221,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		pvpShop,
 		loot: new LootService(lootRepository, events, { persistence, grants, clock }),
 		loadout: new LoadoutService({ persistence }),
+		branch: new BranchService({ persistence }),
 		weapon: new WeaponService({ persistence }),
 		socket: new SocketService(runes, gear, { persistence }),
 		enhancement: new EnhancementService(new EnhancementRepository(), events, { persistence, clock }),
