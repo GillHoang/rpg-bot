@@ -75,6 +75,8 @@ export class LoadoutService {
 			else if (kind === 'armor') error = await this.equipArmor(tx, id, preset, item);
 			else if (/^deity[123]?$/.test(kind)) {
 				error = await this.equipDeity(tx, id, preset, kind, item);
+			} else if (kind === 'echo') {
+				error = await this.equipEcho(tx, id, preset, item);
 			} else return err(new AppError('LOADOUT_INVALID_KIND', LOADOUT_INVALID_KIND));
 			if (error) return err(error);
 			logger.info({ user: id, kind, item, preset: target }, LOG_EVENT_TEXT.gearEquipped);
@@ -115,6 +117,30 @@ export class LoadoutService {
 		if (slots.includes(userDeityId) && slots[slotIndex - 1] !== userDeityId)
 			return new AppError('LOADOUT_DEITY_IN_OTHER_SLOT', LOADOUT_DEITY_IN_OTHER_SLOT);
 		await this.queries.updatePreset(tx, preset.id, { [column]: userDeityId, updatedAt: this.clock.now() });
+		return null;
+	}
+
+	/**
+	 * Phase 3 echo deity: a 4th, distinct deity whose stats count at
+	 * ECHO_DEITY_WEIGHT (no extra blessing). Must be owned and must not
+	 * occupy pantheon slots 1–3. (The stale schema comment suggesting echo
+	 * must mirror slot 2/3 is not enforced — echo is its own slot.)
+	 */
+	private async equipEcho(
+		tx: Executor,
+		id: string,
+		preset: PresetRow,
+		item: string,
+	): Promise<AppError | null> {
+		if (!/^\d+$/.test(item) || !Number.isSafeInteger(Number(item)))
+			return new AppError('LOADOUT_INVALID_KIND', LOADOUT_INVALID_KIND);
+		const userDeityId = Number(item);
+		const [owned] = await this.queries.findOwnedDeity(tx, id, userDeityId);
+		if (!owned) return new AppError('LOADOUT_DEITY_NOT_OWNED', LOADOUT_DEITY_NOT_OWNED);
+		const slots = [preset.equippedDeity1Id, preset.equippedDeity2Id, preset.equippedDeity3Id];
+		if (slots.includes(userDeityId))
+			return new AppError('LOADOUT_DEITY_IN_OTHER_SLOT', LOADOUT_DEITY_IN_OTHER_SLOT);
+		await this.queries.updatePreset(tx, preset.id, { equippedEchoDeityId: userDeityId, updatedAt: this.clock.now() });
 		return null;
 	}
 

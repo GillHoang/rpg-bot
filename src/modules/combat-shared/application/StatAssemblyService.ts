@@ -13,6 +13,7 @@ import {
 } from '../../../shared/config/runes.js';
 import {
 	blessingStrength,
+	ECHO_DEITY_WEIGHT,
 	PANTHEON_SLOT_WEIGHT,
 	resonanceBonus,
 	type BlessingKey,
@@ -171,6 +172,16 @@ export class StatAssemblyService {
 		const pantheon = await this.collectPantheon(executor, preset);
 		const resonance = resonanceBonus(pantheon.map((p) => p.info.mythology));
 		const deityStats = this.pantheonStats(pantheon, resonance);
+		// Phase 3 echo: 4th deity stats at flat ECHO_DEITY_WEIGHT — no blessing,
+		// no mythology contribution, no resonance either way. Predictable.
+		const echo = preset?.equippedEchoDeityId
+			? await this.deities.findUserDeityAssemblyInfo(executor, preset.equippedEchoDeityId)
+			: null;
+		if (echo) {
+			deityStats.atk += Math.floor(echo.currAtk * ECHO_DEITY_WEIGHT);
+			deityStats.hp += Math.floor(echo.currHp * ECHO_DEITY_WEIGHT);
+			deityStats.def += Math.floor(echo.currDef * ECHO_DEITY_WEIGHT);
+		}
 		const blessings = this.allBlessings(pantheon);
 		const { statMods, combatEffectRunes, runeResonance } = await this.collectRunes(
 			executor,

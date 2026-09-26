@@ -42,6 +42,9 @@ export function blessingStrength(scaling: string, sigils: number): number {
 /** Pantheon — trọng số stat theo slot (slot 1 full, slot 2/3 giảm dần). */
 export const PANTHEON_SLOT_WEIGHT = [1, 0.5, 0.25] as const;
 
+/** Phase 3 echo deity — slot thứ 4, chỉ tính stat (không thêm blessing). */
+export const ECHO_DEITY_WEIGHT = 0.25;
+
 /** Resonance: 2 deity cùng mythology +10% phần deity, 3 cùng +20%. */
 export function resonanceBonus(equippedMythologies: string[]): number {
 	const counts = new Map<string, number>();

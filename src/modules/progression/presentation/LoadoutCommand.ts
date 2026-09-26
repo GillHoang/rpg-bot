@@ -27,7 +27,7 @@ export class EquipCommand implements ICommand {
 				.setName('kind')
 				.setDescription(EQUIP_KIND_OPTION_DESC)
 				.setRequired(true)
-				.addChoices(...['armor', 'deity', 'deity2', 'deity3'].map((value) => ({ name: value, value }))),
+				.addChoices(...['armor', 'deity', 'deity2', 'deity3', 'echo'].map((value) => ({ name: value, value }))),
 		)
 		.addStringOption((o) =>
 			o.setName('id').setDescription(EQUIP_ID_OPTION_DESC).setRequired(true).setAutocomplete(true),
@@ -51,7 +51,7 @@ export class EquipCommand implements ICommand {
 		const query = String(interaction.options.getFocused());
 		const kind = interaction.options.getString('kind');
 		const repo = this.inventory;
-		if (kind === 'deity' || kind === 'deity2' || kind === 'deity3') {
+		if (kind === 'deity' || kind === 'deity2' || kind === 'deity3' || kind === 'echo') {
 			const rows = await repo.searchDeities(interaction.user.id, query);
 			await interaction.respond(rows.map((d) => ({ name: DEITY_CHOICE_LABEL(d), value: String(d.id) })));
 			return;
