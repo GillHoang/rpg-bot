@@ -84,6 +84,8 @@ export const GATE_TEXT = {
 	gateRowBoss: (id: number, name: string, modifiers: readonly string[], minLevel: number, bossLevel: number) =>
 		`Gate ${id} · ${GATE_NAMES[name] ?? name} · ${modifierList(modifiers)} · 10 tầng · Cần Lv.${minLevel} → Boss Lv.${bossLevel}`,
 	tiersStatus: (cleared: number) => `${cleared}/${TIERS} tầng`,
+	/** Phase 4 weekly modifier line shown on gate panels + /raid gates. */
+	weeklyLine: (name: string, desc: string) => `🗓️ Tuần này: **${name}** — ${desc}`,
 	tierRow: (tier: GateTierLike, clearedTiers: number) =>
 		`${tierStatusIcon(tier.number, clearedTiers)} Tầng ${tier.number}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,
 };

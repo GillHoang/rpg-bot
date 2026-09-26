@@ -52,6 +52,10 @@ export const COMBAT_SUDDEN_DEATH_HEADER = (multiplier: number): string =>
 export const COMBAT_BLOOD_MOON = (name: string, amount: string): string =>
 	`${combatTag(COMBAT_TAGS.ECLIPS)} Huyết nguyệt rút của ${name} __${amount} HP__.`;
 
+/** Phase 4 weekly modifier announcement, prepended to hunt battle logs. */
+export const COMBAT_WEEKLY_MODIFIER = (name: string, desc: string): string =>
+	`${ICONS.quest.weeklyHeader} Tuần này: **${name}** — ${desc}`;
+
 export const COMBAT_DEFEATED_SUFFIX = (name: string): string => ` — ${name} gục ngã!`;
 
 export const COMBAT_HIT = (

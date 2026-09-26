@@ -8,6 +8,7 @@ import {
 	highestAccessibleGate,
 } from '../../shared/config/portals.js';
 import { GATE_TEXT } from '../../shared/ui/text/portals.js';
+import { WEEKLY_MODIFIERS, weeklyModifierAt } from '../../shared/config/weeklyModifiers.js';
 import { battleLobbyPanel } from './gameplayPanels.js';
 import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
@@ -46,7 +47,9 @@ export function gateSelectPanel(
 	const level = profile.level;
 	const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
 	panel.title = GATE_TEXT.title;
+	const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
 	panel.body = [
+		GATE_TEXT.weeklyLine(weekly.name, weekly.desc),
 		...GATES.map((g) => {
 			const done = cleared[g.id - 1] ?? 0;
 			return (
@@ -86,8 +89,10 @@ export function gateTiersPanel(
 	session.portalGate = selected.number;
 	const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
 	panel.title = GATE_TEXT.title;
+	const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
 	panel.body = [
 		GATE_TEXT.gateHeader(gate.id, gate.name, gateModifiers(gate), gate.minLevel),
+		GATE_TEXT.weeklyLine(weekly.name, weekly.desc),
 		...tiers.map((t) => GATE_TEXT.tierRow(t, gateCleared)),
 		gateCleared >= TIERS_PER_GATE ? GATE_TEXT.gateCleared : '',
 		panel.body,

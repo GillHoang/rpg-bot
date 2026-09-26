@@ -9,6 +9,7 @@ import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../..
 import { raidBattleOptions } from '../../../shared/ui/render/raidBattleOptions.js';
 import { GAMEPLAY_NOTICE } from '../../../shared/ui/text/gameplay.js';
 import { RAID_HUNT_COOLDOWN_SECONDS } from '../../../shared/config/raidLoot.js';
+import { WEEKLY_MODIFIERS, weeklyModifierAt } from '../../../shared/config/weeklyModifiers.js';
 
 export class RaidCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -34,8 +35,11 @@ export class RaidCommand implements ICommand {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.
 		await interaction.deferReply();
 		if (interaction.options.getSubcommand(false) === 'gates') {
+			const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
 			await interaction.editReply(
-				GATES.map((g) => GATE_TEXT.gateRowBoss(g.id, g.name, gateModifiers(g), g.minLevel, g.bossLevel)).join('\n') +
+				GATE_TEXT.weeklyLine(weekly.name, weekly.desc) +
+					'\n' +
+					GATES.map((g) => GATE_TEXT.gateRowBoss(g.id, g.name, gateModifiers(g), g.minLevel, g.bossLevel)).join('\n') +
 					'\n\n' +
 					GATE_TEXT.rules,
 			);

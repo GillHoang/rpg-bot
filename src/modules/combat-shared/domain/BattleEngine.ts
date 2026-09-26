@@ -6,7 +6,7 @@ import { ClassStrategyRegistry } from './ClassStrategyRegistry.js';
 import { createRng, createSecureSeed } from './Rng.js';
 import { BattleAttackResolver, type IBattleAttackResolver } from './BattleAttack.js';
 import { CombatStatusEffectProcessor, type ICombatStatusEffects } from './CombatStatusEffects.js';
-import { MAX_ROUNDS, SUDDEN_DEATH_START, suddenDeathMultiplier, BLOOD_MOON_PCT } from './combatRules.js';
+import { MAX_ROUNDS, SUDDEN_DEATH_START, EARLY_SUDDEN_DEATH_START, suddenDeathMultiplier, BLOOD_MOON_PCT } from './combatRules.js';
 import { SKILL_DEFS, type ReadySkill } from '../../../shared/config/skills.js';
 import { SkillDecorator } from './SkillDecorator.js';
 import { COMBAT_BLOOD_MOON, COMBAT_ROUND_HEADER, COMBAT_SUDDEN_DEATH_HEADER } from '../../../shared/ui/text/combat.js';
@@ -118,8 +118,13 @@ export class BattleEngine {
 	private playRound(ctx: RoundContext, round: number): void {
 		const { player, enemy, playerStrategy, enemyStrategy, rng, log } = ctx;
 		log.push(COMBAT_ROUND_HEADER(round));
-		if (round === SUDDEN_DEATH_START + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round)));
-		if (round > SUDDEN_DEATH_START) this.bloodMoonPrice(ctx);
+		// Phase 4 weekly bloodmoon: either side's flag moves the enrage window.
+		const suddenStart =
+			player.flags.earlySuddenDeath || enemy.flags.earlySuddenDeath
+				? EARLY_SUDDEN_DEATH_START
+				: SUDDEN_DEATH_START;
+		if (round === suddenStart + 1) log.push(COMBAT_SUDDEN_DEATH_HEADER(suddenDeathMultiplier(round, suddenStart)));
+		if (round > suddenStart) this.bloodMoonPrice(ctx);
 		// P8 heal budget resets every round for both sides.
 		player.flags.healedThisRound = 0;
 		enemy.flags.healedThisRound = 0;

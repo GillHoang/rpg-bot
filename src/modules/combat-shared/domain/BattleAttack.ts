@@ -11,7 +11,7 @@ import {
 	effectivePierce,
 	armorTypeMultiplier,
 } from './DamageCalculator.js';
-import { suddenDeathMultiplier } from './combatRules.js';
+import { EARLY_SUDDEN_DEATH_START, suddenDeathMultiplier } from './combatRules.js';
 import { SKILL_RESOURCE } from '../../../shared/config/skills.js';
 import {
 	COMBAT_DEFEATED_SUFFIX,
@@ -111,7 +111,15 @@ export class BattleAttackResolver implements IBattleAttackResolver {
 		}
 		amount *= armorMult;
 		amount *= 1 - incoming.reductionFraction;
-		amount *= suddenDeathMultiplier(ctx.round);
+		// Phase 4 weekly frenzy rides on top of class riders; weekly bloodmoon
+		// uses the early enrage window when either side carries the flag.
+		amount *= 1 + attacker.flags.fieldDamagePct;
+		amount *= suddenDeathMultiplier(
+			ctx.round,
+			attacker.flags.earlySuddenDeath || defender.flags.earlySuddenDeath
+				? EARLY_SUDDEN_DEATH_START
+				: undefined,
+		);
 
 		const dealt = Math.max(0, Math.floor(amount));
 		// Shield absorbs before HP (0 shield = unchanged); damageDealt stays the

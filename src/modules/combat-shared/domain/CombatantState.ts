@@ -113,6 +113,12 @@ export interface BattleFlags {
 	resource: number;
 	/** Phase 2 skill cooldowns: skill key → rounds left. */
 	skillCooldowns: Record<string, number>;
+	/** Phase 4 weekly frenzy: additive damage-% rider for this battle. */
+	fieldDamagePct: number;
+	/** Phase 4 weekly bloodmoon: sudden death starts at round 16. */
+	earlySuddenDeath: boolean;
+	/** Phase 4 weekly drought: healing multiplier (1 = normal). */
+	healMult: number;
 }
 
 /** Fresh per-battle flags; every combatant starts from these defaults. */
@@ -148,6 +154,9 @@ export function createBattleFlags(): BattleFlags {
 		healedThisRound: 0,
 		resource: 0,
 		skillCooldowns: {},
+		fieldDamagePct: 0,
+		earlySuddenDeath: false,
+		healMult: 1,
 	};
 }
 
@@ -229,8 +238,10 @@ export function immunityMultiplier(side: CombatantState): number {
  */
 export function cappedHeal(side: CombatantState, amount: number): number {
 	if (amount <= 0 || side.hp <= 0) return 0;
+	// Phase 4 weekly drought scales all healing (default 1 = unchanged).
+	const scaled = Math.floor(amount * side.flags.healMult);
 	const budget = Math.floor(side.maxHp * HEAL_CAP_PCT) - side.flags.healedThisRound;
-	const healed = Math.max(0, Math.min(amount, budget, side.maxHp - side.hp));
+	const healed = Math.max(0, Math.min(scaled, budget, side.maxHp - side.hp));
 	if (healed > 0) {
 		side.hp += healed;
 		side.flags.healedThisRound = side.flags.healedThisRound + healed;

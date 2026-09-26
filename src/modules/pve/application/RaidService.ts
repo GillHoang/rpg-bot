@@ -33,6 +33,13 @@ import {
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { EventBus } from '../../../shared/kernel/EventBus.js';
 import { CosmeticService } from '../../meta/application/CosmeticService.js';
+import {
+	applyWeeklyFlags,
+	isWeeklyEligible,
+	weeklyModifierAt,
+	WEEKLY_MODIFIERS,
+} from '../../../shared/config/weeklyModifiers.js';
+import { COMBAT_WEEKLY_MODIFIER } from '../../../shared/ui/text/combat.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
 
@@ -221,7 +228,7 @@ export class RaidService {
 			if (locked) return locked;
 		}
 
-		const battle = await this.resolveBattle(tx, discordId, account, monsterStats, action);
+		const battle = await this.resolveBattle(tx, discordId, account, monsterStats, action, boss, now);
 		if (!boss) {
 			await this.queries.upsertHuntCooldown(
 				tx,
@@ -289,6 +296,8 @@ export class RaidService {
 		account: PlayerAccount,
 		monsterStats: MonsterStats,
 		action: ReturnType<typeof createBattleActionContext>,
+		boss: boolean,
+		now: Date,
 	): Promise<{ battle: BattleResult; playerSpd: number; enemySpd: number }> {
 		const assembled = await this.statAssembly.assemble(discordId, account.combatClass, account.combatLevel, tx);
 		const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
@@ -310,6 +319,11 @@ export class RaidService {
 		});
 		monster.immunityTags = monsterStats.immunityTags;
 		monster.flags.regenPct = monsterStats.regenPct;
+		// Phase 4 weekly modifier: regular/elite hunts only (never boss/final).
+		const weekly = weeklyModifierAt(now);
+		if (weekly !== 'none' && isWeeklyEligible(boss, monsterStats.finalBoss)) {
+			applyWeeklyFlags(player.flags, monster.flags, weekly);
+		}
 		const battle = this.engine.resolve(player, monster, action.seed, {
 			playerStrategy,
 			enemyStrategy: new MonsterStrategy(monsterStats.skillKey, {
@@ -318,6 +332,12 @@ export class RaidService {
 				finalBoss: monsterStats.finalBoss,
 			}),
 		});
+		if (weekly !== 'none' && isWeeklyEligible(boss, monsterStats.finalBoss)) {
+			const info = WEEKLY_MODIFIERS[weekly]!;
+			const line = COMBAT_WEEKLY_MODIFIER(info.name, info.desc);
+			battle.log.unshift(line);
+			battle.roundLogs[0]?.lines.unshift(line);
+		}
 		return { battle, playerSpd: assembled.stats.spd, enemySpd: monsterStats.spd };
 	}
 
