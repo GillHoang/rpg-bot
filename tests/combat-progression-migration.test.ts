@@ -38,6 +38,7 @@ it('upgrades populated EXP columns and level limits without losing existing prog
 			'0013_skill-loadout',
 			'0014_gear-sets',
 			'0015_tower-progress',
+			'0016_worldboss-attacks',
 		]) {
 			await testClient.exec(await readFile(new URL(`${tag}.sql`, root), 'utf8'));
 		}

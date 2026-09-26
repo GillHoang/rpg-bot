@@ -75,6 +75,8 @@ export const bossAttackLog = pgTable(
 			.references(() => users.discordId),
 		mobId: integer('mob_id').notNull(),
 		totalDamage: integer('total_damage').notNull().default(0),
+		/** Attacks spent today (reset when last_daily_reset rolls). */
+		dailyAttacks: integer('daily_attacks').notNull().default(0),
 		attackedAt: timestamp('attacked_at', { mode: 'date', withTimezone: false })
 			.notNull()
 			.default(sql`now()`),

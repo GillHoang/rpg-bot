@@ -31,6 +31,7 @@ import { CasinoSessionService } from '../modules/casino/application/CasinoSessio
 import { DuelService } from '../modules/pvp/application/DuelService.js';
 import { RaidService } from '../modules/pve/application/RaidService.js';
 import { TowerService } from '../modules/pve/application/TowerService.js';
+import { WorldBossService } from '../modules/pve/application/WorldBossService.js';
 import { RankedService } from '../modules/pvp/application/RankedService.js';
 import { PvpShopService } from '../modules/pvp/application/PvpShopService.js';
 import { LootService } from '../modules/economy/application/LootService.js';
@@ -87,6 +88,7 @@ export interface AppContainer {
 	readonly cosmetics: CosmeticService;
 	readonly raid: RaidService;
 	readonly tower: TowerService;
+	readonly worldBoss: WorldBossService;
 	readonly duel: DuelService;
 	readonly ranked: RankedService;
 	readonly casinoSessions: CasinoSessionService;
@@ -196,6 +198,16 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		engine,
 		factory,
 	});
+	const worldBoss = new WorldBossService({
+		accounts,
+		characters,
+		statAssembly,
+		events,
+		clock,
+		persistence,
+		engine,
+		factory,
+	});
 	// --- Menu + background lifecycle (no I/O or timers at construction) ---
 	const casinoSessions = new CasinoSessionService({ persistence, clock });
 	const inventory = new InventoryService(persistence.executor);
@@ -223,6 +235,7 @@ export function createAppContainer(options: ApplicationOptions = {}): AppContain
 		cosmetics,
 		raid,
 		tower,
+		worldBoss,
 		duel,
 		ranked,
 		casinoSessions,

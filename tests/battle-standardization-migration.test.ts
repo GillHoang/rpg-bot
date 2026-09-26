@@ -43,6 +43,7 @@ it('backfills mode records and streaks across interleaved logs, preserving legac
 				'0013_skill-loadout',
 				'0014_gear-sets',
 				'0015_tower-progress',
+				'0016_worldboss-attacks',
 			]) {
 				await testClient.exec(await readFile(new URL(`${tag}.sql`, root), 'utf8'));
 			}

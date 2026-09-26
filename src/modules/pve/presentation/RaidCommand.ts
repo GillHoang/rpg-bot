@@ -5,8 +5,11 @@ import type { ICommand } from '../../../shared/discord/command.js';
 import { sendBattleLog } from '../../../shared/ui/render/BattleLogPager.js';
 import { RaidService } from '../application/RaidService.js';
 import type { TowerService } from '../application/TowerService.js';
+import type { WorldBossService } from '../application/WorldBossService.js';
 import { TOWER } from '../../../shared/config/tower.js';
 import { TOWER_TEXT } from '../../../shared/ui/text/tower.js';
+import { WORLD_BOSS_TEXT } from '../../../shared/ui/text/worldBoss.js';
+import { formatNumber } from '../../../shared/ui/text/format.js';
 import { NO_CHARACTER, NOT_REGISTERED } from '../../../shared/ui/text/common.js';
 import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED } from '../../../shared/ui/text/raid.js';
 import { raidBattleOptions } from '../../../shared/ui/render/raidBattleOptions.js';
@@ -38,11 +41,15 @@ export class RaidCommand implements ICommand {
 				.addIntegerOption((o) =>
 					o.setName('floor').setDescription(TOWER_TEXT.floorOption).setMinValue(1).setMaxValue(TOWER.maxFloor),
 				),
-		);
+		)
+		.addSubcommand((s) => s.setName('worldboss').setDescription(WORLD_BOSS_TEXT.description))
+		.addSubcommand((s) => s.setName('wboard').setDescription(WORLD_BOSS_TEXT.boardDescription))
+		.addSubcommand((s) => s.setName('wauto').setDescription('Bật/tắt auto-raid World Boss (+2 lượt/ngày)'));
 
 	constructor(
 		private readonly raid: Pick<RaidService, 'run'>,
 		private readonly tower?: Pick<TowerService, 'run'>,
+		private readonly worldBoss?: Pick<WorldBossService, 'attack' | 'board' | 'toggleAuto'>,
 	) {}
 
 	async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -60,8 +67,13 @@ export class RaidCommand implements ICommand {
 			return;
 		}
 		const boss = interaction.options.getSubcommand(false) === 'boss';
-		if (interaction.options.getSubcommand(false) === 'tower') {
+		const subcommand = interaction.options.getSubcommand(false);
+		if (subcommand === 'tower') {
 			await this.executeTower(interaction);
+			return;
+		}
+		if (subcommand === 'worldboss' || subcommand === 'wboard' || subcommand === 'wauto') {
+			await this.executeWorldBoss(interaction, subcommand);
 			return;
 		}
 		const selection = {
@@ -161,5 +173,84 @@ export class RaidCommand implements ICommand {
 		}
 		const options = raidBattleOptions(result, false, interaction.user.username);
 		await sendBattleLog(interaction, options, 'edit');
+	}
+
+	/** Phase 5 guild World Boss: shared pool attack, board and auto-raid toggle. */
+	private async executeWorldBoss(
+		interaction: ChatInputCommandInteraction,
+		subcommand: string,
+	): Promise<void> {
+		if (!this.worldBoss) {
+			await interaction.editReply(WORLD_BOSS_TEXT.description);
+			return;
+		}
+		const guildId = interaction.guildId;
+		if (!guildId) {
+			await interaction.editReply(WORLD_BOSS_TEXT.noBoss);
+			return;
+		}
+		if (subcommand === 'wauto') {
+			const auto = await this.worldBoss.toggleAuto(interaction.user.id);
+			await interaction.editReply(
+				auto.active ? `Auto-raid bật đến ${auto.endsAt.toISOString()}.` : 'Auto-raid đã tắt.',
+			);
+			return;
+		}
+		if (subcommand === 'wboard') {
+			const board = await this.worldBoss.board(guildId);
+			if (!board.length) {
+				await interaction.editReply(WORLD_BOSS_TEXT.noBoss);
+				return;
+			}
+			await interaction.editReply(
+				`**${WORLD_BOSS_TEXT.boardTitle}**\n` +
+					board.map((row) => WORLD_BOSS_TEXT.boardRow(row.rank, row.name, formatNumber(row.totalDamage))).join('\n'),
+			);
+			return;
+		}
+		const result = await this.worldBoss.attack(guildId, interaction.user.id, interaction.id);
+		if (result.status === 'already-processed') {
+			await interaction.editReply(RAID_FLOW_TEXT.alreadyProcessed);
+			return;
+		}
+		if (result.status === 'capped' || result.status === 'dead') {
+			await interaction.editReply(result.message);
+			return;
+		}
+		if (result.status === 'not-registered') {
+			await interaction.editReply({ content: NOT_REGISTERED });
+			return;
+		}
+		if (result.status === 'no-character' || result.status === 'no-guild') {
+			await interaction.editReply(
+				result.status === 'no-guild' ? WORLD_BOSS_TEXT.noBoss : { content: NO_CHARACTER },
+			);
+			return;
+		}
+		const options = raidBattleOptions(
+			{
+				status: 'ok',
+				battle: result.battle,
+				monsterName: 'World Boss',
+				credux: result.killCredux,
+				shards: 0,
+				expGained: 0,
+				gotChest: result.killChest != null,
+				chestName: result.killChest ?? '',
+				gearDrop: null,
+				progress: { previousLevel: 0, newLevel: 0, leveledUp: false },
+			},
+			true,
+			interaction.user.username,
+		);
+		await sendBattleLog(interaction, options, 'edit');
+		await interaction.followUp(
+			(result.spawned ? WORLD_BOSS_TEXT.spawned(formatNumber(result.bossMaxHp)) + '\n' : '') +
+				WORLD_BOSS_TEXT.contribution(formatNumber(result.contribution), formatNumber(result.totalDamage)) +
+				`\nCòn lại: ${formatNumber(result.bossHpRemaining)}/${formatNumber(result.bossMaxHp)} HP.` +
+				(result.killed && result.rank
+					? '\n' + WORLD_BOSS_TEXT.killRank(result.rank, result.killCredux, result.killChest)
+					: ''),
+		);
 	}
 }

@@ -161,11 +161,11 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
   - ✅ 4d: weekly modifier xoay theo ISO week (bloodmoon/frenzy/drought) cho hunt thường.
   - ✅ 4e: Tower mode leo tầng vô hạn (`/raid tower`, migration 0015 `tower_floor`/`tower_week`, reset tuần).
 
-### Phase 5 — Battle modes (6–10 ngày)
-- **World Boss guild** (kích hoạt `boss_*`, `auto_raids`, `boss_top_damage`) + bảng xếp hạng.
-- Guild War (`user_guild_activity`).
-- Ranked season payout (`season_end_payload` + script tự trao).
-- (Tuỳ chọn) Co-op 2-vs-1.
+### Phase 5 — Battle modes (6–10 ngày) 🔄
+- ✅ **World Boss guild** (5a): shared HP pool/server, lazy spawn 7 ngày, daily budget 3 (+2 auto_raids),
+  purse theo rank + `boss_top_damage`, board `/raid wboard`, toggle `/raid wauto`. Kích hoạt `boss_state`,
+  `boss_spawn_queue`, `boss_attack_log`, `auto_raids`, `boss_top_damage` (migration 0016 `daily_attacks`).
+- ⏳ Guild War (`user_guild_activity`) · Ranked season payout (`season_end_payload` + script) · (tuỳ chọn) Co-op 2-vs-1.
 
 ### Phase 6 — QoL & polish (3–5 ngày)
 - Battle preview, auto-repeat/sweep, battle log nâng cấp, gợi ý loadout, preset theo nội dung.

@@ -5,8 +5,8 @@ import { logger } from '../utils/logger.js';
 
 /** Events describe committed actions. Core progression is applied before commit. */
 export interface DomainEvents {
-	'battle.won': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' | 'tower'; progressApplied?: boolean };
-	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' | 'tower'; progressApplied?: boolean };
+	'battle.won': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' | 'tower' | 'worldboss'; progressApplied?: boolean };
+	'battle.lost': { discordId: string; battleType: 'raid' | 'duel' | 'ranked' | 'boss' | 'tower' | 'worldboss'; progressApplied?: boolean };
 	'currency.earned': { discordId: string; currency: string; amount: number; source: string };
 	'level.up': { discordId: string; newLevel: number };
 	// Progression-bearing events are marked after their transaction commits.
