@@ -124,6 +124,7 @@ describe('MonsterEncounterService', () => {
 			skillKey: 'none',
 			immunityTags: ['poison'],
 			affixes: [],
+			modifiers: [],
 			regenPct: 0,
 			finalBoss: false,
 		});
@@ -153,11 +154,12 @@ describe('MonsterEncounterService', () => {
 			mobType: 'elite',
 			skillKey: 'none',
 			immunityTags: ['poison'],
-			affixes: [],
+			affixes: ['deadeye'],
+			modifiers: [],
 			regenPct: 0,
 			finalBoss: false,
 		});
-		expect(rng).toHaveBeenCalledTimes(2);
+		expect(rng).toHaveBeenCalledTimes(3);
 	});
 
 	it('keeps boss scaling, immunity fallback and one roster roll', async () => {
@@ -183,6 +185,7 @@ describe('MonsterEncounterService', () => {
 			skillKey: 'moon_threshold',
 			immunityTags: [],
 			affixes: [],
+			modifiers: [],
 			regenPct: 0,
 			finalBoss: false,
 		});
@@ -226,6 +229,35 @@ describe('MonsterEncounterService', () => {
 		};
 		const encounter = await new MonsterEncounterService(roster).pickForLevel(executor, 10, () => 0, true);
 		expect(encounter).toMatchObject({ skillKey: 'moon_threshold', finalBoss: false });
+	});
+
+	it.each([
+		['regular', 10, 'regen', 1],
+		['regular', 50, 'regen', 1],
+		['regular', 10, 'none', 0],
+		['elite', 10, 'none', 1],
+		['elite', 50, 'none', 2],
+	] as const)('rolls affixes for %s at lv %s (%s gate)', async (mobType, level, modifier, count) => {
+		const roster = {
+			listForEncounter: vi.fn<MonsterRosterRepository['listForEncounter']>().mockResolvedValue([mob({ mobType })]),
+		};
+		const encounter = await new MonsterEncounterService(roster).pickForLevel(
+			executor,
+			level,
+			() => 0.99,
+			false,
+			false,
+			modifier,
+		);
+		expect(encounter!.affixes).toHaveLength(count);
+	});
+
+	it('rolls three affixes for final bosses', async () => {
+		const roster = {
+			listForEncounter: vi.fn<MonsterRosterRepository['listForEncounter']>().mockResolvedValue([mob({ mobType: 'boss' })]),
+		};
+		const encounter = await new MonsterEncounterService(roster).pickForLevel(executor, 42, () => 0.99, false, true);
+		expect(encounter!.affixes).toHaveLength(3);
 	});
 });
 

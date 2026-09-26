@@ -116,4 +116,23 @@ describe('behavior modifier hooks', () => {
 		);
 		expect(hit.armorPierceFraction).toBeCloseTo(0.25);
 	});
+
+	it.each([
+		['executioner', 'wounded prey'],
+		['bulwark', 'armored hide'],
+		['lifedrinker', 'deep thirst'],
+		['berserk', 'burning blood'],
+		['deadeye', 'keen aim'],
+	] as const)('applies the %s affix in battle', (affix) => {
+		const attacker = player();
+		attacker.hp = 2000; // wounded: executioner must trigger
+		const defender = mob([affix]);
+		const result = new BattleEngine().resolve(attacker, defender, 77, {
+			playerStrategy: new NullClassStrategy(),
+			enemyStrategy: new MonsterStrategy('blood_frenzy', { affixes: [affix], modifiers: [] }),
+		});
+		expect(result.rounds).toBeGreaterThan(0);
+		if (affix === 'deadeye') expect(defender.crit).toBe(15);
+		if (affix === 'berserk') expect(result.log.join('\n')).toContain('đốt');
+	});
 });

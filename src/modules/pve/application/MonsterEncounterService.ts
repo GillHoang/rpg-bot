@@ -107,7 +107,18 @@ export function combineModifierBonus(
 const BEHAVIOR_MODIFIERS: ReadonlySet<string> = new Set(['reflect', 'drain', 'enrage', 'shielded', 'rupture']);
 
 /** Elite affix pool (P4): trash variety in modifier gates + final-boss menace. */
-const AFFIX_POOL = ['vampiric', 'frenzy_echo', 'stone_skin', 'swift', 'tenacious'] as const;
+const AFFIX_POOL = [
+	'vampiric',
+	'frenzy_echo',
+	'stone_skin',
+	'swift',
+	'tenacious',
+	'executioner',
+	'bulwark',
+	'lifedrinker',
+	'berserk',
+	'deadeye',
+] as const;
 
 function rollAffixes(rng: () => number, count: number): string[] {
 	const pool = [...AFFIX_POOL];
@@ -251,23 +262,30 @@ export class MonsterEncounterService {
 			// boss keeps its seeded Bakunawa skill.
 			skillKey: finalBoss && !boss ? finalBossSkill(lv) : row.skillKey,
 			immunityTags: Array.isArray(row.immunityTags) ? row.immunityTags : [],
-			// Regulars in modifier gates roll one affix; final bosses roll two.
-			// Elites keep their signature skill; daily boss stays seeded-pure.
-			affixes: rollEncounterAffixes(type, gateModifier, finalBoss, rng),
+			// Regulars in modifier gates roll one affix; elites scale with gate;
+			// final bosses roll three. Elites keep their signature skill;
+			// daily boss stays seeded-pure.
+			affixes: rollEncounterAffixes(type, gateModifier, finalBoss, rng, lv),
 			modifiers: behaviorModifiers(gateModifier, gateModifier2),
 			finalBoss,
 		};
 	}
 }
 
-/** Affix budget per encounter kind (see comment at the call site). */
+/**
+ * Affix budget per encounter kind (Phase 4c): regulars in modifier gates roll
+ * one, elites roll one (gates 1–3) or two (gates 4+, lv 45+), final bosses
+ * roll three. Daily boss stays affix-free (seeded-pure).
+ */
 function rollEncounterAffixes(
 	type: string,
 	gateModifier: GateModifier,
 	finalBoss: boolean,
 	rng: () => number,
+	lv: number,
 ): string[] {
 	if (type === 'regular' && gateModifier !== 'none') return rollAffixes(rng, 1);
-	if (finalBoss) return rollAffixes(rng, 2);
+	if (type === 'elite') return rollAffixes(rng, lv >= 45 ? 2 : 1);
+	if (finalBoss) return rollAffixes(rng, 3);
 	return [];
 }

@@ -18,6 +18,7 @@ import {
 	COMBAT_MONSTER_PHASE_TWO,
 	COMBAT_MONSTER_REFLECT,
 	COMBAT_MONSTER_REGEN,
+	COMBAT_MONSTER_BERSERK,
 	COMBAT_MONSTER_SHED,
 	COMBAT_MONSTER_SHIELDED,
 	COMBAT_MONSTER_CLIPPERS,
@@ -77,13 +78,15 @@ export class MonsterStrategy extends NullClassStrategy {
 		const flags = ctx.self.flags;
 		flags.monsterRounds = flags.monsterRounds + 1;
 
-		// One-time affix setup: swift initiative, tenacious resolve.
+		// One-time affix setup: swift initiative, tenacious resolve, deadeye aim.
 		for (const affix of this.affixes(ctx)) {
 			if (affix === 'swift') {
 				flags.initiativeBias = flags.initiativeBias + 0.15;
 				ctx.log(COMBAT_MONSTER_SWIFT(combatDisplayName(ctx.self)));
 			} else if (affix === 'tenacious') {
 				ctx.self.ten = Math.max(ctx.self.ten, 50);
+			} else if (affix === 'deadeye') {
+				ctx.self.crit = Math.min(60, ctx.self.crit + 10);
 			}
 		}
 
@@ -95,6 +98,12 @@ export class MonsterStrategy extends NullClassStrategy {
 				ctx.self.hp += healed;
 				ctx.log(COMBAT_MONSTER_REGEN(combatDisplayName(ctx.self), formatNumber(healed)));
 			}
+		}
+		// Phase 4 berserk affix: burn HP every round for power.
+		if ((this.traits.affixes ?? []).includes('berserk') && ctx.self.hp > 0) {
+			const price = Math.max(1, Math.floor(ctx.self.maxHp * 0.03));
+			ctx.self.hp = Math.max(1, ctx.self.hp - price);
+			ctx.log(COMBAT_MONSTER_BERSERK(combatDisplayName(ctx.self), formatNumber(price)));
 		}
 
 		// Bakunawa phase tracking + telegraphs.
@@ -133,6 +142,14 @@ export class MonsterStrategy extends NullClassStrategy {
 		this.applyBloodFrenzy(ctx, hit, hpFrac);
 		// Frenzy echo (affix): a weaker, earlier frenzy below half HP.
 		if ((this.traits.affixes ?? []).includes('frenzy_echo') && hpFrac < 0.5) {
+			hit.damagePctBonus += 25;
+		}
+		// Phase 4 executioner affix: prey on the wounded.
+		if ((this.traits.affixes ?? []).includes('executioner') && ctx.enemy.hp < ctx.enemy.maxHp * 0.3) {
+			hit.damagePctBonus += 40;
+		}
+		// Phase 4 berserk affix: power bought with blood every round.
+		if ((this.traits.affixes ?? []).includes('berserk')) {
 			hit.damagePctBonus += 25;
 		}
 		// Blood-moon leap: charged heavy, consumed on the strike.
@@ -202,6 +219,10 @@ export class MonsterStrategy extends NullClassStrategy {
 		if ((this.traits.affixes ?? []).includes('stone_skin')) {
 			hit.reductionFraction = Math.max(hit.reductionFraction, 0.15);
 		}
+		// Phase 4 bulwark affix: a lighter stone skin that stacks with it.
+		if ((this.traits.affixes ?? []).includes('bulwark')) {
+			hit.reductionFraction = Math.max(hit.reductionFraction, 0.1);
+		}
 		// P1 lunar scales: Bakunawa shrugs off a slice while healthy.
 		if (this.skill === 'moon_threshold' && ctx.self.hp >= (ctx.self.maxHp * 2) / 3) {
 			hit.reductionFraction = Math.max(hit.reductionFraction, 0.12);
@@ -222,6 +243,11 @@ export class MonsterStrategy extends NullClassStrategy {
 		if ((this.traits.affixes ?? []).includes('vampiric')) {
 			const healed = Math.floor(hit.damageDealt * 0.05);
 			this.healSelf(ctx, healed, (name, amount) => COMBAT_MONSTER_FEAST(name, amount));
+		}
+		// Phase 4 lifedrinker affix: a deeper vampirism (elite+ only in the pool).
+		if ((this.traits.affixes ?? []).includes('lifedrinker')) {
+			const healed = Math.floor(hit.damageDealt * 0.08);
+			this.healSelf(ctx, healed, (name, amount) => COMBAT_MONSTER_DRAIN(name, amount));
 		}
 		// Venom spit: wounds fester, ticking true damage for 2 rounds.
 		if (this.skill === 'venom_spit' && ctx.enemy.hp > 0 && !findDebuff(ctx.enemy, 'venom')) {
