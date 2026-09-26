@@ -31,6 +31,20 @@ it('backfills mode records and streaks across interleaved logs, preserving legac
 			await testClient.exec(await readFile(new URL('0004_battle_standardization.sql', root), 'utf8'));
 			await testClient.exec(await readFile(new URL('0005_portal_progression.sql', root), 'utf8'));
 			await testClient.exec(await readFile(new URL('0006_portal_gates.sql', root), 'utf8'));
+			// Later additive migrations (new columns only) so drizzle's current
+			// schema can read the rows back; the backfills above already ran.
+			for (const tag of [
+				'0007_ranked_log_timezone',
+				'0008_bigint-credux-headroom',
+				'0009_ranked-log-initiator',
+				'0010_pvp-timestamps-tz',
+				'0011_weapon-owo-parity',
+				'0012_weapon-deity-attach',
+				'0013_skill-loadout',
+				'0014_gear-sets',
+			]) {
+				await testClient.exec(await readFile(new URL(`${tag}.sql`, root), 'utf8'));
+			}
 		const characters = await db.select().from(s.userCharacter);
 		expect(characters.find((row) => row.discordId === 'a')).toMatchObject({
 			duelWins: 3,
