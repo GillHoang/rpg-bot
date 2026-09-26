@@ -3,7 +3,8 @@
  * ---------------------------------------------------------------------------
  * Thưởng tuần theo bracket (M7 design defaults, không port từ bản gốc).
  * weeklyPayload: chest cộng vào users_bag khi claim tuần.
- * seasonEndPayload: để trống — trao mùa hiện chưa thuộc phạm vi.
+ * seasonEndPayload: thưởng khi claim mùa (Phase 5, /ranked season) — credux
+ * + chest theo bracket, cộng seasonValor Valor Medals.
  */
 export interface RankedRewardSeed {
 	bracket: 'Mortal' | 'Champion' | 'Demigod' | 'Ascendant' | 'Divine';
@@ -16,7 +17,13 @@ export interface RankedRewardSeed {
 		genesisChest?: number;
 	};
 	seasonValor: number;
-	seasonEndPayload: Record<string, never>;
+	seasonEndPayload: {
+		credux: number;
+		silverChest?: number;
+		goldChest?: number;
+		diamondChest?: number;
+		genesisChest?: number;
+	};
 }
 
 export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
@@ -26,7 +33,7 @@ export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
 		weeklyValor: 2,
 		weeklyPayload: {},
 		seasonValor: 10,
-		seasonEndPayload: {},
+		seasonEndPayload: { credux: 100_000 },
 	},
 	{
 		bracket: 'Champion',
@@ -34,7 +41,7 @@ export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
 		weeklyValor: 8,
 		weeklyPayload: { silverChest: 2 },
 		seasonValor: 40,
-		seasonEndPayload: {},
+		seasonEndPayload: { credux: 300_000, silverChest: 3 },
 	},
 	{
 		bracket: 'Demigod',
@@ -42,7 +49,7 @@ export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
 		weeklyValor: 15,
 		weeklyPayload: { goldChest: 1 },
 		seasonValor: 75,
-		seasonEndPayload: {},
+		seasonEndPayload: { credux: 600_000, goldChest: 2 },
 	},
 	{
 		bracket: 'Ascendant',
@@ -50,7 +57,7 @@ export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
 		weeklyValor: 25,
 		weeklyPayload: { goldChest: 1, diamondChest: 1 },
 		seasonValor: 125,
-		seasonEndPayload: {},
+		seasonEndPayload: { credux: 1_000_000, goldChest: 2, diamondChest: 1 },
 	},
 	{
 		bracket: 'Divine',
@@ -58,6 +65,6 @@ export const RANKED_REWARD_SEED: RankedRewardSeed[] = [
 		weeklyValor: 40,
 		weeklyPayload: { genesisChest: 1 },
 		seasonValor: 200,
-		seasonEndPayload: {},
+		seasonEndPayload: { credux: 1_600_000, genesisChest: 2 },
 	},
 ];

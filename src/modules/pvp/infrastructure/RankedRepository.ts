@@ -1,7 +1,7 @@
 import type { Executor } from '../../../db/client.js';
-import { and, eq, gte, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, ne, sql } from 'drizzle-orm';
 import { countWinStreak } from '../../meta/infrastructure/countWinStreak.js';
-import { activeRankedFights, rankedLogs, rankedReward, users, usersBag, userCharacter } from '../../../db/schema.js';
+import { activeRankedFights, rankedLogs, rankedReward, seasons, users, usersBag, userCharacter } from '../../../db/schema.js';
 
 /** Named persistence operations; callers supply the exact executor and business decisions. */
 export class RankedRepository {
@@ -43,6 +43,32 @@ export class RankedRepository {
 
 	async findWeeklyReward(tx: Executor, bracket: string) {
 		return tx.select().from(rankedReward).where(eq(rankedReward.bracket, bracket)).limit(1);
+	}
+
+	/** Latest closed season (Phase 5 season payout target). */
+	async lastClosedSeason(tx: Executor) {
+		return tx
+			.select()
+			.from(seasons)
+			.where(eq(seasons.isActive, false))
+			.orderBy(desc(seasons.endsAt))
+			.limit(1);
+	}
+
+	/** Initiated fight inside a season window (mirrors the weekly-claim rule). */
+	async findSeasonFight(tx: Executor, discordId: string, startsAt: Date, endsAt: Date) {
+		return tx
+			.select({ id: rankedLogs.id })
+			.from(rankedLogs)
+			.where(
+				and(
+					eq(rankedLogs.playerId, discordId),
+					eq(rankedLogs.isInitiator, true),
+					gte(rankedLogs.timestamp, startsAt),
+					lte(rankedLogs.timestamp, endsAt),
+				),
+			)
+			.limit(1);
 	}
 
 	async updateBag(tx: Executor, discordId: string, values: Partial<typeof usersBag.$inferInsert>) {

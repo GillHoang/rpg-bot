@@ -44,6 +44,7 @@ it('backfills mode records and streaks across interleaved logs, preserving legac
 				'0014_gear-sets',
 				'0015_tower-progress',
 				'0016_worldboss-attacks',
+				'0017_season-claim',
 			]) {
 				await testClient.exec(await readFile(new URL(`${tag}.sql`, root), 'utf8'));
 			}

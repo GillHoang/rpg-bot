@@ -26,6 +26,14 @@ export const RANKED_ALREADY_CLAIMED = 'Đã nhận thưởng tuần này rồi. 
 export const RANKED_NO_FIGHTS = 'Chưa có trận ranked nào trong tuần này.';
 export const RANKED_NO_REWARD_ROW = 'Chưa seed bảng ranked_reward — báo admin chạy db:seed.';
 
+// season payout (Phase 5)
+export const RANKED_SEASON_DESC = 'Nhận thưởng mùa trước theo bracket (cần ≥1 trận trong mùa)';
+export const RANKED_SEASON_OK = (bracket: string, creux: string, valor: number): string =>
+	`${ICONS.ranked.weeklyReward} Season reward (${bracket}): +${creux} Credux · +${valor} Valor Medals`;
+export const RANKED_NO_SEASON = 'Chưa có mùa ranked nào kết thúc.';
+export const RANKED_SEASON_NO_FIGHTS = 'Mùa trước không có trận ranked nào của bạn.';
+export const RANKED_SEASON_ALREADY_CLAIMED = 'Đã nhận thưởng mùa này rồi.';
+
 // stats
 export const RANKED_STATS_HEADER = (rating: number, bracket: string, peak: number): string =>
 	`${ICONS.ranked.profileBadge} **Ranked** — Rating **${rating}** (${bracket}) · Peak **${peak}**`;

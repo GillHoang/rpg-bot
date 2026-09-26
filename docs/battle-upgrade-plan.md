@@ -165,9 +165,11 @@ characterization snapshot của phase trước. `pnpm check` + `pnpm build` ph�
 - ✅ **World Boss guild** (5a): shared HP pool/server, lazy spawn 7 ngày, daily budget 3 (+2 auto_raids),
   purse theo rank + `boss_top_damage`, board `/raid wboard`, toggle `/raid wauto`. Kích hoạt `boss_state`,
   `boss_spawn_queue`, `boss_attack_log`, `auto_raids`, `boss_top_damage` (migration 0016 `daily_attacks`).
-- ⏳ Guild War (`user_guild_activity`) · Ranked season payout (`season_end_payload` + script) · (tuỳ chọn) Co-op 2-vs-1.
+- ⏳ (tuỳ chọn) Co-op 2-vs-1.
   - ✅ 5b: Guild War board `/raid wwar` — đua damage liên server, guild đủ 3 người mới xếp hạng;
     mọi đòn worldboss ghi `user_guild_activity`.
+  - ✅ 5c: season payout lazy-claim `/ranked season` — seed đầy `seasonEndPayload` mọi bracket,
+    track `last_season_claim_id` (migration 0017), cần ≥1 trận initiated trong mùa.
 
 ### Phase 6 — QoL & polish (3–5 ngày)
 - Battle preview, auto-repeat/sweep, battle log nâng cấp, gợi ý loadout, preset theo nội dung.

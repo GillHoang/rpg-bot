@@ -64,6 +64,22 @@ export type RankedClaimResult =
 			chests: string[];
 	  };
 
+/** Phase 5 season payout result (lazy claim of the latest closed season). */
+export type RankedSeasonClaimResult =
+	| { status: 'not-registered' }
+	| { status: 'no-season' }
+	| { status: 'no-fights' }
+	| { status: 'already-claimed' }
+	| { status: 'no-reward-row' }
+	| {
+			status: 'ok';
+			seasonId: number;
+			bracket: Bracket['name'];
+			credux: number;
+			valor: number;
+			chests: string[];
+	  };
+
 export interface RankedDependencies {
 	progress?: Pick<GameplayProgressCoordinator, 'apply'>;
 	persistence: PersistenceContext;
@@ -78,6 +94,8 @@ export interface RankedDependencies {
 		| 'deleteFightLock'
 		| 'findWeeklyFight'
 		| 'findWeeklyReward'
+		| 'lastClosedSeason'
+		| 'findSeasonFight'
 		| 'updateBag'
 		| 'updateCharacter'
 		| 'findCharacter'
@@ -118,6 +136,8 @@ export class RankedService {
 		| 'deleteFightLock'
 		| 'findWeeklyFight'
 		| 'findWeeklyReward'
+		| 'lastClosedSeason'
+		| 'findSeasonFight'
 		| 'updateBag'
 		| 'updateCharacter'
 		| 'findCharacter'
@@ -327,6 +347,64 @@ export class RankedService {
 				bracket: bracket.name,
 				credux: reward.weeklyCredux,
 				valor: reward.weeklyValor,
+				chests,
+			};
+		});
+	}
+
+	/**
+	 * Phase 5 season payout: lazy claim of the latest closed season (no cron).
+	 * Requires ≥1 initiated fight inside that season window; bracket is read
+	 * from current rating (same convention as the weekly claim).
+	 */
+	async claimSeason(discordId: string): Promise<RankedSeasonClaimResult> {
+		return this.persistence.unitOfWork.run(async (tx): Promise<RankedSeasonClaimResult> => {
+			const [bag] = await this.queries.lockBag(tx, discordId);
+			if (!bag) return { status: 'not-registered' };
+			const [me] = await this.queries.lockCharacter(tx, discordId);
+			if (!me) return { status: 'not-registered' };
+			const [season] = await this.queries.lastClosedSeason(tx);
+			if (!season) return { status: 'no-season' };
+			if (me.lastSeasonClaimId === season.seasonId) return { status: 'already-claimed' };
+
+			const [fight] = await this.queries.findSeasonFight(tx, discordId, season.startsAt, season.endsAt);
+			if (!fight) return { status: 'no-fights' };
+
+			const bracket = bracketFor(me.pvpRating);
+			const [reward] = await this.queries.findWeeklyReward(tx, bracket.name);
+			if (!reward) return { status: 'no-reward-row' };
+
+			const payload = reward.seasonEndPayload as {
+				credux?: number;
+				silverChest?: number;
+				goldChest?: number;
+				diamondChest?: number;
+				genesisChest?: number;
+			};
+			const credux = payload.credux ?? 0;
+			const chests: string[] = [];
+			const patch = {
+				credux: bag.credux + credux,
+				lifetimeCreduxEarned: bag.lifetimeCreduxEarned + credux,
+				valorMedals: bag.valorMedals + reward.seasonValor,
+				silverChest: bag.silverChest + (payload.silverChest ?? 0),
+				goldChest: bag.goldChest + (payload.goldChest ?? 0),
+				diamondChest: bag.diamondChest + (payload.diamondChest ?? 0),
+				genesisChest: bag.genesisChest + (payload.genesisChest ?? 0),
+			};
+			if (payload.silverChest) chests.push(`+${payload.silverChest} ${LOOT_CHEST_LABELS.silver}`);
+			if (payload.goldChest) chests.push(`+${payload.goldChest} ${LOOT_CHEST_LABELS.gold}`);
+			if (payload.diamondChest) chests.push(`+${payload.diamondChest} ${LOOT_CHEST_LABELS.diamond}`);
+			if (payload.genesisChest) chests.push(`+${payload.genesisChest} ${LOOT_CHEST_LABELS.genesis}`);
+			await this.queries.updateBag(tx, discordId, patch);
+			await this.queries.updateCharacter(tx, discordId, { lastSeasonClaimId: season.seasonId });
+
+			return {
+				status: 'ok',
+				seasonId: season.seasonId,
+				bracket: bracket.name,
+				credux,
+				valor: reward.seasonValor,
 				chests,
 			};
 		});

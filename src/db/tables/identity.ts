@@ -73,6 +73,8 @@ export const userCharacter = pgTable(
 		battleOrder: text('battle_order').notNull().default('balanced'),
 		/** Phase 3 class branch key (nullable = no branch chosen). */
 		classBranch: text('class_branch'),
+		/** Phase 5 season payout: id of the last closed season already claimed (null = none). */
+		lastSeasonClaimId: integer('last_season_claim_id'),
 		/** Phase 4 Tower best floor this ISO week (tower_week gates the reset). */
 		towerFloor: integer('tower_floor').notNull().default(0),
 		/** ISO week key of the stored Tower best (null = no climb yet). */
