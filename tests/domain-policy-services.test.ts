@@ -176,7 +176,7 @@ describe('MonsterEncounterService', () => {
 			eva: 5,
 			ten: 40,
 			damageType: 'physical',
-			armorType: 'heavy',
+			armorType: 'medium',
 			mobType: 'boss',
 			skillKey: 'moon_threshold',
 			immunityTags: [],

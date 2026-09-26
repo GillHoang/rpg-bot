@@ -1,16 +1,13 @@
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
-import type { ArmorType, DamageType } from '../../../shared/config/damageTypes.js';
+import {
+	DEFAULT_ARMOR_TYPE,
+	DEFAULT_CRIT_DMG_PCT,
+	DEFAULT_DAMAGE_TYPE,
+	type ArmorType,
+	type DamageType,
+} from '../../../shared/config/damageTypes.js';
 import { COMBAT_STRIKE_EMOJIS, COMBAT_TENACITY_SHRUG } from '../../../shared/ui/text/combat.js';
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
-
-/**
- * Phase 1 combat-core defaults — every value reproduces pre-Phase-1 behaviour so
- * characterization snapshots and existing content stay valid until gear/mob
- * actually grants these stats.
- */
-export const DEFAULT_CRIT_DMG_PCT = 200; // 200% = the old fixed ×2 crit
-export const DEFAULT_DAMAGE_TYPE: DamageType = 'physical';
-export const DEFAULT_ARMOR_TYPE: ArmorType = 'light';
 
 export type DebuffTag =
 	'bleed' | 'burn' | 'venom' | 'atk_down' | 'def_down' | 'paralyze' | 'stun' | 'dizzy' | 'blight' | 'slow';

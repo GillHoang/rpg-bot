@@ -83,6 +83,21 @@ function rollAffixes(rng: () => number, count: number): string[] {
 /** Mob-type tier index into the secondary-stat tables below. */
 const MOB_TIER_INDEX: Record<string, number> = { boss: 2, elite: 1 };
 
+/** Gate 3 (Abyss, minLevel 30): regulars fight in formation — medium armor. */
+const FORMATION_LEVEL = 30;
+
+/**
+ * Counter-matrix armor (Phase 1): elite = medium always; boss and regulars
+ * harden from gate 3 (lv 30). Early bosses stay medium so every upgraded
+ * class can clear gate 1-2 (portal-balance pin); late content demands
+ * counter-play (magical/ranged vs heavy, or pierce).
+ */
+function armorForEncounter(mobType: string, lv: number): 'light' | 'medium' | 'heavy' {
+	if (mobType === 'elite') return 'medium';
+	if (mobType === 'boss') return lv >= FORMATION_LEVEL ? 'heavy' : 'medium';
+	return lv >= FORMATION_LEVEL ? 'medium' : 'light';
+}
+
 /** Secondary stats + traits derived in code (no roster migration needed). */
 function secondaryStats(
 	lv: number,
@@ -97,10 +112,10 @@ function secondaryStats(
 		ten: [0, 15, 40][tier]!,
 		regenPct: gateModifier === 'regen' ? 0.03 : 0,
 		// Counter-matrix traits derived in code (no roster migration): tier maps to
-		// armor weight; mobs deal physical damage by default. Inert while
-		// DAMAGE_TYPE_MATRIX_ENABLED is off.
+		// armor weight, regulars harden from gate 3; mobs deal physical damage
+		// by default. Live since DAMAGE_TYPE_MATRIX_ENABLED.
 		damageType: 'physical' as const,
-		armorType: (['light', 'medium', 'heavy'] as const)[tier]!,
+		armorType: armorForEncounter(mobType, lv),
 	};
 }
 

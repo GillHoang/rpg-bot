@@ -20,6 +20,12 @@ import { GearRepository } from '../../progression/infrastructure/GearRepository.
 import { DeityService } from '../../progression/application/DeityService.js';
 import { RuneRepository, type SocketedRuneEffect } from '../../progression/infrastructure/RuneRepository.js';
 import type { CombatClass } from '../../identity/domain/PlayerAccount.js';
+import {
+	armorTypeForClass,
+	damageTypeForClass,
+	type ArmorType,
+	type DamageType,
+} from '../../../shared/config/damageTypes.js';
 
 export interface AssembledPlayerStats {
 	atk: number;
@@ -49,6 +55,9 @@ export interface AssembledPlayer {
 	blessings: AssembledBlessing[];
 	/** Equipped weapon's roster passive, ready for WeaponPassiveDecorator. Null when 'none'/unequipped. */
 	weaponPassive: AssembledWeaponPassive | null;
+	/** Combat identity derived from class (Phase 1 counter matrix) — drives armorTypeMultiplier. */
+	damageType: DamageType;
+	armorType: ArmorType;
 }
 
 const STAT_TARGET: Record<string, 'atkPct' | 'critPts' | 'hpPct' | 'defPct' | 'spdPct' | 'accPts'> = {
@@ -159,6 +168,9 @@ export class StatAssemblyService {
 			combatEffectRunes,
 			blessings,
 			weaponPassive: passiveKey && passiveKey !== 'none' ? { passiveKey } : null,
+			// Combat identity (Phase 1): class-derived, no roster migration needed.
+			damageType: damageTypeForClass(combatClass),
+			armorType: armorTypeForClass(combatClass),
 		};
 	}
 

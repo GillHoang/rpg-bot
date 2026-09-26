@@ -19,11 +19,19 @@ export const DAMAGE_TYPES: readonly DamageType[] = ['physical', 'magical', 'rang
 
 export const ARMOR_TYPES: readonly ArmorType[] = ['light', 'medium', 'heavy', 'ethereal'];
 
+/** Default combat identity — the neutral pair (physical/medium = 1.0), so test
+ * combatants and unmapped content stay exactly on the old damage formula. */
+export const DEFAULT_DAMAGE_TYPE: DamageType = 'physical';
+export const DEFAULT_ARMOR_TYPE: ArmorType = 'medium';
+
 /**
  * Feature flag — bật ở Phase 1 khi `mitigate()` đọc ma trận. Giữ false để
  * characterization snapshot hiện tại không đổi.
  */
-export const DAMAGE_TYPE_MATRIX_ENABLED = false;
+export const DAMAGE_TYPE_MATRIX_ENABLED = true;
+
+/** Crit severity default: 200% = the old fixed ×2 crit. */
+export const DEFAULT_CRIT_DMG_PCT = 200;
 
 /** Hệ số khắc hệ bị kẹp để tránh one-shot/immortal (anti-exploit). */
 export const ARMOR_MULT_MIN = 0.8;
@@ -63,4 +71,35 @@ export function armorMultiplier(damage: DamageType, armor: ArmorType, enabled = 
 	if (!enabled) return 1;
 	const raw = ARMOR_MULT[damage]?.[armor] ?? 1;
 	return Math.min(ARMOR_MULT_MAX, Math.max(ARMOR_MULT_MIN, raw));
+}
+
+/**
+ * Combat identity theo class — derive-in-code (không migration, cùng pattern
+ * với mob secondaries trong MonsterEncounterService). Mỗi class có damage
+ * type (vũ khí/ma thuật đặc trưng) và armor type (độ "cứng" đặc trưng):
+ * Mage là glass cannon (magical/light), Knight là tank (physical/heavy).
+ * Khóa string thường để shared/config không phụ thuộc identity domain.
+ */
+export const CLASS_DAMAGE_TYPE: Readonly<Record<string, DamageType>> = {
+	Swordsman: 'physical',
+	Fighter: 'physical',
+	Mage: 'magical',
+	Knight: 'physical',
+	Archer: 'ranged',
+};
+
+export const CLASS_ARMOR_TYPE: Readonly<Record<string, ArmorType>> = {
+	Swordsman: 'medium',
+	Fighter: 'medium',
+	Mage: 'light',
+	Knight: 'heavy',
+	Archer: 'light',
+};
+
+export function damageTypeForClass(combatClass: string): DamageType {
+	return CLASS_DAMAGE_TYPE[combatClass] ?? DEFAULT_DAMAGE_TYPE;
+}
+
+export function armorTypeForClass(combatClass: string): ArmorType {
+	return CLASS_ARMOR_TYPE[combatClass] ?? DEFAULT_ARMOR_TYPE;
 }

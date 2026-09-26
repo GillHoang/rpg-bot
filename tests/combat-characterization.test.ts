@@ -15,6 +15,8 @@ const seeds = [1, 7, 42, 12345];
 // Hash the complete logs, round snapshots and mutated combatants so even a
 // changed RNG call, hook order or remaining debuff is caught, without storing
 // thousands of repetitive log lines. Pin numeric formatting across host locales.
+// (Phase 1 re-baselined after proving behaviour-identical with the 5 inert
+// combat-core fields stripped — see git history.)
 function traceHash(traces: unknown[]): string {
 	return createHash('sha256').update(JSON.stringify(traces)).digest('hex');
 }

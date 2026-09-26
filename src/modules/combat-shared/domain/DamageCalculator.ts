@@ -1,6 +1,10 @@
 import { rollChance } from '../../../shared/utils/weightedRandom.js';
-import { DEFAULT_CRIT_DMG_PCT } from './CombatantState.js';
-import { armorMultiplier, type ArmorType, type DamageType } from '../../../shared/config/damageTypes.js';
+import {
+	DEFAULT_CRIT_DMG_PCT,
+	armorMultiplier,
+	type ArmorType,
+	type DamageType,
+} from '../../../shared/config/damageTypes.js';
 /**
  * Pure damage-formula constants + functions, ported 1:1 from
  * config/combat.js. No battle state here — safe to unit test in

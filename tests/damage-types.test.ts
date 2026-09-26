@@ -7,6 +7,8 @@ import {
 	DAMAGE_TYPES,
 	DAMAGE_TYPE_MATRIX_ENABLED,
 	armorMultiplier,
+	armorTypeForClass,
+	damageTypeForClass,
 	type ArmorType,
 	type DamageType,
 } from '../src/shared/config/damageTypes.js';
@@ -18,10 +20,10 @@ import {
  */
 
 describe('damage/armor counter matrix (Phase 0 — chưa bật)', () => {
-	it('feature flag mặc định tắt để characterization snapshot không đổi', () => {
-		expect(DAMAGE_TYPE_MATRIX_ENABLED).toBe(false);
-		expect(armorMultiplier('physical', 'heavy')).toBe(1);
-		expect(armorMultiplier('magical', 'light', false)).toBe(1);
+	it('feature flag đã bật ở Phase 1 — ma trận khắc hệ có hiệu lực trong damage', () => {
+		expect(DAMAGE_TYPE_MATRIX_ENABLED).toBe(true);
+		// Flag tắt (đường legacy) vẫn trả 1 — dùng cho sim so sánh EV.
+		expect(armorMultiplier('physical', 'heavy', false)).toBe(1);
 	});
 
 	it('mọi hệ số nằm trong [min, max] — không combo one-shot/immortal', () => {
@@ -86,5 +88,28 @@ describe('damage/armor counter matrix (Phase 0 — chưa bật)', () => {
 		expect(damageKeys).toEqual([...DAMAGE_TYPES].sort());
 		const armorKeys: ArmorType[] = ARMOR_TYPES;
 		expect(armorKeys.length).toBeGreaterThan(0);
+	});
+
+	it('derive combat identity theo class — không migration, fallback neutral', () => {
+		expect(damageTypeForClass('Swordsman')).toBe('physical');
+		expect(damageTypeForClass('Fighter')).toBe('physical');
+		expect(damageTypeForClass('Mage')).toBe('magical');
+		expect(damageTypeForClass('Knight')).toBe('physical');
+		expect(damageTypeForClass('Archer')).toBe('ranged');
+		expect(armorTypeForClass('Swordsman')).toBe('medium');
+		expect(armorTypeForClass('Fighter')).toBe('medium');
+		expect(armorTypeForClass('Mage')).toBe('light');
+		expect(armorTypeForClass('Knight')).toBe('heavy');
+		expect(armorTypeForClass('Archer')).toBe('light');
+		// Class lạ (content mới chưa map) fallback về neutral — không crash.
+		expect(damageTypeForClass('Necromancer')).toBe('physical');
+		expect(armorTypeForClass('Necromancer')).toBe('medium');
+	});
+
+	it('matrix đã bật — khắc hệ chuẩn theo thiết kế zero-sum', () => {
+		expect(DAMAGE_TYPE_MATRIX_ENABLED).toBe(true);
+		expect(armorMultiplier('physical', 'light')).toBe(1.1);
+		expect(armorMultiplier('physical', 'heavy')).toBe(0.8);
+		expect(armorMultiplier('magical', 'heavy')).toBe(1.2);
 	});
 });

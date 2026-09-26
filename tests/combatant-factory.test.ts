@@ -22,6 +22,8 @@ const classes: CombatClass[] = ['Swordsman', 'Fighter', 'Mage', 'Knight', 'Arche
 function loadout(decorated = true): AssembledPlayer {
 	const assembled: AssembledPlayer = {
 		stats: { hp: 4200, atk: 390, def: 170, crit: 23, spd: 100, acc: 0, eva: 0, ten: 0 },
+		damageType: 'physical',
+		armorType: 'light',
 		weaponPassive: null,
 		combatEffectRunes: decorated
 			? [
@@ -93,7 +95,13 @@ describe('assembled player combatant factory', () => {
 			const assembled = loadout(decorated);
 			for (const seed of [7, 42]) {
 				// Independent reference to the composition previously repeated in services.
-				const reference = createCombatant({ name: 'Player', combatClass, ...assembled.stats });
+				const reference = createCombatant({
+					name: 'Player',
+					combatClass,
+					...assembled.stats,
+					damageType: assembled.damageType,
+					armorType: assembled.armorType,
+				});
 				const referenceStrategy = wrapWithBlessings(
 					wrapWithRunes(ClassStrategyRegistry.forClass(combatClass), assembled.combatEffectRunes),
 					assembled.blessings,
@@ -130,6 +138,8 @@ describe('assembled player combatant factory', () => {
 	it('keeps one-use rune and blessing flags local to each battle', () => {
 		const assembled: AssembledPlayer = {
 			stats: { hp: 500, atk: 50, def: 10, crit: 0, spd: 100, acc: 0, eva: 0, ten: 0 },
+			damageType: 'ranged',
+			armorType: 'heavy',
 			weaponPassive: null,
 			combatEffectRunes: [{ effectKey: 'aegis_rune', value: 1 }],
 			blessings: [{ key: 'sky_sovereign', strength: 1 }],

@@ -247,6 +247,8 @@ describe('weapon passive decorator', () => {
 	it('plugs into the shared factory between base strategy and rune wrappers', () => {
 		const plain: AssembledPlayer = {
 			stats: { hp: 5000, atk: 400, def: 150, crit: 10, spd: 100, acc: 0, eva: 0, ten: 0 },
+			damageType: 'physical',
+			armorType: 'light',
 			combatEffectRunes: [],
 			blessings: [],
 			weaponPassive: null,
