@@ -60,6 +60,8 @@ export const RAID_CONFIRMATION_TEXT = {
 /** Phase 6 sweep result (instant re-clear at 60%, no chests). */
 export const SWEEP_TEXT = {
 	description: 'Quét nhanh tầng đã thắng: nhận ngay 60% thưởng, tốn cooldown hunt',
+	locked: (gate: number, nextTier: number) =>
+		`Chỉ quét được tầng đã thắng (Gate ${gate} đang ở tầng ${nextTier}).`,
 	result: (gate: number, tier: number, monster: string, credux: string, exp: string, shards: number) =>
 		`Quét Gate ${gate} tầng ${tier} (${monster}): +${credux} Credux · +${exp} EXP${shards > 0 ? ` · +${shards} Shards` : ''}.`,
 };

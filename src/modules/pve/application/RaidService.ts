@@ -37,8 +37,8 @@ import {
 	applyWeeklyFlags,
 	isWeeklyEligible,
 	weeklyModifierAt,
-	WEEKLY_MODIFIERS,
 } from '../../../shared/config/weeklyModifiers.js';
+import { WEEKLY_MODIFIER_TEXT } from '../../../shared/ui/text/weekly.js';
 import { COMBAT_WEEKLY_MODIFIER } from '../../../shared/ui/text/combat.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { DailyCycle } from '../../../shared/utils/dailyCycle.js';
@@ -333,7 +333,7 @@ export class RaidService {
 			}),
 		});
 		if (weekly !== 'none' && isWeeklyEligible(boss, monsterStats.finalBoss)) {
-			const info = WEEKLY_MODIFIERS[weekly]!;
+			const info = WEEKLY_MODIFIER_TEXT[weekly]!;
 			const line = COMBAT_WEEKLY_MODIFIER(info.name, info.desc);
 			battle.log.unshift(line);
 			battle.roundLogs[0]?.lines.unshift(line);

@@ -337,7 +337,7 @@ export class WorldBossService {
 		}
 		await this.bosses.recordSpawn(tx, {
 			guildId,
-			bossName: 'World Boss',
+			bossName: WORLD_BOSS_TEXT.name,
 			requestedBy: discordId,
 			status: 'spawned',
 			spawnedAt: now,
@@ -356,7 +356,7 @@ export class WorldBossService {
 		const player = this.factory.createCombatant(account.username, account.combatClass, assembled);
 		const playerStrategy = this.factory.createStrategy(account.combatClass, assembled);
 		const boss = createCombatant({
-			name: 'World Boss',
+			name: WORLD_BOSS_TEXT.name,
 			combatClass: null,
 			hp: WORLD_BOSS.maxHp,
 			atk: WORLD_BOSS.atk,

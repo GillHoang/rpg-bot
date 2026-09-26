@@ -10,6 +10,7 @@ import { createCombatant } from '../../combat-shared/domain/CombatantState.js';
 import { BattleEngine } from '../../combat-shared/domain/BattleEngine.js';
 import { MonsterStrategy } from '../../combat-shared/domain/classes/MonsterStrategy.js';
 import { RaidRepository } from '../infrastructure/RaidRepository.js';
+import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
 
 export interface PreviewResult {
 	gate: number;
@@ -89,7 +90,7 @@ export class PreviewService {
 		];
 		const selection = selectGateTier(gatesCleared, account.combatLevel, gate, tier);
 		if ('status' in selection || !selection.tier) {
-			return 'status' in selection ? selection : { status: 'portal-locked', message: 'Gate hoặc tầng không hợp lệ.' };
+			return 'status' in selection ? selection : { status: 'portal-locked', message: GATE_TEXT.invalid };
 		}
 		const gateTier = selection.tier;
 

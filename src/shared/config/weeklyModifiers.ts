@@ -7,13 +7,6 @@ import { weekWindowAt } from './ranked.js';
  */
 export type WeeklyModifier = 'none' | 'bloodmoon' | 'frenzy' | 'drought';
 
-export const WEEKLY_MODIFIERS: Readonly<Record<WeeklyModifier, { name: string; desc: string }>> = {
-	none: { name: 'Tuần yên tĩnh', desc: 'Không có biến động.' },
-	bloodmoon: { name: 'Huyết Nguyệt', desc: 'Sudden death bắt đầu từ hiệp 16.' },
-	frenzy: { name: 'Cuồng Nộ', desc: 'Cả hai bên +20% sát thương.' },
-	drought: { name: 'Hạn Hán', desc: 'Mọi hồi máu giảm một nửa.' },
-};
-
 /** Rotation order — one entry per ISO-week index. */
 const ROTATION: readonly WeeklyModifier[] = ['none', 'bloodmoon', 'frenzy', 'drought'];
 

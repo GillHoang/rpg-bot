@@ -1,4 +1,5 @@
 import { ICONS } from './icons.js';
+import { WEEKLY_LINE } from './weekly.js';
 
 /** Tầng tối đa mỗi Gate — đồng bộ với TIERS_PER_GATE ở src/shared/config/portals.ts. */
 const TIERS = 10;
@@ -106,7 +107,7 @@ export const GATE_TEXT = {
 	/** Phase 6 loadout tips line (see GATE_MODIFIER_TIPS). */
 	modifierTips: (modifiers: readonly string[]) => modifierTips(modifiers),
 	/** Phase 4 weekly modifier line shown on gate panels + /raid gates. */
-	weeklyLine: (name: string, desc: string) => `🗓️ Tuần này: **${name}** — ${desc}`,
+	weeklyLine: (name: string, desc: string) => WEEKLY_LINE(name, desc),
 	tierRow: (tier: GateTierLike, clearedTiers: number) =>
 		`${tierStatusIcon(tier.number, clearedTiers)} Tầng ${tier.number}${tier.finalBoss ? ' · Boss' : ''} · Quái Lv.${tier.level}`,
 };

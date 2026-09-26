@@ -9,6 +9,8 @@ import { selectGateTier } from './RaidGatePolicy.js';
 import { RaidRepository } from '../infrastructure/RaidRepository.js';
 import { RaidRewardService, type RaidRewardResult } from './RaidRewardService.js';
 import { rollBattleRewards, raidMonsterName } from './RaidLoot.js';
+import { GATE_TEXT } from '../../../shared/ui/text/portals.js';
+import { SWEEP_TEXT } from '../../../shared/ui/text/raid.js';
 import { GameplayProgressCoordinator } from '../../../shared/progress/gameplayProgress.js';
 import { createRng, createSecureSeed } from '../../combat-shared/domain/Rng.js';
 import { RAID_HUNT_COOLDOWN_SECONDS } from '../../../shared/config/raidLoot.js';
@@ -132,13 +134,13 @@ export class SweepService {
 		];
 		const selection = selectGateTier(gatesCleared, account.combatLevel, options.gate, options.tier);
 		if ('status' in selection || !selection.tier) {
-			return 'status' in selection ? selection : { status: 'portal-locked', message: 'Gate hoặc tầng không hợp lệ.' };
+			return 'status' in selection ? selection : { status: 'portal-locked', message: GATE_TEXT.invalid };
 		}
 		const gateTier = selection.tier;
 		if (gateTier.number > (gatesCleared[gateTier.gate.id - 1] ?? 0)) {
 			return {
 				status: 'sweep-locked',
-				message: `Chỉ quét được tầng đã thắng (Gate ${gateTier.gate.id} đang ở tầng ${(gatesCleared[gateTier.gate.id - 1] ?? 0) + 1}).`,
+				message: SWEEP_TEXT.locked(gateTier.gate.id, (gatesCleared[gateTier.gate.id - 1] ?? 0) + 1),
 			};
 		}
 

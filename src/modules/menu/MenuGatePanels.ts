@@ -8,7 +8,8 @@ import {
 	highestAccessibleGate,
 } from '../../shared/config/portals.js';
 import { GATE_TEXT } from '../../shared/ui/text/portals.js';
-import { WEEKLY_MODIFIERS, weeklyModifierAt } from '../../shared/config/weeklyModifiers.js';
+import { weeklyModifierAt } from '../../shared/config/weeklyModifiers.js';
+import { WEEKLY_MODIFIER_TEXT } from '../../shared/ui/text/weekly.js';
 import { battleLobbyPanel } from './gameplayPanels.js';
 import type { GamePanel } from './MenuGameplay.js';
 import type { MenuSession } from './MenuSessionStore.js';
@@ -47,7 +48,7 @@ export function gateSelectPanel(
 	const level = profile.level;
 	const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
 	panel.title = GATE_TEXT.title;
-	const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
+	const weekly = WEEKLY_MODIFIER_TEXT[weeklyModifierAt(new Date())]!;
 	panel.body = [
 		GATE_TEXT.weeklyLine(weekly.name, weekly.desc),
 		...GATES.map((g) => {
@@ -89,7 +90,7 @@ export function gateTiersPanel(
 	session.portalGate = selected.number;
 	const panel = battleLobbyPanel(profile, bossDone, !!session.battle);
 	panel.title = GATE_TEXT.title;
-	const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
+	const weekly = WEEKLY_MODIFIER_TEXT[weeklyModifierAt(new Date())]!;
 	panel.body = [
 		GATE_TEXT.gateHeader(gate.id, gate.name, gateModifiers(gate), gate.minLevel),
 		GATE_TEXT.weeklyLine(weekly.name, weekly.desc),

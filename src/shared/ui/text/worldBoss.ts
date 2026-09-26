@@ -1,6 +1,9 @@
 export const WORLD_BOSS_TEXT = {
+	name: 'World Boss',
 	description: 'Đánh World Boss chung của server, góp damage nhận thưởng theo rank',
 	boardDescription: 'Bảng xếp hạng damage World Boss hiện tại',
+	wautoDescription: 'Bật/tắt auto-raid World Boss (+2 lượt/ngày)',
+	remaining: (hp: string, max: string) => `Còn lại: ${hp}/${max} HP.`,
 	attackOption: 'Đánh boss (mặc định) hay xem trạng thái',
 	noBoss: 'Chưa có World Boss. Dùng `/raid worldboss` để triệu hồi và đánh đòn đầu tiên.',
 	spawned: (hp: string) => `World Boss xuất hiện với __${hp} HP__ chung! Cả server cùng góp damage.`,

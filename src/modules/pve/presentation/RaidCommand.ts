@@ -17,7 +17,8 @@ import { RAID_FLOW_TEXT, RAID_DESCRIPTION, RAID_NO_MONSTERS_SEEDED, SWEEP_TEXT }
 import { raidBattleOptions } from '../../../shared/ui/render/raidBattleOptions.js';
 import { GAMEPLAY_NOTICE } from '../../../shared/ui/text/gameplay.js';
 import { RAID_HUNT_COOLDOWN_SECONDS } from '../../../shared/config/raidLoot.js';
-import { WEEKLY_MODIFIERS, weeklyModifierAt } from '../../../shared/config/weeklyModifiers.js';
+import { weeklyModifierAt } from '../../../shared/config/weeklyModifiers.js';
+import { WEEKLY_MODIFIER_TEXT } from '../../../shared/ui/text/weekly.js';
 
 export class RaidCommand implements ICommand {
 	readonly data = new SlashCommandBuilder()
@@ -46,7 +47,7 @@ export class RaidCommand implements ICommand {
 		)
 		.addSubcommand((s) => s.setName('worldboss').setDescription(WORLD_BOSS_TEXT.description))
 		.addSubcommand((s) => s.setName('wboard').setDescription(WORLD_BOSS_TEXT.boardDescription))
-		.addSubcommand((s) => s.setName('wauto').setDescription('Bật/tắt auto-raid World Boss (+2 lượt/ngày)'))
+		.addSubcommand((s) => s.setName('wauto').setDescription(WORLD_BOSS_TEXT.wautoDescription))
 		.addSubcommand((s) => s.setName('wwar').setDescription(WORLD_BOSS_TEXT.warDescription))
 		.addSubcommand((s) =>
 			s
@@ -83,7 +84,7 @@ export class RaidCommand implements ICommand {
 		// Battle + reward grant can exceed the 3s reply window — acknowledge first.
 		await interaction.deferReply();
 		if (interaction.options.getSubcommand(false) === 'gates') {
-			const weekly = WEEKLY_MODIFIERS[weeklyModifierAt(new Date())]!;
+			const weekly = WEEKLY_MODIFIER_TEXT[weeklyModifierAt(new Date())]!;
 			await interaction.editReply(
 				GATE_TEXT.weeklyLine(weekly.name, weekly.desc) +
 					'\n' +
@@ -362,7 +363,7 @@ export class RaidCommand implements ICommand {
 			{
 				status: 'ok',
 				battle: result.battle,
-				monsterName: 'World Boss',
+				monsterName: WORLD_BOSS_TEXT.name,
 				credux: result.killCredux,
 				shards: 0,
 				expGained: 0,
@@ -378,7 +379,8 @@ export class RaidCommand implements ICommand {
 		await interaction.followUp(
 			(result.spawned ? WORLD_BOSS_TEXT.spawned(formatNumber(result.bossMaxHp)) + '\n' : '') +
 				WORLD_BOSS_TEXT.contribution(formatNumber(result.contribution), formatNumber(result.totalDamage)) +
-				`\nCòn lại: ${formatNumber(result.bossHpRemaining)}/${formatNumber(result.bossMaxHp)} HP.` +
+				'\n' +
+				WORLD_BOSS_TEXT.remaining(formatNumber(result.bossHpRemaining), formatNumber(result.bossMaxHp)) +
 				(result.killed && result.rank
 					? '\n' + WORLD_BOSS_TEXT.killRank(result.rank, result.killCredux, result.killChest)
 					: ''),

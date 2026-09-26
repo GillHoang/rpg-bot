@@ -17,7 +17,10 @@ const seeds = [1, 7, 42, 12345];
 // thousands of repetitive log lines. Pin numeric formatting across host locales.
 // (Phase 1 re-baselined after proving behaviour-identical with the 5 inert
 // combat-core fields stripped — see git history. Phase 2 re-baselined the
-// same way for the skill-system fields: skill-less battles hash identically.)
+// same way for the skill-system fields: skill-less battles hash identically.
+// Phase 4d re-baselined the same way for the weekly-modifier flags
+// fieldDamagePct/earlySuddenDeath/healMult: direct engine battles never set
+// them, strip-verify reproduced all 8 stored hashes before `vitest -u`.)
 function traceHash(traces: unknown[]): string {
 	return createHash('sha256').update(JSON.stringify(traces)).digest('hex');
 }

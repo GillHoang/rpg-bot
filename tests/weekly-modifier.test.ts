@@ -6,8 +6,8 @@ import {
 	applyWeeklyFlags,
 	isWeeklyEligible,
 	weeklyModifierAt,
-	WEEKLY_MODIFIERS,
 } from '../src/shared/config/weeklyModifiers.js';
+import { WEEKLY_MODIFIER_TEXT } from '../src/shared/ui/text/weekly.js';
 import { weekWindowAt } from '../src/shared/config/ranked.js';
 
 describe('weekly modifier rotation (Phase 4d)', () => {
@@ -23,8 +23,8 @@ describe('weekly modifier rotation (Phase 4d)', () => {
 
 	it('documents every modifier in the UI manifest', () => {
 		for (const key of ['none', 'bloodmoon', 'frenzy', 'drought'] as const) {
-			expect(WEEKLY_MODIFIERS[key].name.length).toBeGreaterThan(0);
-			expect(WEEKLY_MODIFIERS[key].desc.length).toBeGreaterThan(0);
+			expect(WEEKLY_MODIFIER_TEXT[key].name.length).toBeGreaterThan(0);
+			expect(WEEKLY_MODIFIER_TEXT[key].desc.length).toBeGreaterThan(0);
 		}
 	});
 
