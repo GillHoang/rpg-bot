@@ -46,8 +46,6 @@ export const SKILL_DESCS: Readonly<Record<string, string>> = {
 	fielddressing: 'Băng bó hồi HP giữa trận.',
 };
 
-export const SKILL_CAST = (name: string): string => `${name} tung chiêu!`;
-
 export const SKILL_DESCRIPTION = 'Tuyệt kỹ chiến đấu (tốn resource, chờ hồi chiêu)';
 export const SKILL_SLOT_OPTION_DESC = 'Ô skill (1 hoặc 2, trống để gỡ)';
 export const SKILL_LIST_SUBCOMMAND = 'Xem tuyệt kỹ của class';
@@ -68,3 +66,11 @@ export const SKILL_LIST_HEADER = 'Tuyệt kỹ của class bạn (mang tối đa
 export const SKILL_LIST_LINE = (name: string, kind: string, cost: number, cooldown: number, desc: string): string =>
 	`**${name}** (${kind} · ${cost} resource · chờ ${cooldown}) — ${desc}`;
 export const SKILL_LIST_FOOTER = '`/skill equip` để gắn · `/skill order` để đổi thế trận.';
+
+/** Battle log builders — mọi câu chữ trong log trận đấu nằm ở đây. */
+export const SKILL_CAST = (name: string, self: string, enemy: string | null): string =>
+	enemy ? `**${name}** — ${self} tung chiêu vào ${enemy}!` : `**${name}** — ${self} tung chiêu!`;
+export const SKILL_HEALED = (amount: string | number): string => ` Hồi ${amount} HP.`;
+export const SKILL_CLEANSED = (count: string | number): string => ` Xóa ${count} hiệu ứng.`;
+export const SKILL_SHIELDED = (amount: string | number): string => ` Chặn ${amount} damage.`;
+export const SKILL_EQUIPPED_MARK = (slot: string | number): string => ` (ô ${slot})`;

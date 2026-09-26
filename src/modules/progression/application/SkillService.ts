@@ -21,7 +21,7 @@ import {
 	SKILL_UNKNOWN,
 	SKILL_WRONG_CLASS,
 } from '../../../shared/ui/text/skills.js';
-import { SKILL_NAMES, SKILL_DESCS } from '../../../shared/ui/text/skills.js';
+import { SKILL_NAMES, SKILL_DESCS, SKILL_EQUIPPED_MARK } from '../../../shared/ui/text/skills.js';
 
 export interface SkillDependencies {
 	persistence: PersistenceContext;
@@ -49,13 +49,12 @@ export class SkillService {
 			const equipped = [character.skillSlot1, character.skillSlot2];
 			const lines = skillsForClass(character.class).map((def) => {
 				const slot = equipped.indexOf(def.key) + 1;
-				const mark = slot > 0 ? ` (ô ${slot})` : '';
 				return SKILL_LIST_LINE(
 					SKILL_NAMES[def.key] ?? def.key,
 					def.kind,
 					def.cost,
 					def.cooldown,
-					(SKILL_DESCS[def.key] ?? '') + mark,
+					(SKILL_DESCS[def.key] ?? '') + (slot > 0 ? SKILL_EQUIPPED_MARK(slot) : ''),
 				);
 			});
 			return ok([SKILL_LIST_HEADER, ...lines, SKILL_LIST_FOOTER].join('\n'));
